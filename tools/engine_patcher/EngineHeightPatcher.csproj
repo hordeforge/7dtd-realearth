@@ -1,0 +1,20 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <OutputType>Exe</OutputType>
+    <TargetFramework>net48</TargetFramework>
+    <LangVersion>latest</LangVersion>
+    <Nullable>enable</Nullable>
+    <AssemblyName>EngineHeightPatcher</AssemblyName>
+    <RootNamespace>RealEarth.EnginePatcher</RootNamespace>
+    <AppendTargetFrameworkToOutputPath>false</AppendTargetFrameworkToOutputPath>
+    <!-- Mono.Cecil ships with 0_TFP_Harmony -->
+    <HarmonyDir Condition="'$(HarmonyDir)' == ''">$(SEVENDTD_GAME_DIR)/Mods/0_TFP_Harmony</HarmonyDir>
+    <HarmonyDir Condition="'$(HarmonyDir)' == ''">$(HOME)/.local/share/Steam/steamapps/common/7 Days To Die/Mods/0_TFP_Harmony</HarmonyDir>
+  </PropertyGroup>
+  <ItemGroup>
+    <Reference Include="Mono.Cecil">
+      <HintPath>$(HarmonyDir)/Mono.Cecil.dll</HintPath>
+      <Private>true</Private>
+    </Reference>
+  </ItemGroup>
+</Project>

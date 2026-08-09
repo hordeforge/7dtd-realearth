@@ -1,0 +1,100 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>RealEarth Map Viewer</title>
+  <link rel="stylesheet" href="css/app.css" />
+  <script type="importmap">
+  {
+    "imports": {
+      "three": "https://cdn.jsdelivr.net/npm/three@0.170.0/build/three.module.js",
+      "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.170.0/examples/jsm/"
+    }
+  }
+  </script>
+</head>
+<body>
+  <div id="app">
+    <aside id="sidebar">
+      <header class="brand">
+        <div class="logo">RE</div>
+        <div>
+          <h1>RealEarth</h1>
+          <p class="tag">Map viewer · 7DTD 3.0.1</p>
+        </div>
+      </header>
+
+      <section class="panel">
+        <h2>Pack</h2>
+        <label class="field">
+          <span>Dataset</span>
+          <select id="packSelect">
+            <option value="data/demo">Demo (bundled)</option>
+          </select>
+        </label>
+        <label class="field">
+          <span>Or load viewer.json</span>
+          <input type="file" id="jsonFile" accept="application/json,.json" />
+        </label>
+        <p id="packInfo" class="muted">No pack loaded.</p>
+      </section>
+
+      <section class="panel">
+        <h2>View</h2>
+        <div class="btn-row">
+          <button type="button" class="btn active" data-mode="flat" id="btnFlat">Flat map</button>
+          <button type="button" class="btn" data-mode="globe" id="btnGlobe">Globe</button>
+        </div>
+        <label class="field">
+          <span>Layer</span>
+          <select id="layerSelect"></select>
+        </label>
+        <label class="check">
+          <input type="checkbox" id="showSettlements" checked />
+          <span>Settlements</span>
+        </label>
+        <label class="check">
+          <input type="checkbox" id="showGrid" />
+          <span>Tile grid</span>
+        </label>
+        <label class="field">
+          <span>Opacity</span>
+          <input type="range" id="opacity" min="0.2" max="1" step="0.05" value="1" />
+        </label>
+      </section>
+
+      <section class="panel">
+        <h2>Legend</h2>
+        <div id="legend" class="legend"></div>
+      </section>
+
+      <section class="panel">
+        <h2>Cursor</h2>
+        <dl id="probe" class="probe">
+          <div><dt>Lon</dt><dd id="pLon">—</dd></div>
+          <div><dt>Lat</dt><dd id="pLat">—</dd></div>
+          <div><dt>Elev</dt><dd id="pElev">—</dd></div>
+          <div><dt>UV</dt><dd id="pUv">—</dd></div>
+        </dl>
+      </section>
+
+      <footer class="foot muted">
+        Scroll to zoom · drag to pan · globe: drag orbit
+      </footer>
+    </aside>
+
+    <main id="stage">
+      <canvas id="mapCanvas"></canvas>
+      <div id="globeHost" hidden></div>
+      <div id="hud">
+        <div id="titleHud">RealEarth</div>
+        <div id="statusHud">Loading…</div>
+      </div>
+      <div id="settlementTip" hidden></div>
+    </main>
+  </div>
+
+  <script type="module" src="js/app.js"></script>
+</body>
+</html>

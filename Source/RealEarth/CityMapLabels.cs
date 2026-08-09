@@ -1,0 +1,667 @@
+using System;
+using System.Collections.Generic;
+using System.Globalization;
+using System.IO;
+using System.Reflection;
+using UnityEngine;
+
+namespace RealEarth
+{
+    /// <summary>
+    /// City names on the in-game map: discover when the player reaches the city edge,
+    /// then pin the label at the geographic center (like a real map), not at the player.
+    /// Similar in spirit to traders appearing when nearby; once discovered, the name stays.
+    /// </summary>
+    public static class CityMapLabels
+    {
+        static List<Place>? _catalog;
+        static readonly HashSet<string> _discovered = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+        static readonly Dictionary<string, object> _navByName = new Dictionary<string, object>(StringComparer.OrdinalIgnoreCase);
+        static int _tickThrottle;
+        static int _catalogRetry = 30;
+
+        public sealed class Place
+        {
+            public string Name = "";
+            public double Lon;
+            public double Lat;
+            public int Population;
+            public string Band = "";
+            /// <summary>Discover radius in blocks (≈ m at 1:1). Edge of city.</summary>
+            public int EdgeRadiusBlocks;
+            /// <summary>
+            /// Map-derived urban edge in meters (density blob, polygon bbox, or seed extent).
+            /// 0 = not set; runtime falls back to population formula only as last resort.
+            /// </summary>
+            public double EdgeRadiusM;
+            /// <summary>density | map | seed | population_fallback</summary>
+            public string EdgeSource = "";
+        }
+
+        public static int DiscoveredCount => _discovered.Count;
+        public static int CatalogCount => _catalog?.Count ?? 0;
+
+        public static void Reset()
+        {
+            UnregisterAll();
+            _discovered.Clear();
+            _catalog = null;
+            _tickThrottle = 0;
+            _catalogRetry = 30;
+        }
+
+        /// <summary>Legacy entry: no player pos (only loads catalog / retries manager).</summary>
+        public static void TryPlaceIfConfigured()
+        {
+            EnsureCatalog();
+        }
+
+        /// <summary>
+        /// Each player tick: discover cities whose edge you entered; labels always at center.
+        /// </summary>
+        public static void TickPlayer(int playerLocalX, int playerLocalZ)
+        {
+            var cfg = ModApi.Config;
+            if (cfg == null || !cfg.ShowCityNamesOnMap)
+                return;
+
+            if (_tickThrottle > 0)
+            {
+                _tickThrottle--;
+                return;
+            }
+            _tickThrottle = 15; // ~0.25s at 60fps-ish ticks; cheap distance checks
+
+            try
+            {
+                if (!EnsureCatalog())
+                    return;
+                if (_catalog == null || _catalog.Count == 0)
+                    return;
+
+                object? mgr = GetNavObjectManager();
+                if (mgr == null)
+                    return;
+                MethodInfo? reg = FindRegister(mgr.GetType());
+                if (reg == null)
+                    return;
+
+                var session = ModApi.Session;
+                if (session == null)
+                    return;
+
+                // P6 budget: honor config but hard-cap (never ClampPrefabsInArea(cfg,cfg) identity).
+                const int hardMaxLabels = 500;
+                int maxLabels = Math.Min(Math.Max(1, cfg.CityMapMaxLabels), hardMaxLabels);
+                int minPop = Math.Max(0, cfg.CityMapMinPopulation);
+                float scale = cfg.CityMapDiscoverRadiusScale > 0.05f
+                    ? cfg.CityMapDiscoverRadiusScale
+                    : 1f;
+
+                // Re-place discovered pins if handles were dropped (e.g. origin slide).
+                // Marker position is always the city center, never the player.
+                foreach (var name in _discovered)
+                {
+                    Place? p = FindByName(name);
+                    if (p == null) continue;
+                    if (!_navByName.ContainsKey(p.Name))
+                        EnsureMarker(mgr, reg, session, p);
+                }
+
+                if (_discovered.Count >= maxLabels)
+                    return;
+
+                foreach (var p in _catalog)
+                {
+                    if (_discovered.Count >= maxLabels)
+                        break;
+                    if (p.Population < minPop && minPop > 0)
+                        continue;
+                    if (_discovered.Contains(p.Name))
+                        continue;
+
+                    session.LonLatToLocal(p.Lon, p.Lat, out int cx, out int cz);
+                    long dx = (long)playerLocalX - cx;
+                    long dz = (long)playerLocalZ - cz;
+                    double dist = Math.Sqrt(dx * dx + dz * dz);
+                    int edge = Math.Max(32, (int)(p.EdgeRadiusBlocks * scale));
+
+                    // Reaching the edge is enough to discover; pin at center.
+                    if (dist <= edge)
+                    {
+                        if (EnsureMarker(mgr, reg, session, p))
+                        {
+                            _discovered.Add(p.Name);
+                            ModApi.Log(
+                                $"CityMapLabels: discovered '{p.Name}' " +
+                                $"(dist={dist:0} edge={edge} center=({cx},{cz})).");
+                        }
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                ModApi.Log($"CityMapLabels tick: {ex.Message}");
+            }
+        }
+
+        /// <summary>After origin slide: keep discovered pins, recompute local positions.</summary>
+        public static void RefreshAfterOriginSlide()
+        {
+            if (ModApi.Config == null || !ModApi.Config.ShowCityNamesOnMap)
+                return;
+            // Drop nav handles (positions invalid); rediscover set is kept.
+            UnregisterAllNavOnly();
+            _tickThrottle = 0;
+            // Next TickPlayer will re-place discovered at new local coords
+        }
+
+        static Place? FindByName(string name)
+        {
+            if (_catalog == null) return null;
+            foreach (var p in _catalog)
+                if (string.Equals(p.Name, name, StringComparison.OrdinalIgnoreCase))
+                    return p;
+            return null;
+        }
+
+        static bool EnsureCatalog()
+        {
+            if (_catalog != null)
+                return true;
+            if (_catalogRetry <= 0)
+                return false;
+            try
+            {
+                var places = LoadPlaces();
+                int fromMap = 0;
+                foreach (var p in places)
+                {
+                    p.EdgeRadiusBlocks = ResolveEdgeRadiusBlocks(p);
+                    if (p.EdgeSource == "density" || p.EdgeSource == "map" || p.EdgeSource == "seed")
+                        fromMap++;
+                }
+                places.Sort((a, b) => b.Population.CompareTo(a.Population));
+                _catalog = places;
+                ModApi.Log(
+                    $"CityMapLabels: catalog {_catalog.Count} places " +
+                    $"(edge from map data: {fromMap}, discover-on-approach).");
+                return true;
+            }
+            catch (Exception ex)
+            {
+                _catalogRetry--;
+                ModApi.Log($"CityMapLabels: catalog load failed: {ex.Message}");
+                return false;
+            }
+        }
+
+        /// <summary>
+        /// Prefer map-derived edge (meters → blocks at 1:1). Last resort: population formula
+        /// matching the Python paint radius (sqrt(pop)/40 km, clamped).
+        /// </summary>
+        public static int ResolveEdgeRadiusBlocks(Place p)
+        {
+            if (p.EdgeRadiusM > 32)
+            {
+                if (string.IsNullOrEmpty(p.EdgeSource))
+                    p.EdgeSource = "map";
+                return Math.Max(32, (int)Math.Round(p.EdgeRadiusM));
+            }
+
+            // Population fallback only when pack/seed has no density or polygon extent.
+            double radiusKm = Math.Max(1.5, Math.Min(80.0, Math.Sqrt(Math.Max(1, p.Population)) / 40.0));
+            p.EdgeRadiusM = radiusKm * 1000.0;
+            p.EdgeSource = "population_fallback";
+            return Math.Max(32, (int)Math.Round(p.EdgeRadiusM));
+        }
+
+        /// <summary>Legacy name for tests / callers; same as ResolveEdgeRadiusBlocks.</summary>
+        public static int EstimateEdgeRadius(Place p) => ResolveEdgeRadiusBlocks(p);
+
+        static string BandFromPopulation(int pop)
+        {
+            if (pop >= 1_000_000) return "metro";
+            if (pop >= 100_000) return "large_city";
+            if (pop >= 10_000) return "town";
+            if (pop >= 1_000) return "village";
+            return "hamlet";
+        }
+
+        static bool EnsureMarker(
+            object mgr,
+            MethodInfo reg,
+            WorldSession session,
+            Place p)
+        {
+            if (_navByName.ContainsKey(p.Name))
+                return true;
+
+            // Always pin at geographic center (real map), not player position.
+            session.LonLatToLocal(p.Lon, p.Lat, out int lx, out int lz);
+            // P3: pin height is surface-relative (StampSurfaceY), not a magic constant only.
+            int surfaceY = SampleY(lx, lz);
+            int y = StampSurfaceY.PrefabRootY(surfaceY, foundationOffsetBlocks: 2);
+            var pos = new Vector3(lx + 0.5f, y + 0.5f, lz + 0.5f);
+
+            try
+            {
+                object? nav = reg.Invoke(mgr, new object?[]
+                {
+                    "realearth_city",
+                    pos,
+                    "",
+                    false,
+                    -1,
+                    null
+                });
+                if (nav == null)
+                    nav = reg.Invoke(mgr, new object?[] { "quick_waypoint", pos, "", false, -1, null });
+                if (nav == null)
+                    return false;
+
+                SetNavName(nav, p.Name);
+                _navByName[p.Name] = nav;
+                return true;
+            }
+            catch (Exception ex)
+            {
+                ModApi.Log($"CityMapLabels: pin '{p.Name}' failed: {ex.InnerException?.Message ?? ex.Message}");
+                return false;
+            }
+        }
+
+        static int SampleY(int lx, int lz)
+        {
+            try
+            {
+                // Always int surface Y (never byte clamp) so tall pins sit on real peaks.
+                return ChunkTerrainSampler.SampleGameHeightInt(lx, lz);
+            }
+            catch
+            {
+                return (ModApi.Config?.SeaLevelGameY ?? 100) + 20;
+            }
+        }
+
+        static void SetNavName(object nav, string name)
+        {
+            var t = nav.GetType();
+            var f = t.GetField("name", BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic);
+            if (f != null && f.FieldType == typeof(string))
+                f.SetValue(nav, name);
+            var loc = t.GetField("usingLocalizationId", BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic);
+            if (loc != null && loc.FieldType == typeof(bool))
+                loc.SetValue(nav, false);
+            var hidden = t.GetField("hiddenOnMap", BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic);
+            if (hidden != null && hidden.FieldType == typeof(bool))
+                hidden.SetValue(nav, false);
+            var active = t.GetField("IsActive", BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic);
+            if (active != null && active.FieldType == typeof(bool))
+                active.SetValue(nav, true);
+        }
+
+        static void UnregisterAll()
+        {
+            UnregisterAllNavOnly();
+            _discovered.Clear();
+        }
+
+        static void UnregisterAllNavOnly()
+        {
+            try
+            {
+                object? mgr = GetNavObjectManager();
+                if (mgr != null)
+                {
+                    foreach (var kv in _navByName)
+                        TryUnregister(mgr, kv.Value);
+                }
+            }
+            catch { /* ignore */ }
+            _navByName.Clear();
+        }
+
+        static void TryUnregister(object mgr, object nav)
+        {
+            try
+            {
+                foreach (var m in mgr.GetType().GetMethods(BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic))
+                {
+                    if (m.Name != "UnRegisterNavObject" || m.GetParameters().Length != 1)
+                        continue;
+                    m.Invoke(mgr, new[] { nav });
+                    return;
+                }
+            }
+            catch { /* ignore */ }
+        }
+
+        public static List<Place> LoadPlaces()
+        {
+            var list = new List<Place>();
+            var paths = new List<string>();
+            string mod = ModApi.ModPath ?? "";
+            string pack = ModApi.Config?.TilePackPath ?? "Data/tiles";
+            if (!Path.IsPathRooted(pack) && !string.IsNullOrEmpty(mod))
+                pack = Path.Combine(mod, pack);
+
+            paths.Add(Path.Combine(pack, "settlements.json"));
+            paths.Add(Path.Combine(pack, "cities.json"));
+            if (!string.IsNullOrEmpty(mod))
+            {
+                paths.Add(Path.Combine(mod, "Data", "settlements.json"));
+                paths.Add(Path.Combine(mod, "Config", "settlements.json"));
+            }
+
+            foreach (var path in paths)
+            {
+                if (!File.Exists(path)) continue;
+                try
+                {
+                    ParseSettlementsJson(File.ReadAllText(path), list);
+                    if (list.Count > 0)
+                    {
+                        ModApi.Log($"CityMapLabels: loaded {list.Count} from {path}");
+                        break;
+                    }
+                }
+                catch (Exception ex)
+                {
+                    ModApi.Log($"CityMapLabels: parse {path}: {ex.Message}");
+                }
+            }
+
+            int before = list.Count;
+            AddSeedPlacesInPack(list);
+            if (list.Count > before)
+                ModApi.Log($"CityMapLabels: +{list.Count - before} seed places in pack range");
+
+            var seen = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+            var uniq = new List<Place>();
+            foreach (var p in list)
+            {
+                if (string.IsNullOrWhiteSpace(p.Name)) continue;
+                if (seen.Add(p.Name))
+                    uniq.Add(p);
+            }
+            return uniq;
+        }
+
+        static void ParseSettlementsJson(string json, List<Place> into)
+        {
+            json = json.Trim();
+            // cities.json is often { "cores": [ {...}, ... ] }; settlements.json is [ ... ].
+            // Walk every {...} object; skip non-place objects without name+lon+lat.
+            int i = 0;
+            while (i < json.Length)
+            {
+                int objStart = json.IndexOf('{', i);
+                if (objStart < 0) break;
+                int objEnd = FindMatchingBrace(json, objStart);
+                if (objEnd < 0) break;
+                string obj = json.Substring(objStart, objEnd - objStart + 1);
+                // Skip nested containers that are not place rows (no "lon" key).
+                if (obj.IndexOf("\"lon\"", StringComparison.OrdinalIgnoreCase) < 0
+                    && obj.IndexOf("\"Lat\"", StringComparison.OrdinalIgnoreCase) < 0)
+                {
+                    i = objEnd + 1;
+                    continue;
+                }
+                var place = ParsePlaceObject(obj);
+                if (place != null && !string.IsNullOrEmpty(place.Name))
+                    into.Add(place);
+                i = objEnd + 1;
+            }
+        }
+
+        static int FindMatchingBrace(string json, int openIdx)
+        {
+            int depth = 0;
+            bool inStr = false;
+            for (int i = openIdx; i < json.Length; i++)
+            {
+                char c = json[i];
+                if (c == '"' && (i == 0 || json[i - 1] != '\\'))
+                    inStr = !inStr;
+                if (inStr) continue;
+                if (c == '{') depth++;
+                else if (c == '}')
+                {
+                    depth--;
+                    if (depth == 0) return i;
+                }
+            }
+            return -1;
+        }
+
+        static Place? ParsePlaceObject(string obj)
+        {
+            var place = new Place();
+            if (!TryReadString(obj, "name", out var name) || string.IsNullOrWhiteSpace(name))
+                return null;
+            place.Name = name;
+            if (TryReadDouble(obj, "lon", out var lon)) place.Lon = lon;
+            if (TryReadDouble(obj, "lat", out var lat)) place.Lat = lat;
+            if (TryReadInt(obj, "population", out var pop)) place.Population = pop;
+            if (TryReadString(obj, "band", out var band)) place.Band = band;
+            ApplyEdgeFromObject(obj, place);
+            return place;
+        }
+
+        /// <summary>
+        /// Read map-data edge: edge_radius_m, radius_km, or west/south/east/north bbox.
+        /// </summary>
+        static void ApplyEdgeFromObject(string obj, Place place)
+        {
+            if (TryReadDouble(obj, "edge_radius_m", out var erm) && erm > 0)
+            {
+                place.EdgeRadiusM = erm;
+                if (TryReadString(obj, "edge_source", out var src) && !string.IsNullOrEmpty(src))
+                    place.EdgeSource = src;
+                else
+                    place.EdgeSource = "map";
+                return;
+            }
+            if (TryReadDouble(obj, "radius_m", out var rm) && rm > 0)
+            {
+                place.EdgeRadiusM = rm;
+                place.EdgeSource = "map";
+                return;
+            }
+            if (TryReadDouble(obj, "urban_radius_m", out var urm) && urm > 0)
+            {
+                place.EdgeRadiusM = urm;
+                place.EdgeSource = "map";
+                return;
+            }
+            if (TryReadDouble(obj, "edge_radius_km", out var erk) && erk > 0)
+            {
+                place.EdgeRadiusM = erk * 1000.0;
+                place.EdgeSource = "map";
+                return;
+            }
+            if (TryReadDouble(obj, "radius_km", out var rkm) && rkm > 0)
+            {
+                place.EdgeRadiusM = rkm * 1000.0;
+                place.EdgeSource = "map";
+                return;
+            }
+            // Real urban-area bbox → half-extent meters
+            if (TryReadDouble(obj, "west", out var west)
+                && TryReadDouble(obj, "south", out var south)
+                && TryReadDouble(obj, "east", out var east)
+                && TryReadDouble(obj, "north", out var north)
+                && east > west && north > south)
+            {
+                place.EdgeRadiusM = EdgeMetersFromBbox(west, south, east, north, place.Lon, place.Lat);
+                place.EdgeSource = "map";
+            }
+        }
+
+        public static double EdgeMetersFromBbox(
+            double west, double south, double east, double north,
+            double centerLon, double centerLat)
+        {
+            if (centerLon == 0 && centerLat == 0)
+            {
+                centerLon = 0.5 * (west + east);
+                centerLat = 0.5 * (south + north);
+            }
+            double mLat = 110_540.0;
+            double mLon = 111_320.0 * Math.Max(0.01, Math.Abs(Math.Cos(centerLat * Math.PI / 180.0)));
+            double halfW = 0.5 * Math.Abs(east - west) * mLon;
+            double halfH = 0.5 * Math.Abs(north - south) * mLat;
+            double corner = Math.Sqrt(
+                Math.Pow((east - centerLon) * mLon, 2) +
+                Math.Pow((north - centerLat) * mLat, 2));
+            return Math.Max(halfW, Math.Max(halfH, corner * 0.85));
+        }
+
+        static bool TryReadString(string obj, string key, out string value)
+        {
+            value = "";
+            string pat = "\"" + key + "\"";
+            int k = obj.IndexOf(pat, StringComparison.OrdinalIgnoreCase);
+            if (k < 0) return false;
+            int colon = obj.IndexOf(':', k + pat.Length);
+            if (colon < 0) return false;
+            int q1 = obj.IndexOf('"', colon + 1);
+            if (q1 < 0) return false;
+            int q2 = obj.IndexOf('"', q1 + 1);
+            if (q2 < 0) return false;
+            value = obj.Substring(q1 + 1, q2 - q1 - 1);
+            return true;
+        }
+
+        static bool TryReadDouble(string obj, string key, out double value)
+        {
+            value = 0;
+            string pat = "\"" + key + "\"";
+            int k = obj.IndexOf(pat, StringComparison.OrdinalIgnoreCase);
+            if (k < 0) return false;
+            int colon = obj.IndexOf(':', k + pat.Length);
+            if (colon < 0) return false;
+            int j = colon + 1;
+            while (j < obj.Length && (obj[j] == ' ' || obj[j] == '\t')) j++;
+            int e = j;
+            while (e < obj.Length && (char.IsDigit(obj[e]) || obj[e] == '-' || obj[e] == '+' || obj[e] == '.' || obj[e] == 'e' || obj[e] == 'E'))
+                e++;
+            return double.TryParse(obj.Substring(j, e - j), NumberStyles.Float, CultureInfo.InvariantCulture, out value);
+        }
+
+        static bool TryReadInt(string obj, string key, out int value)
+        {
+            value = 0;
+            if (!TryReadDouble(obj, key, out double d)) return false;
+            value = (int)d;
+            return true;
+        }
+
+        static void AddSeedPlacesInPack(List<Place> into)
+        {
+            // edge_m ≈ real urban continuum half-width (map extent order-of-magnitude).
+            var seeds = new (string n, double lon, double lat, int pop, string band, double edgeM)[]
+            {
+                ("New York", -74.006, 40.7128, 8_300_000, "metro", 35_000),
+                ("Los Angeles", -118.2437, 34.0522, 3_900_000, "metro", 45_000),
+                ("Chicago", -87.6298, 41.8781, 2_700_000, "metro", 28_000),
+                ("Denver", -104.9903, 39.7392, 715_000, "large_city", 22_000),
+                ("London", -0.1276, 51.5074, 9_000_000, "metro", 28_000),
+                ("Paris", 2.3522, 48.8566, 2_100_000, "metro", 18_000),
+                ("Berlin", 13.4050, 52.5200, 3_700_000, "metro", 16_000),
+                ("Tokyo", 139.6917, 35.6895, 14_000_000, "metro", 40_000),
+                ("Sydney", 151.2093, -33.8688, 5_300_000, "metro", 22_000),
+                ("São Paulo", -46.6333, -23.5505, 12_500_000, "metro", 30_000),
+                ("Cairo", 31.2357, 30.0444, 10_000_000, "metro", 22_000),
+                ("Mumbai", 72.8777, 19.0760, 12_500_000, "metro", 25_000),
+                ("Kathmandu", 85.3240, 27.7172, 1_400_000, "large_city", 10_000),
+                ("Namche Bazaar", 86.7140, 27.8069, 1_600, "village", 800),
+                ("Lukla", 86.7314, 27.6866, 1_500, "village", 600),
+                ("Dingboche", 86.8360, 27.8920, 200, "hamlet", 400),
+                ("Base Camp", 86.8525, 28.0026, 50, "hamlet", 300),
+            };
+
+            var cfg = ModApi.Config;
+            bool hasBbox = cfg != null && cfg.HasRegionalBbox;
+            foreach (var s in seeds)
+            {
+                if (hasBbox)
+                {
+                    if (s.lon < cfg!.BboxWest || s.lon > cfg.BboxEast) continue;
+                    if (s.lat < cfg.BboxSouth || s.lat > cfg.BboxNorth) continue;
+                }
+                into.Add(new Place
+                {
+                    Name = s.n,
+                    Lon = s.lon,
+                    Lat = s.lat,
+                    Population = s.pop,
+                    Band = s.band,
+                    EdgeRadiusM = s.edgeM,
+                    EdgeSource = "seed",
+                });
+            }
+        }
+
+        static object? GetNavObjectManager()
+        {
+            try
+            {
+                Type? t = FindType("NavObjectManager");
+                if (t == null) return null;
+                var f = t.GetField("Instance", BindingFlags.Static | BindingFlags.Public | BindingFlags.NonPublic)
+                        ?? t.GetField("instance", BindingFlags.Static | BindingFlags.Public | BindingFlags.NonPublic);
+                var p = t.GetProperty("Instance", BindingFlags.Static | BindingFlags.Public | BindingFlags.NonPublic);
+                return f?.GetValue(null) ?? p?.GetValue(null, null);
+            }
+            catch
+            {
+                return null;
+            }
+        }
+
+        static MethodInfo? FindRegister(Type mgrType)
+        {
+            foreach (var m in mgrType.GetMethods(BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic))
+            {
+                if (m.Name != "RegisterNavObject") continue;
+                var ps = m.GetParameters();
+                if (ps.Length == 6
+                    && ps[0].ParameterType == typeof(string)
+                    && ps[1].ParameterType.Name == "Vector3"
+                    && ps[2].ParameterType == typeof(string))
+                    return m;
+            }
+            foreach (var m in mgrType.GetMethods(BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic))
+            {
+                if (m.Name != "RegisterNavObject") continue;
+                var ps = m.GetParameters();
+                if (ps.Length >= 2 && ps[0].ParameterType == typeof(string) && ps[1].ParameterType.Name == "Vector3")
+                    return m;
+            }
+            return null;
+        }
+
+        static Type? FindType(string name)
+        {
+            foreach (var asm in AppDomain.CurrentDomain.GetAssemblies())
+            {
+                try
+                {
+                    var t = asm.GetType(name, false);
+                    if (t != null) return t;
+                    foreach (var ty in asm.GetTypes())
+                        if (ty.Name == name) return ty;
+                }
+                catch (ReflectionTypeLoadException ex)
+                {
+                    foreach (var ty in ex.Types)
+                        if (ty != null && ty.Name == name) return ty;
+                }
+                catch { /* ignore */ }
+            }
+            return null;
+        }
+    }
+}

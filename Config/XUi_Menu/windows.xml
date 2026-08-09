@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+  Optional: unlock larger host world sizes in the New Game UI for single-map play.
+  7DTD 3.0 menu XML names vary — if this fails to load, remove it and use a
+  "More RWG Size Options" / "Generate Huge Worlds" mod from 7daystodiemods or Nexus,
+  then generate one host world of 8192 or 16384.
+
+  RealEarth treats that host as ONE continuous map (Streamed sliding window or Baked bake-world).
+-->
+<RealEarthNote>
+  Prefer generating host size 8192 or 16384 once, then always continue that save.
+</RealEarthNote>

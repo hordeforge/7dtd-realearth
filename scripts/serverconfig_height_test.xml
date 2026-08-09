@@ -1,0 +1,127 @@
+<?xml version="1.0"?>
+<!--
+  RealEarth dedicated test config.
+  Minimal network surface for local LiteNetLib load tests:
+    - EAC off, crossplay off
+    - SteamNetworking disabled (LiteNetLib only)
+    - Not publicly listed
+    - Twitch effectively disabled (permission 1000)
+    - Discord not a serverconfig toggle; dedicated is headless/local
+-->
+<ServerSettings>
+	<property name="ServerName" value="RealEarth Local Load"/>
+	<property name="ServerDescription" value="RealEarth local LiteNetLib-only dedicated (EAC/crossplay/SteamNet off)"/>
+	<property name="ServerWebsiteURL" value=""/>
+	<property name="ServerPassword" value=""/>
+	<property name="ServerLoginConfirmationText" value=""/>
+	<property name="Region" value="Europe"/>
+	<property name="Language" value="English"/>
+
+	<property name="ServerPort" value="26900"/>
+	<!-- 0 = not listed (local / IP-only) -->
+	<property name="ServerVisibility" value="0"/>
+	<!-- Only LiteNetLib: disable SteamNetworking (and any other non-LiteNetLib transport). -->
+	<property name="ServerDisabledNetworkProtocols" value="SteamNetworking"/>
+	<property name="ServerMaxWorldTransferSpeedKiBs" value="512"/>
+
+	<!-- High enough for 1000+ simulated clients (override via RE_SERVER_MAX_PLAYERS). -->
+	<property name="ServerMaxPlayerCount" value="1024"/>
+	<property name="ServerReservedSlots" value="0"/>
+	<property name="ServerReservedSlotsPermission" value="100"/>
+	<property name="ServerAdminSlots" value="0"/>
+	<property name="ServerAdminSlotsPermission" value="0"/>
+
+	<!-- No web dashboard / map render (less network + CPU) -->
+	<property name="WebDashboardEnabled" value="false"/>
+	<property name="WebDashboardPort" value="8080"/>
+	<property name="WebDashboardUrl" value=""/>
+	<property name="EnableMapRendering" value="false"/>
+
+	<!-- Local ops only -->
+	<property name="TelnetEnabled" value="true"/>
+	<property name="TelnetPort" value="8081"/>
+	<property name="TelnetPassword" value="retest"/>
+	<property name="TelnetFailedLoginLimit" value="10"/>
+	<property name="TelnetFailedLoginsBlocktime" value="10"/>
+
+	<property name="TerminalWindowEnabled" value="false"/>
+
+	<!-- Anti-cheat / platform / crossplay / EOS -->
+	<property name="ServerAllowCrossplay" value="false"/>
+	<property name="EACEnabled" value="false"/>
+	<!-- Local test: do not gate joins on EOS sanctions -->
+	<property name="IgnoreEOSSanctions" value="true"/>
+	<property name="HideCommandExecutionLog" value="0"/>
+	<property name="MaxUncoveredMapChunksPerPlayer" value="131072"/>
+	<property name="PersistentPlayerProfiles" value="false"/>
+	<property name="MaxChunkAge" value="-1"/>
+	<property name="SaveDataLimit" value="-1"/>
+
+	<!-- Staged H500 baked world (peak gameY=500). Engine YDim expand = 16384. -->
+	<property name="GameWorld" value="RealEarth_H500"/>
+	<property name="WorldGenSeed" value="reheight"/>
+	<property name="WorldGenSize" value="6144"/>
+	<property name="GameName" value="HeightTest500"/>
+	<property name="GameMode" value="GameModeSurvival"/>
+
+	<property name="PlayerSafeZoneLevel" value="5"/>
+	<property name="PlayerSafeZoneHours" value="5"/>
+
+	<property name="BuildCreate" value="true"/>
+	<property name="BedrollDeadZoneSize" value="15"/>
+	<property name="BedrollExpiryTime" value="45"/>
+	<property name="AllowSpawnNearFriend" value="2"/>
+	<property name="CameraRestrictionMode" value="0"/>
+
+	<property name="MaxSpawnedZombies" value="32"/>
+	<property name="MaxSpawnedAnimals" value="20"/>
+	<property name="ServerMaxAllowedViewDistance" value="6"/>
+	<property name="MaxQueuedMeshLayers" value="500"/>
+
+	<property name="PartySharedKillRange" value="100"/>
+	<property name="PlayerKillingMode" value="0"/>
+
+	<property name="LandClaimCount" value="5"/>
+	<property name="LandClaimSize" value="41"/>
+	<property name="LandClaimDeadZone" value="30"/>
+	<property name="LandClaimExpiryTime" value="7"/>
+	<property name="LandClaimDecayMode" value="0"/>
+	<property name="LandClaimOnlineDurabilityModifier" value="4"/>
+	<property name="LandClaimOfflineDurabilityModifier" value="4"/>
+	<property name="LandClaimOfflineDelay" value="0"/>
+
+	<property name="DynamicMeshEnabled" value="false"/>
+	<property name="DynamicMeshLandClaimOnly" value="true"/>
+	<property name="DynamicMeshLandClaimBuffer" value="3"/>
+	<property name="DynamicMeshMaxItemCache" value="3"/>
+
+	<!-- Twitch: permission 1000 = no normal user can use integration -->
+	<property name="TwitchServerPermission" value="1000"/>
+	<property name="TwitchBloodMoonAllowed" value="false"/>
+
+	<property name="BloodMoonFrequency" value="0"/>
+	<property name="BloodMoonRange" value="0"/>
+	<property name="BloodMoonWarning" value="8"/>
+	<property name="BloodMoonEnemyCount" value="8"/>
+
+	<!-- Daytime walk so bots can be chased while wandering (0 = day zombies stand still). -->
+	<property name="ZombieMove" value="2"/>
+	<property name="ZombieMoveNight" value="3"/>
+	<property name="ZombieFeralMove" value="3"/>
+	<property name="ZombieBMMove" value="3"/>
+
+	<property name="DayNightLength" value="60"/>
+	<property name="DayLightLength" value="18"/>
+	<property name="DropOnDeath" value="1"/>
+	<property name="DropOnQuit" value="0"/>
+	<!-- Must be true or dedicated never spawns zombies (bots walk forever with Zom:0). -->
+	<property name="EnemySpawnMode" value="true"/>
+	<property name="EnemyDifficulty" value="1"/>
+	<property name="BlockDamagePlayer" value="100"/>
+	<property name="BlockDamageAI" value="100"/>
+	<property name="BlockDamageAIBM" value="100"/>
+	<property name="LootAbundance" value="100"/>
+	<property name="LootRespawnDays" value="7"/>
+	<property name="AirDropFrequency" value="0"/>
+	<property name="AirDropMarker" value="false"/>
+</ServerSettings>

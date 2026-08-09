@@ -1,0 +1,38 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- RealEarth: map labels for real city names (from settlements.json / seed places). -->
+<configs>
+	<append xpath="/nav_object_classes">
+		<nav_object_class name="realearth_city">
+			<map_settings>
+				<property name="sprite_name" value="ui_game_symbol_map_waypoint_set"/>
+				<property name="min_distance" value="0"/>
+				<property name="max_distance" value="-1"/>
+				<property name="color" value="255,230,120,255"/>
+				<property name="has_pulse" value="false"/>
+				<property name="adjust_center" value="true"/>
+				<!-- Show the NavObject.name string on the in-game map -->
+				<property name="text_type" value="Name"/>
+				<property name="font_size" value="28"/>
+			</map_settings>
+			<compass_settings>
+				<property name="sprite_name" value="ui_game_symbol_map_waypoint_set"/>
+				<property name="min_distance" value="0"/>
+				<property name="max_distance" value="8192"/>
+				<property name="max_scale_distance" value="2048"/>
+				<property name="color" value="255,230,120,255"/>
+				<property name="has_pulse" value="false"/>
+				<property name="icon_clamped" value="false"/>
+				<property name="text_type" value="Name"/>
+			</compass_settings>
+			<onscreen_settings>
+				<property name="sprite_name" value="ui_game_symbol_map_waypoint_set"/>
+				<property name="min_distance" value="0"/>
+				<property name="max_distance" value="250"/>
+				<property name="color" value="255,230,120,255"/>
+				<property name="has_pulse" value="false"/>
+				<property name="text_type" value="Name"/>
+				<property name="offset" value="0,4,0"/>
+			</onscreen_settings>
+		</nav_object_class>
+	</append>
+</configs>

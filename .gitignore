@@ -1,0 +1,45 @@
+# Python
+tools/.venv/
+tools/**/__pycache__/
+tools/**/*.egg-info/
+tools/.pytest_cache/
+tools/dist/
+tools/build/
+*.pyc
+
+# Data packs (large)
+data/samples/**
+!data/samples/.gitkeep
+
+# Viewer exports (regenerate with export-viewer)
+viewer/data/**
+!viewer/data/.gitkeep
+!viewer/data/catalog.json
+
+# Baked single-world exports (large)
+worlds/**
+!worlds/.gitkeep
+
+# C# / build
+Source/**/bin/
+Source/**/obj/
+tools/engine_patcher/bin/
+tools/engine_patcher/obj/
+tools/network_protocol_inspector/bin/
+tools/network_protocol_inspector/obj/
+dist/
+*.dll
+*.pdb
+*.user
+.vs/
+
+# OS
+.DS_Store
+Thumbs.db
+
+# IDE
+.idea/
+.vscode/
+
+# uv cache
+.uv-cache/

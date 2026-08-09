@@ -1,0 +1,38 @@
+{
+  "type": "FeatureCollection",
+  "features": [
+    {
+      "type": "Feature",
+      "properties": {
+        "name": "Denver",
+        "population": 715000,
+        "kind": "city",
+        "edge_radius_m": 22000
+      },
+      "geometry": { "type": "Point", "coordinates": [-104.9903, 39.7392] }
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "name": "Boulder",
+        "population": 108000,
+        "kind": "city",
+        "west": -105.35,
+        "south": 39.95,
+        "east": -105.18,
+        "north": 40.08
+      },
+      "geometry": { "type": "Point", "coordinates": [-105.2705, 40.015] }
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "name": "Golden",
+        "population": 20000,
+        "kind": "town",
+        "radius_km": 4.5
+      },
+      "geometry": { "type": "Point", "coordinates": [-105.2211, 39.7555] }
+    }
+  ]
+}
