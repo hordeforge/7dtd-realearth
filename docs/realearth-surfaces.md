@@ -549,6 +549,10 @@ After expand re-apply, regenerate **both** `terrain-*` and `realearth-surfaces-*
 ---
 
 ## Changelog
+- **2026-08-10:** Body IL citations re-verified against the V3.1.0 dump:
+  `ChunkBlockChannel.Get` IL=44, `World.GetHeightAt` IL=22,
+  `GetTerrainHeight` IL=19, `GetPersistentPlayerList` IL=3,
+  `ChunkBlockLayer.GetAt` IL=16 - all current (the pending re-verification flag below is resolved).
 - **2026-08-09:** Retarget V3.0.1 -> V3.1.0 (Henpocalypse). Mod + engine patcher verified against V3.1.0 b14 client and dedicated DLLs; body IL citations below are V3.0.1-era and pending re-verification against the V3.1.0 dump (see research `terrain-height.md` / `save-region.md` for current numbers).  
 - **2026-07-18:** §11 reconciled with RESIDUALS; WorldState/Origin/density channel/Prefab marked Closed; dedicated Origin no-op corrected.  
 - **2026-07-18:** Chunk write/read hardcoded 64 layers; World.toBlockY `y&255`; light/sun 255 scan; RegionFileRaw 8×8 layout; Entity/ChunkManager OriginChanged bodies.  
