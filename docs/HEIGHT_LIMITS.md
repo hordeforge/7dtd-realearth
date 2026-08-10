@@ -113,7 +113,7 @@ make engine-restore
 
 ### Tier 2b: data / policy foundation (always on with the mod)
 
-**Stock vs expanded (Measured on this machine, V3.0.1):** see workspace [`7dtd-research/docs/terrain-height.md`](../../7dtd-research/docs/terrain-height.md).
+**Stock vs expanded (measured on V3.1.0 b14; values identical to the earlier V3.0.1 measurements):** see workspace [`7dtd-research/docs/terrain-height.md`](../../7dtd-research/docs/terrain-height.md).
 
 | Constant | Stock | After RealEarth expand |
 |---|---:|---:|

@@ -3,7 +3,7 @@
 **Owns:** what is still missing to implement, and **which 7D API** (XPath, IModApi, Harmony, XUi, WebMod, binary expand, bake, pipeline).  
 **Not:** compact status dashboard ([MODIFICATIONS](MODIFICATIONS.md)); stock limit map ([ENGINE_LIMITATIONS](ENGINE_LIMITATIONS.md)). Hub: [INDEX](INDEX.md).
 
-Prefer the **shallowest** API (workspace [MODDING_BEST_PRACTICES](../../MODDING_BEST_PRACTICES.md)). V3.0.1 adds no new mod API surface vs V3.0. Harmony targets: rediscover after each TFP patch ([terrain-height](../../7dtd-research/docs/terrain-height.md)).
+Prefer the **shallowest** API (workspace [MODDING_BEST_PRACTICES](../../MODDING_BEST_PRACTICES.md)). V3.1.0 adds no new mod API surface vs V3.0. Harmony targets: rediscover after each TFP patch ([terrain-height](../../7dtd-research/docs/terrain-height.md)).
 
 **Rule of thumb:** XML for data tables · IModApi for session/commands · Harmony for height/gen/tick · binary expand for YDim · packs for DEM. Never a second Harmony; never private per-client origins.
 
@@ -308,7 +308,7 @@ Legend for **Primary layer**: A binary · B Harmony · C XML · D world data · 
 
 ## 3. Harmony surface map (what to add)
 
-Targets are **names from V3.0.1 research dumps**; always rediscover after TFP patches. Prefer **postfix** (safe) then **prefix skip** only when stock must not run.
+Targets are **names from V3.1.0 research dumps**; always rediscover after TFP patches. Prefer **postfix** (safe) then **prefix skip** only when stock must not run.
 
 ### 3.1 Terrain authority (P0-P1): expand RealEarth.RuntimeHooks
 
