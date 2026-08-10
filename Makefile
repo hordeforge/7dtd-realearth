@@ -247,7 +247,11 @@ test-height:
 
 test-fast:
 	@$(PYTEST) tests/test_coords.py tests/test_tile_roundtrip.py \
-		tests/test_height_mod_case.py tests/test_height_10k.py -q --tb=line
+		tests/test_height_mod_case.py tests/test_height_10k.py \
+		tests/test_region.py tests/test_viewer_export.py \
+		tests/test_proton_paths.py tests/test_elevation_terrarium.py \
+		tests/test_multiplayer.py tests/test_host_fold.py tests/test_local_window.py \
+		tests/test_mp_runtime_structure.py -q --tb=line
 
 check: setup test-fast build
 	@echo "OK check (setup + test-fast + build)"
