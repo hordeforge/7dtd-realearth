@@ -7,3 +7,5 @@ jobs:
       - uses: actions/checkout@v4
       - uses: astral-sh/setup-uv@v6
       - run: make test-fast
+      - run: bash scripts/lint-viewer.sh
+      - run: bash scripts/lint-webmod.sh
