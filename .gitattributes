@@ -1,0 +1,11 @@
+# Line endings: shell scripts must stay LF or bash fails on `\r`.
+*.sh text eol=lf
+Makefile text eol=lf
+
+# Binary assets: never touch.
+*.png binary
+*.jpg binary
+*.dll binary
+*.exe binary
+*.rte binary
+*.raw binary
