@@ -14,6 +14,8 @@ from typing import Any
 
 import numpy as np
 
+from realearth import DEFAULT_SEA_LEVEL_GAME_Y
+
 MAGIC = b"RTE1"
 HEADER_STRUCT = struct.Struct("<4siiHHIII")  # magic, tx, tz, ver, flags, w, h, reserved
 FORMAT_VERSION = 1
@@ -189,7 +191,7 @@ class Manifest:
     world_width: int = 40_075_017
     world_height: int = 20_003_931
     crs: str = "EPSG:4326"
-    sea_level_game_y: int = 32
+    sea_level_game_y: int = DEFAULT_SEA_LEVEL_GAME_Y
     meters_per_block: float = 1.0
     bbox: dict[str, float] | None = None  # west,south,east,north if partial
     tiles: list[dict[str, int]] = field(default_factory=list)
@@ -221,7 +223,9 @@ class Manifest:
             world_width=int(d.get("world_width", 40_075_017)),
             world_height=int(d.get("world_height", 20_003_931)),
             crs=d.get("crs", "EPSG:4326"),
-            sea_level_game_y=int(d.get("sea_level_game_y", 32)),
+            sea_level_game_y=int(
+                d.get("sea_level_game_y", DEFAULT_SEA_LEVEL_GAME_Y)
+            ),
             meters_per_block=float(d.get("meters_per_block", 1.0)),
             bbox=d.get("bbox"),
             tiles=list(d.get("tiles", [])),

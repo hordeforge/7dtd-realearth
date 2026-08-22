@@ -9,7 +9,7 @@ from pathlib import Path
 
 import click
 
-from realearth import __version__
+from realearth import DEFAULT_SEA_LEVEL_GAME_Y, __version__
 from realearth.coords import EarthGrid, block_to_lonlat, lonlat_to_block
 from realearth.region import build_region, world_tile_indices_for_bbox
 from realearth.settlements import SEED_SETTLEMENTS, load_settlements_geojson
@@ -481,10 +481,10 @@ def sample_chunk_cmd(
         man = load_pack_manifest(pack)
         origin_x = origin_x if origin_x is not None else 0
         origin_z = origin_z if origin_z is not None else 0
-        sea = man.sea_level_game_y if man else 32
+        sea = man.sea_level_game_y if man else DEFAULT_SEA_LEVEL_GAME_Y
     else:
         man = load_pack_manifest(pack)
-        sea = man.sea_level_game_y if man else 32
+        sea = man.sea_level_game_y if man else DEFAULT_SEA_LEVEL_GAME_Y
 
     heights = fill_chunk_heights(pack, origin_x, origin_z, chunk_size=chunk_size, sea_level_y=sea)
     lc = fill_chunk_landcover(pack, origin_x, origin_z, chunk_size=chunk_size)

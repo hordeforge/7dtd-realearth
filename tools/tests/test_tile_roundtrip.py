@@ -3,7 +3,19 @@ import numpy as np
 from realearth import DEFAULT_SEA_LEVEL_GAME_Y
 from realearth.height import compress_elevation
 from realearth.settlements import decode_poi_blob, encode_poi_blob
-from realearth.tile_format import EarthTile, decode_tile, encode_tile
+from realearth.tile_format import (
+    EarthTile,
+    Manifest,
+    decode_tile,
+    encode_tile,
+)
+
+
+def test_manifest_sea_level_default_matches_pipeline_constant():
+    # Runtime (ModApi.TryApplyPackManifest) overrides SeaLevelGameY from the pack
+    # manifest, so the manifest default must be the pipeline canonical constant.
+    assert Manifest().sea_level_game_y == DEFAULT_SEA_LEVEL_GAME_Y
+    assert Manifest.from_dict({}).sea_level_game_y == DEFAULT_SEA_LEVEL_GAME_Y
 
 
 def test_tile_roundtrip():
