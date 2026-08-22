@@ -16,6 +16,9 @@ viewer/data/**
 !viewer/data/.gitkeep
 !viewer/data/catalog.json
 
+# WebMod build output + exported pack data (regenerate with webmod / webmod-export)
+WebMod/**
+
 # Baked single-world exports (large)
 worlds/**
 !worlds/.gitkeep

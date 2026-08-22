@@ -20,13 +20,21 @@ set -euo pipefail
 root="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 oxlint_version="${OXLINT_VERSION:-1.79.0}"
 oxlint_standards_version="${OXLINT_STANDARDS_VERSION:-0.8.1}"
+oxlint_plugins_version="${OXLINT_PLUGINS_VERSION:-1.78.0}"
+anti_slop_sha="${ANTI_SLOP_SHA:-6d538555cb151d4121ed51a27db81890eacf8ae9}"
 cache_dir="${XDG_CACHE_HOME:-$HOME/.cache}/realearth/oxlint-standards"
 js_dir="$root/viewer/js"
 
 mkdir -p "$cache_dir"
+if [ ! -d "$cache_dir/anti-slop-src" ]; then
+  curl -fsSL "https://github.com/dmmulroy/anti-slop/archive/$anti_slop_sha.tar.gz" -o "$cache_dir/anti-slop.tar.gz"
+  mkdir -p "$cache_dir/anti-slop-src"
+  tar xzf "$cache_dir/anti-slop.tar.gz" -C "$cache_dir/anti-slop-src" --strip-components=2 "anti-slop-$anti_slop_sha/src"
+fi
 npm install --prefix "$cache_dir" --no-audit --no-fund --no-save --no-package-lock \
-  "@rikalabs/oxlint-standards@$oxlint_standards_version" >/dev/null 2>&1 || {
-  echo "realearth: lint-viewer: could not install @rikalabs/oxlint-standards@$oxlint_standards_version into $cache_dir (offline?)" >&2
+  "@rikalabs/oxlint-standards@$oxlint_standards_version" \
+  "@oxlint/plugins@$oxlint_plugins_version" >/dev/null 2>&1 || {
+  echo "realearth: lint-viewer: could not install @rikalabs/oxlint-standards@$oxlint_standards_version + @oxlint/plugins@$oxlint_plugins_version into $cache_dir (offline?)" >&2
   exit 1
 }
 cp "$root/.oxlintrc.jsonc" "$cache_dir/oxlintrc.jsonc"

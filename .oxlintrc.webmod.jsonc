@@ -1,0 +1,282 @@
+{
+  // oxlint config for the RealEarth webmod TypeScript sources (webmod/src,
+  // scripts/lint-webmod.sh, `make webmod-lint`).
+  //
+  // Target: webmod/src/*.ts, compiled by scripts/build-webmod.sh (esbuild)
+  // into the WebMod/bundle.js served by the stock 7dtd dashboard. Browser
+  // script, no node runtime, hence env browser + es2024.
+  //
+  // Provenance: Rika-Labs/oxlint-standards v0.8.1, the strict baseline chain
+  // strict -> strict-ts -> {strict-core, anti-slop, naming-discipline,
+  // promise-safety, imports-hygiene}, restricted to the subset applicable to
+  // a browser bundle, mirroring ../zdtd/.oxlintrc.jsonc (same provenance;
+  // the sibling viewer config .oxlintrc.jsonc covers the plain-JS viewer).
+  // The @rikalabs/* custom rules come from that package's plugin via
+  // jsPlugins; scripts/lint-webmod.sh installs it into a cache dir (version
+  // pinned there) and runs oxlint against a copy of this config sitting next
+  // to the plugin, because oxlint resolves jsPlugins relative to the config
+  // file's directory. Warnings and errors are both enforced (--deny-warnings).
+  //
+  // Type-aware: options.typeAware enables the typescript/* rules that need
+  // real type info (no-floating-promises, no-misused-promises,
+  // no-unsafe-type-assertion, ...). oxlint runs those through the separate
+  // `oxlint-tsgolint` binary, which lint-webmod.sh installs alongside the
+  // plugin (version pinned there) and puts on PATH.
+  //
+  // Deliberate deviations from the baseline (kept, each with reason):
+  //   * stricter thresholds the baseline leaves off: complexity (max 15),
+  //     max-params (4), max-depth (4), max-nested-callbacks (3), no-magic-
+  //     numbers, no-negated-condition, no-implicit-coercion (only `!!`
+  //     allowed). Same set as ../zdtd/.oxlintrc.jsonc.
+  //   * eslint/no-underscore-dangle off: not used today, kept off for parity
+  //     with the zdtd and viewer configs.
+  //   * @rikalabs/no-standalone-classes off: Map2D (src/map2d.ts) is a
+  //     stateful canvas controller with a resize/dispose lifecycle (same
+  //     rationale as the viewer config); a closure rewrite would obscure the
+  //     state machine.
+  //   * @rikalabs/no-single-use-trivial-helpers off: small named coercions
+  //     (src/coerce.ts) are the documented total-value pattern; inlining them
+  //     everywhere would duplicate the shape guards.
+  //   * unicorn/prefer-top-level-await off: the bundle is an esbuild IIFE,
+  //     which does not support top-level await; startup work runs inside the
+  //     components' effects instead.
+  //   * promise/avoid-new off: loadImage (src/pack.ts) wraps the Image
+  //     onload/onerror events, which cannot be awaited any other way.
+  //   * promise/prefer-await-to-callbacks off: error rendering flows through
+  //     .catch chains (same rationale as the zdtd webui).
+  //   * node/no-top-level-await off: browser bundle, no node runtime.
+  //   * import/no-namespace off: no namespace imports are used; kept off for
+  //     parity with the viewer config.
+  // Baseline entries intentionally absent (not applicable here):
+  //   * strict-runtime: node/* (browser bundle, no node runtime).
+  //   * strict-tests: vitest/*, jsdoc/*, @rikalabs/no-placeholder-tests,
+  //     @rikalabs/no-mock-only-tests (no tests under webmod/src; the build
+  //     smoke test lives in scripts/build-webmod.sh).
+  //   * strict-ts offs are moot because they are never enabled here:
+  //     typescript/explicit-function-return-type, explicit-module-boundary-
+  //     types, eslint/no-void, unicorn/no-useless-undefined (all off in the
+  //     baseline; sources declare return types anyway).
+  //   * Framework presets (strict-drizzle/-web/-effect/-zustand/-bun) do not
+  //     apply to this bundle.
+  "$schema": "https://raw.githubusercontent.com/oxc-project/oxc/main/npm/oxlint/configuration_schema.json",
+  "options": { "typeAware": true },
+  "env": { "browser": true, "es2024": true },
+  "jsPlugins": [
+    "@rikalabs/oxlint-standards/plugin",
+    { "name": "anti-slop", "specifier": "./anti-slop-src/index.ts" }
+  ],
+  // Declaring `plugins` replaces oxlint's default-on set, so list every
+  // plugin the rules below reference (same list as the baseline's
+  // strict-core preset).
+  "plugins": ["typescript", "import", "promise", "unicorn", "oxc", "eslint"],
+  "categories": {
+    "correctness": "error",
+    "suspicious": "error"
+  },
+  "rules": {
+    // ---- dead / debug code ----
+    "no-debugger": "error",
+    "no-console": "error", // browser bundle: console is debug leftover, never intended output
+    "no-unused-vars": "error",
+    "no-empty": "error",
+    "no-empty-function": "error",
+    "no-unreachable": "error",
+    "no-useless-catch": "error",
+    "no-self-compare": "error",
+    "no-constant-condition": "error",
+    "no-sequences": "error", // comma-operator chains
+    "no-alert": "error",
+    // ---- correctness of intent ----
+    "eqeqeq": ["error", "always"], // no loose ==
+    "no-cond-assign": "error",
+    "no-fallthrough": "error",
+    "no-implicit-coercion": ["error", { "allow": ["!!"] }],
+    "radix": "error",
+    "no-eval": "error",
+    "no-new-func": "error",
+    "no-new-wrappers": "error",
+    "no-script-url": "error",
+    "no-throw-literal": "error",
+    "no-param-reassign": "error",
+    "no-async-promise-executor": "error",
+    "no-promise-executor-return": "error",
+    "no-undef": "error",
+    // ---- magic numbers: name them ----
+    "no-magic-numbers": ["error", { "ignore": [0, 1, 2], "ignoreDefaultValues": true, "ignoreArrayIndexes": true }],
+    // ---- idiomatic modern JS ----
+    "no-var": "error",
+    "prefer-const": "error",
+    "prefer-template": "error",
+    "no-useless-concat": "error",
+    "object-shorthand": "error",
+    // ---- complexity (slop soup): keep functions small and flat ----
+    "complexity": ["error", { "max": 15 }],
+    "max-depth": ["error", { "max": 4 }],
+    "max-nested-callbacks": ["error", { "max": 3 }],
+    "max-params": ["error", { "max": 4 }],
+    "max-lines-per-function": ["error", { "max": 60, "skipBlankLines": true, "skipComments": true }],
+    "no-nested-ternary": "error",
+    "no-lonely-if": "error",
+    "no-negated-condition": "error",
+    "no-else-return": "error",
+    "no-useless-return": "error",
+    "default-case": "error",
+    // ---- oxlint-standards v0.8.1 native rules: strict-core subset ----
+    "no-warning-comments": "error", // TODO/FIXME/XXX residue; pairs with @rikalabs/no-todo-without-issue
+    "no-shadow": ["error", { "hoist": "functions" }],
+    "no-return-assign": "error",
+    "no-loop-func": "error",
+    "no-constructor-return": "error",
+    "curly": ["error", "all"], // brace every block
+    "no-multi-assign": "error",
+    "no-template-curly-in-string": "error",
+    "no-labels": "error",
+    "no-lone-blocks": "error",
+    "prefer-object-has-own": "error",
+    "no-implied-eval": "error", // setTimeout/setInterval with string code
+    "prefer-promise-reject-errors": "error", // reject(new Error(...)), never bare reject()
+    "max-classes-per-file": ["error", 1],
+    "max-lines": ["error", { "max": 1500, "skipBlankLines": true, "skipComments": true }],
+    "array-callback-return": "error",
+    "no-use-before-define": "error",
+    "require-unicode-regexp": "error", // /u flag on every regex literal
+    // ---- strict-core baseline offs that these categories would otherwise auto-enable ----
+    "promise/always-return": "off", // baseline: off
+    "typescript/no-unnecessary-boolean-literal-compare": "off", // baseline: off
+    "require-yield": "off", // baseline: off
+    // ---- strict-core typescript/* (type-aware entries need options.typeAware + tsgolint) ----
+    "typescript/consistent-type-imports": "error",
+    "typescript/no-misused-promises": "error",
+    "typescript/use-unknown-in-catch-callback-variable": "error",
+    "typescript/no-unsafe-type-assertion": "error",
+    "typescript/no-redundant-type-constituents": "error",
+    "typescript/no-deprecated": "error",
+    "typescript/ban-ts-comment": [
+      "error",
+      {
+        "ts-ignore": true,
+        "ts-nocheck": true,
+        "ts-expect-error": { "descriptionFormat": "^: .+" }
+      }
+    ],
+    "typescript/restrict-plus-operands": "error",
+    "typescript/no-confusing-void-expression": ["error", { "ignoreArrowShorthand": true }],
+    "typescript/no-confusing-non-null-assertion": "error",
+    "typescript/no-unnecessary-type-arguments": "error",
+    "typescript/no-unnecessary-type-constraint": "error",
+    "typescript/prefer-for-of": "error",
+    "typescript/prefer-includes": "error",
+    "typescript/consistent-type-assertions": ["error", { "assertionStyle": "as" }],
+    "typescript/no-empty-object-type": "error",
+    "typescript/no-require-imports": "error",
+    "typescript/no-namespace": "error",
+    "typescript/array-type": ["error", { "default": "generic" }],
+    "typescript/no-explicit-any": "error",
+    "typescript/no-non-null-assertion": "error",
+    "typescript/no-unnecessary-type-assertion": "error",
+    "typescript/consistent-type-definitions": ["error", "type"], // type aliases over interfaces
+    "unicorn/no-static-only-class": "error",
+    "unicorn/no-useless-promise-resolve-reject": "error",
+    // ---- unicorn DOM/data rules ----
+    "unicorn/prefer-query-selector": "error", // querySelector over getElementById
+    "unicorn/prefer-dom-node-dataset": "error", // el.dataset over data-* attribute API
+    "unicorn/prefer-global-this": "error", // globalThis over window
+    "unicorn/no-array-for-each": "error", // for...of over forEach
+    "unicorn/no-array-callback-reference": "error", // no bare function refs in callbacks
+    "unicorn/catch-error-name": "error",
+    "unicorn/prefer-number-properties": "error",
+    "unicorn/prefer-add-event-listener": "error",
+    "unicorn/prefer-optional-catch-binding": "error",
+    "unicorn/prefer-math-trunc": "error",
+    "unicorn/prefer-code-point": "error",
+    "unicorn/prefer-includes": "error",
+    "unicorn/explicit-length-check": "error",
+    "unicorn/numeric-separators-style": "error",
+    "unicorn/number-literal-case": "error",
+    "unicorn/no-array-sort": "error",
+    "unicorn/no-array-reverse": "error",
+    // ---- strict-core @rikalabs/* runtime/fallback heuristics ----
+    "@rikalabs/no-silent-catch-fallback": "error",
+    "@rikalabs/no-runtime-compat-fallbacks": "error",
+    "@rikalabs/no-catch-return-error-object": "error",
+    "@rikalabs/no-unlisted-external-imports": "error",
+    "@rikalabs/no-double-type-assertion": "error",
+    "@rikalabs/no-json-parse-default-fallback": "error",
+    "@rikalabs/no-json-stringify-default-fallback": "error",
+    // ---- promise-safety (promise plugin) ----
+    "typescript/no-floating-promises": "error",
+    "promise/no-nesting": "error",
+    "promise/no-new-statics": "error",
+    "promise/param-names": "error",
+    "promise/valid-params": "error",
+    "promise/catch-or-return": "error",
+    "promise/no-return-wrap": "error",
+    // ---- imports-hygiene (import plugin) ----
+    "import/first": "error",
+    "import/no-absolute-path": "error",
+    "import/no-mutable-exports": "error",
+    "import/no-commonjs": "error",
+    "import/no-dynamic-require": "error",
+    "import/max-dependencies": ["error", { "max": 35 }],
+    "import/no-anonymous-default-export": "error",
+    "@rikalabs/no-import-then-reexport": "error",
+    // ---- oxlint-standards v0.8.1 custom plugin (@rikalabs/*): anti-slop heuristics ----
+    "@rikalabs/no-commented-out-code": "error",
+    "@rikalabs/no-identical-branches": "error",
+    "@rikalabs/no-tutorial-comments": "error",
+    "@rikalabs/no-ai-debt-comments": "error",
+    "@rikalabs/no-placeholder-implementation": "error",
+    "@rikalabs/no-disable-without-rationale": "error",
+    "@rikalabs/no-todo-without-issue": "error",
+    "@rikalabs/no-low-signal-variable-names": "error",
+    "@rikalabs/no-low-signal-public-names": "error",
+    "@rikalabs/no-generic-module-names": "error",
+    "@rikalabs/no-vague-verbs": "error",
+    "@rikalabs/no-bare-wrapper-functions": "error",
+    "@rikalabs/no-trivial-property-helpers": "error",
+    "@rikalabs/no-pass-through-intermediate-vars": "error",
+    "@rikalabs/no-redundant-const-assertion": "error",
+    "@rikalabs/no-as-never": "error",
+    "@rikalabs/no-anemic-errors": "error",
+    "@rikalabs/no-duplicate-context": "error",
+    "@rikalabs/no-is-record-helpers": "error",
+    "@rikalabs/no-trivial-runtime-guard-helpers": "error",
+    "@rikalabs/no-copy-paste-exports": "error",
+    "@rikalabs/no-debug-residue-filenames": "error",
+    "@rikalabs/no-hardcoded-secrets": "error",
+    "@rikalabs/no-sql-string-concat": "error",
+    // ---- dmmulroy/anti-slop plugin rules (vendored source at pinned SHA,
+    //      fetched by scripts/lint-webmod.sh). Syntax/type-discipline rules
+    //      enabled; the boundary-typing rules are off because the pack
+    //      metadata and API envelope are untyped runtime JSON and the card
+    //      DOM comes from the ElementFactory shim (h), so the shape guards and
+    //      the `: unknown` card returns are the deliberate contract, not
+    //      widening slop (see the per-entry notes) ----
+    "anti-slop/no-chained-type-assertions": "error",
+    "anti-slop/no-conditional-empty-object-spread": "error",
+    "anti-slop/no-module-mocking": "error",
+    "anti-slop/no-object-parameters": "error",
+    "anti-slop/no-reflect-apply": "error",
+    "anti-slop/no-reflect-get": "error",
+    "anti-slop/no-shape-in-symbol-names": "error",
+    "anti-slop/no-unknown-type-aliases": "error",
+    "anti-slop/no-widen-then-assert": "error",
+    "anti-slop/require-safety-comment-for-type-assertion": "error",
+    "anti-slop/no-known-value-widening": "off", // card returns are annotated `: unknown` because ElementFactory (h) returns unknown and explicit return types are house style; LEGENDS' Record is the dynamic-key lookup contract; coerce asRecord is the JSON boundary
+    "anti-slop/no-runtime-typeof": "off", // typeof checks in coerce.ts/overview.ts are the untyped JSON boundary parse itself
+    "anti-slop/no-unknown-parameters": "off", // coerce/pack/overview take unknown payload candidates by design and coerce at the edge
+    "anti-slop/no-unknown-returns": "off", // card renderers return the ElementFactory shim's unknown (h(...) is untyped DOM)
+    "anti-slop/no-unsafe-dictionary-type": "off", // Record<string, unknown> is the untyped JSON payload contract (coerce.ts, types.ts)
+    // ---- off, with reason (see header) ----
+    "no-underscore-dangle": "off",
+    "no-void": "off", // typescript/no-floating-promises (enforced above) requires the void operator to mark fire-and-forget promises
+    "@rikalabs/no-standalone-classes": "off",
+    "@rikalabs/no-single-use-trivial-helpers": "off",
+    "@rikalabs/no-trivial-runtime-guard-helpers": "off", // pack.ts/overview.ts call Array.isArray directly; the rule bans that builtin call itself, which forces worse checks (same rationale as the viewer config)
+    "unicorn/prefer-top-level-await": "off",
+    "promise/avoid-new": "off",
+    "promise/prefer-await-to-callbacks": "off",
+    "node/no-top-level-await": "off",
+    "import/no-namespace": "off"
+  }
+}

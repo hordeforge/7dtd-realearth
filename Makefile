@@ -11,6 +11,7 @@
 	engine-audit engine-expand engine-expand-dry engine-restore dedicated-height-test \
 	demo bake bake-height package \
 	viewer serve viewer-lint \
+	webmod webmod-export webmod-lint \
 	info check clean clean-build
 
 # ---------------------------------------------------------------------------
@@ -43,6 +44,11 @@ WORLD_SIZE    ?= 2048
 PACK_DEMO     := $(ROOT)/data/samples/demo_region
 PACK_HEIGHT   := $(ROOT)/data/samples/height_test
 WORLD_HEIGHT  := $(ROOT)/worlds/RealEarth_HeightTest
+
+# WebMod (stock dashboard webui) build knobs
+WEBMOD_DIR        := $(ROOT)/WebMod
+WEBMOD_PACK       ?= $(PACK_DEMO)
+WEBMOD_EXPORT_NAME ?= demo
 
 # uv-run tools CLI from tools/
 UV            := uv
@@ -91,6 +97,11 @@ help:
 	@echo "  Viewer"
 	@echo "    make viewer             Export demo pack into viewer/data/demo"
 	@echo "    make serve              Serve web map viewer (port 8765)"
+	@echo ""
+	@echo "  WebMod (dashboard webui)"
+	@echo "    make webmod-export      Export demo pack into WebMod/data/demo"
+	@echo "    make webmod             Build WebMod/bundle.js + styling.css"
+	@echo "    make webmod-lint        tsc --strict + oxlint (anti-slop + strict)"
 	@echo ""
 	@echo "  Misc"
 	@echo "    make info               Paths + tool versions"
@@ -142,10 +153,10 @@ install-streamed:
 
 install-height: height-map-install
 
-package: build
+package: build webmod
 	@chmod +x "$(SCRIPTS)/apply_engine_expand.sh" 2>/dev/null || true
 	@GAME_DIR="$(GAME_DIR)" "$(SCRIPTS)/package_mod.sh" "$(ROOT)/dist/RealEarth"
-	@echo "OK package → $(ROOT)/dist/RealEarth (includes Tools/ YDim expand)"
+	@echo "OK package → $(ROOT)/dist/RealEarth (includes Tools/ YDim expand + WebMod webui)"
 
 # ---------------------------------------------------------------------------
 # Height mod
@@ -253,8 +264,8 @@ test-fast:
 		tests/test_multiplayer.py tests/test_host_fold.py tests/test_local_window.py \
 		tests/test_mp_runtime_structure.py -q --tb=line
 
-check: setup test-fast build viewer-lint
-	@echo "OK check (setup + test-fast + build + viewer-lint)"
+check: setup test-fast build viewer-lint webmod-lint
+	@echo "OK check (setup + test-fast + build + viewer-lint + webmod-lint)"
 
 # ---------------------------------------------------------------------------
 # Viewer
@@ -268,6 +279,19 @@ viewer-lint:
 
 serve:
 	@$(REEARTH) serve --port 8765
+
+# ---------------------------------------------------------------------------
+# WebMod (stock dashboard webui)
+# ---------------------------------------------------------------------------
+webmod:
+	bash scripts/build-webmod.sh
+
+webmod-export:
+	@$(REEARTH) export-viewer --pack "$(WEBMOD_PACK)" --out "$(WEBMOD_DIR)/data/$(WEBMOD_EXPORT_NAME)"
+	@echo "OK webmod data → $(WEBMOD_DIR)/data/$(WEBMOD_EXPORT_NAME)"
+
+webmod-lint:
+	bash scripts/lint-webmod.sh
 
 # ---------------------------------------------------------------------------
 # Info / clean

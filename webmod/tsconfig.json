@@ -1,0 +1,23 @@
+{
+  // Strict TypeScript for the RealEarth webmod (webmod/src). Compiled by
+  // scripts/build-webmod.sh (esbuild) and type-gated by scripts/lint-webmod.sh
+  // (tsc --noEmit, pinned TSC_VERSION). No package.json/node_modules tracked:
+  // tsc/esbuild/oxlint run through npx with versions pinned in the scripts
+  // (same policy as ../zdtd/scripts/lint-webui.sh).
+  //
+  // The bundle runs inside the stock 7dtd dashboard, which injects its own
+  // React as a component prop (WebMod contract, see webmod/README.md). The
+  // sources therefore use React.createElement without importing react, and
+  // "types": [] keeps the DOM lib only, so tsc needs no npm type packages.
+  "compilerOptions": {
+    "target": "es2022",
+    "module": "esnext",
+    "moduleResolution": "bundler",
+    "lib": ["es2022", "dom", "dom.iterable"],
+    "strict": true,
+    "noEmit": true,
+    "skipLibCheck": true,
+    "types": []
+  },
+  "include": ["src"]
+}

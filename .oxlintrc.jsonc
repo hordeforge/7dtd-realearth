@@ -46,7 +46,10 @@
     "suspicious": "error"
   },
   "plugins": ["unicorn"],
-  "jsPlugins": ["@rikalabs/oxlint-standards/plugin"],
+  "jsPlugins": [
+    "@rikalabs/oxlint-standards/plugin",
+    { "name": "anti-slop", "specifier": "./anti-slop-src/index.ts" }
+  ],
   "rules": {
     // ---- dead / debug code ----
     "no-debugger": "error",
@@ -141,6 +144,11 @@
     "@rikalabs/no-disable-without-rationale": "error",
     "@rikalabs/no-todo-without-issue": "error",
     "@rikalabs/no-low-signal-variable-names": "error",
+    "@rikalabs/no-low-signal-public-names": "error",
+    "@rikalabs/no-generic-module-names": "error",
+    "@rikalabs/no-copy-paste-exports": "error",
+    "@rikalabs/no-debug-residue-filenames": "error",
+    "@rikalabs/no-as-never": "error",
     "@rikalabs/no-vague-verbs": "error",
     "@rikalabs/no-bare-wrapper-functions": "error",
     "@rikalabs/no-silent-catch-fallback": "error",
@@ -155,6 +163,27 @@
     "@rikalabs/no-redundant-const-assertion": "error",
     "@rikalabs/no-hardcoded-secrets": "error",
     "@rikalabs/no-sql-string-concat": "error",
+    // ---- dmmulroy/anti-slop plugin rules (vendored source at pinned SHA,
+    //      fetched by scripts/lint-viewer.sh). The type-oriented rules cannot
+    //      fire on plain JS (no annotations); no-runtime-typeof is off because
+    //      the viewer is boundary parsing by nature (RTE1 header decode, DOM
+    //      shape checks), the exact typeof-on-untrusted-input pattern the rule
+    //      targets but that this codebase does at its I/O edges ----
+    "anti-slop/no-chained-type-assertions": "error",
+    "anti-slop/no-conditional-empty-object-spread": "error",
+    "anti-slop/no-known-value-widening": "error",
+    "anti-slop/no-module-mocking": "error",
+    "anti-slop/no-object-parameters": "error",
+    "anti-slop/no-reflect-apply": "error",
+    "anti-slop/no-reflect-get": "error",
+    "anti-slop/no-runtime-typeof": "off", // RTE1 header and DOM value decoding is the viewer's boundary parse (app.js, rte.js)
+    "anti-slop/no-shape-in-symbol-names": "error",
+    "anti-slop/no-unknown-parameters": "error",
+    "anti-slop/no-unknown-returns": "error",
+    "anti-slop/no-unknown-type-aliases": "error",
+    "anti-slop/no-unsafe-dictionary-type": "error",
+    "anti-slop/no-widen-then-assert": "error",
+    "anti-slop/require-safety-comment-for-type-assertion": "error",
     // ---- off, with reason (see header) ----
     "no-underscore-dangle": "off",
     "no-bitwise": "off",
