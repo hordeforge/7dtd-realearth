@@ -3,7 +3,6 @@
 from pathlib import Path
 
 import numpy as np
-import pytest
 
 from realearth import DEFAULT_SEA_LEVEL_GAME_Y
 from realearth.engine_constants import VANILLA_3_0_1, audit_engine_height, default_game_dll

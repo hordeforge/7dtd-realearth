@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import contextlib
 import json
 import sys
 from pathlib import Path
@@ -9,7 +10,7 @@ from pathlib import Path
 import click
 
 from realearth import __version__
-from realearth.coords import block_to_lonlat, lonlat_to_block, EarthGrid
+from realearth.coords import EarthGrid, block_to_lonlat, lonlat_to_block
 from realearth.region import build_region, world_tile_indices_for_bbox
 from realearth.settlements import SEED_SETTLEMENTS, load_settlements_geojson
 from realearth.tile_format import read_manifest, read_tile, tile_path
@@ -175,12 +176,18 @@ def inspect_tile_cmd(pack_dir: str, tx: int, tz: int) -> None:
     t = read_tile(path)
     elev = t.elevation_m
     click.echo(f"tile ({tx},{tz}) shape={elev.shape}")
-    click.echo(f"elev m: min={float(elev.min()):.1f} max={float(elev.max()):.1f} mean={float(elev.mean()):.1f}")
+    click.echo(
+        f"elev m: min={float(elev.min()):.1f} "
+        f"max={float(elev.max()):.1f} mean={float(elev.mean()):.1f}"
+    )
     if t.landcover is not None:
         import numpy as np
 
         vals, counts = np.unique(t.landcover, return_counts=True)
-        click.echo("landcover counts: " + ", ".join(f"{int(v)}:{int(c)}" for v, c in zip(vals, counts)))
+        click.echo(
+            "landcover counts: "
+            + ", ".join(f"{int(v)}:{int(c)}" for v, c in zip(vals, counts, strict=True))
+        )
     if t.population is not None:
         click.echo(f"population byte max={int(t.population.max())}")
     if t.poi_blob:
@@ -189,7 +196,10 @@ def inspect_tile_cmd(pack_dir: str, tx: int, tz: int) -> None:
         pois = decode_poi_blob(t.poi_blob)
         click.echo(f"pois: {len(pois)}")
         for p in pois:
-            click.echo(f"  - {p.get('name')} ({p.get('band')}) @ {p.get('local_x')},{p.get('local_z')}")
+            click.echo(
+                f"  - {p.get('name')} ({p.get('band')}) "
+                f"@ {p.get('local_x')},{p.get('local_z')}"
+            )
 
 
 @main.command("planet-tiles")
@@ -320,9 +330,9 @@ def _install_height_test(
         dest_tiles = mod / "Data" / "tiles"
         dest_tiles.mkdir(parents=True, exist_ok=True)
         for child in list(dest_tiles.iterdir()):
-            if child.name in ("tiles", "earth.manifest.json", "height_test.json") or child.suffix in (
-                ".json",
-                ".png",
+            if (
+                child.name in ("tiles", "earth.manifest.json", "height_test.json")
+                or child.suffix in (".json", ".png")
             ):
                 if child.is_dir():
                     shutil.rmtree(child)
@@ -490,7 +500,10 @@ def sample_chunk_cmd(
 @click.option("--size", type=int, default=1024, show_default=True)
 @click.option("--earth-x", type=int, required=True)
 @click.option("--earth-z", type=int, required=True)
-@click.option("--local-x", type=int, default=None, help="Player local X (default: near edge to force slide)")
+@click.option(
+    "--local-x", type=int, default=None,
+    help="Player local X (default: near edge to force slide)",
+)
 @click.option("--local-z", type=int, default=None)
 @click.option("--no-wrap", is_flag=True, help="Disable longitude wrap")
 def window_slide_cmd(
@@ -567,7 +580,8 @@ def bake_world_cmd(
         click.echo(f"  size: {meta['size']} x {meta['size']}  dtm_bytes={meta['dtm_bytes']}")
         click.echo("  files: dtm.raw dtm_processed.raw biomes.png map_info.xml spawnpoints.xml …")
         click.echo(
-            f"  install: copy folder to ~/.local/share/7DaysToDie/GeneratedWorlds/{Path(out_dir).name}"
+            "  install: copy folder to ~/.local/share/7DaysToDie/"
+            f"GeneratedWorlds/{Path(out_dir).name}"
         )
         click.echo("  then New Game → select that world (one continuous map).")
     else:
@@ -640,10 +654,8 @@ def serve_cmd(port: int, bind: str, root: str | None) -> None:
         url = f"http://{bind}:{port}/"
         click.echo(f"RealEarth viewer at {url}")
         click.echo(f"Serving {serve_root}")
-        try:
+        with contextlib.suppress(Exception):
             webbrowser.open(url)
-        except Exception:
-            pass
         try:
             httpd.serve_forever()
         except KeyboardInterrupt:

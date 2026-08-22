@@ -31,3 +31,9 @@ packages = ["realearth"]
 [tool.ruff]
 line-length = 100
 target-version = "py311"
+
+[tool.ruff.lint]
+# E501 enforces the 100-column cap; B is bug-prone patterns (zip strict,
+# loop-variable closures); I/SIM/C4/UP keep style mechanical and current.
+# All groups proven clean over realearth/ + tests/ before enabling.
+select = ["E", "F", "W", "I", "B", "UP", "C4", "SIM"]

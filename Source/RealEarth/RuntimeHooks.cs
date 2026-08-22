@@ -728,6 +728,7 @@ namespace RealEarth
 
         /// <summary>
         /// entityId when present. Returns 0 if unknown (single primary focus; no identity-hash collisions).
+        /// Per-frame path: member lookups memoized in ReflectCache.
         /// </summary>
         static int TryGetEntityId(object entity)
         {
@@ -736,12 +737,8 @@ namespace RealEarth
                 var t = entity.GetType();
                 foreach (var name in new[] { "entityId", "EntityId", "EntityID" })
                 {
-                    var p = t.GetProperty(name, BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic);
-                    if (p != null && p.PropertyType == typeof(int))
-                        return (int)(p.GetValue(entity) ?? 0);
-                    var f = t.GetField(name, BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic);
-                    if (f != null && f.FieldType == typeof(int))
-                        return (int)(f.GetValue(entity) ?? 0);
+                    if (ReflectCache.TryReadIntMember(entity, name, out int v))
+                        return v;
                 }
             }
             catch
@@ -760,7 +757,7 @@ namespace RealEarth
                     return true;
                 // Dedicated host: primary player when only one, or isEntityRemote == false
                 var t = entity.GetType();
-                var remote = t.GetProperty("isEntityRemote") ?? t.GetProperty("IsEntityRemote");
+                var remote = ReflectCache.PropPub(t, "isEntityRemote") ?? ReflectCache.PropPub(t, "IsEntityRemote");
                 if (remote != null && remote.PropertyType == typeof(bool))
                     return !(bool)(remote.GetValue(entity) ?? true);
             }
@@ -1052,10 +1049,10 @@ namespace RealEarth
         {
             x = y = z = 0;
             var t = entity.GetType();
-            object? pos = t.GetProperty("position")?.GetValue(entity, null)
-                ?? t.GetProperty("Position")?.GetValue(entity, null)
-                ?? t.GetField("position")?.GetValue(entity)
-                ?? t.GetField("Position")?.GetValue(entity);
+            object? pos = ReflectCache.PropPub(t, "position")?.GetValue(entity, null)
+                ?? ReflectCache.PropPub(t, "Position")?.GetValue(entity, null)
+                ?? ReflectCache.FieldPub(t, "position")?.GetValue(entity)
+                ?? ReflectCache.FieldPub(t, "Position")?.GetValue(entity);
             if (pos == null) return false;
             x = ReadComp(pos, "x");
             y = ReadComp(pos, "y");
@@ -1066,23 +1063,30 @@ namespace RealEarth
         static int ReadComp(object vec, string name)
         {
             var t = vec.GetType();
-            var f = t.GetField(name);
+            var f = ReflectCache.FieldPub(t, name);
             if (f != null)
             {
                 var v = f.GetValue(vec);
-                if (v is float fl) return (int)Math.Floor(fl);
-                if (v is double d) return (int)Math.Floor(d);
-                return Convert.ToInt32(v);
+                return ToFloorInt(v);
             }
-            var p = t.GetProperty(name);
+            var p = ReflectCache.PropPub(t, name);
             if (p != null)
             {
                 var v = p.GetValue(vec, null);
-                if (v is float fl) return (int)Math.Floor(fl);
-                if (v is double d) return (int)Math.Floor(d);
-                return Convert.ToInt32(v);
+                return ToFloorInt(v);
             }
             return 0;
+        }
+
+        static int ToFloorInt(object? v)
+        {
+            switch (v)
+            {
+                case float fl: return (int)Math.Floor(fl);
+                case double d: return (int)Math.Floor(d);
+                case null: return 0;
+                default: return Convert.ToInt32(v);
+            }
         }
 
         static bool TrySetPos(object entity, int x, int y, int z)

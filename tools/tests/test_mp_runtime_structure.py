@@ -23,7 +23,8 @@ def test_try_patch_player_tick_patches_entity_player_and_local():
     src = _read("RuntimeHooks.cs")
     # Extract TryPatchPlayerTick method body
     m = re.search(
-        r"static int TryPatchPlayerTick\(\)\s*\{(?P<body>.*?)\n        static int TryPatchWorldSpawn",
+        r"static int TryPatchPlayerTick\(\)\s*\{(?P<body>.*?)"
+        r"\n        static int TryPatchWorldSpawn",
         src,
         re.S,
     )
@@ -63,7 +64,8 @@ def test_chunk_inject_uses_ensure_hot_not_focus_update():
     src = _read("ChunkTerrainInject.cs")
     # OnChunkGenerated must not call UpdateFromAbsolute (stomps focus 0)
     m = re.search(
-        r"public static void OnChunkGenerated\([^)]*\)\s*\{(?P<body>.*?)\n        (?:public |static |private |$)",
+        r"public static void OnChunkGenerated\([^)]*\)\s*\{(?P<body>.*?)"
+        r"\n        (?:public |static |private |$)",
         src,
         re.S,
     )

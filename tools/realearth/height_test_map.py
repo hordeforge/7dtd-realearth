@@ -258,7 +258,7 @@ def build_height_test_pack(
         "how_to_play": {
             "engine": "make engine-expand  # YDim=16384",
             "install": (
-                f"make install-height-500"
+                "make install-height-500"
                 if staged and int(peak_game_y or 0) == 500
                 else "make install-height"
             ),

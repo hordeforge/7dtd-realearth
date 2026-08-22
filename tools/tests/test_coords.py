@@ -1,4 +1,4 @@
-from realearth.coords import EarthGrid, lonlat_to_block, block_to_lonlat, block_to_tile
+from realearth.coords import EarthGrid, block_to_lonlat, block_to_tile, lonlat_to_block
 
 
 def test_equator_prime_meridian():

@@ -347,25 +347,31 @@ namespace RealEarth
 
         /// <summary>
         /// Known player count, or -1 when unknown (reflection miss). Unknown fails closed for slides.
-        /// Public for HooksImpl dedicated absolute policy.
+        /// Public for HooksImpl dedicated absolute policy. Per-frame path: member lookups memoized.
         /// </summary>
         public static int EstimatePlayerCount()
         {
             try
             {
                 var gmType = Type.GetType("GameManager, Assembly-CSharp");
-                var inst = gmType?.GetProperty("Instance")?.GetValue(null);
-                var world = inst?.GetType().GetProperty("World")?.GetValue(inst);
-                var players = world?.GetType().GetProperty("Players")?.GetValue(world);
+                var inst = gmType != null
+                    ? ReflectCache.PropPub(gmType, "Instance")?.GetValue(null)
+                    : null;
+                var world = inst != null
+                    ? ReflectCache.PropPub(inst.GetType(), "World")?.GetValue(inst)
+                    : null;
+                if (world == null) return -1;
+                var players = ReflectCache.PropPub(world.GetType(), "Players")?.GetValue(world);
                 if (players == null) return -1;
-                var countProp = players.GetType().GetProperty("Count");
+                var pt = players.GetType();
+                var countProp = ReflectCache.PropPub(pt, "Count");
                 if (countProp != null)
                     return Convert.ToInt32(countProp.GetValue(players));
                 if (players is ICollection col)
                     return col.Count;
                 // list field on PlayerList-like types
-                var listProp = players.GetType().GetProperty("list")
-                    ?? players.GetType().GetProperty("List");
+                var listProp = ReflectCache.PropPub(pt, "list")
+                    ?? ReflectCache.PropPub(pt, "List");
                 if (listProp?.GetValue(players) is ICollection listCol)
                     return listCol.Count;
             }

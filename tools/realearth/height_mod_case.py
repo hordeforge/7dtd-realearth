@@ -51,7 +51,7 @@ def run_height_mod_case() -> list[CaseResult]:
 
     # 1) Ceiling = sea + Everest + fly headroom (+ pad)
     expected_ceil = DEFAULT_SEA_LEVEL_GAME_Y + EVEREST_METERS_ASL + FLY_OVER_HEADROOM_M + 51
-    ok = ENGINE_TARGET_MAX_Y == 11000 and ENGINE_TARGET_MAX_Y == expected_ceil
+    ok = ENGINE_TARGET_MAX_Y == 11000 and expected_ceil == ENGINE_TARGET_MAX_Y
     results.append(
         CaseResult(
             "ceiling_constants",
@@ -105,7 +105,8 @@ def run_height_mod_case() -> list[CaseResult]:
         CaseResult(
             "ceiling_clamp",
             at_cap == ENGINE_TARGET_MAX_Y and over == ENGINE_TARGET_MAX_Y,
-            f"elev={max_elev_before_clamp} → {at_cap}; elev+5000 → {over} (both ≤ {ENGINE_TARGET_MAX_Y})",
+            f"elev={max_elev_before_clamp} → {at_cap}; "
+            f"elev+5000 → {over} (both ≤ {ENGINE_TARGET_MAX_Y})",
         )
     )
 

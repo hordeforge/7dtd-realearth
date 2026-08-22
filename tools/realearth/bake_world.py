@@ -7,19 +7,16 @@ or GeneratedWorlds-style folders. This is MapMode=Baked: fully usable as one lar
 from __future__ import annotations
 
 import json
-import math
 from pathlib import Path
 
 import numpy as np
 from PIL import Image
 
 from realearth import DEFAULT_SEA_LEVEL_GAME_Y
-from realearth.export_7dtd import export_heightmap_png, export_biome_png, export_preview_png
+from realearth.export_7dtd import export_biome_png, export_heightmap_png, export_preview_png
 from realearth.height import compress_elevation
-from realearth.landcover import landcover_to_biome_rgb
-from realearth.viewer_export import mosaic_pack
 from realearth.tile_format import Manifest, write_manifest
-
+from realearth.viewer_export import mosaic_pack
 
 # 7DTD world sizes must be multiples of 2048 up to 16384 for many tools/RWG.
 VALID_SIZES = tuple(range(2048, 16384 + 1, 2048))

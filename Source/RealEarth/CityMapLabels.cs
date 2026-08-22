@@ -15,10 +15,14 @@ namespace RealEarth
     public static class CityMapLabels
     {
         static List<Place>? _catalog;
+        static Dictionary<string, Place>? _catalogByName;
         static readonly HashSet<string> _discovered = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
         static readonly Dictionary<string, object> _navByName = new Dictionary<string, object>(StringComparer.OrdinalIgnoreCase);
         static int _tickThrottle;
         static int _catalogRetry = 30;
+        // Reflection handles are process-stable; only the manager instance is re-read.
+        static Type? _navMgrType;
+        static MethodInfo? _navRegMethod;
 
         public sealed class Place
         {
@@ -36,6 +40,10 @@ namespace RealEarth
             public double EdgeRadiusM;
             /// <summary>density | map | seed | population_fallback</summary>
             public string EdgeSource = "";
+            /// <summary>Memoized session-local coords (invalidated on origin slide / reset).</summary>
+            public bool LocalValid;
+            public int CachedLocalX;
+            public int CachedLocalZ;
         }
 
         public static int DiscoveredCount => _discovered.Count;
@@ -46,8 +54,35 @@ namespace RealEarth
             UnregisterAll();
             _discovered.Clear();
             _catalog = null;
+            _catalogByName = null;
             _tickThrottle = 0;
             _catalogRetry = 30;
+        }
+
+        /// <summary>
+        /// Session-local coords for a place, computed once and memoized on the Place.
+        /// Callers must InvalidateLocalCache() when the session origin moves (slide).
+        /// </summary>
+        public static void LonLatToLocalCached(WorldSession session, Place p, out int cx, out int cz)
+        {
+            if (p.LocalValid)
+            {
+                cx = p.CachedLocalX;
+                cz = p.CachedLocalZ;
+                return;
+            }
+            session.LonLatToLocal(p.Lon, p.Lat, out cx, out cz);
+            p.CachedLocalX = cx;
+            p.CachedLocalZ = cz;
+            p.LocalValid = true;
+        }
+
+        /// <summary>Drop memoized local coords after an origin change.</summary>
+        public static void InvalidateLocalCache()
+        {
+            if (_catalog == null) return;
+            foreach (var p in _catalog)
+                p.LocalValid = false;
         }
 
         /// <summary>Legacy entry: no player pos (only loads catalog / retries manager).</summary>
@@ -82,7 +117,7 @@ namespace RealEarth
                 object? mgr = GetNavObjectManager();
                 if (mgr == null)
                     return;
-                MethodInfo? reg = FindRegister(mgr.GetType());
+                MethodInfo? reg = ResolveRegister(mgr.GetType());
                 if (reg == null)
                     return;
 
@@ -120,21 +155,22 @@ namespace RealEarth
                     if (_discovered.Contains(p.Name))
                         continue;
 
-                    session.LonLatToLocal(p.Lon, p.Lat, out int cx, out int cz);
+                    LonLatToLocalCached(session, p, out int cx, out int cz);
                     long dx = (long)playerLocalX - cx;
                     long dz = (long)playerLocalZ - cz;
-                    double dist = Math.Sqrt(dx * dx + dz * dz);
-                    int edge = Math.Max(32, (int)(p.EdgeRadiusBlocks * scale));
+                    long distSq = dx * dx + dz * dz;
+                    long edge = Math.Max(32, (int)(p.EdgeRadiusBlocks * scale));
 
                     // Reaching the edge is enough to discover; pin at center.
-                    if (dist <= edge)
+                    // Squared compare avoids a sqrt per place per window.
+                    if (distSq <= edge * edge)
                     {
                         if (EnsureMarker(mgr, reg, session, p))
                         {
                             _discovered.Add(p.Name);
                             ModApi.Log(
                                 $"CityMapLabels: discovered '{p.Name}' " +
-                                $"(dist={dist:0} edge={edge} center=({cx},{cz})).");
+                                $"(dist={(int)Math.Sqrt(distSq):0} edge={edge} center=({cx},{cz})).");
                         }
                     }
                 }
@@ -152,12 +188,15 @@ namespace RealEarth
                 return;
             // Drop nav handles (positions invalid); rediscover set is kept.
             UnregisterAllNavOnly();
+            InvalidateLocalCache();
             _tickThrottle = 0;
             // Next TickPlayer will re-place discovered at new local coords
         }
 
         static Place? FindByName(string name)
         {
+            if (_catalogByName != null)
+                return _catalogByName.TryGetValue(name, out var hit) ? hit : null;
             if (_catalog == null) return null;
             foreach (var p in _catalog)
                 if (string.Equals(p.Name, name, StringComparison.OrdinalIgnoreCase))
@@ -183,6 +222,10 @@ namespace RealEarth
                 }
                 places.Sort((a, b) => b.Population.CompareTo(a.Population));
                 _catalog = places;
+                var byName = new Dictionary<string, Place>(StringComparer.OrdinalIgnoreCase);
+                foreach (var p in places)
+                    byName[p.Name] = p;
+                _catalogByName = byName;
                 ModApi.Log(
                     $"CityMapLabels: catalog {_catalog.Count} places " +
                     $"(edge from map data: {fromMap}, discover-on-approach).");
@@ -238,7 +281,7 @@ namespace RealEarth
                 return true;
 
             // Always pin at geographic center (real map), not player position.
-            session.LonLatToLocal(p.Lon, p.Lat, out int lx, out int lz);
+            LonLatToLocalCached(session, p, out int lx, out int lz);
             // P3: pin height is surface-relative (StampSurfaceY), not a magic constant only.
             int surfaceY = SampleY(lx, lz);
             int y = StampSurfaceY.PrefabRootY(surfaceY, foundationOffsetBlocks: 2);
@@ -608,7 +651,9 @@ namespace RealEarth
         {
             try
             {
-                Type? t = FindType("NavObjectManager");
+                if (_navMgrType == null)
+                    _navMgrType = FindType("NavObjectManager");
+                var t = _navMgrType;
                 if (t == null) return null;
                 var f = t.GetField("Instance", BindingFlags.Static | BindingFlags.Public | BindingFlags.NonPublic)
                         ?? t.GetField("instance", BindingFlags.Static | BindingFlags.Public | BindingFlags.NonPublic);
@@ -619,6 +664,15 @@ namespace RealEarth
             {
                 return null;
             }
+        }
+
+        /// <summary>RegisterNavObject MethodInfo resolved once per manager type (per-window scan otherwise).</summary>
+        static MethodInfo? ResolveRegister(Type mgrType)
+        {
+            if (_navRegMethod != null && _navRegMethod.DeclaringType == mgrType)
+                return _navRegMethod;
+            _navRegMethod = FindRegister(mgrType);
+            return _navRegMethod;
         }
 
         static MethodInfo? FindRegister(Type mgrType)

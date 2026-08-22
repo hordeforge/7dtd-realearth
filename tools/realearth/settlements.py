@@ -9,7 +9,7 @@ from pathlib import Path
 
 import numpy as np
 
-from realearth.coords import lonlat_to_block, EarthGrid
+from realearth.coords import EarthGrid, lonlat_to_block
 from realearth.landcover import LandCover
 
 
@@ -153,6 +153,18 @@ SEED_SETTLEMENTS: list[Settlement] = [
 ]
 
 
+def _collect_ring_coords(c, lons: list[float], lats: list[float]) -> None:
+    """Flatten nested GeoJSON coordinate arrays into lon/lat lists."""
+    if not c:
+        return
+    if isinstance(c[0], (int, float)):
+        lons.append(float(c[0]))
+        lats.append(float(c[1]))
+    else:
+        for part in c:
+            _collect_ring_coords(part, lons, lats)
+
+
 def load_settlements_geojson(path: Path) -> list[Settlement]:
     """Load settlements from a simple GeoJSON FeatureCollection.
 
@@ -178,18 +190,7 @@ def load_settlements_geojson(path: Path) -> list[Settlement]:
             # Centroid + edge from polygon envelope (real urban area polygons).
             lons: list[float] = []
             lats: list[float] = []
-
-            def _walk(c):
-                if not c:
-                    return
-                if isinstance(c[0], (int, float)):
-                    lons.append(float(c[0]))
-                    lats.append(float(c[1]))
-                else:
-                    for part in c:
-                        _walk(part)
-
-            _walk(geom.get("coordinates") or [])
+            _collect_ring_coords(geom.get("coordinates") or [], lons, lats)
             if not lons:
                 continue
             lon = sum(lons) / len(lons)
@@ -253,11 +254,17 @@ def paint_settlement_density(
     """Rasterize approximate population density from point settlements.
 
     Uses a Gaussian falloff in lon/lat space (not perfect geodesy; fine for stamping).
+
+    Each Gaussian is painted only inside its ±CLIP_SIGMA window. Beyond
+    CLIP_SIGMA the contribution is < peak * exp(-CLIP_SIGMA²) ≈ 1e-13 * peak,
+    which is below float64 significance of the accumulated field, so results
+    match an unrestricted full-grid paint to within rounding noise.
     """
+    CLIP_SIGMA = 6.0
+
     dens = np.zeros((height, width), dtype=np.float64)
-    lon = np.linspace(west, east, width, endpoint=False) + (east - west) / width / 2
-    lat = np.linspace(north, south, height, endpoint=False) + (south - north) / height / 2
-    lon_g, lat_g = np.meshgrid(lon, lat)
+    lon_step = (east - west) / width
+    lat_step = (south - north) / height  # negative: row 0 is north
 
     for s in settlements:
         if not (west <= s.lon <= east and south <= s.lat <= north):
@@ -271,9 +278,27 @@ def paint_settlement_density(
         # deg lat ~ 111 km
         r_lat = radius_km / 111.0
         r_lon = radius_km / max(1e-3, 111.0 * abs(math.cos(math.radians(s.lat))))
-        d2 = ((lon_g - s.lon) / r_lon) ** 2 + ((lat_g - s.lat) / r_lat) ** 2
+        if r_lat <= 0 or r_lon <= 0:
+            continue
         peak = max(s.population, 1) / max(math.pi * radius_km * radius_km, 1.0)
-        dens += peak * np.exp(-d2)
+
+        # Pixel window around the settlement center (pixel centers at +step/2).
+        fx = (s.lon - west) / lon_step - 0.5
+        fz = (s.lat - north) / lat_step - 0.5
+        half_x = int(CLIP_SIGMA * r_lon / abs(lon_step)) + 1
+        half_z = int(CLIP_SIGMA * r_lat / abs(lat_step)) + 1
+        x0 = max(0, int(math.floor(fx)) - half_x)
+        x1 = min(width, int(math.ceil(fx)) + half_x + 1)
+        z0 = max(0, int(math.floor(fz)) - half_z)
+        z1 = min(height, int(math.ceil(fz)) + half_z + 1)
+        if x0 >= x1 or z0 >= z1:
+            continue
+
+        lon_w = np.linspace(west, east, width, endpoint=False)[x0:x1] + lon_step / 2
+        lat_w = np.linspace(north, south, height, endpoint=False)[z0:z1] + lat_step / 2
+        lon_g, lat_g = np.meshgrid(lon_w, lat_w)
+        d2 = ((lon_g - s.lon) / r_lon) ** 2 + ((lat_g - s.lat) / r_lat) ** 2
+        dens[z0:z1, x0:x1] += peak * np.exp(-d2)
 
     return dens
 

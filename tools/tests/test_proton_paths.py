@@ -1,6 +1,5 @@
 """Drive shipped proton_paths resolution against real Steam layout when present."""
 
-from pathlib import Path
 
 from realearth.proton_paths import (
     STEAM_APPID,

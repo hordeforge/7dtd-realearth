@@ -86,11 +86,7 @@ def needs_recentering(lx: int, lz: int, window: int) -> bool:
     max_drift = half - margin
     if abs(lx - half) > max_drift or abs(lz - half) > max_drift:
         return True
-    if lx < margin or lx > window - margin:
-        return True
-    if lz < margin or lz > window - margin:
-        return True
-    return False
+    return lx < margin or lx > window - margin or lz < margin or lz > window - margin
 
 
 def test_p2_fold_and_shared_fixed():
@@ -367,7 +363,8 @@ def test_chunk_index_prefetch_only():
     """ChunkIndexPostfix must not call OnChunkGenerated (double inject / false counters)."""
     hooks = _read("RuntimeHooks.cs")
     m = re.search(
-        r"public static void ChunkIndexPostfix\([^)]*\)\s*\{(?P<body>.*?)\n        static bool TryGetChunkIndices",
+        r"public static void ChunkIndexPostfix\([^)]*\)\s*\{(?P<body>.*?)"
+        r"\n        static bool TryGetChunkIndices",
         hooks,
         re.S,
     )

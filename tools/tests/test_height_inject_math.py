@@ -12,7 +12,9 @@ ENGINE_HEIGHT = ROOT / "Source" / "RealEarth" / "EngineHeight" / "EngineHeightMo
 SAMPLER = ROOT / "Source" / "RealEarth" / "ChunkTerrainSampler.cs"
 
 
-def meters_to_game_y_one_to_one(elev_m: float, sea: int = 100, max_y: int = 11000, min_y: int = 1) -> int:
+def meters_to_game_y_one_to_one(
+    elev_m: float, sea: int = 100, max_y: int = 11000, min_y: int = 1
+) -> int:
     if max_y < min_y + 1:
         max_y = min_y + 1
     y = round(sea + elev_m)

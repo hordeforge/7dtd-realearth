@@ -1,6 +1,6 @@
 """Continuous travel: wrap, local↔absolute, origin slide (shipped local_window)."""
 
-from realearth.coords import EarthGrid, lonlat_to_block, block_to_lonlat
+from realearth.coords import EarthGrid, block_to_lonlat, lonlat_to_block
 from realearth.local_window import LocalWindow
 
 

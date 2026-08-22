@@ -8,7 +8,13 @@ from pathlib import Path
 import numpy as np
 
 from realearth import DEFAULT_TILE_SIZE, EARTH_CIRCUMFERENCE_M, EARTH_MERIDIAN_HALF_M
-from realearth.coords import EarthGrid, lonlat_to_block, block_to_lonlat, block_to_tile
+from realearth.coords import EarthGrid, lonlat_to_block
+from realearth.density import (
+    apply_urban_from_density,
+    build_density_field,
+    detect_city_cores,
+    write_cities_json,
+)
 from realearth.elevation import (
     fetch_region_geotiff,
     fetch_region_open_meteo,
@@ -17,12 +23,6 @@ from realearth.elevation import (
     synthetic_elevation,
 )
 from realearth.export_7dtd import export_region_pack
-from realearth.density import (
-    apply_urban_from_density,
-    build_density_field,
-    detect_city_cores,
-    write_cities_json,
-)
 from realearth.landcover import classify_from_elevation_and_lat
 from realearth.settlements import (
     SEED_SETTLEMENTS,
@@ -128,11 +128,6 @@ def build_region(
     sources.append("City cores from density peaks + settlement points (not Google)")
 
     # Write as one or more tiles in a local (region) grid index space
-    grid = EarthGrid(
-        width=max(width, EARTH_CIRCUMFERENCE_M),
-        height=max(height, EARTH_MERIDIAN_HALF_M),
-        tile_size=tile_size,
-    )
     # For region packs we use a local origin at (0,0) for simplicity in demo tiles,
     # and store the geographic bbox in the manifest.
     tiles_meta: list[dict[str, int]] = []

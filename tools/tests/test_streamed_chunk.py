@@ -18,7 +18,7 @@ from realearth.streamed_chunk import (
     lonlat_to_pack_block,
     sample_point,
 )
-from realearth.tile_format import decode_tile, encode_tile, read_tile, tile_path
+from realearth.tile_format import decode_tile, encode_tile, tile_path
 
 ROOT = Path(__file__).resolve().parents[2]
 DEMO = ROOT / "data" / "samples" / "demo_region"

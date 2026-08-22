@@ -122,20 +122,17 @@ namespace RealEarth
             catch { /* never break inject */ }
 
             // Only count successful column rewrites (null chunk / apply miss do not inflate gates).
+            int maxH = 0;
+            for (int i = 0; i < heights.Length; i++)
+                if (heights[i] > maxH) maxH = heights[i];
             if (applied)
             {
                 SessionInjectCount++;
                 SessionBlocksApplied++;
-                int maxH = 0;
-                for (int i = 0; i < heights.Length; i++)
-                    if (heights[i] > maxH) maxH = heights[i];
                 if (maxH > SessionPeakHeight)
                     SessionPeakHeight = maxH;
             }
             int mid = heights[heights.Length / 2];
-            int maxHLog = 0;
-            for (int i = 0; i < heights.Length; i++)
-                if (heights[i] > maxHLog) maxHLog = heights[i];
 
             if (_injectLogBudget > 0)
             {
@@ -143,7 +140,7 @@ namespace RealEarth
                 byte lc = landcover[landcover.Length / 2];
                 ModApi.Log(
                     $"Height inject chunk=({chunkX},{chunkZ}) earth=({ex},{ez}) " +
-                    $"midH={mid} maxH={maxHLog} sessionPeak={SessionPeakHeight} " +
+                    $"midH={mid} maxH={maxH} sessionPeak={SessionPeakHeight} " +
                     $"allocY={EngineHeight.EngineHeightMod.AllocatableColumnMaxY} " +
                     $"expanded={EngineHeight.EngineHeightMod.EngineExpanded} " +
                     $"biome={ChunkTerrainSampler.LandcoverToBiomeName(lc)} " +

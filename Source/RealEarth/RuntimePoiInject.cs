@@ -46,6 +46,10 @@ namespace RealEarth
             _logBudget = 12;
         }
 
+        /// <summary>Memoized session-local coords (CityMapLabels.Place cache); see LonLatToLocalCached.</summary>
+        static void PlaceLocal(WorldSession session, CityMapLabels.Place p, out int cx, out int cz)
+            => CityMapLabels.LonLatToLocalCached(session, p, out cx, out cz);
+
         /// <summary>
         /// After origin slide: do not re-stamp (chunk blocks are not remapped; re-plan would
         /// duplicate POIs at new locals while ghosts remain). Keep _placed; clear budgets only.
@@ -54,7 +58,15 @@ namespace RealEarth
         {
             _chunkCounts.Clear();
             _tickThrottle = 0;
+            InvalidateLocalCache();
             // Keep _placed / _sessionStamps so we do not double-stamp after slide.
+        }
+
+        static void InvalidateLocalCache()
+        {
+            if (_placesCache == null) return;
+            foreach (var p in _placesCache)
+                p.LocalValid = false;
         }
 
         /// <summary>Player tick: stamp nearby city cores under DensityBudget.</summary>
@@ -96,12 +108,14 @@ namespace RealEarth
                     if (_failCount.TryGetValue(p.Name, out int fails) && fails >= MaxPlaceFails)
                         continue;
 
-                    session.LonLatToLocal(p.Lon, p.Lat, out int cx, out int cz);
+                    PlaceLocal(session, p, out int cx, out int cz);
                     long dx = (long)playerLocalX - cx;
                     long dz = (long)playerLocalZ - cz;
-                    double dist = Math.Sqrt(dx * dx + dz * dz);
-                    int edge = Math.Max(32, (int)(CityMapLabels.ResolveEdgeRadiusBlocks(p) * discoverScale));
-                    if (dist > edge * 1.5)
+                    long distSq = dx * dx + dz * dz;
+                    // Original gate: dist <= edge * 1.5 (squared to skip the sqrt).
+                    double edge = Math.Max(32, (int)(CityMapLabels.ResolveEdgeRadiusBlocks(p) * discoverScale));
+                    double reach = edge * 1.5;
+                    if (distSq > reach * reach)
                         continue;
 
                     string chunkKey = FloorDiv(cx, 16).ToString(CultureInfo.InvariantCulture) + ":" +
@@ -167,7 +181,7 @@ namespace RealEarth
                     if (_failCount.TryGetValue(p.Name, out int fails) && fails >= MaxPlaceFails)
                         continue;
 
-                    session.LonLatToLocal(p.Lon, p.Lat, out int cx, out int cz);
+                    PlaceLocal(session, p, out int cx, out int cz);
                     if (cx < minX || cx >= maxX || cz < minZ || cz >= maxZ)
                         continue;
 

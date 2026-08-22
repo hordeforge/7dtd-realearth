@@ -140,23 +140,42 @@ namespace RealEarth
 
         public void EnsureRadius(int centerTx, int centerTz, int radius, bool allowSyncLoad)
         {
-            for (int dz = -radius; dz <= radius; dz++)
+            // Hot path (per block sample / player tick): one lock pass filters already-hot
+            // and miss-cached tiles; only genuine misses go through EnsureTile.
+            List<long>? missing = null;
+            int now = Environment.TickCount;
+            lock (_lock)
             {
-                for (int dx = -radius; dx <= radius; dx++)
+                for (int dz = -radius; dz <= radius; dz++)
                 {
-                    int tx = centerTx + dx;
-                    int tz = centerTz + dz;
-                    if (tz < 0 || tz >= _coords.TilesZ) continue;
-                    if (_cfg.EnableLongitudeWrap)
+                    for (int dx = -radius; dx <= radius; dx++)
                     {
-                        int ntx = _coords.TilesX;
-                        tx %= ntx;
-                        if (tx < 0) tx += ntx;
-                    }
-                    else if (tx < 0 || tx >= _coords.TilesX) continue;
+                        int tx = centerTx + dx;
+                        int tz = centerTz + dz;
+                        if (tz < 0 || tz >= _coords.TilesZ) continue;
+                        if (_cfg.EnableLongitudeWrap)
+                        {
+                            int ntx = _coords.TilesX;
+                            tx %= ntx;
+                            if (tx < 0) tx += ntx;
+                        }
+                        else if (tx < 0 || tx >= _coords.TilesX) continue;
 
-                    EnsureTile(tx, tz, allowSyncLoad);
+                        long key = Key(tx, tz);
+                        if (_hot.ContainsKey(key)) continue;
+                        if (!allowSyncLoad
+                            && _missUntilTick.TryGetValue(key, out int until)
+                            && unchecked(now - until) < 0) continue;
+                        (missing ??= new List<long>()).Add(key);
+                    }
                 }
+            }
+            if (missing == null) return;
+            foreach (long key in missing)
+            {
+                int tx = (int)(key >> 32);
+                int tz = (int)(key & 0xffffffff);
+                EnsureTile(tx, tz, allowSyncLoad);
             }
         }
 

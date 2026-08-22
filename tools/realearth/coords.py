@@ -8,7 +8,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 
-from realearth import EARTH_CIRCUMFERENCE_M, EARTH_MERIDIAN_HALF_M, DEFAULT_TILE_SIZE
+from realearth import DEFAULT_TILE_SIZE, EARTH_CIRCUMFERENCE_M, EARTH_MERIDIAN_HALF_M
 
 
 @dataclass(frozen=True, slots=True)

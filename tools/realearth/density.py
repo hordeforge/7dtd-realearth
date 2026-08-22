@@ -210,11 +210,10 @@ def measure_urban_edge_radius_m(
 
     lat = north - (py + 0.5) / h * (north - south)
     mx, mz = meters_per_pixel(west, south, east, north, w, h, at_lat=lat)
-    max_d = 0.0
-    for y, x in cells:
-        d = math.hypot((x - px) * mx, (y - py) * mz)
-        if d > max_d:
-            max_d = d
+    cells_arr = np.asarray(cells, dtype=np.float64)
+    dx_m = (cells_arr[:, 1] - px) * mx
+    dz_m = (cells_arr[:, 0] - py) * mz
+    max_d = float(np.sqrt(dx_m * dx_m + dz_m * dz_m).max())
     return float(min(max_radius_m, max(150.0, max_d)))
 
 
@@ -292,9 +291,9 @@ def load_density_geotiff(
             xs, ys = rio_transform(
                 "EPSG:4326", ds.crs, lon.ravel().tolist(), lat.ravel().tolist()
             )
-            coords = list(zip(xs, ys))
+            coords = list(zip(xs, ys, strict=True))
         else:
-            coords = list(zip(lon.ravel().tolist(), lat.ravel().tolist()))
+            coords = list(zip(lon.ravel().tolist(), lat.ravel().tolist(), strict=True))
         samples = list(ds.sample(coords))
         vals = np.array([s[0] for s in samples], dtype=np.float64).reshape(height, width)
         if ds.nodata is not None:
@@ -364,13 +363,16 @@ def detect_city_cores(
     is_max &= center >= min_peak
     ys, xs = np.where(is_max)
     peaks = sorted(
-        [(float(center[y, x]), int(y), int(x)) for y, x in zip(ys, xs)],
+        [(float(center[y, x]), int(y), int(x)) for y, x in zip(ys, xs, strict=True)],
         reverse=True,
     )
 
     chosen: list[tuple[float, int, int]] = []
     for peak, y, x in peaks:
-        if any(abs(y - cy) < min_separation_px and abs(x - cx) < min_separation_px for _, cy, cx in chosen):
+        if any(
+            abs(y - cy) < min_separation_px and abs(x - cx) < min_separation_px
+            for _, cy, cx in chosen
+        ):
             continue
         chosen.append((peak, y, x))
         if len(chosen) >= max_cores:
@@ -576,7 +578,10 @@ def stamp_prefabs_from_density(
 def _dedupe_stamps(stamps: list[PrefabStamp], min_dist: int = 20) -> list[PrefabStamp]:
     out: list[PrefabStamp] = []
     for s in stamps:
-        if any(abs(s.world_x - o.world_x) < min_dist and abs(s.world_z - o.world_z) < min_dist for o in out):
+        if any(
+            abs(s.world_x - o.world_x) < min_dist and abs(s.world_z - o.world_z) < min_dist
+            for o in out
+        ):
             continue
         out.append(s)
     return out

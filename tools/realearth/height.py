@@ -1,8 +1,8 @@
 """Map real elevation (meters ASL) into 7DTD game Y.
 
-Stock ceiling ~255. RealEarth engine-height mod targets ENGINE_TARGET_MAX_Y (11000; sea 100 + Everest + fly room)
-with optional 1 m = 1 block (profile one_to_one). .rte keeps real meters; mapping
-happens when writing game terrain / inject.
+Stock ceiling ~255. RealEarth engine-height mod targets ENGINE_TARGET_MAX_Y
+(11000; sea 100 + Everest + fly room) with optional 1 m = 1 block (profile
+one_to_one). .rte keeps real meters; mapping happens when writing game terrain / inject.
 """
 
 from __future__ import annotations
@@ -32,7 +32,8 @@ def compress_elevation(
       relative — piecewise ASL curve + optional detail exaggeration (default, stock)
       local_stretch — map this array's min..max into [min_y, max_y]
       linear_clamp — elev_m/scale into Y then clamp
-      one_to_one - product mapping: sea_level_y + elev_m (1 m = 1 block); use max_y=11000 for Everest
+      one_to_one - product mapping: sea_level_y + elev_m (1 m = 1 block);
+        use max_y=11000 for Everest
 
     When max_y > 255 returns int32; otherwise uint8 (stock columns).
     """
@@ -45,7 +46,9 @@ def compress_elevation(
         return np.clip(np.rint(y), min_y, max_y).astype(out_dtype)
 
     if profile == "local_stretch":
-        return _local_stretch(elev, min_y=min_y, max_y=max_y, sea_level_y=sea_level_y).astype(out_dtype)
+        return _local_stretch(
+            elev, min_y=min_y, max_y=max_y, sea_level_y=sea_level_y
+        ).astype(out_dtype)
     if profile == "linear_clamp":
         scale_m_per_block = 1.0 if max_y > 255 else 40.0
         y = sea_level_y + elev / scale_m_per_block
@@ -116,7 +119,7 @@ def _local_stretch(
     max_y: int,
     sea_level_y: int,
 ) -> np.ndarray:
-    """Maximize relief inside this array: min elev → min_y, max → max_y; sea stays near sea_level_y."""
+    """Maximize relief: min elev → min_y, max → max_y; sea stays near sea_level_y."""
     elev = np.asarray(elev, dtype=np.float64)
     lo = float(np.nanmin(elev))
     hi = float(np.nanmax(elev))

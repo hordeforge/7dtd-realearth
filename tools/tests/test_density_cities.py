@@ -5,13 +5,13 @@ from pathlib import Path
 import numpy as np
 
 from realearth.density import (
+    clamp_prefabs_in_chunk,
     combine_population_and_built,
     density_to_band,
     detect_city_cores,
     measure_urban_edge_radius_m,
     stamp_prefab_root_y,
     stamp_prefabs_from_density,
-    clamp_prefabs_in_chunk,
     write_prefabs_xml,
 )
 from realearth.generated_world import bake_generated_world

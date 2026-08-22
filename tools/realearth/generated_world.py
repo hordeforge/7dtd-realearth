@@ -12,7 +12,6 @@ from __future__ import annotations
 
 import json
 import re
-import struct
 import zlib
 from pathlib import Path
 
@@ -29,12 +28,13 @@ from realearth.density import (
 )
 from realearth.height import compress_elevation
 from realearth.landcover import LandCover
-from realearth.settlements import SEED_SETTLEMENTS, load_settlements_geojson
+from realearth.settlements import SEED_SETTLEMENTS
 from realearth.viewer_export import mosaic_pack
 
 # Verified against this install's biomes.xml biomemapcolor
 BIOME_RGB = {
-    LandCover.OCEAN: (0, 64, 0),  # no separate water in map colors; forest under water mask via height
+    LandCover.OCEAN: (0, 64, 0),  # no separate water in map colors;
+    # forest under water mask via height
     LandCover.INLAND_WATER: (0, 64, 0),
     LandCover.ICE: (255, 255, 255),
     LandCover.BARREN: (255, 168, 0),  # wasteland-ish
@@ -294,7 +294,8 @@ def _find_ttw_template() -> Path | None:
         home
         / ".local/share/Steam/steamapps/common/7 Days To Die/Data/Worlds/Pregen06k01/main.ttw",
         home
-        / ".local/share/Steam/steamapps/common/7 Days to Die Dedicated Server/Data/Worlds/Pregen06k01/main.ttw",
+        / ".local/share/Steam/steamapps/common/7 Days to Die Dedicated Server"
+        / "Data/Worlds/Pregen06k01/main.ttw",
     ]
     for p in preferred:
         if p.exists():
@@ -375,7 +376,6 @@ def bake_generated_world(
     lc_r = apply_urban_from_density(lc_r, pop_r, urban_threshold=90)
 
     # 1:1 m→block into stock DTM (peaks above 250 clamp in file format only — not a curve)
-    from realearth import ENGINE_TARGET_MAX_Y
 
     game_y = compress_elevation(
         elev_r,
@@ -403,9 +403,7 @@ def bake_generated_world(
     spath = pack_dir / "settlements.json"
     if spath.exists():
         raw = json.loads(spath.read_text(encoding="utf-8"))
-        from realearth.settlements import Settlement
-
-        from realearth.settlements import edge_radius_m_from_properties
+        from realearth.settlements import Settlement, edge_radius_m_from_properties
 
         settles = []
         for s in raw:
@@ -493,6 +491,7 @@ def bake_generated_world(
         "prefab_stamps": len(stamps),
         "files": required + ["cities.json", "population.png"],
     }
-    (out_dir / "realearth_world.json").write_text(json.dumps(meta, indent=2) + "\n", encoding="utf-8")
+    world_json = out_dir / "realearth_world.json"
+    world_json.write_text(json.dumps(meta, indent=2) + "\n", encoding="utf-8")
 
     return meta

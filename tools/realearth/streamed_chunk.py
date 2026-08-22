@@ -13,8 +13,8 @@ from pathlib import Path
 
 import numpy as np
 
-from realearth.coords import EarthGrid, block_to_tile
 from realearth import DEFAULT_SEA_LEVEL_GAME_Y
+from realearth.coords import EarthGrid, block_to_tile
 from realearth.height import compress_elevation
 from realearth.local_window import LocalWindow
 from realearth.tile_format import Manifest, read_manifest, read_tile, tile_path
@@ -38,7 +38,11 @@ def load_pack_grid(pack_dir: Path) -> EarthGrid:
 
 def lonlat_to_pack_block(lon: float, lat: float, manifest: Manifest) -> tuple[int, int]:
     """Map WGS84 lon/lat into pack-local block XZ using manifest bbox (or full Earth)."""
-    g = EarthGrid(width=manifest.world_width, height=manifest.world_height, tile_size=manifest.tile_size)
+    g = EarthGrid(
+        width=manifest.world_width,
+        height=manifest.world_height,
+        tile_size=manifest.tile_size,
+    )
     bbox = manifest.bbox
     if not bbox:
         # full Earth equirectangular
@@ -58,10 +62,11 @@ def lonlat_to_pack_block(lon: float, lat: float, manifest: Manifest) -> tuple[in
     fz = (north - lat) / (north - south)  # z increases southward
     x = int(fx * (manifest.world_width - 1))
     z = int(fz * (manifest.world_height - 1))
-    if manifest.world_width > 10_000_000:
-        x = g.wrap_x(x)
-    else:
-        x = max(0, min(manifest.world_width - 1, x))
+    x = (
+        g.wrap_x(x)
+        if manifest.world_width > 10_000_000
+        else max(0, min(manifest.world_width - 1, x))
+    )
     return x, g.clamp_z(z)
 
 
@@ -82,10 +87,11 @@ def sample_point(
     pack_dir = Path(pack_dir)
     g = grid or load_pack_grid(pack_dir)
     # Regional packs are small; full Earth wraps X
-    if g.width > 10_000_000:
-        earth_x = g.wrap_x(earth_x)
-    else:
-        earth_x = max(0, min(g.width - 1, earth_x))
+    earth_x = (
+        g.wrap_x(earth_x)
+        if g.width > 10_000_000
+        else max(0, min(g.width - 1, earth_x))
+    )
     earth_z = g.clamp_z(earth_z)
     tx, tz = block_to_tile(earth_x, earth_z, g)
     key = (tx, tz)

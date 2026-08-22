@@ -134,12 +134,15 @@ def fetch_region_terrarium(
     *,
     zoom: int = 10,
     timeout: float = 60.0,
+    max_workers: int = 8,
 ) -> np.ndarray:
     """Fetch real elevation via open AWS Terrarium tiles, resample to width×height.
 
     Free open terrain tiles (not Google). Suitable for regional realism.
-    Higher zoom = more detail (and more HTTP requests).
+    Higher zoom = more detail (and more HTTP requests). Tile downloads run on a
+    small thread pool; each tile decodes into a disjoint mosaic window.
     """
+    from concurrent.futures import ThreadPoolExecutor
     from io import BytesIO
 
     from PIL import Image
@@ -161,14 +164,20 @@ def fetch_region_terrarium(
     mosaic_h = (y1 - y0 + 1) * tile_px
     mosaic = np.full((mosaic_h, mosaic_w), np.nan, dtype=np.float32)
 
+    def fetch_tile(ty: int, tx: int) -> tuple[int, int, np.ndarray]:
+        url = TERRARIUM_URL.format(z=zoom, x=tx, y=ty)
+        r = client.get(url)
+        r.raise_for_status()
+        img = Image.open(BytesIO(r.content)).convert("RGB")
+        elev = decode_terrarium_png(np.asarray(img)).astype(np.float32)
+        return ty, tx, elev
+
     with httpx.Client(timeout=timeout, follow_redirects=True) as client:
-        for ty in range(y0, y1 + 1):
-            for tx in range(x0, x1 + 1):
-                url = TERRARIUM_URL.format(z=zoom, x=tx, y=ty)
-                r = client.get(url)
-                r.raise_for_status()
-                img = Image.open(BytesIO(r.content)).convert("RGB")
-                elev = decode_terrarium_png(np.asarray(img)).astype(np.float32)
+        tiles = [(ty, tx) for ty in range(y0, y1 + 1) for tx in range(x0, x1 + 1)]
+        workers = max(1, min(max_workers, len(tiles)))
+        with ThreadPoolExecutor(max_workers=workers) as pool:
+            # Propagate the first failure like the sequential loop did (raise_for_status).
+            for ty, tx, elev in pool.map(lambda t: fetch_tile(t[0], t[1]), tiles):
                 py = (ty - y0) * tile_px
                 px = (tx - x0) * tile_px
                 mosaic[py : py + tile_px, px : px + tile_px] = elev
@@ -187,10 +196,9 @@ def fetch_region_terrarium(
     right = min(mosaic_w, int(math.ceil(lon_to_px(east))))
     top = max(0, int(lat_to_py(north)))
     bottom = min(mosaic_h, int(math.ceil(lat_to_py(south))))
-    if right <= left or bottom <= top:
-        crop = mosaic
-    else:
-        crop = mosaic[top:bottom, left:right]
+    crop = (
+        mosaic if right <= left or bottom <= top else mosaic[top:bottom, left:right]
+    )
     # Fill any nan with neighbor mean
     if np.isnan(crop).any():
         fill = float(np.nanmean(crop)) if np.isfinite(crop).any() else 0.0
@@ -243,7 +251,7 @@ def fetch_region_geotiff(
             ys = np.asarray(ys).reshape(lat.shape)
         else:
             xs, ys = lon, lat
-        samples = list(ds.sample(zip(xs.ravel(), ys.ravel())))
+        samples = list(ds.sample(zip(xs.ravel(), ys.ravel(), strict=True)))
         vals = np.array([s[0] for s in samples], dtype=np.float32).reshape(height, width)
         if ds.nodata is not None:
             vals = np.where(vals == ds.nodata, np.nan, vals)

@@ -133,16 +133,23 @@ namespace RealEarth
             }
         }
 
+        static MethodInfo? _logOut;
+        static bool _logOutResolved;
+
         public static void Log(string msg)
         {
             try
             {
-                // Prefer game logger when present
-                var logType = Type.GetType("Log, Assembly-CSharp");
-                var outMethod = logType?.GetMethod("Out", new[] { typeof(string) });
-                if (outMethod != null)
+                // Prefer game logger when present (MethodInfo resolved once; hot-path callers
+                // log from budgeted per-chunk/per-tick paths).
+                if (!_logOutResolved)
                 {
-                    outMethod.Invoke(null, new object[] { $"[RealEarth] {msg}" });
+                    _logOut = Type.GetType("Log, Assembly-CSharp")?.GetMethod("Out", new[] { typeof(string) });
+                    _logOutResolved = true;
+                }
+                if (_logOut != null)
+                {
+                    _logOut.Invoke(null, new object[] { $"[RealEarth] {msg}" });
                     return;
                 }
             }

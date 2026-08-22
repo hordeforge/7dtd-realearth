@@ -17,7 +17,8 @@ PATCHER = ROOT / "Source" / "RealEarth" / "HeightQueryPatcher.cs"
 INJECT = ROOT / "Source" / "RealEarth" / "ChunkTerrainInject.cs"
 GAME_DLL = (
     Path.home()
-    / ".local/share/Steam/steamapps/common/7 Days To Die/7DaysToDie_Data/Managed/Assembly-CSharp.dll"
+    / ".local/share/Steam/steamapps/common/7 Days To Die"
+    / "7DaysToDie_Data/Managed/Assembly-CSharp.dll"
 )
 
 # Mirror of HeightQueryPatcher.PreferredConcreteTypeNames + method names (must match C#)
