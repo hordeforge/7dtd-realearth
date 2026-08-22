@@ -35,24 +35,25 @@ export class Map2D {
     this._onPointerUp = () => this._pointerUp();
     this._onWheel = (e) => this._wheel(e);
 
-    window.addEventListener("resize", this._boundResize);
+    globalThis.addEventListener("resize", this._boundResize);
     canvas.addEventListener("pointerdown", this._onPointerDown);
     canvas.addEventListener("pointermove", this._onPointerMove);
-    window.addEventListener("pointerup", this._onPointerUp);
+    globalThis.addEventListener("pointerup", this._onPointerUp);
     canvas.addEventListener("wheel", this._onWheel, { passive: false });
   }
 
   dispose() {
-    window.removeEventListener("resize", this._boundResize);
+    globalThis.removeEventListener("resize", this._boundResize);
     this.canvas.removeEventListener("pointerdown", this._onPointerDown);
     this.canvas.removeEventListener("pointermove", this._onPointerMove);
-    window.removeEventListener("pointerup", this._onPointerUp);
+    globalThis.removeEventListener("pointerup", this._onPointerUp);
     this.canvas.removeEventListener("wheel", this._onWheel);
   }
 
   resize() {
     const parent = this.canvas.parentElement;
-    const dpr = Math.min(window.devicePixelRatio || 1, 2);
+    const rawDpr = globalThis.devicePixelRatio;
+    const dpr = Math.min(rawDpr === undefined ? 1 : rawDpr, 2);
     const w = parent.clientWidth;
     const h = parent.clientHeight;
     this.canvas.width = Math.max(1, Math.floor(w * dpr));
@@ -69,16 +70,28 @@ export class Map2D {
    */
   setImage(img, meta = {}) {
     this.image = img;
-    if (meta.bbox) this.bbox = meta.bbox;
-    if (meta.settlements) this.settlements = meta.settlements;
-    if (meta.tileSize) this.tileSize = meta.tileSize;
-    if (meta.sampleWidth) this.sampleWidth = meta.sampleWidth;
-    if (meta.sampleHeight) this.sampleHeight = meta.sampleHeight;
+    if (meta.bbox) {
+      this.bbox = meta.bbox;
+    }
+    if (meta.settlements) {
+      this.settlements = meta.settlements;
+    }
+    if (meta.tileSize) {
+      this.tileSize = meta.tileSize;
+    }
+    if (meta.sampleWidth) {
+      this.sampleWidth = meta.sampleWidth;
+    }
+    if (meta.sampleHeight) {
+      this.sampleHeight = meta.sampleHeight;
+    }
     this.fit();
   }
 
   fit() {
-    if (!this.image) return;
+    if (!this.image) {
+      return;
+    }
     this.resize();
     const pw = this.canvas.parentElement.clientWidth;
     const ph = this.canvas.parentElement.clientHeight;
@@ -92,24 +105,30 @@ export class Map2D {
   }
 
   setLayerFlags({ showSettlements, showGrid, opacity }) {
-    if (showSettlements !== undefined) this.showSettlements = showSettlements;
-    if (showGrid !== undefined) this.showGrid = showGrid;
-    if (opacity !== undefined) this.opacity = opacity;
+    if (showSettlements !== undefined) {
+      this.showSettlements = showSettlements;
+    }
+    if (showGrid !== undefined) {
+      this.showGrid = showGrid;
+    }
+    if (opacity !== undefined) {
+      this.opacity = opacity;
+    }
     this.draw();
   }
 
   draw() {
-    const ctx = this.ctx;
+    const { ctx } = this;
     const parent = this.canvas.parentElement;
-    const w = parent.clientWidth;
-    const h = parent.clientHeight;
-    ctx.clearRect(0, 0, w, h);
+    ctx.clearRect(0, 0, parent.clientWidth, parent.clientHeight);
 
     // subtle grid bg
     ctx.fillStyle = "#070a10";
-    ctx.fillRect(0, 0, w, h);
+    ctx.fillRect(0, 0, parent.clientWidth, parent.clientHeight);
 
-    if (!this.image) return;
+    if (!this.image) {
+      return;
+    }
 
     ctx.save();
     ctx.translate(this.tx, this.ty);
@@ -143,7 +162,9 @@ export class Map2D {
     if (this.showSettlements) {
       for (const s of this.settlements) {
         const p = this.lonLatToImage(s.lon, s.lat);
-        if (!p) continue;
+        if (!p) {
+          continue;
+        }
         const r = Math.max(3, 5 / this.scale);
         ctx.beginPath();
         ctx.fillStyle = "#f0a500";
@@ -153,9 +174,10 @@ export class Map2D {
         ctx.fill();
         ctx.stroke();
         if (this.scale > 0.6) {
+          const { name } = s;
           ctx.fillStyle = "#e7eefc";
           ctx.font = `${12 / this.scale}px sans-serif`;
-          ctx.fillText(s.name || "?", p.x + r + 2, p.y + 3 / this.scale);
+          ctx.fillText(name === undefined || name === null ? "?" : name, p.x + r + 2, p.y + 3 / this.scale);
         }
       }
     }
@@ -164,10 +186,14 @@ export class Map2D {
 
   lonLatToImage(lon, lat) {
     const { west, south, east, north } = this.bbox;
-    if (east <= west || north <= south) return null;
+    if (east <= west || north <= south) {
+      return null;
+    }
     const u = (lon - west) / (east - west);
     const v = (north - lat) / (north - south);
-    if (!this.image) return null;
+    if (!this.image) {
+      return null;
+    }
     return {
       x: u * this.image.naturalWidth,
       y: v * this.image.naturalHeight,
@@ -176,7 +202,9 @@ export class Map2D {
 
   imageToLonLat(ix, iy) {
     const { west, south, east, north } = this.bbox;
-    if (!this.image) return null;
+    if (!this.image) {
+      return null;
+    }
     const u = ix / this.image.naturalWidth;
     const v = iy / this.image.naturalHeight;
     return {
@@ -219,29 +247,41 @@ export class Map2D {
       this.draw();
     }
 
-    if (!this.image) return;
+    if (!this.image) {
+      return;
+    }
     const { ix, iy } = this.screenToImage(sx, sy);
     if (ix < 0 || iy < 0 || ix > this.image.naturalWidth || iy > this.image.naturalHeight) {
-      if (this.onProbe) this.onProbe(null);
-      if (this.onHoverSettlement) this.onHoverSettlement(null, sx, sy);
+      if (this.onProbe) {
+        this.onProbe(null);
+      }
+      if (this.onHoverSettlement) {
+        this.onHoverSettlement(null, sx, sy);
+      }
       return;
     }
     const ll = this.imageToLonLat(ix, iy);
-    if (this.onProbe) this.onProbe({ ...ll, ix, iy, sx, sy });
+    if (this.onProbe) {
+      this.onProbe({ ...ll, ix, iy, sx, sy });
+    }
 
     let hit = null;
     if (this.showSettlements) {
       const thresh = 10 / this.scale;
       for (const s of this.settlements) {
         const p = this.lonLatToImage(s.lon, s.lat);
-        if (!p) continue;
+        if (!p) {
+          continue;
+        }
         if (Math.hypot(p.x - ix, p.y - iy) < thresh) {
           hit = s;
           break;
         }
       }
     }
-    if (this.onHoverSettlement) this.onHoverSettlement(hit, sx, sy);
+    if (this.onHoverSettlement) {
+      this.onHoverSettlement(hit, sx, sy);
+    }
   }
 
   _wheel(e) {

@@ -10,7 +10,7 @@
 	height-test height-map height-map-500 height-map-install height-map-500-install \
 	engine-audit engine-expand engine-expand-dry engine-restore dedicated-height-test \
 	demo bake bake-height package \
-	viewer serve \
+	viewer serve viewer-lint \
 	info check clean clean-build
 
 # ---------------------------------------------------------------------------
@@ -253,8 +253,8 @@ test-fast:
 		tests/test_multiplayer.py tests/test_host_fold.py tests/test_local_window.py \
 		tests/test_mp_runtime_structure.py -q --tb=line
 
-check: setup test-fast build
-	@echo "OK check (setup + test-fast + build)"
+check: setup test-fast build viewer-lint
+	@echo "OK check (setup + test-fast + build + viewer-lint)"
 
 # ---------------------------------------------------------------------------
 # Viewer
@@ -262,6 +262,9 @@ check: setup test-fast build
 viewer:
 	@$(REEARTH) export-viewer --pack "$(PACK_DEMO)" --out "$(ROOT)/viewer/data/demo"
 	@echo "OK viewer data → $(ROOT)/viewer/data/demo"
+
+viewer-lint:
+	bash scripts/lint-viewer.sh
 
 serve:
 	@$(REEARTH) serve --port 8765

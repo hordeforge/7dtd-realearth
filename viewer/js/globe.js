@@ -12,8 +12,9 @@ export class GlobeView {
   constructor(host) {
     this.host = host;
     this.renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
-    this.renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 2));
-    this.host.appendChild(this.renderer.domElement);
+    const rawDpr = globalThis.devicePixelRatio;
+    this.renderer.setPixelRatio(Math.min(rawDpr === undefined ? 1 : rawDpr, 2));
+    this.host.append(this.renderer.domElement);
 
     this.scene = new THREE.Scene();
     this.camera = new THREE.PerspectiveCamera(45, 1, 0.1, 100);
@@ -25,20 +26,22 @@ export class GlobeView {
     this.controls.maxDistance = 6;
     this.controls.enablePan = false;
 
-    const amb = new THREE.AmbientLight(0x8899bb, 0.55);
-    const key = new THREE.DirectionalLight(0xffffff, 1.1);
+    const amb = new THREE.AmbientLight(0x88_99_BB, 0.55);
+    const key = new THREE.DirectionalLight(0xFF_FF_FF, 1.1);
     key.position.set(5, 3, 2);
     this.scene.add(amb, key);
 
     // starfield
     const stars = new THREE.BufferGeometry();
     const starPos = new Float32Array(1500 * 3);
-    for (let i = 0; i < starPos.length; i++) starPos[i] = (Math.random() - 0.5) * 40;
+    for (let i = 0; i < starPos.length; i += 1) {
+      starPos[i] = (Math.random() - 0.5) * 40;
+    }
     stars.setAttribute("position", new THREE.BufferAttribute(starPos, 3));
     this.scene.add(
       new THREE.Points(
         stars,
-        new THREE.PointsMaterial({ color: 0xffffff, size: 0.02, transparent: true, opacity: 0.7 })
+        new THREE.PointsMaterial({ color: 0xFF_FF_FF, size: 0.02, transparent: true, opacity: 0.7 })
       )
     );
 
@@ -48,25 +51,27 @@ export class GlobeView {
     this.texture = null;
     this.raf = 0;
     this._onResize = () => this.resize();
-    window.addEventListener("resize", this._onResize);
+    globalThis.addEventListener("resize", this._onResize);
     this.resize();
     this._loop();
   }
 
   dispose() {
     cancelAnimationFrame(this.raf);
-    window.removeEventListener("resize", this._onResize);
+    globalThis.removeEventListener("resize", this._onResize);
     this.controls.dispose();
     this.renderer.dispose();
-    if (this.texture) this.texture.dispose();
+    if (this.texture) {
+      this.texture.dispose();
+    }
     this.host.innerHTML = "";
   }
 
   resize() {
-    const w = this.host.clientWidth;
-    const h = this.host.clientHeight;
-    this.renderer.setSize(w, h, false);
-    this.camera.aspect = w / Math.max(1, h);
+    const width = this.host.clientWidth;
+    const height = this.host.clientHeight;
+    this.camera.aspect = width / Math.max(1, height);
+    this.renderer.setSize(width, height, false);
     this.camera.updateProjectionMatrix();
   }
 
@@ -76,7 +81,9 @@ export class GlobeView {
    * @param {object} bbox region only textures: map UV into full globe
    */
   setTexture(img, settlements = [], bbox = null) {
-    if (this.texture) this.texture.dispose();
+    if (this.texture) {
+      this.texture.dispose();
+    }
     this.texture = new THREE.Texture(img);
     this.texture.colorSpace = THREE.SRGBColorSpace;
     this.texture.needsUpdate = true;
@@ -93,8 +100,15 @@ export class GlobeView {
     // Equirectangular: three.js SphereGeometry UVs already match lon/lat
     // For region packs, build a canvas full-earth with region pasted
     let mapTex = this.texture;
-    if (bbox && bbox.west != null && (bbox.east - bbox.west) < 350) {
-      mapTex = this._regionOnEarth(img, bbox);
+    if (
+      bbox &&
+      bbox.west !== undefined &&
+      bbox.west !== null &&
+      bbox.east !== undefined &&
+      bbox.east !== null &&
+      bbox.east - bbox.west < 350
+    ) {
+      mapTex = regionOnEarth(img, bbox);
     }
 
     const mat = new THREE.MeshStandardMaterial({
@@ -116,7 +130,7 @@ export class GlobeView {
     this.atmosphere = new THREE.Mesh(
       new THREE.SphereGeometry(1.03, 64, 48),
       new THREE.MeshBasicMaterial({
-        color: 0x3dd6c6,
+        color: 0x3D_D6_C6,
         transparent: true,
         opacity: 0.07,
         side: THREE.BackSide,
@@ -127,61 +141,17 @@ export class GlobeView {
     this._placeMarkers(settlements);
   }
 
-  _regionOnEarth(img, bbox) {
-    const W = 2048;
-    const H = 1024;
-    const c = document.createElement("canvas");
-    c.width = W;
-    c.height = H;
-    const ctx = c.getContext("2d");
-    // ocean base
-    ctx.fillStyle = "#0a2744";
-    ctx.fillRect(0, 0, W, H);
-    // faint grid
-    ctx.strokeStyle = "rgba(255,255,255,0.04)";
-    for (let i = 0; i <= 36; i++) {
-      const x = (i / 36) * W;
-      ctx.beginPath();
-      ctx.moveTo(x, 0);
-      ctx.lineTo(x, H);
-      ctx.stroke();
-    }
-    for (let i = 0; i <= 18; i++) {
-      const y = (i / 18) * H;
-      ctx.beginPath();
-      ctx.moveTo(0, y);
-      ctx.lineTo(W, y);
-      ctx.stroke();
-    }
-
-    const x0 = ((bbox.west + 180) / 360) * W;
-    const x1 = ((bbox.east + 180) / 360) * W;
-    const y0 = ((90 - bbox.north) / 180) * H;
-    const y1 = ((90 - bbox.south) / 180) * H;
-    ctx.drawImage(img, x0, y0, Math.max(1, x1 - x0), Math.max(1, y1 - y0));
-    // highlight box
-    ctx.strokeStyle = "rgba(240,165,0,0.8)";
-    ctx.lineWidth = 2;
-    ctx.strokeRect(x0, y0, Math.max(1, x1 - x0), Math.max(1, y1 - y0));
-
-    const tex = new THREE.CanvasTexture(c);
-    tex.colorSpace = THREE.SRGBColorSpace;
-    tex.needsUpdate = true;
-    return tex;
-  }
-
   _placeMarkers(settlements) {
-    while (this.markers.children.length) {
+    while (this.markers.children.length > 0) {
       const c = this.markers.children.pop();
       c.geometry?.dispose?.();
       c.material?.dispose?.();
     }
     const geo = new THREE.SphereGeometry(0.012, 10, 10);
-    const mat = new THREE.MeshBasicMaterial({ color: 0xf0a500 });
-    for (const s of settlements || []) {
+    const mat = new THREE.MeshBasicMaterial({ color: 0xF0_A5_00 });
+    for (const s of settlements) {
       const m = new THREE.Mesh(geo, mat);
-      const pos = lonLatToVec3(s.lon, s.lat, 1.02);
-      m.position.copy(pos);
+      m.position.copy(lonLatToVec3(s.lon, s.lat, 1.02));
       m.userData = s;
       this.markers.add(m);
     }
@@ -190,9 +160,57 @@ export class GlobeView {
   _loop() {
     this.raf = requestAnimationFrame(() => this._loop());
     this.controls.update();
-    if (this.globe) this.globe.rotation.y += 0.0008;
+    if (this.globe) {
+      this.globe.rotation.y += 0.0008;
+    }
     this.renderer.render(this.scene, this.camera);
   }
+}
+
+/**
+ * Paste a region pack image onto a full-earth canvas with a highlight box.
+ */
+function regionOnEarth(img, bbox) {
+  const W = 2048;
+  const H = 1024;
+  const c = document.createElement("canvas");
+  c.width = W;
+  c.height = H;
+  const ctx = c.getContext("2d");
+  // ocean base
+  ctx.fillStyle = "#0a2744";
+  ctx.fillRect(0, 0, W, H);
+  // faint grid
+  ctx.strokeStyle = "rgba(255,255,255,0.04)";
+  for (let i = 0; i <= 36; i += 1) {
+    const x = (i / 36) * W;
+    ctx.beginPath();
+    ctx.moveTo(x, 0);
+    ctx.lineTo(x, H);
+    ctx.stroke();
+  }
+  for (let i = 0; i <= 18; i += 1) {
+    const y = (i / 18) * H;
+    ctx.beginPath();
+    ctx.moveTo(0, y);
+    ctx.lineTo(W, y);
+    ctx.stroke();
+  }
+
+  const x0 = ((bbox.west + 180) / 360) * W;
+  const x1 = ((bbox.east + 180) / 360) * W;
+  const y0 = ((90 - bbox.north) / 180) * H;
+  const y1 = ((90 - bbox.south) / 180) * H;
+  ctx.drawImage(img, x0, y0, Math.max(1, x1 - x0), Math.max(1, y1 - y0));
+  // highlight box
+  ctx.strokeStyle = "rgba(240,165,0,0.8)";
+  ctx.lineWidth = 2;
+  ctx.strokeRect(x0, y0, Math.max(1, x1 - x0), Math.max(1, y1 - y0));
+
+  const tex = new THREE.CanvasTexture(c);
+  tex.colorSpace = THREE.SRGBColorSpace;
+  tex.needsUpdate = true;
+  return tex;
 }
 
 function lonLatToVec3(lon, lat, r = 1) {

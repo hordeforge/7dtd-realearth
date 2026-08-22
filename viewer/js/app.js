@@ -28,26 +28,44 @@ const LEGENDS = {
   ],
 };
 
+// Snapshot shape guards: the export packs may omit optional sections. Coerce
+// once here instead of fallback-defaulting every property access in the view.
+function objOrEmpty(candidate) {
+  return candidate !== undefined && candidate !== null && typeof candidate === "object" ? candidate : {};
+}
+function listOrEmpty(candidate) {
+  return Array.isArray(candidate) ? candidate : [];
+}
+function strOrEmpty(candidate) {
+  return candidate === undefined || candidate === null ? "" : candidate;
+}
+function numOrZero(candidate) {
+  return typeof candidate === "number" && Number.isFinite(candidate) ? candidate : 0;
+}
+function errorMessage(error) {
+  return error instanceof Error ? error.message : String(error);
+}
+
 const els = {
-  packSelect: document.getElementById("packSelect"),
-  jsonFile: document.getElementById("jsonFile"),
-  packInfo: document.getElementById("packInfo"),
-  layerSelect: document.getElementById("layerSelect"),
-  showSettlements: document.getElementById("showSettlements"),
-  showGrid: document.getElementById("showGrid"),
-  opacity: document.getElementById("opacity"),
-  legend: document.getElementById("legend"),
-  btnFlat: document.getElementById("btnFlat"),
-  btnGlobe: document.getElementById("btnGlobe"),
-  mapCanvas: document.getElementById("mapCanvas"),
-  globeHost: document.getElementById("globeHost"),
-  titleHud: document.getElementById("titleHud"),
-  statusHud: document.getElementById("statusHud"),
-  settlementTip: document.getElementById("settlementTip"),
-  pLon: document.getElementById("pLon"),
-  pLat: document.getElementById("pLat"),
-  pElev: document.getElementById("pElev"),
-  pUv: document.getElementById("pUv"),
+  packSelect: document.querySelector("#packSelect"),
+  jsonFile: document.querySelector("#jsonFile"),
+  packInfo: document.querySelector("#packInfo"),
+  layerSelect: document.querySelector("#layerSelect"),
+  showSettlements: document.querySelector("#showSettlements"),
+  showGrid: document.querySelector("#showGrid"),
+  opacity: document.querySelector("#opacity"),
+  legend: document.querySelector("#legend"),
+  btnFlat: document.querySelector("#btnFlat"),
+  btnGlobe: document.querySelector("#btnGlobe"),
+  mapCanvas: document.querySelector("#mapCanvas"),
+  globeHost: document.querySelector("#globeHost"),
+  titleHud: document.querySelector("#titleHud"),
+  statusHud: document.querySelector("#statusHud"),
+  settlementTip: document.querySelector("#settlementTip"),
+  pLon: document.querySelector("#pLon"),
+  pLat: document.querySelector("#pLat"),
+  pElev: document.querySelector("#pElev"),
+  pUv: document.querySelector("#pUv"),
 };
 
 const state = {
@@ -79,73 +97,75 @@ function renderLegend(layerId) {
 
 function fillLayers(meta) {
   els.layerSelect.innerHTML = "";
-  for (const layer of meta.layers || []) {
+  const layers = listOrEmpty(meta.layers);
+  for (const layer of layers) {
     const opt = document.createElement("option");
     opt.value = layer.id;
     opt.textContent = layer.label || layer.id;
-    els.layerSelect.appendChild(opt);
+    els.layerSelect.append(opt);
   }
-  if (meta.layers?.length) {
-    state.layerId = meta.layers[0].id;
+  if (layers.length > 0) {
+    state.layerId = layers[0].id;
     els.layerSelect.value = state.layerId;
   }
   renderLegend(state.layerId);
 }
 
-async function loadImage(url) {
+function loadImage(url) {
   return new Promise((resolve, reject) => {
     const img = new Image();
     img.crossOrigin = "anonymous";
-    img.onload = () => resolve(img);
-    img.onerror = () => reject(new Error(`failed to load ${url}`));
+    img.addEventListener("load", () => resolve(img));
+    img.addEventListener("error", () => reject(new Error(`failed to load ${url}`)));
     img.src = url;
   });
 }
 
 async function loadPack(baseUrl) {
   setStatus("Loading pack…");
-  state.baseUrl = baseUrl.replace(/\/$/, "");
+  state.baseUrl = baseUrl.replace(/\/$/u, "");
   const metaUrl = `${state.baseUrl}/viewer.json`;
   const res = await fetch(metaUrl);
-  if (!res.ok) throw new Error(`Cannot load ${metaUrl} (${res.status})`);
+  if (!res.ok) {
+    throw new Error(`Cannot load ${metaUrl} (${res.status})`);
+  }
   const meta = await res.json();
   state.meta = meta;
 
   fillLayers(meta);
-  els.titleHud.textContent = meta.name || "RealEarth";
-  const bbox = meta.bbox || {};
+  const layers = listOrEmpty(meta.layers);
+  const bbox = objOrEmpty(meta.bbox);
+  const metersPerBlock = meta.meters_per_block;
+  const metersText =
+    metersPerBlock === null || metersPerBlock === undefined ? "" : `~${metersPerBlock} m/sample`;
+  els.titleHud.textContent = strOrEmpty(meta.name) || "RealEarth";
   els.packInfo.innerHTML = [
-    `<strong>${meta.name || "pack"}</strong>`,
+    `<strong>${strOrEmpty(meta.name) || "pack"}</strong>`,
     `bbox ${fmt(bbox.west)}°,${fmt(bbox.south)}° → ${fmt(bbox.east)}°,${fmt(bbox.north)}°`,
-    `samples ${meta.sample_width}×${meta.sample_height}` +
-      (meta.view_width ? ` · view ${meta.view_width}×${meta.view_height}` : ""),
-    meta.meters_per_block != null ? `~${meta.meters_per_block} m/sample` : "",
-    `${meta.settlement_count ?? 0} settlements · ${(meta.tiles || []).length} tiles`,
+    `samples ${meta.sample_width}×${meta.sample_height}${meta.view_width ? ` · view ${meta.view_width}×${meta.view_height}` : ""}`,
+    metersText,
+    `${numOrZero(meta.settlement_count)} settlements · ${layers.length} tiles`,
   ]
     .filter(Boolean)
     .join("<br/>");
 
-  // settlements
-  state.settlements = [];
-  try {
-    const sres = await fetch(`${state.baseUrl}/settlements.json`);
-    if (sres.ok) state.settlements = await sres.json();
-  } catch {
-    /* optional */
-  }
+  // settlements (optional sibling artifact; absence is not a failure)
+  const sres = await fetch(`${state.baseUrl}/settlements.json`).catch(() => null);
+  state.settlements = sres && sres.ok ? await sres.json() : [];
 
   // layer images
   state.images = {};
-  for (const layer of meta.layers || []) {
+  for (const layer of layers) {
     state.images[layer.id] = await loadImage(`${state.baseUrl}/${layer.file}`);
   }
 
-  // raw elev for probe
+  // raw elev for probe (optional artifact)
+  const elevMeta = objOrEmpty(meta.elev_raw);
+  state.elevMeta = elevMeta.file ? elevMeta : null;
   state.elevRaw = null;
-  state.elevMeta = meta.elev_raw || null;
-  if (state.elevMeta?.file) {
-    try {
-      const img = await loadImage(`${state.baseUrl}/${state.elevMeta.file}`);
+  if (state.elevMeta) {
+    const img = await loadImage(`${state.baseUrl}/${state.elevMeta.file}`).catch(() => null);
+    if (img) {
       const c = document.createElement("canvas");
       c.width = img.naturalWidth;
       c.height = img.naturalHeight;
@@ -156,27 +176,25 @@ async function loadPack(baseUrl) {
         w: c.width,
         h: c.height,
       };
-    } catch {
-      /* optional */
     }
   }
 
   applyLayer();
-  setStatus(`Loaded · ${meta.layers?.length || 0} layers`);
+  setStatus(`Loaded · ${layers.length} layers`);
 }
 
 function fmt(n) {
-  if (n == null || Number.isNaN(n)) return "?";
+  if (n === null || n === undefined || Number.isNaN(n)) {
+    return "?";
+  }
   return Number(n).toFixed(2);
 }
 
-function currentImage() {
-  return state.images[state.layerId] || Object.values(state.images)[0];
-}
-
 function applyLayer() {
-  const img = currentImage();
-  if (!img || !state.meta) return;
+  const img = state.images[state.layerId] || Object.values(state.images)[0];
+  if (!img || !state.meta) {
+    return;
+  }
   renderLegend(state.layerId);
 
   if (state.mode === "flat") {
@@ -211,9 +229,6 @@ function ensureMap2D() {
   }
   els.mapCanvas.hidden = false;
   els.globeHost.hidden = true;
-  if (state.globe) {
-    /* keep but hidden */
-  }
   state.map2d.resize();
 }
 
@@ -247,8 +262,7 @@ function updateProbe(p) {
     // Prefer luminance of exported elevation_raw (16-bit becomes dual-byte in some browsers).
     // Our export is single-channel I;16; browsers often expand. Fall back to R channel scale.
     const t = pix[0] / 255;
-    const elev =
-      (state.elevMeta.offset_m || 0) + t * (state.elevMeta.scale_m || 4500);
+    const elev = numOrZero(state.elevMeta.offset_m) + t * (numOrZero(state.elevMeta.scale_m) || 4500);
     elevText = `${elev.toFixed(0)} m (approx)`;
   }
   els.pElev.textContent = elevText;
@@ -262,8 +276,9 @@ function showTip(s, sx, sy) {
   els.settlementTip.hidden = false;
   els.settlementTip.style.left = `${sx}px`;
   els.settlementTip.style.top = `${sy}px`;
-  const pop = s.population != null ? s.population.toLocaleString() : "?";
-  els.settlementTip.innerHTML = `<strong>${s.name}</strong><br/>${s.band || ""} · pop ${pop}<br/>${s.lat?.toFixed?.(3)}°, ${s.lon?.toFixed?.(3)}°`;
+  const population =
+    s.population === null || s.population === undefined ? "?" : s.population.toLocaleString();
+  els.settlementTip.innerHTML = `<strong>${s.name}</strong><br/>${strOrEmpty(s.band)} · pop ${population}<br/>${s.lat?.toFixed?.(3)}°, ${s.lon?.toFixed?.(3)}°`;
 }
 
 function setMode(mode) {
@@ -291,64 +306,60 @@ els.opacity.addEventListener("input", () => {
     state.map2d.setLayerFlags({ opacity: Number(els.opacity.value) });
   }
 });
-els.packSelect.addEventListener("change", async () => {
-  try {
-    await loadPack(els.packSelect.value);
-  } catch (e) {
-    setStatus(String(e.message || e));
-    els.packInfo.textContent = String(e.message || e);
-  }
+els.packSelect.addEventListener("change", () => {
+  loadPack(els.packSelect.value).catch((error) => {
+    setStatus(errorMessage(error));
+    els.packInfo.textContent = errorMessage(error);
+  });
 });
 
-els.jsonFile.addEventListener("change", async () => {
+els.jsonFile.addEventListener("change", () => {
   const file = els.jsonFile.files?.[0];
-  if (!file) return;
-  try {
-    // File picker only gives viewer.json; sibling images must be same-folder via directory not available.
-    // Support loading meta + ask user that export folder should be served over HTTP.
-    const text = await file.text();
-    const meta = JSON.parse(text);
-    // If user picked a file, try relative to a blob base by reading nothing else —
-    // instead prompt to use served packs.
-    setStatus("Use a served pack path for full layers. Meta only loaded for preview.");
-    state.meta = meta;
-    fillLayers(meta);
-    els.packInfo.textContent =
-      "Loaded viewer.json from disk. Serve the export folder over HTTP and pick it in Dataset for images.";
-  } catch (e) {
-    setStatus(String(e.message || e));
+  if (!file) {
+    return;
   }
+  // File picker only gives viewer.json; sibling images must be same-folder via directory not available.
+  // Support loading meta + ask user that export folder should be served over HTTP.
+  file
+    .text()
+    .then((text) => JSON.parse(text))
+    .then((meta) => {
+      // If user picked a file, try relative to a blob base by reading nothing else —
+      // instead prompt to use served packs.
+      setStatus("Use a served pack path for full layers. Meta only loaded for preview.");
+      state.meta = meta;
+      fillLayers(meta);
+      els.packInfo.textContent =
+        "Loaded viewer.json from disk. Serve the export folder over HTTP and pick it in Dataset for images.";
+    })
+    .catch((error) => {
+      setStatus(errorMessage(error));
+    });
 });
 
 // discover extra packs if catalog exists
 async function boot() {
-  try {
-    const cat = await fetch("data/catalog.json");
-    if (cat.ok) {
-      const list = await cat.json();
-      for (const item of list) {
-        const opt = document.createElement("option");
-        opt.value = item.path;
-        opt.textContent = item.name || item.path;
-        els.packSelect.appendChild(opt);
-      }
+  const cat = await fetch("data/catalog.json").catch(() => null);
+  if (cat && cat.ok) {
+    const list = await cat.json();
+    for (const item of list) {
+      const opt = document.createElement("option");
+      opt.value = item.path;
+      opt.textContent = item.name || item.path;
+      els.packSelect.append(opt);
     }
-  } catch {
-    /* optional */
   }
 
   const params = new URLSearchParams(location.search);
   const pack = params.get("pack") || els.packSelect.value;
   els.packSelect.value = pack;
-  try {
-    await loadPack(pack);
-  } catch (e) {
+  await loadPack(pack).catch(() => {
     setStatus(`No pack at ${pack}. Run: realearth export-viewer && realearth serve`);
     els.packInfo.innerHTML =
       `Missing <code>${pack}/viewer.json</code>.<br/>` +
       `From repo: <code>realearth export-viewer --pack data/samples/demo_region --out viewer/data/demo</code><br/>` +
       `then <code>realearth serve</code>`;
-  }
+  });
 }
 
-boot();
+await boot();
