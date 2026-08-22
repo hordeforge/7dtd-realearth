@@ -185,34 +185,55 @@ def measure_urban_edge_radius_m(
         return 0.0
     thr = max(float(min_abs), float(frac_of_peak) * peak)
 
-    # BFS 4-connected component above threshold containing the peak.
-    visited = np.zeros((h, w), dtype=bool)
-    stack = [(py, px)]
-    visited[py, px] = True
-    cells: list[tuple[int, int]] = []
-    while stack:
-        y, x = stack.pop()
-        if dens[y, x] < thr:
-            continue
-        cells.append((y, x))
-        for dy, dx in ((-1, 0), (1, 0), (0, -1), (0, 1)):
-            ny, nx = y + dy, x + dx
-            if 0 <= ny < h and 0 <= nx < w and not visited[ny, nx]:
-                visited[ny, nx] = True
-                if dens[ny, nx] >= thr:
-                    stack.append((ny, nx))
+    lat = north - (py + 0.5) / h * (north - south)
 
-    if len(cells) <= 1:
+    def _degenerate() -> float:
         # Degenerate peak: one sample → half a pixel as minimum footprint.
-        lat = north - (py + 0.5) / h * (north - south)
         mx, mz = meters_per_pixel(west, south, east, north, w, h, at_lat=lat)
         return float(max(150.0, 0.5 * max(mx, mz)))
 
-    lat = north - (py + 0.5) / h * (north - south)
+    # 4-connected component of cells >= thr containing the peak, via scanline
+    # flood fill: one Python step per horizontal run, marking whole runs with
+    # numpy slices (a per-cell BFS stalls on world-size density maps).
+    if dens[py, px] < thr:
+        return _degenerate()
+
+    visited = np.zeros((h, w), dtype=bool)
+    stack: list[tuple[int, int]] = [(py, px)]
+    while stack:
+        y, x = stack.pop()
+        if visited[y, x] or dens[y, x] < thr:
+            continue
+        x0 = x
+        while x0 > 0 and dens[y, x0 - 1] >= thr and not visited[y, x0 - 1]:
+            x0 -= 1
+        x1 = x
+        while x1 < w - 1 and dens[y, x1 + 1] >= thr and not visited[y, x1 + 1]:
+            x1 += 1
+        visited[y, x0 : x1 + 1] = True
+        for ny in (y - 1, y + 1):
+            if not (0 <= ny < h):
+                continue
+            seg = dens[ny, x0 : x1 + 1] >= thr
+            seg &= ~visited[ny, x0 : x1 + 1]
+            idxs = np.nonzero(seg)[0]
+            if idxs.size == 0:
+                continue
+            # One seed per consecutive run; runs behind a visited gap in the
+            # parent span are still reachable through this row's own seeds.
+            starts = np.concatenate(([0], np.nonzero(np.diff(idxs) > 1)[0] + 1))
+            for s in starts:
+                nx_ = int(idxs[s]) + x0
+                if not visited[ny, nx_]:
+                    stack.append((ny, nx_))
+
+    ys, xs = np.nonzero(visited)
+    if ys.size <= 1:
+        return _degenerate()
+
     mx, mz = meters_per_pixel(west, south, east, north, w, h, at_lat=lat)
-    cells_arr = np.asarray(cells, dtype=np.float64)
-    dx_m = (cells_arr[:, 1] - px) * mx
-    dz_m = (cells_arr[:, 0] - py) * mz
+    dx_m = (xs.astype(np.float64) - px) * mx
+    dz_m = (ys.astype(np.float64) - py) * mz
     max_d = float(np.sqrt(dx_m * dx_m + dz_m * dz_m).max())
     return float(min(max_radius_m, max(150.0, max_d)))
 
