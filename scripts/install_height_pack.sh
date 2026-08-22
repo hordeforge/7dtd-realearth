@@ -116,7 +116,7 @@ for gw in \
 do
   if [[ -d "$WORLD" ]]; then
     mkdir -p "$gw"
-    rm -rf "$gw/$WORLD_NAME"
+    rm -rf "${gw:?}/$WORLD_NAME"
     cp -a "$WORLD" "$gw/$WORLD_NAME"
     echo "World → $gw/$WORLD_NAME"
   fi

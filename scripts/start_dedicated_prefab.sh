@@ -42,7 +42,7 @@ if [[ "$WORLD_NAME" != "RWG" ]]; then
     exit 1
   fi
   if [[ -f "$WORLD_DIR/prefabs.xml" ]]; then
-    pref_count=$(rg -c "<decoration" "$WORLD_DIR/prefabs.xml" 2>/dev/null || echo 0)
+    pref_count=$(grep -c "<decoration" "$WORLD_DIR/prefabs.xml" 2>/dev/null || echo 0)
   fi
 fi
 
@@ -150,9 +150,9 @@ echo "started pid=$(cat "$USERDATA/dedicated.pid")"
 # RWG gen can take a while; allow up to ~10 min
 ready=0
 for i in $(seq 1 300); do
-  if rg -q "StartGame done" "$LOG" 2>/dev/null; then
+  if grep -q "StartGame done" "$LOG" 2>/dev/null; then
     echo "Server ready ($i * 2s)"
-    rg -n "GameWorld|GameName|WorldGen|EnemySpawnMode|StartGame done|createWorld|Generating|RWG" "$LOG" | head -40
+    grep -En "GameWorld|GameName|WorldGen|EnemySpawnMode|StartGame done|createWorld|Generating|RWG" "$LOG" | head -40
     ready=1
     break
   fi
@@ -173,6 +173,6 @@ if [[ "$ready" != "1" ]]; then
   tail -60 "$LOG" || true
   exit 1
 fi
-ss -uln | rg '2690[0-2]|8081' || true
+ss -uln | grep -E '2690[0-2]|8081' || true
 echo "OK dedicated up: world=$WORLD_NAME size=$WORLD_GEN_SIZE seed=$WORLD_GEN_SEED"
 echo "LiteNet join port typically 26902. Stop: kill \$(cat $USERDATA/dedicated.pid)"

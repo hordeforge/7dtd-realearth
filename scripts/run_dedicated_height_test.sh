@@ -232,14 +232,14 @@ while (( SECONDS < deadline )); do
     break
   fi
   if [[ -f "$LOG" ]]; then
-    if rg -q "Crash!!!|UnsafeChunkData|IndexOutOfRangeException|TypeInitializationException|Exception in thread GenerateChunks" "$LOG" 2>/dev/null; then
+    if grep -Eq "Crash!!!|UnsafeChunkData|IndexOutOfRangeException|TypeInitializationException|Exception in thread GenerateChunks" "$LOG" 2>/dev/null; then
       echo "FAIL: crash/exception detected in log"
       ok=0
       break
     fi
-    if rg -q "createWorld\(\) done|StartGame done" "$LOG" 2>/dev/null \
-      && rg -q "World\.Load:|createWorld:" "$LOG" 2>/dev/null; then
-      if rg -q "ENGINE EXPANDED|engineYDim=16384|YDim=16384" "$LOG" 2>/dev/null; then
+    if grep -Eq "createWorld\(\) done|StartGame done" "$LOG" 2>/dev/null \
+      && grep -Eq "World\.Load:|createWorld:" "$LOG" 2>/dev/null; then
+      if grep -Eq "ENGINE EXPANDED|engineYDim=16384|YDim=16384" "$LOG" 2>/dev/null; then
         if (( ok == 0 )); then
           ok=1
           loaded_at=$SECONDS
@@ -262,7 +262,7 @@ while (( SECONDS < deadline )); do
         fi
         # Soak window: keep running and re-check for crash lines
         if (( SECONDS - loaded_at >= SOAK_SEC )); then
-          if rg -q "Crash!!!|UnsafeChunkData|IndexOutOfRangeException|Exception in thread GenerateChunks" "$LOG" 2>/dev/null; then
+          if grep -Eq "Crash!!!|UnsafeChunkData|IndexOutOfRangeException|Exception in thread GenerateChunks" "$LOG" 2>/dev/null; then
             echo "FAIL: crash during soak"
             ok=0
           else
@@ -277,7 +277,7 @@ while (( SECONDS < deadline )); do
 done
 
 echo "======== RealEarth lines ========"
-rg -n "RealEarth|ENGINE EXPANDED|YDim|maxGameY|mpOrigin|SharedFixed|createWorld|World\.Load|Crash|Exception|EXC |SetHalf|UnsafeChunk" "$LOG" 2>/dev/null | head -100 || true
+grep -En "RealEarth|ENGINE EXPANDED|YDim|maxGameY|mpOrigin|SharedFixed|createWorld|World\.Load|Crash|Exception|EXC |SetHalf|UnsafeChunk" "$LOG" 2>/dev/null | head -100 || true
 echo "======== last 40 log lines ========"
 tail -40 "$LOG" 2>/dev/null || true
 
@@ -297,43 +297,43 @@ fi
 
 if (( ok == 1 )); then
   # Final gate checks
-  if ! rg -q "YDim=16384|engineYDim=16384" "$LOG"; then
+  if ! grep -Eq "YDim=16384|engineYDim=16384" "$LOG"; then
     echo "FAIL: missing Everest-scale YDim marker"
     exit 1
   fi
-  if ! rg -q "createWorld\(\) done|StartGame done" "$LOG"; then
+  if ! grep -Eq "createWorld\(\) done|StartGame done" "$LOG"; then
     echo "FAIL: missing createWorld/StartGame done"
     exit 1
   fi
-  if ! rg -q "RealEarth_H500|$WORLD_NAME" "$LOG"; then
+  if ! grep -Eq "RealEarth_H500|$WORLD_NAME" "$LOG"; then
     echo "FAIL: missing world name"
     exit 1
   fi
-  if rg -q "Crash!!!|UnsafeChunkData|Index was outside the bounds of the array" "$LOG"; then
+  if grep -Eq "Crash!!!|UnsafeChunkData|Index was outside the bounds of the array" "$LOG"; then
     echo "FAIL: crash markers present"
     exit 1
   fi
-  if rg -q "Spawn sample pack-center|sessionPeak=|Height inject" "$LOG"; then
+  if grep -Eq "Spawn sample pack-center|sessionPeak=|Height inject" "$LOG"; then
     echo "OK: height sample/inject lines present"
   fi
-  if rg -q "mpOrigin=SharedFixed|MultiplayerOriginMode.*SharedFixed" "$LOG"; then
+  if grep -Eq "mpOrigin=SharedFixed|MultiplayerOriginMode.*SharedFixed" "$LOG"; then
     echo "OK: SharedFixed multiplayer origin active"
-  elif rg -q "RealEarth init OK" "$LOG"; then
+  elif grep -Eq "RealEarth init OK" "$LOG"; then
     # Confirm installed config on disk
-    if rg -q '"MultiplayerOriginMode"\s*:\s*"SharedFixed"' "$DS_DIR/Mods/RealEarth/Config/realearth.json" 2>/dev/null; then
+    if grep -Eq '"MultiplayerOriginMode"[[:space:]]*:[[:space:]]*"SharedFixed"' "$DS_DIR/Mods/RealEarth/Config/realearth.json" 2>/dev/null; then
       echo "OK: SharedFixed in dedicated realearth.json"
     else
       echo "NOTE: SharedFixed not confirmed in log (check Config)"
     fi
   fi
-  if rg -q "gameY=5[0-9]{2}|sessionPeak=5[0-9]{2}|maxH=5[0-9]{2}" "$LOG"; then
+  if grep -Eq "gameY=5[0-9]{2}|sessionPeak=5[0-9]{2}|maxH=5[0-9]{2}" "$LOG"; then
     echo "OK: near-500 height band observed (H500 peak)"
-  elif rg -q "gameY=8[0-9]{3}|sessionPeak=8[0-9]{3}|maxH=8[0-9]{3}" "$LOG"; then
+  elif grep -Eq "gameY=8[0-9]{3}|sessionPeak=8[0-9]{3}|maxH=8[0-9]{3}" "$LOG"; then
     echo "OK: Everest-scale height band observed"
   else
     echo "NOTE: peak height band not in log (load still clean)"
   fi
-  if rg -q "Patch failed ITerrainGenerator|Patch failed IChunkProvider" "$LOG"; then
+  if grep -Eq "Patch failed ITerrainGenerator|Patch failed IChunkProvider" "$LOG"; then
     echo "NOTE: still saw interface patch noise (should be gone after concrete-only patch)"
   fi
   echo

@@ -242,7 +242,7 @@ if [[ ! -f "$OPTS" ]]; then
     'DiscordDisabled=true' \
     >"$OPTS"
 else
-  if rg -q 'DiscordDisabled' "$OPTS"; then
+  if grep -q 'DiscordDisabled' "$OPTS"; then
     sed -i 's/^DiscordDisabled=.*/DiscordDisabled=true/' "$OPTS"
   else
     printf '\nDiscordDisabled=true\n' >>"$OPTS"
@@ -265,14 +265,14 @@ echo "$SPID" >"$USERDATA/dedicated.pid"
 echo "$LOG" >"$USERDATA/dedicated.logpath"
 
 # Wait until LiteNetLib is up
-for i in $(seq 1 90); do
+for _ in $(seq 1 90); do
   if ! kill -0 "$SPID" 2>/dev/null; then
     echo "ERROR: server exited early" >&2
     tail -40 "$LOG" 2>/dev/null || true
     exit 1
   fi
-  if [[ -f "$LOG" ]] && rg -q "LiteNetLib server started" "$LOG" 2>/dev/null \
-    && rg -q "createWorld\(\) done|StartGame done" "$LOG" 2>/dev/null; then
+  if [[ -f "$LOG" ]] && grep -q "LiteNetLib server started" "$LOG" 2>/dev/null \
+    && grep -Eq "createWorld\(\) done|StartGame done" "$LOG" 2>/dev/null; then
     echo "OK: dedicated ready (LiteNetLib + world loaded)"
     break
   fi
@@ -280,9 +280,9 @@ for i in $(seq 1 90); do
 done
 
 echo "======== network prefs from log ========"
-rg -n "EACEnabled|Crossplay|ServerDisabledNetwork|ServerVisibility|Twitch|Discord|LiteNetLib server|EOS|SteamNetworking" "$LOG" 2>/dev/null | head -40 || true
+grep -En "EACEnabled|Crossplay|ServerDisabledNetwork|ServerVisibility|Twitch|Discord|LiteNetLib server|EOS|SteamNetworking" "$LOG" 2>/dev/null | head -40 || true
 echo "======== listening UDP ========"
-ss -ulnp 2>/dev/null | rg '2690|7Days' || true
+ss -ulnp 2>/dev/null | grep -E '2690|7Days' || true
 echo
 echo "Server left running. Stop with: kill \$(cat $USERDATA/dedicated.pid)"
 echo "Load-test bots (sibling project): cd ../7dtd-loadgen && make join"

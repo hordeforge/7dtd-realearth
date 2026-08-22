@@ -1,6 +1,9 @@
 # RealEarth — top-level Makefile
 # Run `make` or `make help` for targets.
 
+# Recipes use bash ([[ ]], echo -n); /bin/sh is dash on Debian/Ubuntu.
+SHELL := /bin/bash
+
 .DEFAULT_GOAL := help
 .PHONY: help help-all \
 	setup tools-sync \
