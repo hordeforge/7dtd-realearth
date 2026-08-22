@@ -58,6 +58,7 @@ flowchart TB
 | Streamed runtime lessons | [`realearth-runtime.md`](realearth-runtime.md) | MODIFICATIONS (status only) |
 | Engine surfaces used by RealEarth | [`realearth-surfaces.md`](realearth-surfaces.md) | research terrain-height / save-region |
 | Adversarial review catalog | [`realearth-review.md`](realearth-review.md) | MODIFICATIONS (status only) |
+| Attack surface / threat model + security policy | [`THREAT_MODEL.md`](THREAT_MODEL.md) + [`../SECURITY.md`](../SECURITY.md) | realearth-review (robustness only), MODIFICATIONS (status) |
 | Height YDim / stock APIs (generic RE) | [`../../7dtd-research/docs/terrain-height.md`](../../7dtd-research/docs/terrain-height.md) | HEIGHT_LIMITS (product policy) |
 
 **Status tags** (MODIFICATIONS + TODO only): **Done** · **Partial** · **Needed** · **Later** · **Ops**.  
@@ -102,6 +103,7 @@ Never mark Done without live measure (GAP evidence checklist).
 
 | Doc | One line |
 |---|---|
+| [SECURITY](../SECURITY.md) | Reporting channel, scope, supported versions |
 | [MODLET](MODLET.md) | Install, expand, config keys |
 | [PROTON_INSTALL](PROTON_INSTALL.md) | Steam/Proton paths |
 | [GAME_VERSION](GAME_VERSION.md) | Local pins |
@@ -125,6 +127,7 @@ Never mark Done without live measure (GAP evidence checklist).
 | [realearth-runtime](realearth-runtime.md) | Streamed architecture lessons |
 | [realearth-surfaces](realearth-surfaces.md) | Engine surfaces Streamed depends on |
 | [realearth-review](realearth-review.md) | Adversarial failure catalog |
+| [THREAT_MODEL](THREAT_MODEL.md) | Entry points, trust boundaries, ranked threats, mitigations map |
 
 ---
 
@@ -144,6 +147,7 @@ Generic engine machines (gmUpdate, AI LOD, path, chunk flags, net bands): [resea
 
 ## Changelog
 
+- **2026-08-23:** THREAT_MODEL + SECURITY registered (threat model owns attack-surface documentation).
 - **2026-07-19:** ENGINE_LIMITATIONS §7b + link generic research engine-limitations map.
 - **2026-07-19:** Ownership/related docs across product tree; thin GAME_VERSION/PROTON expanded; DYNAMIC_CHUNK phase table product-aligned.
 - **2026-07-18:** Cross-tree related docs on LON_LAT / ABSOLUTE / SINGLE / HEIGHT / ENGINE / MODIFICATIONS / MP; HEIGHT bottom line aligned to expand-required policy.
