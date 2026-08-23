@@ -83,8 +83,8 @@ Code anchors:
 
 ```mermaid
 stateDiagram-v2
-  [*] --> SharedFixed: MapMode SharedFixed
-  [*] --> SoloSlide: MapMode SoloSlide
+  [*] --> SharedFixed: MultiplayerOriginMode SharedFixed
+  [*] --> SoloSlide: MultiplayerOriginMode SoloSlide
 
   state SharedFixed {
     [*] --> AbsolutePinned

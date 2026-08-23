@@ -263,7 +263,7 @@ Legend for **Primary layer**: A binary · B Harmony · C XML · D world data · 
 
 | # | Gap | Why product needs it | Primary | Secondary | Severity |
 |---:|---|---|---|---|---|
-| 1 | **Complete height inject on live 3.0.1** | Streamed DEM is the product | B | A, F | **Blocker** |
+| 1 | **Complete height inject on live 3.1.0** | Streamed DEM is the product | B | A, F | **Blocker** |
 | 2 | **All concrete height APIs + RWG generators** | Missed path = stock hills | B | RE dump | **Blocker** |
 | 3 | **GenerateTerrain order vs mesh/decoration** | Inject overwritten or ignored | B | F | **Blocker** |
 | 4 | **Byte heightmap lossiness** | Everest not in byte API | B + A | policy | **Blocker** |
@@ -469,7 +469,7 @@ No Harmony required for pure pack quality; **runtime still needs inject** to sho
 
 ### Slice 1: Terrain truth (Blocker)
 
-1. Live retarget height + `GenerateTerrain` on 3.0.1 (B).  
+1. Live retarget height + `GenerateTerrain` on 3.1.0 (B).  
 2. H500 then Everest soak: mesh, collision, save (A+F).  
 3. Biome paint path after height (B + E biomes.png / landcover).  
 4. Console proof: `reheight` matches sea+elev.

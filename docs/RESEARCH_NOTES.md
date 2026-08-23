@@ -412,8 +412,8 @@ No known maintained **true planetary streaming** 7DTD mod as of research date. R
 
 ### Immediate
 
-- [x] Pin target version **3.0.1** in notes 
-- [ ] Update README/DESIGN version strings to 3.0.1 
+- [x] Pin target version **3.0.1** in notes (superseded: product now pinned to **3.1.0**, see §Version) 
+- [x] Update README/DESIGN version strings (now **V3.1.0**, not 3.0.1) 
 - [ ] Color-pick real `biomes.png` on 3.0.1 install → fix `landcover.py` 
 - [ ] Verify Custom Height Map Importer works on 3.0.1 (or find successor) 
 - [ ] Diff `rwgmixer.xml` / biomes.xml from 3.0.1 vs our assumptions 

@@ -280,17 +280,20 @@ Each `.rte` tile covers `TileSize × TileSize` blocks (default **512 m**).
 magic: "RTE1"
 tile_x, tile_z: int32
 version, flags: uint16
-elevation: zlib uint16[N]     # real meters (offset/scale in manifest)
-landcover: uint8[N]
-population: uint8[N]          # log-scaled density
-optional: water/road masks, poi index
+width, height, reserved: uint32
+elevation: zlib uint16[N]     # real meters; fixed +11000 m offset, scale 1 (tile_format.py / RteTile.cs)
+landcover: zlib uint8[N]
+population: zlib uint8[N]     # log-scaled density
+optional: poi blob             # water/road masks are future work (see §6.3)
 ```
+
+Each channel is a u32 length prefix followed by its zlib blob.
 
 On disk:
 
 ```text
 pack/
-  earth.manifest.json      # CRS, tile size, bbox or planet, sources, build id
+  earth.manifest.json      # CRS, tile size, bbox or planet, sources, name/version
   tiles/{tz}/{tx}.rte
   settlements.json         # optional named cores
   export_7dtd/             # optional bake images

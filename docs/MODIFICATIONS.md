@@ -180,7 +180,7 @@ Geography without people is empty wilderness. Separate from height.
 
 ```text
 P0  Y-expand correct (A) · re-validate every update
-P1  Height + GenerateTerrain inject live 3.0.1 (B)
+P1  Height + GenerateTerrain inject live 3.1.0 (B)
 P2  Streamed session, tile bubble, fail-closed tiles (C)
 P3  Density stamps + biome underlay on real surface (E + B)
 P4  Save/reload + build deltas (F)

@@ -52,7 +52,7 @@ export SEVENDTD_GAME_DIR="$HOME/.local/share/Steam/steamapps/common/7 Days To Di
 
 If product height is required, also `make engine-expand` (Verify restores stock YDim).
 
-Verified on this machine after latest Steam download: dedicated **V 3.0.1 (b4)** loads RealEarth + `World.Load: RealEarth`.
+Earlier verification (before the current V3.1.0 pin, see [GAME_VERSION](GAME_VERSION.md)): dedicated **V 3.0.1 (b4)** loaded RealEarth + `World.Load: RealEarth`.
 
 ## One-shot install
 

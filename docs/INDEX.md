@@ -111,6 +111,7 @@ Never mark Done without live measure (GAP evidence checklist).
 | [ENGINE_LIMITATIONS](ENGINE_LIMITATIONS.md) | Stock blockers for 1:1 Earth (+ §7b other) |
 | [research engine-limitations](../../7dtd-research/docs/engine-limitations.md) | Generic dedi ceilings |
 | [MODIFICATIONS](MODIFICATIONS.md) | Product surface status A-H |
+| [IMPLEMENTATION_PLAN](IMPLEMENTATION_PLAN.md) | P0-P8 order, outcomes, test gates |
 | [GAP_HARMONY_MODLETS](GAP_HARMONY_MODLETS.md) | Gaps + API choice (XPath/Harmony/…) |
 | [LON_LAT](LON_LAT.md) | Dual coords, limits |
 | [SINGLE_WORLD](SINGLE_WORLD.md) | One session; Baked vs Streamed |
