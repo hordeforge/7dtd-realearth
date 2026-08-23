@@ -4,11 +4,11 @@ A **1:1 scale real-world Earth** project for **7 Days to Die V3.1.0** (Henpocaly
 
 This is **not** a single giant heightmap. Earth at 1 block = 1 m is ~40,075 km wide. Vanilla maps top out around 8–16 km. RealEarth uses **offline tile packs** + a **Harmony runtime** that streams only what is near the player.
 
-**Docs:** [INDEX](docs/INDEX.md) (hub) · [DESIGN](DESIGN.md) (architecture) · [MODLET](docs/MODLET.md) (install + expand) · [TODO](TODO.md) (backlog)
+**Docs:** [INDEX](docs/INDEX.md) (hub) · [DESIGN](DESIGN.md) (architecture) · [MODLET](docs/MODLET.md) (install + expand) · [CHANGELOG](CHANGELOG.md) (what changed per release) · [TODO](TODO.md) (backlog)
 
 Debug FOW / city names: see [MODLET](docs/MODLET.md) config keys (details in [CITY_MAP_LABELS](docs/CITY_MAP_LABELS.md)).
 
-## What you get today (v0.1)
+## What you get today
 
 | Piece | Status |
 |---|---|

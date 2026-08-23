@@ -12,6 +12,7 @@ cp "$ROOT/ModInfo.xml" "$OUT/"
 cp "$ROOT/Config/realearth.json" "$OUT/Config/"
 [[ -f "$ROOT/Config/nav_objects.xml" ]] && cp -f "$ROOT/Config/nav_objects.xml" "$OUT/Config/"
 cp "$ROOT/ATTRIBUTION.md" "$OUT/" 2>/dev/null || true
+cp "$ROOT/CHANGELOG.md" "$OUT/" 2>/dev/null || true
 # Ensure single-world defaults are present in packaged config
 if command -v python3 >/dev/null; then
   python3 - <<'PY' "$OUT/Config/realearth.json"
