@@ -281,7 +281,7 @@ namespace RealEarth
             {
                 throw new InvalidOperationException(
                     $"Config '{path}' is not a valid realearth.json ({ex.Message}). " +
-                    "Fix or delete the file; built-in defaults apply until then.",
+                    "Fix or delete the file; mod init aborts until then (no streamer/session).",
                     ex);
             }
         }

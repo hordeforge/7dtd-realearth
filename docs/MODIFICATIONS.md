@@ -61,7 +61,7 @@ Stock terrain and world gen do not know about Earth DEM. Expand alone still yiel
 | **Expand product guard** | Refuse real-height claims on stock YDim | **Partial** (`ExpandProductGuard`; live expand soak open) |
 | **Session origin policy** | SoloSlide / SharedFixed / fold | **Partial** (`SessionOriginPolicy` wired into WorldSession) |
 | **Surface-Y stamps** | Prefab Y on real DEM surface | **Partial** (`StampSurfaceY` + density.stamp_prefab_root_y) |
-| **Session snapshot** | Absolute origin save/reload JSON | **Partial** (`SessionStateStore`; not hooked to stock save yet) |
+| **Session snapshot** | Absolute origin save/reload JSON | **Partial** (`SessionStateStore`; hooked to stock `SaveWorld` / `SaveWorldState`, live proof open) |
 | **Density budgets** | Cap stamps / sleeper weights | **Partial** (`DensityBudget`) |
 | **CDN tile URL + fail-closed** | Optional CDN; miss → sample policy | **Partial** (`CdnTilePolicy`) |
 | **Sparse Y scaffold** | Section index math for tall columns | **Partial** (`SparseYScaffold` + AbsoluteHeightStore) |
@@ -144,7 +144,7 @@ Geography without people is empty wilderness. Separate from height.
 | **Identical expand on all peers** | Tall Y desync | **Ops / Needed** |
 | **Player build deltas per tile** | Survive unload + pack update | **Needed** |
 | **Server authoritative stream** | Dedicated hosts or proxies tiles | **Needed** for true online |
-| **Save/reload absolute session** | Spawn, origin, stream state | **Needed** |
+| **Save/reload absolute session** | Spawn, origin, stream state | **Partial** (`SessionStateStore` + save hooks; live proof open) |
 
 ---
 

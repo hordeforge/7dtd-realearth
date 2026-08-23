@@ -60,8 +60,8 @@ provenance and distinguish prototypes from verified in-game behavior.
 
 ## Viewer
 
-- [ ] Replace or complete the experimental in-browser `.rte` streaming path for
-  datasets too large for one mosaic.
+- [ ] Add in-browser `.rte` streaming for datasets too large for one mosaic
+  (the experimental decoder was removed; see CHANGELOG).
 - [ ] Add offline/vendor support for the Three.js dependency.
 - [ ] Add loading/error states, pack schema validation, and clearer source/
   resolution metadata in the UI.

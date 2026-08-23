@@ -126,9 +126,10 @@ def fill_chunk_heights(
 ) -> np.ndarray:
     """Fill chunk_size² game heights from .rte samples (pack/Earth origin).
 
-    Returns uint8 array shape (chunk_size, chunk_size), row=z, col=x.
-    Pass a shared ``cache`` when filling several channels of the same chunk so
-    each overlapping tile is read and inflated once.
+    Returns int32 array shape (chunk_size, chunk_size), row=z, col=x (1:1
+    heights exceed the uint8 range once max_y > 255). Pass a shared ``cache``
+    when filling several channels of the same chunk so each overlapping tile
+    is read and inflated once.
     """
     pack_dir = Path(pack_dir)
     g = grid or load_pack_grid(pack_dir)

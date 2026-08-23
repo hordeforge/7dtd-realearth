@@ -224,7 +224,7 @@ Product slogan is **1 m = 1 block** after Y expand for **height**, and for **hor
 
 | Gap | Why it matters | Severity |
 |---|---|---|
-| **Save/reload absolute session** (origin, AbsoluteX/Z, wrap state) | Rejoin wrong place after quit | Needed |
+| **Save/reload absolute session** (origin, AbsoluteX/Z, wrap state) | Rejoin wrong place after quit | Partial (`SessionStateStore` hooked to stock save; live proof open) |
 | **Live inject retarget** every TFP build | Streamed lon/lat travel only as good as height inject | Hard (ongoing) |
 | **Origin slide + land claim / bed / vehicle proof** | Soft-locks, lost bases | Needed (measure) |
 | **Stock map / compass in lon-lat** | Player sees host coords, not degrees | Partial (city names only) |
@@ -323,7 +323,7 @@ Canonical Done/Partial/Needed lives in [MODIFICATIONS](MODIFICATIONS.md) only. T
 | Longitude wrap (data plane) | **Partial** (math yes; full-planet ops + live soak open) |
 | True meters at all latitudes | **Missing** |
 | Antimeridian regions | **Missing** |
-| Save absolute lon/lat session | **Missing** |
+| Save absolute lon/lat session | **Partial** (save/reload hooked; live proof open) |
 | Geodesic / globe UX | **Missing** / partial design |
 | Documented limits (this file) | **Done** |
 

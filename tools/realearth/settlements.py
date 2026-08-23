@@ -60,7 +60,10 @@ def edge_radius_m_from_bbox(
     center_lon: float | None = None,
     center_lat: float | None = None,
 ) -> float:
-    """Half-extent of a lon/lat bbox in meters (max of E-W and N-S half-widths).
+    """Approximate urban radius from a lon/lat bbox in meters.
+
+    Max of the E-W and N-S half-widths and 0.85x the center-to-corner distance
+    (covers skewed boxes where a half-width undershoots the real extent).
 
     Used when settlement data ships a real urban-area bounding box
     (e.g. Natural Earth urban areas, OSM multipolygon envelope).
@@ -234,7 +237,7 @@ def population_to_byte(population_per_km2: np.ndarray) -> np.ndarray:
     """Log-scale people/km² into 0-255 for the tile channel."""
     p = np.asarray(population_per_km2, dtype=np.float64)
     p = np.clip(p, 0, None)
-    # 0 → 0, 1 → ~20, 100 → ~100, 10000 → ~200, 50000+ → 255
+    # 0 → 0, 1 → ~15, 100 → ~100, 10000 → ~200, ~126000+ → 255
     scaled = np.where(p <= 0, 0.0, 20.0 * np.log10(p + 1.0) * 2.5)
     return np.clip(np.rint(scaled), 0, 255).astype(np.uint8)
 

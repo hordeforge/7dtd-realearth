@@ -186,7 +186,7 @@ That way if a future height-limit mod lands, you **re-export** with a taller `ma
 
 | Knob | Where | Meaning |
 |---|---|---|
-| `SeaLevelGameY` | `realearth.json` / bake | Game Y of sea surface (default **100**; deep ocean is not a survival target) |
+| `SeaLevelGameY` | `realearth.json` / bake | Game Y of sea surface (config default **100**; deep ocean is not a survival target). `bake-world` writes **32** unless `--sea-level` is passed, and the world manifest overrides the runtime config at init |
 | `regional_exaggeration` | `height.compress_elevation` | Local relief boost |
 | `max_y` | compress API | Ceiling (default 250) |
 
