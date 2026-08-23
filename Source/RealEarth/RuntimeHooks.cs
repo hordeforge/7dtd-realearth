@@ -631,6 +631,8 @@ namespace RealEarth
     public static class HooksImpl
     {
         static int _peakLogBudget = 3;
+        /// <summary>Budget for tick-path errors so persistent failures stay visible without spam.</summary>
+        static int _tickErrLogBudget = 8;
 
         public static void PlayerTickPostfix(object __instance)
         {
@@ -720,9 +722,15 @@ namespace RealEarth
                         $"foci={ModApi.Streamer?.FocusCount ?? 0}");
                 }
             }
-            catch
+            catch (Exception ex)
             {
-                // never break gameplay loop
+                // Never break the gameplay loop, but do not fail silently either:
+                // a stuck tick path otherwise looks like "tiles never stream" with zero trace.
+                if (_tickErrLogBudget > 0)
+                {
+                    _tickErrLogBudget--;
+                    ModApi.Log($"PlayerTick postfix error: {ex.GetType().Name}: {ex.Message}");
+                }
             }
         }
 
@@ -853,6 +861,7 @@ namespace RealEarth
                 CityMapLabels.Reset();
                 RuntimePoiInject.Reset();
                 ChunkTerrainInject.ResetSessionCounters();
+                _tickErrLogBudget = 8;
                 try
                 {
                     var snap = SessionStateStore.Capture(session, cfg);

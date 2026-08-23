@@ -361,10 +361,10 @@ async function boot() {
   const params = new URLSearchParams(location.search);
   const pack = params.get("pack") || els.packSelect.value;
   els.packSelect.value = pack;
-  await loadPack(pack).catch(() => {
-    setStatus(`No pack at ${pack}. Run: realearth export-viewer && realearth serve`);
+  await loadPack(pack).catch((error) => {
+    setStatus(`Cannot load ${pack}: ${errorMessage(error)}`);
     els.packInfo.innerHTML =
-      `Missing <code>${esc(pack)}/viewer.json</code>.<br/>` +
+      `Missing or broken <code>${esc(pack)}/viewer.json</code>.<br/>` +
       `From repo: <code>realearth export-viewer --pack data/samples/demo_region --out viewer/data/demo</code><br/>` +
       `then <code>realearth serve</code>`;
   });

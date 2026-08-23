@@ -221,6 +221,17 @@ echo "Starting dedicated server (log: $LOG)..."
 SPID=$!
 echo "PID=$SPID"
 
+# The dedicated server never pauses when empty; make sure it cannot outlive this
+# script if a failure or interrupt fires before the normal teardown below.
+cleanup_server() {
+  if kill -0 "$SPID" 2>/dev/null; then
+    kill "$SPID" 2>/dev/null || true
+    sleep 2
+    kill -9 "$SPID" 2>/dev/null || true
+  fi
+}
+trap cleanup_server EXIT INT TERM
+
 # Poll for success / crash
 deadline=$((SECONDS + WAIT_SEC))
 ok=0
@@ -288,11 +299,8 @@ if [[ -n "$SCRATCH_OUT" && -d "$SCRATCH_OUT" && -f "$LOG" ]]; then
 fi
 
 # Stop server after test (dedicated does not pause when empty; we still tear down CI runs)
-if kill -0 "$SPID" 2>/dev/null; then
-  kill "$SPID" 2>/dev/null || true
-  sleep 2
-  kill -9 "$SPID" 2>/dev/null || true
-fi
+cleanup_server
+trap - EXIT INT TERM
 
 if (( ok == 1 )); then
   # Final gate checks

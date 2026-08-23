@@ -9,10 +9,39 @@
 from __future__ import annotations
 
 import math
+import random
+import time
 from pathlib import Path
 
 import httpx
 import numpy as np
+
+# Bounded retry for idempotent tile/batch GETs: one 503 from the tile host would
+# otherwise abort an entire multi-hundred-tile region build.
+_MAX_ATTEMPTS = 3
+
+
+def _get_with_retry(client: httpx.Client, url: str, *, params: dict | None = None):
+    """GET with bounded backoff for transient failures (transport errors, 429, 5xx).
+
+    Client errors (other than 429) are not retried: they will fail identically.
+    """
+    last_exc: Exception | None = None
+    for attempt in range(_MAX_ATTEMPTS):
+        try:
+            r = client.get(url, params=params)
+            if r.status_code < 500 and r.status_code != 429:
+                r.raise_for_status()
+                return r
+            last_exc = httpx.HTTPStatusError(
+                f"HTTP {r.status_code} for {url}", request=r.request, response=r
+            )
+        except httpx.TransportError as e:
+            last_exc = e
+        if attempt < _MAX_ATTEMPTS - 1:
+            time.sleep(min(8.0, 0.5 * (2**attempt)) * (0.5 + random.random()))
+    assert last_exc is not None
+    raise last_exc
 
 
 def sample_open_meteo(
@@ -40,8 +69,7 @@ def sample_open_meteo(
                 "latitude": ",".join(f"{v:.5f}" for v in lats_f[sl]),
                 "longitude": ",".join(f"{v:.5f}" for v in lons_f[sl]),
             }
-            r = client.get("https://api.open-meteo.com/v1/elevation", params=params)
-            r.raise_for_status()
+            r = _get_with_retry(client, "https://api.open-meteo.com/v1/elevation", params=params)
             data = r.json()
             elev = data.get("elevation")
             if elev is None:
@@ -166,8 +194,7 @@ def fetch_region_terrarium(
 
     def fetch_tile(ty: int, tx: int) -> tuple[int, int, np.ndarray]:
         url = TERRARIUM_URL.format(z=zoom, x=tx, y=ty)
-        r = client.get(url)
-        r.raise_for_status()
+        r = _get_with_retry(client, url)
         img = Image.open(BytesIO(r.content)).convert("RGB")
         elev = decode_terrarium_png(np.asarray(img)).astype(np.float32)
         return ty, tx, elev
@@ -196,9 +223,7 @@ def fetch_region_terrarium(
     right = min(mosaic_w, int(math.ceil(lon_to_px(east))))
     top = max(0, int(lat_to_py(north)))
     bottom = min(mosaic_h, int(math.ceil(lat_to_py(south))))
-    crop = (
-        mosaic if right <= left or bottom <= top else mosaic[top:bottom, left:right]
-    )
+    crop = mosaic if right <= left or bottom <= top else mosaic[top:bottom, left:right]
     # Fill any nan with neighbor mean
     if np.isnan(crop).any():
         fill = float(np.nanmean(crop)) if np.isfinite(crop).any() else 0.0

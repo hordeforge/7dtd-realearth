@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import json
 import math
+import sys
 from pathlib import Path
 
 import numpy as np
@@ -50,9 +51,7 @@ def _elevation_rgb(elev: np.ndarray) -> np.ndarray:
         mid = (h > 500) & (h <= 2000)
         high = h > 2000
         if np.any(low):
-            base[low] = np.stack(
-                [40 + 40 * t1[low], 90 + 100 * t1[low], 40 + 30 * t1[low]], axis=1
-            )
+            base[low] = np.stack([40 + 40 * t1[low], 90 + 100 * t1[low], 40 + 30 * t1[low]], axis=1)
         if np.any(mid):
             base[mid] = np.stack(
                 [100 + 60 * t2[mid], 120 - 40 * t2[mid], 50 + 20 * t2[mid]], axis=1
@@ -100,11 +99,13 @@ def mosaic_pack(pack_dir: Path) -> dict[str, np.ndarray]:
     lc = np.zeros((grid_h, grid_w), dtype=np.uint8)
     pop = np.zeros((grid_h, grid_w), dtype=np.uint8)
     loaded = 0
+    missing: list[str] = []
 
     for entry in man.tiles:
         tx, tz = int(entry["tx"]), int(entry["tz"])
         path = tile_path(pack_dir, tx, tz)
         if not path.exists():
+            missing.append(f"({tx},{tz})")
             continue
         tile = read_tile(path)
         y0, x0 = tz * ts, tx * ts
@@ -118,6 +119,16 @@ def mosaic_pack(pack_dir: Path) -> dict[str, np.ndarray]:
 
     if loaded == 0:
         raise FileNotFoundError(f"no .rte tiles found under {pack_dir}")
+    # Missing tiles leave -100 m (below sea level) holes that bake/export would
+    # silently turn into ocean. Surface them so a broken pack is diagnosable.
+    if missing:
+        shown = ", ".join(missing[:10])
+        more = f" … and {len(missing) - 10} more" if len(missing) > 10 else ""
+        print(
+            f"WARNING: {len(missing)}/{len(man.tiles)} manifest tiles missing under "
+            f"{pack_dir}: {shown}{more} (those areas read as ocean)",
+            file=sys.stderr,
+        )
 
     # Crop to sample dimensions if smaller than grid
     h = min(height, grid_h)

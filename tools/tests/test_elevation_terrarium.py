@@ -1,8 +1,14 @@
-"""Unit tests for Terrarium decode and tile math (no network)."""
+"""Unit tests for Terrarium decode, tile math, and HTTP retry (no network)."""
 
+import httpx
 import numpy as np
+import pytest
 
-from realearth.elevation import _lonlat_to_tile, decode_terrarium_png
+from realearth.elevation import (
+    _get_with_retry,
+    _lonlat_to_tile,
+    decode_terrarium_png,
+)
 
 
 def test_decode_terrarium_sea_levelish():
@@ -32,3 +38,67 @@ def test_lonlat_to_tile_known_points():
     x, y = _lonlat_to_tile(-122.4, 37.8, 5)
     assert 0 <= x < 32
     assert 0 <= y < 32
+
+
+class _FakeResponse:
+    def __init__(self, status_code: int):
+        self.status = httpx.Response(
+            status_code, request=httpx.Request("GET", "http://unit.test/tile")
+        )
+
+    @property
+    def status_code(self) -> int:
+        return self.status.status_code
+
+    @property
+    def request(self) -> httpx.Request:
+        return self.status.request
+
+    def raise_for_status(self) -> None:
+        self.status.raise_for_status()
+
+
+class _FlakyClient:
+    """Fails N times with transport errors, then returns a response with `status`."""
+
+    def __init__(self, failures: int, status: int = 200):
+        self.failures = failures
+        self.status = status
+        self.calls = 0
+
+    def get(self, url: str, params: dict | None = None):
+        self.calls += 1
+        if self.calls <= self.failures:
+            raise httpx.ConnectError("connection reset")
+        return _FakeResponse(self.status)
+
+
+def test_get_with_retry_recovers_from_transient_transport_error(monkeypatch):
+    monkeypatch.setattr("time.sleep", lambda _s: None)
+    client = _FlakyClient(failures=2)
+    r = _get_with_retry(client, "http://unit.test/tile")
+    assert r.status_code == 200
+    assert client.calls == 3
+
+
+def test_get_with_retry_retries_5xx_then_raises(monkeypatch):
+    monkeypatch.setattr("time.sleep", lambda _s: None)
+    client = _FlakyClient(failures=0, status=503)
+    with pytest.raises(httpx.HTTPStatusError):
+        _get_with_retry(client, "http://unit.test/tile")
+    assert client.calls == 3
+
+
+def test_get_with_retry_exhausts_transport_errors_then_raises(monkeypatch):
+    monkeypatch.setattr("time.sleep", lambda _s: None)
+    client = _FlakyClient(failures=99)
+    with pytest.raises(httpx.ConnectError):
+        _get_with_retry(client, "http://unit.test/tile")
+    assert client.calls == 3
+
+
+def test_get_with_retry_does_not_retry_client_errors():
+    client = _FlakyClient(failures=0, status=404)
+    with pytest.raises(httpx.HTTPStatusError):
+        _get_with_retry(client, "http://unit.test/tile")
+    assert client.calls == 1
