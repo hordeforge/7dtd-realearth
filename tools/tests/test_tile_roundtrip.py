@@ -84,6 +84,36 @@ def test_elevation_u16_nan_fails_closed_to_zero_meters():
     assert float(back[0, 1]) == 500.0
 
 
+def test_elevation_payload_is_little_endian_on_the_wire():
+    # Format contract (matches RteTile.cs, which reads low byte first): the
+    # elevation section is little-endian uint16 regardless of host byte order.
+    # Pin both directions so a future dtype change cannot silently regress to
+    # host order and break tiles between machines.
+    import struct as _struct
+
+    from realearth.tile_format import _elevation_to_u16
+
+    elev = np.array([[123.0, -11000.0], [8849.0, 42.0]], dtype=np.float32)
+    raw = _elevation_to_u16(elev).tobytes()
+    expected = b"".join(
+        _struct.pack("<H", v) for v in (11123, 0, 19849, 11042)
+    )
+    assert raw == expected
+
+    tile = EarthTile(0, 0, elev)
+    encoded = encode_tile(tile)
+    decoded = decode_tile(encoded)
+    assert np.allclose(decoded.elevation_m, elev)
+
+    def _le_section(payload: bytes) -> bytes:
+        compressed = zlib.compress(payload, level=6)
+        return _struct.pack("<I", len(compressed)) + compressed
+
+    header = HEADER_STRUCT.pack(b"RTE1", 0, 0, 1, 0, 2, 2, 0)
+    hand_built = header + _le_section(expected)
+    assert np.allclose(decode_tile(hand_built).elevation_m, elev)
+
+
 def _hostile_header(w: int, h: int, flags: int) -> bytes:
     return HEADER_STRUCT.pack(b"RTE1", 0, 0, 1, flags, w, h, 0)
 

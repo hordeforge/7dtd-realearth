@@ -142,7 +142,9 @@ def decode_tile(data: bytes) -> EarthTile:
     off = HEADER_STRUCT.size
 
     elev_raw, off = _section(data, off, samples * 2)
-    elev_u16 = np.frombuffer(elev_raw, dtype=np.uint16).reshape((h, w))
+    # Payload is little-endian per the format contract (matches the C# decoder,
+    # which reads the low byte first); never rely on host byte order here.
+    elev_u16 = np.frombuffer(elev_raw, dtype="<u2").reshape((h, w))
     elevation = _u16_to_elevation(elev_u16)
 
     landcover = None
@@ -186,7 +188,8 @@ def tile_path(root: Path, tx: int, tz: int) -> Path:
     return root / "tiles" / f"{tz}" / f"{tx}.rte"
 
 
-# Elevation packed as uint16: value = meters_asl + 11000 (covers trenches to Everest+)
+# Elevation packed as little-endian uint16: value = meters_asl + 11000
+# (covers trenches to Everest+; byte order must match the C# runtime decoder).
 _ELEV_OFFSET_M = 11_000
 _ELEV_SCALE = 1  # meters
 
@@ -198,7 +201,7 @@ def _elevation_to_u16(elev: np.ndarray) -> np.ndarray:
     # fails closed to 0 m ASL (matches the C# missing-sample placeholder) instead
     # of casting NaN to platform-garbage.
     v = np.nan_to_num(np.asarray(elev, dtype=np.float64), nan=0.0)
-    return np.clip(np.rint(v + _ELEV_OFFSET_M), 0, 65535).astype(np.uint16)
+    return np.clip(np.rint(v + _ELEV_OFFSET_M), 0, 65535).astype("<u2")
 
 
 def _u16_to_elevation(u: np.ndarray) -> np.ndarray:
