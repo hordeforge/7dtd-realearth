@@ -457,3 +457,23 @@ def test_implementation_plan_lists_all_phases():
     plan = (ROOT / "docs" / "IMPLEMENTATION_PLAN.md").read_text(encoding="utf-8")
     for p in ("P0", "P1", "P2", "P3", "P4", "P5", "P6", "P7", "P8"):
         assert p in plan
+
+
+# --- resource lifecycle gates (leak review) ---
+def test_tile_miss_cache_is_bounded():
+    """Negative cache must sweep expired deadlines, not grow for process lifetime."""
+    ts = _read("TileStreamer.cs")
+    assert "MissCachePruneThreshold" in ts
+    assert "PruneExpiredMissesLocked" in ts
+    # Prune runs before inserting a new miss once the map is over the threshold.
+    mark_miss = ts[ts.index("void MarkMiss") : ts.index("bool IsWithinAnyFocus")]
+    assert "PruneExpiredMissesLocked" in mark_miss
+    assert "_missUntilTick.Count >= MissCachePruneThreshold" in mark_miss
+
+
+def test_cdn_publish_cleans_temp_on_failed_write():
+    """A failed temp write must delete the .tmp file, not orphan it on disk."""
+    ts = _read("TileStreamer.cs")
+    publish = ts[ts.index("static void PublishTileBytes") : ts.index("void QueueLoad")]
+    assert "File.WriteAllBytes(tmp, bytes)" in publish
+    assert "File.Delete(tmp)" in publish

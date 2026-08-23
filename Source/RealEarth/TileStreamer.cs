@@ -33,6 +33,11 @@ namespace RealEarth
         readonly HttpClient _http;
 
         const int MissCacheMs = 10_000;
+        /// <summary>
+        /// Negative-cache entries allowed before expired deadlines are swept. Without this,
+        /// one entry per failed tile lives for the whole server uptime (map only grows).
+        /// </summary>
+        const int MissCachePruneThreshold = 4096;
 
         /// <summary>Last absolute Earth position used for streaming (primary / latest focus).</summary>
         public int FocusEarthX { get; private set; }
@@ -335,7 +340,16 @@ namespace RealEarth
             if (!string.IsNullOrEmpty(dir))
                 Directory.CreateDirectory(dir);
             string tmp = path + "." + Guid.NewGuid().ToString("N") + ".tmp";
-            File.WriteAllBytes(tmp, bytes);
+            try
+            {
+                File.WriteAllBytes(tmp, bytes);
+            }
+            catch
+            {
+                // Do not orphan the temp file on a failed write (disk full, IO error).
+                try { if (File.Exists(tmp)) File.Delete(tmp); } catch { /* ignore */ }
+                throw;
+            }
             try
             {
                 if (File.Exists(path))
@@ -400,8 +414,25 @@ namespace RealEarth
         {
             lock (_lock)
             {
+                if (_missUntilTick.Count >= MissCachePruneThreshold)
+                    PruneExpiredMissesLocked();
                 _missUntilTick[key] = Environment.TickCount + MissCacheMs;
             }
+        }
+
+        /// <summary>Caller holds _lock. Drop deadlines already past (same wrap math as readers).</summary>
+        void PruneExpiredMissesLocked()
+        {
+            int now = Environment.TickCount;
+            List<long>? expired = null;
+            foreach (var kv in _missUntilTick)
+            {
+                if (unchecked(now - kv.Value) >= 0)
+                    (expired ??= new List<long>()).Add(kv.Key);
+            }
+            if (expired == null) return;
+            foreach (long k in expired)
+                _missUntilTick.Remove(k);
         }
 
         async Task LoadTileFireAndForget(int tx, int tz, string path, long key, bool fromCdn)
