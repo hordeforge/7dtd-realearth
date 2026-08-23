@@ -91,7 +91,7 @@ Stock terrain and world gen do not know about Earth DEM. Expand alone still yiel
 | **Lat-correct horizontal meters / geodesic** | True km at high lat | **Missing** |
 | **Antimeridian-safe bboxes** | Pacific / dateline packs | **Missing** |
 | **TileStreamer bubble** | Load/unload `.rte` by radius | **Partial** |
-| **CDN / missing tile policy** | Fetch or fail closed | **Needed** |
+| **CDN / missing tile policy** | Fetch or fail closed | **Partial** (`CdnTilePolicy` + streamer fetch; farm/CDN ops open) |
 | **Baked vs Streamed modes** | Finite GeneratedWorld vs inject | **Partial** (Baked path stronger today) |
 | **SingleWorldSession policy** | One continuous save, no map hop | **Done** intent / config |
 
