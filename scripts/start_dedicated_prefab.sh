@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # Dedicated on a stock TFP prefab world OR RWG-generated map for bot POI/sleeper tests.
-# Vanilla terrain (RealEarth mod disabled). LiteNetLib-only, EAC off, telnet on.
+# Vanilla terrain (RealEarth mod disabled). LiteNetLib-only, EAC off, telnet off.
 #
 # Defaults: RWG 4096 (true 4k, loads faster than 6k/8k pregens, full prefab/sleeper pipeline).
 #
@@ -173,6 +173,6 @@ if [[ "$ready" != "1" ]]; then
   tail -60 "$LOG" || true
   exit 1
 fi
-ss -uln | grep -E '2690[0-2]|8081' || true
+ss -uln | grep -E '2690[0-2]' || true
 echo "OK dedicated up: world=$WORLD_NAME size=$WORLD_GEN_SIZE seed=$WORLD_GEN_SEED"
 echo "LiteNet join port typically 26902. Stop: kill \$(cat $USERDATA/dedicated.pid)"

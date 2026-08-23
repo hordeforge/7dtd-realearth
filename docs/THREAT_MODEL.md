@@ -18,7 +18,7 @@ Maintain by re-verifying every file reference below after surface changes; delet
 | 3 | T3 | Poisoned third-party pack shapes gameplay/POIs on community servers; distribution unsigned | B3 pack author → operator/game | decode `RteTile.cs:34-100`; settlements `tools/realearth/cli.py:107-108` | Format validation only (`RteTile.cs:39-57`) |
 | 4 | T4 | Viewer XSS: pack-controlled settlement strings rendered via innerHTML | B4 browser ↔ viewer | `viewer/js/app.js:281` (also `:90,:142`); local-JSON input `app.js:316` | None (raw innerHTML) |
 | 5 | T5 | Engine expand rewrites game `Assembly-CSharp.dll`; compromised build chain persists code into installs | B6 build → runtime | `tools/engine_patcher/Program.cs:109-168`; `scripts/apply_engine_expand.sh` | Backup + marker + dry-run + restore; no post-patch hash check |
-| 6 | T6 | Weak shipped telnet credential template cloned onto real servers | B7 deployment | `scripts/serverconfig_height_test.xml:43` (`TelnetPassword=retest`) | None |
+| 6 | T6 | Operator clones template and re-enables telnet on an exposed host | B7 deployment | `scripts/serverconfig_height_test.xml:41-47` (`TelnetEnabled=false`, `TelnetPassword` empty) | Template ships telnet off with empty password; re-enable comment demands a strong one |
 | 7 | T7 | `realearth serve` bound past loopback serves packs unauthenticated with listing | B4 viewer server | `tools/realearth/cli.py:617-663` | Defaults to 127.0.0.1 |
 
 Fixes belong to sec-review passes; this file records location and impact only.
@@ -30,7 +30,7 @@ Fixes belong to sec-review passes; this file records location and impact only.
 - **Game install directories.** Tile cache writes (`TileStreamer.cs:332-365`), baked worlds under `GeneratedWorlds`, IL-patched DLL.
 - **Terrain data fidelity = gameplay fairness.** Elevation/population decide traversal, spawn, city density; a hostile pack is a cheat/griefing primitive.
 - **Project reputation.** Operators install mods/packs trusting provenance; nothing here signs artifacts.
-- **Not held:** user PII, payment data, signing keys, stored credentials (repo scan finds only the test telnet password above).
+- **Not held:** user PII, payment data, signing keys, stored credentials (repo scan finds no secret-shaped artifacts; the former test telnet password is removed and telnet ships disabled).
 
 ## 3. Entry points (from code)
 
@@ -56,7 +56,7 @@ E5 is easy to miss: whenever an operator opens the control-panel port, our bundl
 - **B4 Browser ↔ viewer/webmod.** Viewer origin renders pack strings; WebMod executes within the game's authenticated dashboard session (game owns that boundary).
 - **B5 Operator ↔ install tooling.** Scripts remove guarded destinations inside Steam dirs (`scripts/install_proton.sh:64,186`); gated by explicit `GAME_DIR` checks (Makefile setup). Operator trust assumed; not sandboxed.
 - **B6 Build → runtime.** Patcher rewrites the managed game DLL; output gains full game-process authority. Marker+backup exist (`Program.cs:155-168`); written bytes are not hash-verified.
-- **B7 Secrets → code.** No credentials stored or rotated here. Only secret-shaped artifact: test telnet password (`serverconfig_height_test.xml:43`). CDN URL is configuration, not a secret.
+- **B7 Secrets → code.** No credentials stored or rotated here. Telnet ships disabled with an empty password (`serverconfig_height_test.xml`); CDN URL is configuration, not a secret.
 
 Privilege transitions: pipeline shell → game install files (B5); mod tooling → game DLL bytes (B6); tile bytes → in-process decoder running with server privileges (B1/B3 → E1/E2).
 
@@ -68,7 +68,7 @@ Privilege transitions: pipeline shell → game install files (B5); mod tooling �
 - **B4:** Tampering/XSS: pack strings reach innerHTML sinks (T4). Spoofing: WebMod runs with admin-session authority; current bundle uses React text rendering (no raw HTML injection found in `webmod/src`), so the live sink is the viewer.
 - **B5:** Data loss: wrong env var redirects destructive paths; mitigated by existence checks, not dry-run defaults.
 - **B6:** Persistent code injection via patched DLL (T5); lint tarballs pinned by SHA (`lint-webmod.sh:47`) is the right pattern to extend to packs/tiles.
-- **E4 telnet/console:** Elevation via password guessing; game-owned control, our contribution is the weak template value (T6).
+- **E4 telnet/console:** Elevation via password guessing is game-owned control; the template no longer contributes a weak value (telnet ships disabled; T6 residual is operator re-enable).
 
 DoS summary: uncapped network read + decompression on the dedicated hot path is the exposure that matters; player-driven prefetch fan-out is bounded (`StreamRadiusTiles` default 2, negative cache).
 
@@ -91,9 +91,8 @@ DoS summary: uncapped network read + decompression on the dedicated hot path is 
 1. No size caps on CDN bodies or inflate output; decoder allocates from payload-controlled lengths (`RteTile.cs:53-79`).
 2. No authenticity check for tiles/packs: no signature, no hash pinning, http allowed (T2, T3).
 3. Viewer innerHTML sinks fed by pack-controlled strings (T4).
-4. Weak telnet password shipped as template (T6).
-5. No post-patch DLL hash verification after expand (T5 residual).
-6. No structured security events; failures go to game log via `ModApi.Log` (`ModApi.cs:139`). Note only; o11y-review owns log structure.
+4. No post-patch DLL hash verification after expand (T5 residual).
+5. No structured security events; failures go to game log via `ModApi.Log` (`ModApi.cs:139`). Note only; o11y-review owns log structure.
 
 Single point of failure: `RteTile.Decode` is the sole gate for local and CDN input; hardening it covers E1+E2 at once.
 

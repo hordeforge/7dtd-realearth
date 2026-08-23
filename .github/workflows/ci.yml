@@ -1,11 +1,25 @@
 name: ci
 on: [push, pull_request]
+
+# Least privilege: the pipeline only needs to read the code.
+permissions:
+  contents: read
+
+# Cancel superseded runs on the same ref (push + pull_request double-fires).
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
 jobs:
   tools:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
       - uses: astral-sh/setup-uv@v6
+        with:
+          # Cache uv wheels/venv between runs (default on hosted runners; pinned here
+          # so self-hosted forks keep it too).
+          enable-cache: true
       - run: make test-fast
       - run: bash scripts/lint-viewer.sh
       - run: bash scripts/lint-webmod.sh

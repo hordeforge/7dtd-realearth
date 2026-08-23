@@ -8,9 +8,9 @@
     <RootNamespace>RealEarth</RootNamespace>
     <GenerateAssemblyInfo>true</GenerateAssemblyInfo>
     <AppendTargetFrameworkToOutputPath>false</AppendTargetFrameworkToOutputPath>
-    <!-- Steam/Proton Windows client (this machine) -->
+    <!-- Steam/Proton Windows client (default; override with GameDir= or SEVENDTD_GAME_DIR) -->
     <GameDir Condition="'$(GameDir)' == ''">$(SEVENDTD_GAME_DIR)</GameDir>
-    <GameDir Condition="'$(GameDir)' == ''">/home/maci/.local/share/Steam/steamapps/common/7 Days To Die</GameDir>
+    <GameDir Condition="'$(GameDir)' == ''">$(HOME)/.local/share/Steam/steamapps/common/7 Days To Die</GameDir>
   </PropertyGroup>
 
   <ItemGroup>

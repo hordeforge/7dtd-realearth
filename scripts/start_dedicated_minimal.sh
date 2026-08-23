@@ -28,7 +28,7 @@ echo "=== RealEarth minimal dedicated ==="
 echo "Server:   $DS_DIR"
 echo "UserData: $USERDATA"
 echo "World:    $WORLD_NAME"
-echo "MaxPlayers=$MAX_PLAYERS  EAC=off Crossplay=off SteamNetworking=off Visibility=0"
+echo "MaxPlayers=$MAX_PLAYERS  EAC=off Crossplay=off SteamNetworking=off Visibility=0 Telnet=off"
 
 # Local load tests need crossplatform=None (EOS session never initializes → ServerState kicks)
 # and Local on serverplatforms so simulated clients can auth without Steam tickets.

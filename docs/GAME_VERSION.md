@@ -7,7 +7,7 @@
 | Field | Value |
 |---|---|
 | **This machine after Steam update** | **V 3.1.0 (b14)** Henpocalypse (Constants Minor=10 Build=14; Steam 2026-08-02) |
-| **Client path** | `/home/maci/.local/share/Steam/steamapps/common/7 Days To Die` |
+| **Client path** | `~/.local/share/Steam/steamapps/common/7 Days To Die` |
 | **Dedicated server** | `…/7 Days to Die Dedicated Server` |
 | **Proton userdata** | `…/compatdata/251570/pfx/…/AppData/Roaming/7DaysToDie` |
 | **Markers** | `Localization.csv` (3.x), newer `Assembly-CSharp.dll` |
@@ -15,7 +15,7 @@
 ## After every Steam update
 
 ```bash
-export SEVENDTD_GAME_DIR="/home/maci/.local/share/Steam/steamapps/common/7 Days To Die"
+export SEVENDTD_GAME_DIR="$HOME/.local/share/Steam/steamapps/common/7 Days To Die"
 ./scripts/install_proton.sh
 ```
 

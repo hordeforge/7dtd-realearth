@@ -3,8 +3,8 @@
 # World data goes into the Proton Windows Roaming folder (NOT native ~/.local/share).
 set -euo pipefail
 ROOT="$(cd "$(dirname "$0")/.." && pwd)"
-GAME_DIR="${SEVENDTD_GAME_DIR:-/home/maci/.local/share/Steam/steamapps/common/7 Days To Die}"
-DS_DIR="${SEVENDTD_SERVER_DIR:-/home/maci/.local/share/Steam/steamapps/common/7 Days to Die Dedicated Server}"
+GAME_DIR="${SEVENDTD_GAME_DIR:-$HOME/.local/share/Steam/steamapps/common/7 Days To Die}"
+DS_DIR="${SEVENDTD_SERVER_DIR:-$HOME/.local/share/Steam/steamapps/common/7 Days to Die Dedicated Server}"
 # Locate a .NET SDK: explicit env, then the usual local caches (mirrors Makefile).
 find_dotnet_root() {
   for d in "$DOTNET_ROOT" "$HOME/.cache/dotnet-sdk" "$HOME/.dotnet" \

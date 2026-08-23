@@ -7,6 +7,7 @@
     - Not publicly listed
     - Twitch effectively disabled (permission 1000)
     - Discord not a serverconfig toggle; dedicated is headless/local
+    - Telnet disabled (no remote console surface; read the log file instead)
 -->
 <ServerSettings>
 	<property name="ServerName" value="RealEarth Local Load"/>
@@ -37,10 +38,11 @@
 	<property name="WebDashboardUrl" value=""/>
 	<property name="EnableMapRendering" value="false"/>
 
-	<!-- Local ops only -->
-	<property name="TelnetEnabled" value="true"/>
+	<!-- Local ops only: log file is the ops interface; telnet stays off.
+	     If ever re-enabled, set a strong TelnetPassword first. -->
+	<property name="TelnetEnabled" value="false"/>
 	<property name="TelnetPort" value="8081"/>
-	<property name="TelnetPassword" value="retest"/>
+	<property name="TelnetPassword" value=""/>
 	<property name="TelnetFailedLoginLimit" value="10"/>
 	<property name="TelnetFailedLoginsBlocktime" value="10"/>
 

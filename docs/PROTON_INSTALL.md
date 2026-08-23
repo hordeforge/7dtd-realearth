@@ -33,7 +33,7 @@ flowchart LR
 
 | Item | Path |
 |---|---|
-| Game (Windows/Proton) | `/home/maci/.local/share/Steam/steamapps/common/7 Days To Die` |
+| Game (Windows/Proton) | `~/.local/share/Steam/steamapps/common/7 Days To Die` |
 | Mods (client) | `…/7 Days To Die/Mods/RealEarth/` |
 | Harmony (keep) | `…/Mods/0_TFP_Harmony/` |
 | **Proton userdata** | `…/compatdata/251570/pfx/drive_c/users/steamuser/AppData/Roaming/7DaysToDie` |
@@ -46,7 +46,7 @@ flowchart LR
 Steam can replace game files and leave an old `RealEarth.dll` that no longer matches `Assembly-CSharp`. Always re-run:
 
 ```bash
-export SEVENDTD_GAME_DIR="/home/maci/.local/share/Steam/steamapps/common/7 Days To Die"
+export SEVENDTD_GAME_DIR="$HOME/.local/share/Steam/steamapps/common/7 Days To Die"
 ./scripts/install_proton.sh
 ```
 
@@ -57,7 +57,7 @@ Verified on this machine after latest Steam download: dedicated **V 3.0.1 (b4)**
 ## One-shot install
 
 ```bash
-export SEVENDTD_GAME_DIR="/home/maci/.local/share/Steam/steamapps/common/7 Days To Die"
+export SEVENDTD_GAME_DIR="$HOME/.local/share/Steam/steamapps/common/7 Days To Die"
 ./scripts/install_proton.sh
 ```
 
