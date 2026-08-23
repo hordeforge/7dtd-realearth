@@ -448,7 +448,12 @@ namespace RealEarth
         /// </summary>
         async Task<byte[]> FetchTileBytesAsync(string url)
         {
+            if (!CdnTilePolicy.IsSafeTileUrl(url))
+                throw new InvalidDataException("tile URL must be https");
             using var resp = await _http.GetAsync(url, HttpCompletionOption.ResponseHeadersRead).ConfigureAwait(false);
+            // Defense-in-depth: reject redirects that downgrade to http (HttpClient follows by default).
+            if (resp.RequestMessage?.RequestUri != null && !resp.RequestMessage.RequestUri.Scheme.Equals("https", StringComparison.OrdinalIgnoreCase))
+                throw new InvalidDataException("tile redirect must remain https");
             resp.EnsureSuccessStatusCode();
             long? declared = resp.Content.Headers.ContentLength;
             if (declared.HasValue && (declared.Value < 8 || declared.Value > MaxCdnTileBytes))

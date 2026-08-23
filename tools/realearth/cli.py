@@ -661,6 +661,13 @@ def serve_cmd(port: int, bind: str, root: str | None, no_browser: bool) -> None:
     """Serve the web map viewer (static files)."""
     from realearth.viewer_server import serve
 
+    if bind not in ("127.0.0.1", "localhost", "::1"):
+        click.echo(
+            f"WARNING: viewer bound to {bind} (exposes packs unauthenticated). "
+            "Prefer --bind 127.0.0.1 for local preview.",
+            err=True,
+        )
+
     if root:
         serve_root = Path(root).resolve()
     else:

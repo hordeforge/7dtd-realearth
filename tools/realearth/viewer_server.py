@@ -43,17 +43,38 @@ class ViewerHandler(http.server.SimpleHTTPRequestHandler):
     _MIN_COMPRESS_BYTES = 1024
 
     def log_message(self, format: str, *args: object) -> None:
-        # skip boring 200s
+        # skip boring 200s; sanitize control chars to block log injection via crafted paths
         if len(args) >= 2 and str(args[1]).startswith("2"):
             return
-        super().log_message(format, *args)
+        safe_args = tuple(
+            str(a).replace("\r", "\\r").replace("\n", "\\n") if isinstance(a, str) else a
+            for a in args
+        )
+        super().log_message(format, *safe_args)
 
     def end_headers(self) -> None:
         # Content varies with what the client accepts; dev data changes between
         # runs, so always revalidate (cheap via Last-Modified/304).
         self.send_header("Vary", "Accept-Encoding")
         self.send_header("Cache-Control", "no-cache")
+        # Hardening: viewer serves only static packs, no framing or MIME sniffing.
+        self.send_header("X-Content-Type-Options", "nosniff")
+        self.send_header("X-Frame-Options", "DENY")
+        self.send_header("Referrer-Policy", "no-referrer")
+        self.send_header("Content-Security-Policy",
+                         "default-src 'self'; "
+                         "script-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net; "
+                         "style-src 'self' 'unsafe-inline'; "
+                         "img-src 'self' data: blob:; "
+                         "connect-src 'self'; "
+                         "frame-ancestors 'none'")
+        self.send_header("Permissions-Policy", "camera=(), microphone=(), geolocation=()")
         super().end_headers()
+
+    def list_directory(self, path: str):  # type: ignore[override]
+        # Disable directory listings: viewer has explicit catalog.json / viewer.json.
+        self.send_error(http.HTTPStatus.NOT_FOUND, "Not Found")
+        return None
 
     @staticmethod
     def _stale_client_copy(header_value: str | None, mtime: float) -> bool:
@@ -72,7 +93,19 @@ class ViewerHandler(http.server.SimpleHTTPRequestHandler):
     # BaseHTTPRequestHandler.send_head.
     def send_head(self):
         accept = self.headers.get("Accept-Encoding", "")
-        path = self.translate_path(self.path)
+        raw_path = self.translate_path(self.path)
+        # Containment: translated path must remain inside the served directory.
+        try:
+            base = Path(self.directory).resolve()
+            target = Path(raw_path).resolve()
+            # Allow the directory itself; listing is blocked separately.
+            if target != base and base not in target.parents:
+                self.send_error(http.HTTPStatus.NOT_FOUND, "Not Found")
+                return None
+        except Exception:
+            self.send_error(http.HTTPStatus.NOT_FOUND, "Not Found")
+            return None
+        path = raw_path
         suffix = os.path.splitext(path)[1].lower()
         if (
             "gzip" not in accept.lower()
