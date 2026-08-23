@@ -2,6 +2,12 @@
 
 > **Part of [HordeForge](https://github.com/hordeforge)** — High-Performance Systems Engineering for 7 Days to Die.
 
+![CI](https://github.com/hordeforge/7dtd-realearth/actions/workflows/ci.yml/badge.svg)
+![license](https://img.shields.io/github/license/hordeforge/7dtd-realearth)
+![release](https://img.shields.io/github/v/release/hordeforge/7dtd-realearth)
+![languages](https://img.shields.io/github/languages/count/hordeforge/7dtd-realearth)
+![top language](https://img.shields.io/github/languages/top/hordeforge/7dtd-realearth)
+
 A **1:1 scale real-world Earth** project for **7 Days to Die V3.1.0** (Henpocalypse): real elevation, landcover heuristics, city/population density, tile streaming, longitude wrap (circle the planet), and a globe-style world map.
 
 This is **not** a single giant heightmap. Earth at 1 block = 1 m is ~40,075 km wide. Vanilla maps top out around 8–16 km. RealEarth uses **offline tile packs** + a **Harmony runtime** that streams only what is near the player.
