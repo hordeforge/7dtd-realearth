@@ -272,7 +272,7 @@ def build_height_test_pack(
         },
     }
     (out_dir / "height_test.json").write_text(
-        json.dumps(meta, indent=2) + "\n", encoding="utf-8"
+        json.dumps(meta, indent=2, ensure_ascii=False) + "\n", encoding="utf-8"
     )
 
     game_stock = compress_elevation(
@@ -423,7 +423,9 @@ def bake_height_test_world(
     meta["size"] = size
     meta["height_test"] = True
     meta["real_dem"] = True
-    (out_dir / "bake_meta.json").write_text(json.dumps(meta, indent=2) + "\n")
+    (out_dir / "bake_meta.json").write_text(
+        json.dumps(meta, indent=2, ensure_ascii=False) + "\n", encoding="utf-8"
+    )
     return meta
 
 

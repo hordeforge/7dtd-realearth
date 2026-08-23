@@ -253,7 +253,11 @@ class Manifest:
 
 def write_manifest(path: Path, manifest: Manifest) -> None:
     path.parent.mkdir(parents=True, exist_ok=True)
-    path.write_text(json.dumps(manifest.to_dict(), indent=2) + "\n", encoding="utf-8")
+    # ensure_ascii=False: manifest name/notes may carry non-ASCII world names.
+    path.write_text(
+        json.dumps(manifest.to_dict(), indent=2, ensure_ascii=False) + "\n",
+        encoding="utf-8",
+    )
 
 
 def read_manifest(path: Path) -> Manifest:

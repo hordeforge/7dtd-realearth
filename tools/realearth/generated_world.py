@@ -14,6 +14,7 @@ import json
 import re
 import zlib
 from pathlib import Path
+from xml.sax.saxutils import escape as saxutils_escape
 
 import numpy as np
 from PIL import Image
@@ -184,6 +185,9 @@ def write_ttw_with_version(
 def write_map_info(path: Path, size: int, name: str, game_version: str | None = None) -> None:
     # If present, GameVersion major must match the client or a warning is shown.
     gv = game_version or detect_game_version_string()
+    # World names come from --name (arbitrary text). Escape for the attribute
+    # context so '&', '<', '>' and quotes cannot break map_info.xml.
+    safe_name = saxutils_escape(name, {'"': "&quot;"})
     xml = f"""<?xml version="1.0" encoding="UTF-8"?>
 <MapInfo>
   <property name="Scale" value="1" />
@@ -192,7 +196,7 @@ def write_map_info(path: Path, size: int, name: str, game_version: str | None = 
   <property name="FixedWaterLevel" value="false" />
   <property name="RandomGeneratedWorld" value="false" />
   <property name="GameVersion" value="{gv}" />
-  <property name="Description" value="RealEarth continuous single map: {name}" />
+  <property name="Description" value="RealEarth continuous single map: {safe_name}" />
 </MapInfo>
 """
     path.write_text(xml, encoding="utf-8")
@@ -474,6 +478,8 @@ def bake_generated_world(
         "files": required + ["cities.json", "population.png"],
     }
     world_json = out_dir / "realearth_world.json"
-    world_json.write_text(json.dumps(meta, indent=2) + "\n", encoding="utf-8")
+    world_json.write_text(
+        json.dumps(meta, indent=2, ensure_ascii=False) + "\n", encoding="utf-8"
+    )
 
     return meta

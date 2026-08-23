@@ -4,10 +4,17 @@ from __future__ import annotations
 
 import json
 import math
+import unicodedata
 from dataclasses import dataclass
 from pathlib import Path
 
 import numpy as np
+
+
+def normalize_place_name(name: str) -> str:
+    """Canonical form for place-name identity: NFC so NFD input (macOS filenames,
+    some map exports) matches the NFC seed names instead of duplicating labels."""
+    return unicodedata.normalize("NFC", name)
 
 
 @dataclass(frozen=True, slots=True)
@@ -210,7 +217,11 @@ def load_settlements_geojson(path: Path) -> list[Settlement]:
             edge = edge_from_poly
         out.append(
             Settlement(
-                name=name, lon=lon, lat=lat, population=pop, kind=kind,
+                name=normalize_place_name(name),
+                lon=lon,
+                lat=lat,
+                population=pop,
+                kind=normalize_place_name(kind),
                 edge_radius_m=edge,
             )
         )
@@ -304,7 +315,11 @@ def paint_settlement_density(
 
 
 def encode_poi_blob(plan: list[dict]) -> bytes:
-    return json.dumps({"pois": plan}, separators=(",", ":")).encode("utf-8")
+    # ensure_ascii=False: POI names are real UTF-8 in the .rte blob (C# decodes
+    # with Encoding.UTF8), not \uXXXX escapes.
+    return json.dumps(
+        {"pois": plan}, separators=(",", ":"), ensure_ascii=False
+    ).encode("utf-8")
 
 
 def decode_poi_blob(blob: bytes) -> list[dict]:

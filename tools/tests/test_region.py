@@ -1,3 +1,5 @@
+import json
+import unicodedata
 from pathlib import Path
 
 from realearth.region import build_region
@@ -25,3 +27,44 @@ def test_build_synthetic_region(tmp_path: Path):
     t0 = man.tiles[0]
     tile = read_tile(tile_path(tmp_path, t0["tx"], t0["tz"]))
     assert tile.elevation_m.shape[0] == 512
+
+
+def test_build_region_settlements_json_utf8_nfc(tmp_path: Path):
+    """Names survive the storage boundary: NFC form, real UTF-8 bytes, no \\u escapes."""
+    nfd_name = unicodedata.normalize("NFD", "São Paulo")
+    gj = tmp_path / "s.geojson"
+    gj.write_text(
+        json.dumps(
+            {
+                "type": "FeatureCollection",
+                "features": [
+                    {
+                        "type": "Feature",
+                        "geometry": {"type": "Point", "coordinates": [-46.6, -23.55]},
+                        "properties": {"name": nfd_name, "population": 12_000_000},
+                    }
+                ],
+            }
+        ),
+        encoding="utf-8",
+    )
+    from realearth.settlements import load_settlements_geojson
+
+    build_region(
+        -47.0,
+        -24.2,
+        -46.0,
+        -23.0,
+        tmp_path,
+        resolution_m=200.0,
+        source="synthetic",
+        name="Utf8Test",
+        max_dim=128,
+        settlements=load_settlements_geojson(gj),
+        also_export_7dtd=False,
+    )
+    raw = (tmp_path / "settlements.json").read_bytes()
+    assert "São Paulo".encode() in raw
+    rows = json.loads(raw.decode("utf-8"))
+    names = [r["name"] for r in rows]
+    assert names.count("São Paulo") == 1

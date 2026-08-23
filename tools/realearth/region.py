@@ -28,8 +28,14 @@ from realearth.settlements import (
     SEED_SETTLEMENTS,
     Settlement,
     encode_poi_blob,
+    normalize_place_name,
 )
 from realearth.tile_format import EarthTile, Manifest, tile_path, write_manifest, write_tile
+
+
+def _place_name_key(name: str) -> str:
+    """Identity key for place names: NFC + casefold (never bare .lower())."""
+    return normalize_place_name(name).casefold()
 
 
 def build_region(
@@ -270,10 +276,11 @@ def build_region(
             d["edge_source"] = src
         settlement_rows.append(d)
 
-    # Also emit unnamed density cores not already listed
-    named = {r["name"].lower() for r in settlement_rows}
+    # Also emit unnamed density cores not already listed. Name key is NFC+casefold
+    # so an NFD spelling of the same place does not produce a duplicate row.
+    named = {_place_name_key(r["name"]) for r in settlement_rows}
     for c in cores:
-        if c.name.lower() in named:
+        if _place_name_key(c.name) in named:
             continue
         settlement_rows.append(
             {
@@ -288,7 +295,9 @@ def build_region(
         )
 
     (out_dir / "settlements.json").write_text(
-        json.dumps(settlement_rows, indent=2) + "\n",
+        # ensure_ascii=False: names are identity text consumed by the in-game
+        # map labels; store real UTF-8 instead of \uXXXX escapes.
+        json.dumps(settlement_rows, indent=2, ensure_ascii=False) + "\n",
         encoding="utf-8",
     )
 

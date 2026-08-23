@@ -199,7 +199,8 @@ def export_viewer_pack(
     if settlements_src.exists():
         settlements = json.loads(settlements_src.read_text(encoding="utf-8"))
         (out_dir / "settlements.json").write_text(
-            json.dumps(settlements, indent=2) + "\n", encoding="utf-8"
+            json.dumps(settlements, indent=2, ensure_ascii=False) + "\n",
+            encoding="utf-8",
         )
 
     bbox = man.bbox or {"west": -180, "south": -90, "east": 180, "north": 90}
@@ -234,5 +235,7 @@ def export_viewer_pack(
             "scale_m": 4500,
         },
     }
-    (out_dir / "viewer.json").write_text(json.dumps(meta, indent=2) + "\n", encoding="utf-8")
+    (out_dir / "viewer.json").write_text(
+        json.dumps(meta, indent=2, ensure_ascii=False) + "\n", encoding="utf-8"
+    )
     return out_dir

@@ -462,13 +462,19 @@ namespace RealEarth
         {
             int depth = 0;
             bool inStr = false;
+            bool esc = false;
             for (int i = openIdx; i < json.Length; i++)
             {
                 char c = json[i];
-                if (c == '"' && (i == 0 || json[i - 1] != '\\'))
-                    inStr = !inStr;
-                if (inStr) continue;
-                if (c == '{') depth++;
+                if (inStr)
+                {
+                    if (esc) esc = false;
+                    else if (c == '\\') esc = true;
+                    else if (c == '"') inStr = false;
+                    continue;
+                }
+                if (c == '"') inStr = true;
+                else if (c == '{') depth++;
                 else if (c == '}')
                 {
                     depth--;
@@ -571,9 +577,89 @@ namespace RealEarth
             if (colon < 0) return false;
             int q1 = obj.IndexOf('"', colon + 1);
             if (q1 < 0) return false;
-            int q2 = obj.IndexOf('"', q1 + 1);
+            // Scan to the real closing quote (skipping \\-escaped ones), then
+            // decode JSON escapes: place names may be stored as \uXXXX sequences.
+            int q2 = -1;
+            bool esc = false;
+            for (int i = q1 + 1; i < obj.Length; i++)
+            {
+                char c = obj[i];
+                if (esc) { esc = false; continue; }
+                if (c == '\\') { esc = true; continue; }
+                if (c == '"') { q2 = i; break; }
+            }
             if (q2 < 0) return false;
-            value = obj.Substring(q1 + 1, q2 - q1 - 1);
+            value = UnescapeJson(obj.Substring(q1 + 1, q2 - q1 - 1));
+            return true;
+        }
+
+        /// <summary>
+        /// Decode JSON string escapes (\uXXXX incl. surrogate halves, \b \f \n \r \t,
+        /// \" \\ \/). Invalid escapes pass through unchanged rather than throwing.
+        /// </summary>
+        static string UnescapeJson(string s)
+        {
+            if (s.IndexOf('\\') < 0)
+                return s;
+            var sb = new System.Text.StringBuilder(s.Length);
+            int i = 0;
+            while (i < s.Length)
+            {
+                char c = s[i];
+                if (c != '\\' || i + 1 >= s.Length)
+                {
+                    sb.Append(c);
+                    i++;
+                    continue;
+                }
+                char n = s[i + 1];
+                switch (n)
+                {
+                    case '"': sb.Append('"'); i += 2; break;
+                    case '\\': sb.Append('\\'); i += 2; break;
+                    case '/': sb.Append('/'); i += 2; break;
+                    case 'b': sb.Append('\b'); i += 2; break;
+                    case 'f': sb.Append('\f'); i += 2; break;
+                    case 'n': sb.Append('\n'); i += 2; break;
+                    case 'r': sb.Append('\r'); i += 2; break;
+                    case 't': sb.Append('\t'); i += 2; break;
+                    case 'u':
+                        if (i + 6 <= s.Length && TryHex4(s, i + 2, out char u))
+                        {
+                            sb.Append(u);
+                            i += 6;
+                        }
+                        else
+                        {
+                            sb.Append(c);
+                            i++;
+                        }
+                        break;
+                    default:
+                        sb.Append(c);
+                        i++;
+                        break;
+                }
+            }
+            return sb.ToString();
+        }
+
+        static bool TryHex4(string s, int start, out char value)
+        {
+            value = '\0';
+            if (start + 4 > s.Length) return false;
+            int v = 0;
+            for (int i = start; i < start + 4; i++)
+            {
+                char ch = s[i];
+                int digit = ch >= '0' && ch <= '9' ? ch - '0'
+                    : ch >= 'a' && ch <= 'f' ? ch - 'a' + 10
+                    : ch >= 'A' && ch <= 'F' ? ch - 'A' + 10
+                    : -1;
+                if (digit < 0) return false;
+                v = (v << 4) | digit;
+            }
+            value = (char)v;
             return true;
         }
 

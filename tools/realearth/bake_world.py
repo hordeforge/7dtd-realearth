@@ -115,7 +115,7 @@ def bake_world_from_pack(
                 }
             )
     (out_dir / "settlements.json").write_text(
-        json.dumps(settlements, indent=2) + "\n", encoding="utf-8"
+        json.dumps(settlements, indent=2, ensure_ascii=False) + "\n", encoding="utf-8"
     )
 
     # Prefab stamp plan (consumed by Streamed/Baked runtime when hooked)
@@ -134,7 +134,7 @@ def bake_world_from_pack(
         ],
     }
     (out_dir / "prefab_plan.json").write_text(
-        json.dumps(prefabs, indent=2) + "\n", encoding="utf-8"
+        json.dumps(prefabs, indent=2, ensure_ascii=False) + "\n", encoding="utf-8"
     )
 
     # map_info-style metadata for operators
@@ -161,7 +161,9 @@ def bake_world_from_pack(
             ],
         },
     }
-    (out_dir / "map_info.json").write_text(json.dumps(map_info, indent=2) + "\n", encoding="utf-8")
+    (out_dir / "map_info.json").write_text(
+        json.dumps(map_info, indent=2, ensure_ascii=False) + "\n", encoding="utf-8"
+    )
     (out_dir / "README_INSTALL.txt").write_text(
         "\n".join(
             [

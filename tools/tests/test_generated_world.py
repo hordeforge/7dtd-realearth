@@ -3,12 +3,13 @@
 from __future__ import annotations
 
 import struct
+import xml.etree.ElementTree as ET
 from pathlib import Path
 
 import numpy as np
 
 from realearth import DEFAULT_SEA_LEVEL_GAME_Y
-from realearth.generated_world import bake_generated_world, game_y_to_dtm_u16
+from realearth.generated_world import bake_generated_world, game_y_to_dtm_u16, write_map_info
 from realearth.region import build_region
 
 
@@ -93,3 +94,13 @@ def test_bake_generated_world_files_and_dtm_size(tmp_path: Path):
 
     sp = (out / "spawnpoints.xml").read_text(encoding="utf-8")
     assert "<spawnpoint" in sp
+
+
+def test_write_map_info_escapes_hostile_name(tmp_path: Path):
+    """A world name with XML metacharacters must not break map_info.xml."""
+    hostile = 'Rocks & Co <test> "quoted"'
+    p = tmp_path / "map_info.xml"
+    write_map_info(p, 2048, hostile, game_version="V.3.0.1")
+    root = ET.parse(p).getroot()
+    props = {e.get("name"): e.get("value") for e in root.findall("property")}
+    assert props["Description"] == f"RealEarth continuous single map: {hostile}"

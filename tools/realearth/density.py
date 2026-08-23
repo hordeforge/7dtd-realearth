@@ -633,6 +633,7 @@ def write_cities_json(path: Path, cores: list[CityCore], stamps: list[PrefabStam
                 ),
             },
             indent=2,
+            ensure_ascii=False,
         )
         + "\n",
         encoding="utf-8",
