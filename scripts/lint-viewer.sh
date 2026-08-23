@@ -9,7 +9,7 @@
 # each run.
 #
 # Versions live here as the single source of truth (no package.json /
-# node_modules tracked; same policy as ../zdtd-server/scripts/lint-webui.sh).
+# node_modules tracked; same policy as ../zdtd-server-server/scripts/lint-webui.sh).
 # Override locally: OXLINT_VERSION=1.79.0 OXLINT_STANDARDS_VERSION=0.8.1 \
 #   bash scripts/lint-viewer.sh
 #

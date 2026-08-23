@@ -47,7 +47,7 @@ WebMod/              build output + exported pack data (git-ignored)
 
 No `package.json`/`node_modules` are tracked; tsc/esbuild/oxlint run through
 `npx` with versions pinned inside the scripts (same policy as
-`../zdtd-server/scripts/lint-webui.sh`).
+`../zdtd-server-server/scripts/lint-webui.sh`).
 
 ```bash
 make webmod-lint            # tsc --strict + oxlint, warnings fail
