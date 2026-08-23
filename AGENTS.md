@@ -78,7 +78,9 @@ uv run python -m realearth.cli bake-world --pack ../data/samples/demo_region \
 | `docs/` (this project) | Product design, status, Streamed lessons (`realearth-runtime`, `realearth-surfaces`, `realearth-review`, MODIFICATIONS, LON_LAT, …) |
 | `../7dtd-research/docs/` | **Generic** dedicated engine RE only (loop, AI, net, save, terrain APIs). Not product status. |
 
-Hub: [`docs/INDEX.md`](docs/INDEX.md). Engine RE hub: [`../7dtd-research/docs/INDEX.md`](../7dtd-research/docs/INDEX.md).
+Hub: [`docs/INDEX.md`](docs/INDEX.md) (ownership: install vs status vs gaps vs lon/lat). Do not re-list
+every doc path in answers; point agents at INDEX + the owning file. Engine RE hub:
+[`../7dtd-research/docs/INDEX.md`](../7dtd-research/docs/INDEX.md).
 
 ## Layout
 
@@ -89,16 +91,11 @@ tools/              Python realearth pipeline (uv project)
 scripts/            install, expand, dedicated helpers
 docs/               product docs (RealEarth-owned narratives)
 viewer/             web map (flat + globe)
+webmod/             stock dashboard webui source (ts); WebMod/ built bundle
 data/               samples and generated packs (runtime artifacts)
 worlds/             baked worlds (runtime artifacts)
-docs/               research + product docs
 DESIGN.md           architecture and phased delivery
 ```
-
-## Docs map
-
-**Only hub:** [`docs/INDEX.md`](docs/INDEX.md) (ownership: who owns install vs status vs gaps vs lon/lat).  
-Do not re-list every doc path in answers; point agents at INDEX + the owning file.
 
 ## Sibling projects
 
