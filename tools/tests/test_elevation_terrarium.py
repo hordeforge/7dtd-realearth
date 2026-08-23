@@ -102,3 +102,14 @@ def test_get_with_retry_does_not_retry_client_errors():
     with pytest.raises(httpx.HTTPStatusError):
         _get_with_retry(client, "http://unit.test/tile")
     assert client.calls == 1
+
+
+def test_get_with_retry_backoff_is_deterministic(monkeypatch):
+    """Retry backoff must be a fixed schedule (no RNG) so runs stay reproducible."""
+    sleeps: list[float] = []
+    monkeypatch.setattr("time.sleep", sleeps.append)
+    client = _FlakyClient(failures=99)
+    with pytest.raises(httpx.ConnectError):
+        _get_with_retry(client, "http://unit.test/tile")
+    assert client.calls == 3
+    assert sleeps == [0.5, 1.0]

@@ -9,7 +9,6 @@
 from __future__ import annotations
 
 import math
-import random
 import time
 from pathlib import Path
 
@@ -22,9 +21,12 @@ _MAX_ATTEMPTS = 3
 
 
 def _get_with_retry(client: httpx.Client, url: str, *, params: dict | None = None):
-    """GET with bounded backoff for transient failures (transport errors, 429, 5xx).
+    """GET with bounded deterministic backoff for transient failures (transport errors, 429, 5xx).
 
     Client errors (other than 429) are not retried: they will fail identically.
+    Backoff is a fixed schedule with no jitter: this pipeline is a sequential
+    batch fetcher (no thundering herd to spread), and unseeded RNG here would
+    make retry timing irreproducible run-to-run.
     """
     last_exc: Exception | None = None
     for attempt in range(_MAX_ATTEMPTS):
@@ -39,7 +41,7 @@ def _get_with_retry(client: httpx.Client, url: str, *, params: dict | None = Non
         except httpx.TransportError as e:
             last_exc = e
         if attempt < _MAX_ATTEMPTS - 1:
-            time.sleep(min(8.0, 0.5 * (2**attempt)) * (0.5 + random.random()))
+            time.sleep(min(8.0, 0.5 * (2**attempt)))
     assert last_exc is not None
     raise last_exc
 
