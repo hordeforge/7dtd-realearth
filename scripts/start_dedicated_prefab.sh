@@ -54,7 +54,10 @@ if [[ "$WORLD_NAME" != "RWG" ]]; then
     exit 1
   fi
   if [[ -f "$WORLD_DIR/prefabs.xml" ]]; then
-    pref_count=$(grep -c "<decoration" "$WORLD_DIR/prefabs.xml" 2>/dev/null || echo 0)
+    # grep -c prints "0" AND exits 1 on no match; `|| echo 0` would append a
+    # second zero. Suppress stderr, keep stdout, fall back via default value.
+    pref_count=$(grep -c "<decoration" "$WORLD_DIR/prefabs.xml" 2>/dev/null)
+    pref_count=${pref_count:-0}
   fi
 fi
 

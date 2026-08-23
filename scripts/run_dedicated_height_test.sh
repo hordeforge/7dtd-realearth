@@ -38,9 +38,14 @@ echo "UserData: $USERDATA"
 echo "World:    $WORLD_NAME"
 echo "Wait:     ${WAIT_SEC}s (no pause when empty — dedicated always simulates)"
 
-# Kill previous test instance if any (exact name; avoid pkill -f self-match)
-pgrep -x '7DaysToDieServer.x86_64' 2>/dev/null | xargs -r kill 2>/dev/null || true
-sleep 1
+# Kill previous test instance by /proc exe path (pgrep -x truncates long names)
+for d in /proc/[0-9]*; do
+  pid=${d#/proc/}
+  [[ -L "$d/exe" ]] || continue
+  exe=$(readlink "$d/exe" 2>/dev/null || true)
+  case "$exe" in *7DaysToDieServer.x86_64) kill "$pid" 2>/dev/null || true ;; esac
+done
+sleep 2
 
 # Patch both client + dedicated Assembly-CSharp (Everest-scale YDim)
 export DOTNET_ROOT
@@ -67,17 +72,13 @@ install_mod_to() {
   fi
   if [[ -d "$pack/tiles" ]]; then
     rm -rf "$dest/Data/tiles"
-    mkdir -p "$dest/Data"
-    cp -a "$pack/." "$dest/Data/tiles/" 2>/dev/null || true
-    # pack layout is pack/tiles/*.rte — install_proton copies pack/tiles into Data/tiles
-    if [[ -d "$pack/tiles" ]]; then
-      rm -rf "$dest/Data/tiles"
-      mkdir -p "$dest/Data/tiles"
-      cp -a "$pack/tiles/." "$dest/Data/tiles/tiles/" 2>/dev/null || cp -a "$pack/tiles" "$dest/Data/tiles/"
-      for n in earth.manifest.json height_test.json preview_elev_m.png; do
-        [[ -f "$pack/$n" ]] && cp -f "$pack/$n" "$dest/Data/tiles/"
-      done
-    fi
+    mkdir -p "$dest/Data/tiles"
+    # pack layout is pack/tiles/*.rte — TilePackPath=Data/tiles resolves Data/tiles/tiles/
+    mkdir -p "$dest/Data/tiles/tiles"
+    cp -a "$pack/tiles/." "$dest/Data/tiles/tiles/"
+    for n in earth.manifest.json height_test.json preview_elev_m.png; do
+      [[ -f "$pack/$n" ]] && cp -f "$pack/$n" "$dest/Data/tiles/"
+    done
   fi
   python3 - <<PY
 import json
@@ -150,7 +151,16 @@ if [[ ! -d "$DS_DIR/Mods/0_TFP_Harmony" && -d "$GAME_DIR/Mods/0_TFP_Harmony" ]];
   echo "Copied 0_TFP_Harmony → dedicated Mods/"
 fi
 
-# Generate H500 world if missing
+# Generate H500 world if missing.
+# Generation always emits worlds/RealEarth_H500 (height-test-map --peak-game-y 500);
+# a RE_WORLD_NAME other than that can never be produced here — fail fast instead of
+# booting into a guaranteed GameWorld-not-found crash after the full WAIT window.
+GENERATED_NAME="RealEarth_H500"
+if [[ "$WORLD_NAME" != "$GENERATED_NAME" && ! -d "$ROOT/worlds/$WORLD_NAME" ]]; then
+  echo "ERROR: RE_WORLD_NAME=$WORLD_NAME but no worlds/$WORLD_NAME exists and this" >&2
+  echo "script can only generate $GENERATED_NAME. Pre-bake the world or use the default." >&2
+  exit 1
+fi
 if [[ ! -d "$ROOT/worlds/$WORLD_NAME" ]]; then
   echo "Generating $WORLD_NAME..."
   (cd "$ROOT/tools" && uv run python -m realearth.cli height-test-map --repo "$ROOT" --peak-game-y 500 --pack-size 512 --size 2048)
@@ -264,7 +274,9 @@ while (( SECONDS < deadline )); do
     fi
     if grep -Eq "createWorld\(\) done|StartGame done" "$LOG" 2>/dev/null \
       && grep -Eq "World\.Load:|createWorld:" "$LOG" 2>/dev/null; then
-      if grep -Eq "ENGINE EXPANDED|engineYDim=16384|YDim=16384" "$LOG" 2>/dev/null; then
+      # "YDim expand active" is logged only when ChunkBlockYDim > 256, so any
+      # RE_YDIM value passes (the old literal 16384 match broke --ydim overrides).
+      if grep -Eq "RealEarth YDim expand active" "$LOG" 2>/dev/null; then
         if (( ok == 0 )); then
           ok=1
           loaded_at=$SECONDS
@@ -302,7 +314,7 @@ while (( SECONDS < deadline )); do
 done
 
 echo "======== RealEarth lines ========"
-grep -En "RealEarth|ENGINE EXPANDED|YDim|maxGameY|mpOrigin|SharedFixed|createWorld|World\.Load|Crash|Exception|EXC |SetHalf|UnsafeChunk" "$LOG" 2>/dev/null | head -100 || true
+grep -En "RealEarth|YDim expand active|YDim|maxGameY|mpOrigin|SharedFixed|createWorld|World\.Load|Crash|Exception|EXC |SetHalf|UnsafeChunk" "$LOG" 2>/dev/null | head -100 || true
 echo "======== last 40 log lines ========"
 tail -40 "$LOG" 2>/dev/null || true
 
@@ -319,8 +331,9 @@ trap - EXIT INT TERM
 
 if (( ok == 1 )); then
   # Final gate checks
-  if ! grep -Eq "YDim=16384|engineYDim=16384" "$LOG"; then
-    echo "FAIL: missing Everest-scale YDim marker"
+  # Expanded engine marker (any YDim > 256; RE_YDIM may legally differ from 16384)
+  if ! grep -Eq "RealEarth YDim expand active" "$LOG"; then
+    echo "FAIL: missing YDim-expand-active marker"
     exit 1
   fi
   if ! grep -Eq "createWorld\(\) done|StartGame done" "$LOG"; then

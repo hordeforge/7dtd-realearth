@@ -136,7 +136,9 @@ def _local_stretch(
         if np.any(land):
             t = elev[land] / (hi + 1e-9)
             out[land] = sea_level_y + t * (max_y - sea_level_y)
-        return np.clip(np.rint(out), min_y, max_y).astype(np.uint8)
+        # Contract: max_y > 255 must return int32; uint8 wraps tall columns.
+        dtype = np.int32 if max_y > 255 else np.uint8
+        return np.clip(np.rint(out), min_y, max_y).astype(dtype)
     t = (elev - lo) / (hi - lo)
     dtype = np.int32 if max_y > 255 else np.uint8
     return np.clip(np.rint(min_y + t * (max_y - min_y)), min_y, max_y).astype(dtype)

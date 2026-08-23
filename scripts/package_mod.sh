@@ -4,6 +4,16 @@ set -euo pipefail
 ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 OUT="${1:-$ROOT/dist/RealEarth}"
 GAME_DIR="${SEVENDTD_GAME_DIR:-${GameDir:-}}"
+# docs/MODLET.md: install/package scripts reject MAP_MODE values other than
+# Streamed|Baked; the chosen mode is baked into the packaged config.
+MAP_MODE="${MAP_MODE:-Streamed}"
+case "$MAP_MODE" in
+  Streamed|Baked) ;;
+  *)
+    echo "ERROR: MAP_MODE must be Streamed or Baked (got: $MAP_MODE)" >&2
+    exit 1
+    ;;
+esac
 
 # Locate a .NET SDK: explicit env, then the usual local caches (mirrors Makefile
 # and install_proton.sh; a bare dotnet host without SDKs fails cryptically).
@@ -32,12 +42,12 @@ cp "$ROOT/ATTRIBUTION.md" "$OUT/" 2>/dev/null || true
 cp "$ROOT/CHANGELOG.md" "$OUT/" 2>/dev/null || true
 # Ensure single-world defaults are present in packaged config
 if command -v python3 >/dev/null; then
-  python3 - <<'PY' "$OUT/Config/realearth.json"
+  python3 - <<'PY' "$OUT/Config/realearth.json" "$MAP_MODE"
 import json, sys
 path = sys.argv[1]
 with open(path, encoding="utf-8") as f:
     cfg = json.load(f)
-cfg.setdefault("MapMode", "Streamed")
+cfg["MapMode"] = sys.argv[2] if len(sys.argv) > 2 else cfg.get("MapMode", "Streamed")
 cfg.setdefault("SingleWorldSession", True)
 cfg.setdefault("LocalWindowSize", 1024)
 cfg.setdefault("MultiplayerOriginMode", "SoloSlide")

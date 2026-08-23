@@ -271,6 +271,7 @@ echo "$SPID" >"$USERDATA/dedicated.pid"
 echo "$LOG" >"$USERDATA/dedicated.logpath"
 
 # Wait until LiteNetLib is up
+READY=0
 for _ in $(seq 1 90); do
   if ! kill -0 "$SPID" 2>/dev/null; then
     echo "ERROR: server exited early" >&2
@@ -280,10 +281,16 @@ for _ in $(seq 1 90); do
   if [[ -f "$LOG" ]] && grep -q "LiteNetLib server started" "$LOG" 2>/dev/null \
     && grep -Eq "createWorld\(\) done|StartGame done" "$LOG" 2>/dev/null; then
     echo "OK: dedicated ready (LiteNetLib + world loaded)"
+    READY=1
     break
   fi
   sleep 2
 done
+if (( READY != 1 )); then
+  echo "ERROR: server not ready after 180s (LiteNetLib/world-load markers missing)" >&2
+  tail -40 "$LOG" 2>/dev/null || true
+  exit 1
+fi
 
 echo "======== network prefs from log ========"
 grep -En "EACEnabled|Crossplay|ServerDisabledNetwork|ServerVisibility|Twitch|Discord|LiteNetLib server|EOS|SteamNetworking" "$LOG" 2>/dev/null | head -40 || true

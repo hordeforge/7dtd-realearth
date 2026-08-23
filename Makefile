@@ -214,13 +214,15 @@ engine-expand-dry:
 	@"$(SCRIPTS)/patch_engine_height.sh" --dry-run
 
 engine-restore:
-	@DLL="$(GAME_DIR)/7DaysToDie_Data/Managed/Assembly-CSharp.dll"; \
+	@set -e; \
+	DLL="$(GAME_DIR)/7DaysToDie_Data/Managed/Assembly-CSharp.dll"; \
 	BAK="$$DLL.re_stock_bak"; \
 	if [[ ! -f "$$BAK" ]]; then echo "No backup at $$BAK"; exit 1; fi; \
 	cp -a "$$BAK" "$$DLL"; \
 	rm -f "$$DLL.re_height_expanded"; \
 	echo "Restored stock: $$DLL"; \
-	DS="$(HOME)/.local/share/Steam/steamapps/common/7 Days to Die Dedicated Server/7DaysToDieServer_Data/Managed/Assembly-CSharp.dll"; \
+	DS_DIR="$(if $(SEVENDTD_SERVER_DIR),$(SEVENDTD_SERVER_DIR),$(HOME)/.local/share/Steam/steamapps/common/7 Days to Die Dedicated Server)"; \
+	DS="$$DS_DIR/7DaysToDieServer_Data/Managed/Assembly-CSharp.dll"; \
 	if [[ -f "$$DS.re_stock_bak" ]]; then cp -a "$$DS.re_stock_bak" "$$DS"; rm -f "$$DS.re_height_expanded"; echo "Restored stock: $$DS"; fi; \
 	$(MAKE) build
 

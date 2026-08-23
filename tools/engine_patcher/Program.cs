@@ -115,6 +115,8 @@ namespace RealEarth.EnginePatcher
             bool force = false;
             for (int i = 0; i < args.Length; i++)
             {
+                // Unknown flags must hard-fail: a typo'd --dryrun would otherwise
+                // be ignored and the patcher would perform a real write.
                 if (args[i] == "--dll" && i + 1 < args.Length) gameDll = args[++i];
                 else if (args[i] == "--ydim" && i + 1 < args.Length)
                 {
@@ -126,6 +128,14 @@ namespace RealEarth.EnginePatcher
                 {
                     PrintHelp();
                     return 0;
+                }
+                else
+                {
+                    Console.Error.WriteLine(
+                        "ERROR: unknown argument: " + args[i] +
+                        " (valid: --dll <path> --ydim <n> --dry-run --force)");
+                    PrintHelp();
+                    return 2;
                 }
             }
 

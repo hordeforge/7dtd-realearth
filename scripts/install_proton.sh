@@ -7,7 +7,7 @@ GAME_DIR="${SEVENDTD_GAME_DIR:-$HOME/.local/share/Steam/steamapps/common/7 Days 
 DS_DIR="${SEVENDTD_SERVER_DIR:-$HOME/.local/share/Steam/steamapps/common/7 Days to Die Dedicated Server}"
 # Locate a .NET SDK: explicit env, then the usual local caches (mirrors Makefile).
 find_dotnet_root() {
-  for d in "$DOTNET_ROOT" "$HOME/.cache/dotnet-sdk" "$HOME/.dotnet" \
+  for d in "${DOTNET_ROOT:-}" "$HOME/.cache/dotnet-sdk" "$HOME/.dotnet" \
            "/usr/lib/dotnet" "/usr/share/dotnet" "/usr/local/share/dotnet"; do
     if [[ -n "$d" && -x "$d/dotnet" ]]; then
       echo "$d"
@@ -29,6 +29,17 @@ if [[ ! -d "$GAME_DIR/Mods/0_TFP_Harmony" ]]; then
   echo "ERROR: Mods/0_TFP_Harmony missing — do not delete it. Verify Steam files." >&2
   exit 1
 fi
+
+# Validate MAP_MODE before touching anything: a bad value must not destroy the
+# previous install (validation used to run after rm -rf inside install_mod).
+MAP_MODE="${MAP_MODE:-Streamed}"
+case "$MAP_MODE" in
+  Streamed|Baked) ;;
+  *)
+    echo "ERROR: MAP_MODE must be Streamed or Baked (got: $MAP_MODE)" >&2
+    exit 1
+    ;;
+esac
 
 # Resolve client userdata via shipped helper (Proton Roaming preferred)
 resolve_world_targets() {
@@ -81,15 +92,8 @@ install_mod() {
   [[ -f "$ROOT/Config/realearth.advanced_height.json" ]] && \
     cp -f "$ROOT/Config/realearth.advanced_height.json" "$dest/Config/"
 
-# MAP_MODE=Streamed (default for 1:1 inject) or Baked (finite DTM world)
-local map_mode="${MAP_MODE:-Streamed}"
-case "$map_mode" in
-  Streamed|Baked) ;;
-  *)
-    echo "ERROR: MAP_MODE must be Streamed or Baked (got: $map_mode)" >&2
-    exit 1
-    ;;
-esac
+# MAP_MODE validated up front (see top of script); Streamed is the 1:1 inject default
+local map_mode="$MAP_MODE"
   if command -v python3 >/dev/null; then
     python3 - <<'PY' "$dest/Config/realearth.json" "$map_mode" "$ROOT/data/samples/demo_region"
 import json, sys
@@ -167,6 +171,10 @@ WORLD_SRC="$ROOT/worlds/RealEarth"
 if [[ ! -d "$WORLD_SRC" || ! -f "$WORLD_SRC/dtm.raw" ]]; then
   echo "WARN: no baked world at $WORLD_SRC — run bake-world first" >&2
 else
+  if ! command -v python3 >/dev/null; then
+    echo "ERROR: python3 required to resolve world install targets" >&2
+    exit 1
+  fi
   mapfile -t RESOLVE < <(resolve_world_targets)
   PRIMARY=""
   PROTON_UD=""
@@ -178,6 +186,10 @@ else
       TARGET\ *) TARGETS+=("${line#TARGET }") ;;
     esac
   done
+  if [[ "${#TARGETS[@]}" -eq 0 ]]; then
+    echo "ERROR: no GeneratedWorlds install targets resolved (see resolve_world_targets output above)" >&2
+    exit 1
+  fi
 
   echo "Primary client userdata: $PRIMARY"
   if [[ -n "$PROTON_UD" ]]; then

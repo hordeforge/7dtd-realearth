@@ -39,6 +39,11 @@ if [[ ! -d "$PACK" ]]; then
   exit 1
 fi
 
+if [[ ! -d "$GAME_DIR/Mods/0_TFP_Harmony" ]]; then
+  echo "ERROR: $GAME_DIR/Mods/0_TFP_Harmony missing — RealEarth.dll cannot load without it. Verify Steam files." >&2
+  exit 1
+fi
+
 dotnet build "$ROOT/Source/RealEarth/RealEarth.csproj" -c Release -p:GameDir="$GAME_DIR" -v q
 DLL="$ROOT/Source/RealEarth/bin/Release/RealEarth.dll"
 test -f "$DLL"
@@ -108,6 +113,7 @@ install_one "$GAME_DIR"
 install_one "$DS_DIR"
 
 # Worlds for New Game / dedicated
+INSTALLED_WORLDS=0
 for gw in \
   "$HOME/.local/share/Steam/steamapps/compatdata/251570/pfx/drive_c/users/steamuser/AppData/Roaming/7DaysToDie/GeneratedWorlds" \
   "$HOME/.local/share/7DaysToDie/GeneratedWorlds" \
@@ -118,9 +124,16 @@ do
     rm -rf "${gw:?}/$WORLD_NAME"
     cp -a "$WORLD" "$gw/$WORLD_NAME"
     echo "World → $gw/$WORLD_NAME"
+    INSTALLED_WORLDS=$((INSTALLED_WORLDS + 1))
   fi
 done
 
-echo "OK pack=$KIND world=$WORLD_NAME"
+if [[ ! -d "$WORLD" ]]; then
+  echo "WARN: baked world missing: $WORLD — run make height-map / height-map-500 first" >&2
+elif (( INSTALLED_WORLDS == 0 )); then
+  echo "WARN: world $WORLD_NAME not installed to any GeneratedWorlds target (all missing)" >&2
+fi
+
+echo "OK pack=$KIND installed to client+dedicated Mods/RealEarth (world targets hit: $INSTALLED_WORLDS)"
 echo "Play client: New Game → $WORLD_NAME"
 echo "Dedicated: set GameWorld=$WORLD_NAME or run make dedicated-height-test"

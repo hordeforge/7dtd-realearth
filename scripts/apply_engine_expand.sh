@@ -23,7 +23,13 @@ YDIM="${RE_YDIM:-16384}"
 EXTRA=()
 while [[ $# -gt 0 ]]; do
   case "$1" in
-    --ydim) YDIM="$2"; EXTRA+=(--ydim "$2"); shift 2 ;;
+    --ydim)
+      if (( $# < 2 )); then
+        echo "ERROR: --ydim requires a value (power of two >= 256)" >&2
+        exit 2
+      fi
+      YDIM="$2"; EXTRA+=(--ydim "$2"); shift 2
+      ;;
     *) EXTRA+=("$1"); shift ;;
   esac
 done
