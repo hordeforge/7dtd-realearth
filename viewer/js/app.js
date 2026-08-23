@@ -340,6 +340,8 @@ function setMode(mode) {
   state.mode = mode;
   els.btnFlat.classList.toggle("active", mode === "flat");
   els.btnGlobe.classList.toggle("active", mode === "globe");
+  els.btnFlat.setAttribute("aria-pressed", String(mode === "flat"));
+  els.btnGlobe.setAttribute("aria-pressed", String(mode === "globe"));
   applyLayer();
 }
 

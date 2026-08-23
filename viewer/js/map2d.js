@@ -38,6 +38,7 @@ export class Map2D {
     this._onPointerUp = (e) => this._endPointer(e.pointerId);
     this._onPointerCancel = (e) => this._endPointer(e.pointerId);
     this._onWheel = (e) => this._wheel(e);
+    this._onKeyDown = (e) => this._keydown(e);
 
     globalThis.addEventListener("resize", this._boundResize);
     canvas.addEventListener("pointerdown", this._onPointerDown);
@@ -45,6 +46,7 @@ export class Map2D {
     globalThis.addEventListener("pointerup", this._onPointerUp);
     canvas.addEventListener("pointercancel", this._onPointerCancel);
     canvas.addEventListener("wheel", this._onWheel, { passive: false });
+    canvas.addEventListener("keydown", this._onKeyDown);
   }
 
   dispose() {
@@ -54,6 +56,7 @@ export class Map2D {
     globalThis.removeEventListener("pointerup", this._onPointerUp);
     this.canvas.removeEventListener("pointercancel", this._onPointerCancel);
     this.canvas.removeEventListener("wheel", this._onWheel);
+    this.canvas.removeEventListener("keydown", this._onKeyDown);
   }
 
   resize() {
@@ -293,15 +296,61 @@ export class Map2D {
   _wheel(e) {
     e.preventDefault();
     const rect = this.canvas.getBoundingClientRect();
-    const sx = e.clientX - rect.left;
-    const sy = e.clientY - rect.top;
-    const factor = e.deltaY < 0 ? 1.12 : 1 / 1.12;
+    this.zoomAt(e.clientX - rect.left, e.clientY - rect.top, e.deltaY < 0 ? 1.12 : 1 / 1.12);
+    this.draw();
+  }
+
+  // Scale around a screen point, keeping that point anchored. Shared by the
+  // wheel and the keyboard zoom so both behave identically.
+  zoomAt(sx, sy, factor) {
     const newScale = Math.min(32, Math.max(0.05, this.scale * factor));
     const ix = (sx - this.tx) / this.scale;
     const iy = (sy - this.ty) / this.scale;
     this.scale = newScale;
     this.tx = sx - ix * this.scale;
     this.ty = sy - iy * this.scale;
+  }
+
+  // Keyboard pan/zoom for non-pointer users (canvas is focusable in index.html).
+  _keydown(e) {
+    if (!this.image) {
+      return;
+    }
+    const parent = this.canvas.parentElement;
+    if (!parent) {
+      return;
+    }
+    const step = e.shiftKey ? 160 : 60;
+    switch (e.key) {
+      case "ArrowLeft":
+        this.tx += step;
+        break;
+      case "ArrowRight":
+        this.tx -= step;
+        break;
+      case "ArrowUp":
+        this.ty += step;
+        break;
+      case "ArrowDown":
+        this.ty -= step;
+        break;
+      case "+":
+      case "=":
+        this.zoomAt(parent.clientWidth / 2, parent.clientHeight / 2, 1.25);
+        break;
+      case "-":
+      case "_":
+        this.zoomAt(parent.clientWidth / 2, parent.clientHeight / 2, 0.8);
+        break;
+      case "Home":
+      case "0":
+        this.fit();
+        e.preventDefault();
+        return;
+      default:
+        return;
+    }
+    e.preventDefault();
     this.draw();
   }
 }

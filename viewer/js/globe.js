@@ -50,6 +50,11 @@ export class GlobeView {
     this.scene.add(this.markers);
     this.texture = null;
     this.raf = 0;
+    // Auto-rotation pauses for users who ask the OS to reduce motion.
+    this.reduceMotion =
+      typeof globalThis.matchMedia === "function"
+        ? globalThis.matchMedia("(prefers-reduced-motion: reduce)")
+        : null;
     this._onResize = () => this.resize();
     globalThis.addEventListener("resize", this._onResize);
     this.resize();
@@ -164,7 +169,7 @@ export class GlobeView {
       return;
     }
     this.controls.update();
-    if (this.globe) {
+    if (this.globe && !(this.reduceMotion && this.reduceMotion.matches)) {
       this.globe.rotation.y += 0.0008;
     }
     this.renderer.render(this.scene, this.camera);

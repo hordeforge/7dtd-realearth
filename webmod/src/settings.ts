@@ -63,9 +63,9 @@ export function RealEarthSettings(props: WebModComponentProps): unknown {
     h(
       "div",
       { className: "re-settings-row" },
-      h("input", { ref: inputRef, className: "re-input", type: "text" }),
+      h("label", { className: "re-field" }, h("span", { className: "re-label" }, "Default pack"), h("input", { ref: inputRef, className: "re-input", type: "text", spellCheck: false })),
       h("button", { ref: saveButtonRef, className: "re-btn", type: "button" }, "Save"),
-      h("span", { ref: savedRef, className: "re-muted" })
+      h("span", { ref: savedRef, className: "re-muted", role: "status" })
     )
   );
 }

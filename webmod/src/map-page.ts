@@ -338,7 +338,7 @@ function renderToolbar(h: ElementFactory, refs: MapPageRefs): unknown {
       h("span", { className: "re-label" }, "Opacity"),
       h("input", { ref: refs.opacity, className: "re-range", type: "range", min: "0.2", max: "1", step: "0.05", defaultValue: "1" })
     ),
-    h("span", { ref: refs.status, className: "re-status" })
+    h("span", { ref: refs.status, className: "re-status", role: "status" })
   );
 }
 
@@ -346,8 +346,15 @@ function renderStage(h: ElementFactory, refs: MapPageRefs): unknown {
   return h(
     "div",
     { className: "re-stage" },
-    h("canvas", { ref: refs.canvas, className: "re-canvas" }),
-    h("div", { ref: refs.tip, className: "re-tip", hidden: true })
+    h("canvas", {
+      ref: refs.canvas,
+      className: "re-canvas",
+      tabIndex: 0,
+      role: "application",
+      "aria-label":
+        "Interactive map. Focus it and use arrow keys to pan, plus or minus to zoom, Home to fit the view. Mouse users can drag to pan and scroll to zoom.",
+    }),
+    h("div", { ref: refs.tip, className: "re-tip", hidden: true, role: "tooltip" })
   );
 }
 
@@ -380,7 +387,7 @@ function renderSide(h: ElementFactory, refs: MapPageRefs, loadError: string): un
       h("h2", null, "Pack"),
       h("div", { ref: refs.packInfo, className: "re-pack-info" })
     ),
-    loadError === "" ? null : h("div", { className: "re-error" }, loadError)
+    loadError === "" ? null : h("div", { className: "re-error", role: "alert" }, loadError)
   );
 }
 

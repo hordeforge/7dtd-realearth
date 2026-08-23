@@ -12,6 +12,10 @@ const MIN_ZOOM = 0.05;
 const MAX_ZOOM = 32;
 const ZOOM_IN_STEP = 1.12;
 const ZOOM_OUT_STEP = 1 / ZOOM_IN_STEP;
+const KEY_ZOOM_IN_STEP = 1.25;
+const KEY_ZOOM_OUT_STEP = 1 / KEY_ZOOM_IN_STEP;
+const PAN_STEP_PX = 60;
+const PAN_STEP_LARGE_PX = 160;
 const SMOOTH_SCALE_MAX = 3;
 const DEFAULT_TILE_SIZE = 512;
 const SETTLEMENT_HIT_RADIUS_PX = 10;
@@ -69,6 +73,7 @@ export class Map2D {
   private readonly onPointerMove: (event: PointerEvent) => void;
   private readonly onPointerUp: () => void;
   private readonly onWheel: (event: WheelEvent) => void;
+  private readonly onKeyDown: (event: KeyboardEvent) => void;
 
   constructor(canvas: HTMLCanvasElement) {
     this.canvas = canvas;
@@ -82,11 +87,13 @@ export class Map2D {
     this.onPointerMove = (event) => this.pointerMove(event);
     this.onPointerUp = () => this.pointerUp();
     this.onWheel = (event) => this.wheel(event);
+    this.onKeyDown = (event) => this.keyDown(event);
     globalThis.addEventListener("resize", this.boundResize);
     canvas.addEventListener("pointerdown", this.onPointerDown);
     canvas.addEventListener("pointermove", this.onPointerMove);
     globalThis.addEventListener("pointerup", this.onPointerUp);
     canvas.addEventListener("wheel", this.onWheel, { passive: false });
+    canvas.addEventListener("keydown", this.onKeyDown);
   }
 
   dispose(): void {
@@ -95,6 +102,7 @@ export class Map2D {
     this.canvas.removeEventListener("pointermove", this.onPointerMove);
     globalThis.removeEventListener("pointerup", this.onPointerUp);
     this.canvas.removeEventListener("wheel", this.onWheel);
+    this.canvas.removeEventListener("keydown", this.onKeyDown);
   }
 
   resize(): void {
@@ -336,15 +344,65 @@ export class Map2D {
       return;
     }
     const rect = this.canvas.getBoundingClientRect();
-    const sx = event.clientX - rect.left;
-    const sy = event.clientY - rect.top;
-    const factor = event.deltaY < 0 ? ZOOM_IN_STEP : ZOOM_OUT_STEP;
+    this.zoomAt(
+      event.clientX - rect.left,
+      event.clientY - rect.top,
+      event.deltaY < 0 ? ZOOM_IN_STEP : ZOOM_OUT_STEP
+    );
+    this.draw();
+  }
+
+  // Scale around a screen point, keeping that point anchored. Shared by the
+  // wheel and the keyboard zoom so both behave identically.
+  private zoomAt(sx: number, sy: number, factor: number): void {
     const nextScale = Math.max(MIN_ZOOM, Math.min(MAX_ZOOM, this.scale * factor));
     const ix = (sx - this.tx) / this.scale;
     const iy = (sy - this.ty) / this.scale;
     this.scale = nextScale;
     this.tx = sx - ix * this.scale;
     this.ty = sy - iy * this.scale;
+  }
+
+  // Keyboard pan/zoom for non-pointer users (the canvas is focusable and
+  // labelled by the Map page).
+  private keyDown(event: KeyboardEvent): void {
+    const parent = this.canvas.parentElement;
+    if (this.image === null || parent === null) {
+      return;
+    }
+    const step = event.shiftKey ? PAN_STEP_LARGE_PX : PAN_STEP_PX;
+    const centerX = parent.clientWidth / 2;
+    const centerY = parent.clientHeight / 2;
+    switch (event.key) {
+      case "ArrowLeft":
+        this.tx += step;
+        break;
+      case "ArrowRight":
+        this.tx -= step;
+        break;
+      case "ArrowUp":
+        this.ty += step;
+        break;
+      case "ArrowDown":
+        this.ty -= step;
+        break;
+      case "+":
+      case "=":
+        this.zoomAt(centerX, centerY, KEY_ZOOM_IN_STEP);
+        break;
+      case "-":
+      case "_":
+        this.zoomAt(centerX, centerY, KEY_ZOOM_OUT_STEP);
+        break;
+      case "Home":
+      case "0":
+        this.fit();
+        event.preventDefault();
+        return;
+      default:
+        return;
+    }
+    event.preventDefault();
     this.draw();
   }
 

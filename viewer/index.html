@@ -48,8 +48,8 @@
       <section class="panel">
         <h2>View</h2>
         <div class="btn-row">
-          <button type="button" class="btn active" data-mode="flat" id="btnFlat">Flat map</button>
-          <button type="button" class="btn" data-mode="globe" id="btnGlobe">Globe</button>
+          <button type="button" class="btn active" data-mode="flat" id="btnFlat" aria-pressed="true">Flat map</button>
+          <button type="button" class="btn" data-mode="globe" id="btnGlobe" aria-pressed="false">Globe</button>
         </div>
         <label class="field">
           <span>Layer</span>
@@ -90,13 +90,18 @@
     </aside>
 
     <main id="stage">
-      <canvas id="mapCanvas"></canvas>
-      <div id="globeHost" hidden></div>
+      <canvas
+        id="mapCanvas"
+        tabindex="0"
+        role="application"
+        aria-label="Interactive map. Focus it and use arrow keys to pan, plus or minus to zoom, Home to fit the view. Mouse users can drag to pan and scroll to zoom."
+      ></canvas>
+      <div id="globeHost" hidden aria-hidden="true"></div>
       <div id="hud">
         <div id="titleHud">RealEarth</div>
-        <div id="statusHud">Loading…</div>
+        <div id="statusHud" role="status">Loading…</div>
       </div>
-      <div id="settlementTip" hidden></div>
+      <div id="settlementTip" role="tooltip" hidden></div>
     </main>
   </div>
 
