@@ -1,9 +1,14 @@
+import struct
+import zlib
+
 import numpy as np
 
 from realearth import DEFAULT_SEA_LEVEL_GAME_Y
 from realearth.height import compress_elevation
 from realearth.settlements import decode_poi_blob, encode_poi_blob
 from realearth.tile_format import (
+    HEADER_STRUCT,
+    MAX_TILE_SAMPLES,
     EarthTile,
     Manifest,
     decode_tile,
@@ -56,3 +61,49 @@ def test_height_respects_custom_max_y_for_future_engine_mod():
     y = compress_elevation(elev, max_y=500, profile="relative", regional_exaggeration=1.0)
     assert int(y.max()) <= 500
     assert int(y[0, 0]) == DEFAULT_SEA_LEVEL_GAME_Y
+
+
+def _hostile_header(w: int, h: int, flags: int) -> bytes:
+    return HEADER_STRUCT.pack(b"RTE1", 0, 0, 1, flags, w, h, 0)
+
+
+def test_decode_rejects_hostile_dims():
+    # Header claims a tile far beyond MAX_TILE_SAMPLES: must fail fast, not allocate.
+    raw = _hostile_header(1 << 20, 1 << 20, 0)
+    try:
+        decode_tile(raw)
+        raise AssertionError("expected ValueError for oversized dims")
+    except ValueError:
+        pass
+    # High-bit dims read as negative int32 by the C# runtime decoder.
+    try:
+        decode_tile(_hostile_header(1 << 31, 64, 0))
+        raise AssertionError("expected ValueError for high-bit dims")
+    except ValueError:
+        pass
+
+
+def test_decode_rejects_decompression_bomb():
+    # A tiny compressed section that would inflate to gigabytes must be refused.
+    bomb = zlib.compress(b"\x00" * (MAX_TILE_SAMPLES * 8), level=6)
+    raw = _hostile_header(2, 2, 0) + struct.pack("<I", len(bomb)) + bomb
+    try:
+        decode_tile(raw)
+        raise AssertionError("expected ValueError for decompression bomb")
+    except ValueError:
+        pass
+
+
+def test_decode_rejects_truncated_and_oversized_section_lengths():
+    body = _hostile_header(2, 2, 0) + struct.pack("<I", 1 << 30)
+    try:
+        decode_tile(body)
+        raise AssertionError("expected ValueError for section length beyond buffer")
+    except ValueError:
+        pass
+    short = _hostile_header(2, 2, 0) + b"\x00\x00"  # truncated length prefix
+    try:
+        decode_tile(short)
+        raise AssertionError("expected ValueError for truncated header")
+    except ValueError:
+        pass

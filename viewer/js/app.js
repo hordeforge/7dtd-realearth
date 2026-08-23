@@ -45,6 +45,14 @@ function numOrZero(candidate) {
 function errorMessage(error) {
   return error instanceof Error ? error.message : String(error);
 }
+function esc(text) {
+  return String(text)
+    .replaceAll("&", "&amp;")
+    .replaceAll("<", "&lt;")
+    .replaceAll(">", "&gt;")
+    .replaceAll('"', "&quot;")
+    .replaceAll("'", "&#39;");
+}
 
 const els = {
   packSelect: document.querySelector("#packSelect"),
@@ -137,12 +145,12 @@ async function loadPack(baseUrl) {
   const bbox = objOrEmpty(meta.bbox);
   const metersPerBlock = meta.meters_per_block;
   const metersText =
-    metersPerBlock === null || metersPerBlock === undefined ? "" : `~${metersPerBlock} m/sample`;
+    metersPerBlock === null || metersPerBlock === undefined ? "" : `~${esc(metersPerBlock)} m/sample`;
   els.titleHud.textContent = strOrEmpty(meta.name) || "RealEarth";
   els.packInfo.innerHTML = [
-    `<strong>${strOrEmpty(meta.name) || "pack"}</strong>`,
+    `<strong>${esc(strOrEmpty(meta.name)) || "pack"}</strong>`,
     `bbox ${fmt(bbox.west)}°,${fmt(bbox.south)}° → ${fmt(bbox.east)}°,${fmt(bbox.north)}°`,
-    `samples ${meta.sample_width}×${meta.sample_height}${meta.view_width ? ` · view ${meta.view_width}×${meta.view_height}` : ""}`,
+    `samples ${esc(meta.sample_width)}×${esc(meta.sample_height)}${meta.view_width ? ` · view ${esc(meta.view_width)}×${esc(meta.view_height)}` : ""}`,
     metersText,
     `${numOrZero(meta.settlement_count)} settlements · ${layers.length} tiles`,
   ]
@@ -278,7 +286,7 @@ function showTip(s, sx, sy) {
   els.settlementTip.style.top = `${sy}px`;
   const population =
     s.population === null || s.population === undefined ? "?" : s.population.toLocaleString();
-  els.settlementTip.innerHTML = `<strong>${s.name}</strong><br/>${strOrEmpty(s.band)} · pop ${population}<br/>${s.lat?.toFixed?.(3)}°, ${s.lon?.toFixed?.(3)}°`;
+  els.settlementTip.innerHTML = `<strong>${esc(s.name)}</strong><br/>${esc(strOrEmpty(s.band))} · pop ${esc(population)}<br/>${esc(s.lat?.toFixed?.(3))}°, ${esc(s.lon?.toFixed?.(3))}°`;
 }
 
 function setMode(mode) {
@@ -356,7 +364,7 @@ async function boot() {
   await loadPack(pack).catch(() => {
     setStatus(`No pack at ${pack}. Run: realearth export-viewer && realearth serve`);
     els.packInfo.innerHTML =
-      `Missing <code>${pack}/viewer.json</code>.<br/>` +
+      `Missing <code>${esc(pack)}/viewer.json</code>.<br/>` +
       `From repo: <code>realearth export-viewer --pack data/samples/demo_region --out viewer/data/demo</code><br/>` +
       `then <code>realearth serve</code>`;
   });

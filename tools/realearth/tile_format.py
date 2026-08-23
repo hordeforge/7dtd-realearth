@@ -24,6 +24,10 @@ FLAG_HAS_POPULATION = 1 << 0
 FLAG_HAS_LANDCOVER = 1 << 1
 FLAG_HAS_POI = 1 << 2
 
+# Hostile-header guard: real packs use 512x512 tiles; anything larger than this
+# would allocate unbounded memory while decoding an untrusted pack.
+MAX_TILE_SAMPLES = 4096 * 4096
+
 
 @dataclass
 class EarthTile:
@@ -106,6 +110,25 @@ def encode_tile(tile: EarthTile) -> bytes:
     return b"".join(parts)
 
 
+def _inflate_exact(blob: bytes, expected: int) -> bytes:
+    """zlib-decompress with an output cap; reject size mismatches (decompress-bomb guard)."""
+    d = zlib.decompressobj()
+    out = d.decompress(blob, expected + 1)
+    if len(out) != expected or not d.eof or d.unused_data or d.unconsumed_tail:
+        raise ValueError("decompressed payload size mismatch")
+    return out
+
+
+def _section(data: bytes, off: int, expected_raw: int) -> tuple[bytes, int]:
+    """Read one length-prefixed compressed section; return (raw bytes, next offset)."""
+    if off + 4 > len(data):
+        raise ValueError("truncated section header")
+    n = struct.unpack_from("<I", data, off)[0]
+    off += 4
+    raw = _inflate_exact(data[off : off + n], expected_raw)
+    return raw, off + n
+
+
 def decode_tile(data: bytes) -> EarthTile:
     """Deserialize .rte bytes."""
     if len(data) < HEADER_STRUCT.size:
@@ -113,12 +136,12 @@ def decode_tile(data: bytes) -> EarthTile:
     magic, tx, tz, ver, flags, w, h, _ = HEADER_STRUCT.unpack_from(data, 0)
     if magic != MAGIC:
         raise ValueError(f"bad magic: {magic!r}")
+    if w <= 0 or h <= 0 or w * h > MAX_TILE_SAMPLES:
+        raise ValueError(f"tile dims out of range: {w}x{h}")
+    samples = w * h
     off = HEADER_STRUCT.size
 
-    elev_len = struct.unpack_from("<I", data, off)[0]
-    off += 4
-    elev_raw = zlib.decompress(data[off : off + elev_len])
-    off += elev_len
+    elev_raw, off = _section(data, off, samples * 2)
     elev_u16 = np.frombuffer(elev_raw, dtype=np.uint16).reshape((h, w))
     elevation = _u16_to_elevation(elev_u16)
 
@@ -127,17 +150,11 @@ def decode_tile(data: bytes) -> EarthTile:
     poi_blob = b""
 
     if flags & FLAG_HAS_LANDCOVER:
-        n = struct.unpack_from("<I", data, off)[0]
-        off += 4
-        raw = zlib.decompress(data[off : off + n])
-        off += n
+        raw, off = _section(data, off, samples)
         landcover = np.frombuffer(raw, dtype=np.uint8).reshape((h, w)).copy()
 
     if flags & FLAG_HAS_POPULATION:
-        n = struct.unpack_from("<I", data, off)[0]
-        off += 4
-        raw = zlib.decompress(data[off : off + n])
-        off += n
+        raw, off = _section(data, off, samples)
         population = np.frombuffer(raw, dtype=np.uint8).reshape((h, w)).copy()
 
     if flags & FLAG_HAS_POI and off < len(data):

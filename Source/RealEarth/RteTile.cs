@@ -25,6 +25,12 @@ namespace RealEarth
         const ushort FlagLc = 1 << 1;
         const ushort FlagPoi = 1 << 2;
 
+        /// <summary>
+        /// Upper bound on tile samples (w*h). Real packs use 512x512; this only rejects
+        /// hostile headers that would otherwise allocate unbounded memory.
+        /// </summary>
+        const long MaxTileSamples = 4096L * 4096L;
+
         public static RteTile Load(string path)
         {
             var data = File.ReadAllBytes(path);
@@ -49,14 +55,18 @@ namespace RealEarth
             int w = br.ReadInt32();
             int h = br.ReadInt32();
             br.ReadInt32(); // reserved
+            if (w <= 0 || h <= 0 || (long)w * h > MaxTileSamples)
+                throw new InvalidDataException($"tile dims out of range: {w}x{h}");
+            long samples = (long)w * h;
+            long expectedElevBytes = samples * 2;
 
-            int elevLen = br.ReadInt32();
+            int elevLen = ReadSectionLength(br, data.Length);
             byte[] elevZ = br.ReadBytes(elevLen);
-            byte[] elevRaw = Inflate(elevZ);
-            if (elevRaw.Length != w * h * 2)
+            byte[] elevRaw = Inflate(elevZ, expectedElevBytes);
+            if (elevRaw.LongLength != expectedElevBytes)
                 throw new InvalidDataException("elevation size mismatch");
 
-            var elev = new float[w * h];
+            var elev = new float[samples];
             for (int i = 0; i < elev.Length; i++)
             {
                 ushort u = (ushort)(elevRaw[i * 2] | (elevRaw[i * 2 + 1] << 8));
@@ -69,17 +79,21 @@ namespace RealEarth
 
             if ((flags & FlagLc) != 0)
             {
-                int n = br.ReadInt32();
-                lc = Inflate(br.ReadBytes(n));
+                int n = ReadSectionLength(br, data.Length);
+                lc = Inflate(br.ReadBytes(n), samples);
+                if (lc.LongLength != samples)
+                    throw new InvalidDataException("landcover size mismatch");
             }
             if ((flags & FlagPop) != 0)
             {
-                int n = br.ReadInt32();
-                pop = Inflate(br.ReadBytes(n));
+                int n = ReadSectionLength(br, data.Length);
+                pop = Inflate(br.ReadBytes(n), samples);
+                if (pop.LongLength != samples)
+                    throw new InvalidDataException("population size mismatch");
             }
             if ((flags & FlagPoi) != 0 && ms.Position < ms.Length)
             {
-                int n = br.ReadInt32();
+                int n = ReadSectionLength(br, data.Length);
                 poi = Encoding.UTF8.GetString(br.ReadBytes(n));
             }
 
@@ -119,7 +133,19 @@ namespace RealEarth
             return Landcover[localZ * Width + localX];
         }
 
-        static byte[] Inflate(byte[] zlibData)
+        /// <summary>
+        /// Read a section length, rejecting negative or beyond-buffer values before
+        /// any allocation (tiles may come from an untrusted CDN).
+        /// </summary>
+        static int ReadSectionLength(BinaryReader br, int totalLength)
+        {
+            int n = br.ReadInt32();
+            if (n < 0 || br.BaseStream.Position + n > totalLength)
+                throw new InvalidDataException($"section length out of range: {n}");
+            return n;
+        }
+
+        static byte[] Inflate(byte[] zlibData, long maxOutputBytes)
         {
             // Python zlib.compress → zlib wrapper (CMF/FLG). DeflateStream wants raw deflate
             // or GZip. Use raw after skipping 2-byte zlib header and 4-byte adler footer.
@@ -127,8 +153,16 @@ namespace RealEarth
                 throw new InvalidDataException("zlib payload too short");
             using var input = new MemoryStream(zlibData, 2, zlibData.Length - 6);
             using var def = new DeflateStream(input, CompressionMode.Decompress);
-            using var output = new MemoryStream();
-            def.CopyTo(output);
+            var output = new MemoryStream();
+            var buffer = new byte[81920];
+            while (true)
+            {
+                int n = def.Read(buffer, 0, buffer.Length);
+                if (n <= 0) break;
+                if (output.Length + n > maxOutputBytes)
+                    throw new InvalidDataException("inflated payload exceeds expected size");
+                output.Write(buffer, 0, n);
+            }
             return output.ToArray();
         }
     }

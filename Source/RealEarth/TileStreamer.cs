@@ -39,6 +39,12 @@ namespace RealEarth
         /// </summary>
         const int MissCachePruneThreshold = 4096;
 
+        /// <summary>
+        /// Cap on CDN tile payloads (a full 512x512 .rte is well under 2 MB). Bounds memory
+        /// when the configured CDN misbehaves or turns hostile.
+        /// </summary>
+        internal const long MaxCdnTileBytes = 64L * 1024L * 1024L;
+
         /// <summary>Last absolute Earth position used for streaming (primary / latest focus).</summary>
         public int FocusEarthX { get; private set; }
         public int FocusEarthZ { get; private set; }
@@ -303,7 +309,7 @@ namespace RealEarth
                 return;
             try
             {
-                var bytes = _http.GetByteArrayAsync(url).ConfigureAwait(false).GetAwaiter().GetResult();
+                var bytes = FetchTileBytesAsync(url).ConfigureAwait(false).GetAwaiter().GetResult();
                 if (bytes == null || bytes.Length < 8
                     || bytes[0] != (byte)'R' || bytes[1] != (byte)'T'
                     || bytes[2] != (byte)'E' || bytes[3] != (byte)'1')
@@ -378,6 +384,33 @@ namespace RealEarth
             }
         }
 
+        /// <summary>
+        /// GET a tile with a hard size cap (headers first, then streamed read) so a
+        /// hostile CDN cannot buffer an unbounded response before validation.
+        /// </summary>
+        async Task<byte[]> FetchTileBytesAsync(string url)
+        {
+            using var resp = await _http.GetAsync(url, HttpCompletionOption.ResponseHeadersRead).ConfigureAwait(false);
+            resp.EnsureSuccessStatusCode();
+            long? declared = resp.Content.Headers.ContentLength;
+            if (declared.HasValue && (declared.Value < 8 || declared.Value > MaxCdnTileBytes))
+                throw new InvalidDataException($"tile payload size out of range: {declared}");
+            var output = new MemoryStream();
+            var buffer = new byte[81920];
+            using (Stream stream = await resp.Content.ReadAsStreamAsync().ConfigureAwait(false))
+            {
+                while (true)
+                {
+                    int n = await stream.ReadAsync(buffer, 0, buffer.Length).ConfigureAwait(false);
+                    if (n <= 0) break;
+                    if (output.Length + n > MaxCdnTileBytes)
+                        throw new InvalidDataException("tile payload exceeds size cap");
+                    output.Write(buffer, 0, n);
+                }
+            }
+            return output.ToArray();
+        }
+
         void QueueLoad(int tx, int tz, string path, long key, bool fromCdn)
         {
             bool start;
@@ -448,7 +481,7 @@ namespace RealEarth
                         MarkMiss(key);
                         return;
                     }
-                    bytes = await _http.GetByteArrayAsync(url).ConfigureAwait(false);
+                    bytes = await FetchTileBytesAsync(url).ConfigureAwait(false);
                     if (bytes == null || bytes.Length < 8
                         || bytes[0] != (byte)'R' || bytes[1] != (byte)'T'
                         || bytes[2] != (byte)'E' || bytes[3] != (byte)'1')
