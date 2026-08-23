@@ -17,6 +17,8 @@ namespace RealEarth.EnginePatcher
     /// and corrupts indexing. This patcher only expands true vertical / layer sites.
     ///
     /// ALWAYS backs up the original DLL. Steam verify restores stock.
+    /// Re-run safe: marker + stock backup converge; a re-run never labels an
+    /// already-expanded DLL as stock, and heals a marker lost to a mid-run crash.
     /// </summary>
     static class Program
     {
@@ -167,11 +169,9 @@ namespace RealEarth.EnginePatcher
                 else
                     readPath = bak; // dry-run: analyze stock backup, do not write
             }
-            else if (!File.Exists(bak) && !dryRun)
-            {
-                File.Copy(gameDll, bak, overwrite: false);
-                Console.WriteLine("Backup written: " + bak);
-            }
+            // No eager backup here. Backup happens after analysis (below), only when real
+            // work remains and before any byte is written, so an already-expanded DLL is
+            // never copied as "stock" (that would poison engine-restore).
 
             var resolver = new DefaultAssemblyResolver();
             resolver.AddSearchDirectory(Path.GetDirectoryName(gameDll));
@@ -183,17 +183,25 @@ namespace RealEarth.EnginePatcher
             };
             using (var module = ModuleDefinition.ReadModule(readPath, rp))
             {
-                int constHits = PatchConstantMetadata(module);
+                int atTarget = 0;
+                int constHits = PatchConstantMetadata(module, ref atTarget);
                 int ilHits = PatchIlConstants(module);
                 Console.WriteLine("  constant table rewrites: {0}", constHits);
                 Console.WriteLine("  IL Ldc rewrites: {0}", ilHits);
 
                 if (constHits + ilHits == 0)
                 {
-                    // Already at target (e.g. re-run without --force) is success
-                    if (File.Exists(marked))
+                    // Key constants already equal target values → previous expand completed
+                    // (e.g. crash between DLL write and marker creation). Converge state
+                    // instead of failing: restore the marker so future runs detect it.
+                    if (atTarget > 0)
                     {
                         Console.WriteLine("Already at target expand (no further rewrites).");
+                        if (!dryRun && !File.Exists(marked))
+                        {
+                            WriteMarker(marked);
+                            Console.WriteLine("Marker restored: " + marked);
+                        }
                         return 0;
                     }
                     Console.Error.WriteLine("No patches applied — types/constants not found?");
@@ -202,15 +210,15 @@ namespace RealEarth.EnginePatcher
 
                 if (!dryRun)
                 {
+                    // Module changes are in-memory until Write(); gameDll is still the
+                    // unmodified input here, so this copy is genuine stock.
+                    if (!File.Exists(bak))
+                    {
+                        File.Copy(gameDll, bak, overwrite: false);
+                        Console.WriteLine("Backup written: " + bak);
+                    }
                     module.Write();
-                    File.WriteAllText(
-                        marked,
-                        "RealEarth engine height expand (safe Y-only)\n" +
-                        "YDim=" + TargetYDim + "\n" +
-                        "YPow=" + TargetYPow + "\n" +
-                        "Layers=" + TargetLayers + "\n" +
-                        "rules=no-xz-maps,no-ypow-shift,layer-storage,y-bound-methods\n" +
-                        "utc=" + DateTime.UtcNow.ToString("o") + "\n");
+                    WriteMarker(marked);
                     Console.WriteLine("Patched OK. Marker: " + marked);
                     Console.WriteLine("If the game fails to boot, restore:");
                     Console.WriteLine("  cp -a \"" + bak + "\" \"" + gameDll + "\"");
@@ -225,6 +233,18 @@ namespace RealEarth.EnginePatcher
             return 0;
         }
 
+        static void WriteMarker(string marked)
+        {
+            File.WriteAllText(
+                marked,
+                "RealEarth engine height expand (safe Y-only)\n" +
+                "YDim=" + TargetYDim + "\n" +
+                "YPow=" + TargetYPow + "\n" +
+                "Layers=" + TargetLayers + "\n" +
+                "rules=no-xz-maps,no-ypow-shift,layer-storage,y-bound-methods\n" +
+                "utc=" + DateTime.UtcNow.ToString("o") + "\n");
+        }
+
         static void PrintHelp()
         {
             Console.WriteLine(
@@ -234,7 +254,7 @@ namespace RealEarth.EnginePatcher
                 "--ydim: power of two (default 16384 Everest-scale; try 512/1024 for lighter tests).\n");
         }
 
-        static int PatchConstantMetadata(ModuleDefinition module)
+        static int PatchConstantMetadata(ModuleDefinition module, ref int atTarget)
         {
             int hits = 0;
             var map = new Dictionary<string, int>(StringComparer.Ordinal)
@@ -253,14 +273,14 @@ namespace RealEarth.EnginePatcher
 
             foreach (var type in module.Types)
             {
-                hits += PatchConstantsOnType(type, map);
+                hits += PatchConstantsOnType(type, map, ref atTarget);
                 foreach (var nested in type.NestedTypes)
-                    hits += PatchConstantsOnType(nested, map);
+                    hits += PatchConstantsOnType(nested, map, ref atTarget);
             }
             return hits;
         }
 
-        static int PatchConstantsOnType(TypeDefinition type, Dictionary<string, int> map)
+        static int PatchConstantsOnType(TypeDefinition type, Dictionary<string, int> map, ref int atTarget)
         {
             int hits = 0;
             if (!type.Fields.Any(f => map.ContainsKey(f.Name)))
@@ -275,7 +295,11 @@ namespace RealEarth.EnginePatcher
                 object? cur = field.Constant;
                 int oldInt = cur is int i ? i : Convert.ToInt32(cur);
                 if (oldInt == newVal)
+                {
+                    // Already at target: evidence of a previous successful expand.
+                    atTarget++;
                     continue;
+                }
                 Console.WriteLine("  const {0}.{1}: {2} → {3}", type.Name, field.Name, oldInt, newVal);
                 field.Constant = newVal;
                 hits++;

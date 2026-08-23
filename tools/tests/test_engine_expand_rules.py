@@ -70,3 +70,26 @@ def test_modlet_stock_safe_config_default():
     )
     assert "RealEarth YDim expand" in mod
     assert "OPT-IN compress on stock" in mod
+
+
+def test_rerun_never_labels_expanded_dll_as_stock():
+    """Idempotency: --force with no backup must not copy an expanded DLL as 'stock'
+    (that would poison engine-restore). Backup is taken only after analysis finds
+    real work, while gameDll is still unmodified."""
+    src = _src()
+    # No eager pre-analysis backup creation
+    assert "!File.Exists(bak) && !dryRun)" not in src
+    # Order: analyze -> detect already-at-target -> backup -> write
+    assert src.index("constant table rewrites") < src.index("atTarget > 0")
+    assert src.index("atTarget > 0") < src.index("Backup written")
+    assert src.index("Backup written") < src.index("module.Write()")
+
+
+def test_marker_healed_after_crash_between_write_and_marker():
+    """Crash between module.Write() and marker creation leaves a patched DLL without
+    a marker; a plain re-run must recognize it (constants at target) and restore the
+    marker instead of failing with exit 3."""
+    src = _src()
+    assert "atTarget" in src
+    assert "atTarget++" in src
+    assert "Marker restored" in src
