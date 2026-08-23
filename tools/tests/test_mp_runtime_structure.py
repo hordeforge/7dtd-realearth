@@ -75,14 +75,16 @@ def test_chunk_inject_uses_ensure_hot_not_focus_update():
     assert "UpdateFromAbsolute" not in body
 
 
-def test_sampler_and_engine_height_use_ensure_hot():
+def test_sampler_and_engine_height_use_prefetch_sample():
     sampler = _read("ChunkTerrainSampler.cs")
     eng = _read("EngineHeight/EngineHeightMod.cs")
-    # Sample paths that used UpdateFromAbsolute must use EnsureHotAround
-    assert sampler.count("EnsureHotAround") >= 3
+    # Sample paths must never register player foci (UpdateFromAbsolute stomps focus 0).
     assert "streamer.UpdateFromAbsolute" not in sampler
-    assert "EnsureHotAround" in eng
     assert "streamer.UpdateFromAbsolute" not in eng
+    # Hot-path sampling goes through the fused single-lock prefetch sample
+    # (hot tile inline; miss queues async radius-1 load, negative-cache aware).
+    assert sampler.count("TrySamplePrefetch") >= 3
+    assert "TrySamplePrefetch" in eng
 
 
 def test_tilestreamer_has_multi_focus_and_ensure_hot():

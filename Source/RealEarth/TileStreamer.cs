@@ -199,6 +199,49 @@ namespace RealEarth
             }
         }
 
+        /// <summary>
+        /// Hot-path sample for per-block height/landcover queries: one lock pass returns
+        /// the center-tile sample when hot. On a miss it falls back to the async radius-1
+        /// prefetch (negative-cache aware, never focus-registering), identical load
+        /// behavior to EnsureHotAround+TrySample at half the lock traffic and without the
+        /// 9-tile scan when the tile is already hot.
+        /// </summary>
+        public bool TrySamplePrefetch(int worldX, int worldZ, out float elevM, out byte landcover, out byte population)
+        {
+            worldX = _coords.WrapX(worldX);
+            worldZ = FoldPackZ(worldZ);
+            _coords.BlockToTile(worldX, worldZ, out int tx, out int tz);
+            long key = Key(tx, tz);
+            RteTile? tile;
+            lock (_lock)
+            {
+                if (_hot.TryGetValue(key, out tile))
+                {
+                    int lx = worldX - tx * _coords.TileSize;
+                    int lz = worldZ - tz * _coords.TileSize;
+                    elevM = tile.ElevationAt(lx, lz);
+                    landcover = tile.LandcoverAt(lx, lz);
+                    population = tile.PopulationAt(lx, lz);
+                    return true;
+                }
+                // Same negative-cache filter as EnsureRadius: do not re-queue within deadline.
+                int now = Environment.TickCount;
+                if (_missUntilTick.TryGetValue(key, out int until)
+                    && unchecked(now - until) < 0)
+                {
+                    elevM = 0;
+                    landcover = 255;
+                    population = 0;
+                    return false;
+                }
+            }
+            EnsureRadius(tx, tz, 1, allowSyncLoad: false);
+            elevM = 0;
+            landcover = 255;
+            population = 0;
+            return false;
+        }
+
         public bool TrySample(int worldX, int worldZ, out float elevM, out byte landcover, out byte population)
         {
             worldX = _coords.WrapX(worldX);

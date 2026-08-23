@@ -115,9 +115,9 @@ namespace RealEarth.EngineHeight
             if (session != null && streamer != null)
             {
                 session.LocalToEarth(localX, localZ, out int ex, out int ez);
-                // Ensure tiles only — never register focusId=0 from height sample path.
-                streamer.EnsureHotAround(ex, ez);
-                bool ok = streamer.TrySample(ex, ez, out float elevM, out _, out _);
+                // Single-lock sample: hot tile inline, miss queues async prefetch.
+                // Never registers focusId=0 from the height sample path.
+                bool ok = streamer.TrySamplePrefetch(ex, ez, out float elevM, out _, out _);
                 // Product path: fail-closed missing tiles + counters (same as ChunkTerrainSampler).
                 bool present = TileSamplePolicy.ResolveElev(
                     ok, elevM, cfg, out float elevResolved, out _);

@@ -122,14 +122,17 @@ def fill_chunk_heights(
     chunk_size: int = VANILLA_CHUNK_SIZE,
     sea_level_y: int = DEFAULT_SEA_LEVEL_GAME_Y,
     grid: EarthGrid | None = None,
+    cache: dict[tuple[int, int], object] | None = None,
 ) -> np.ndarray:
     """Fill chunk_size² game heights from .rte samples (pack/Earth origin).
 
     Returns uint8 array shape (chunk_size, chunk_size), row=z, col=x.
+    Pass a shared ``cache`` when filling several channels of the same chunk so
+    each overlapping tile is read and inflated once.
     """
     pack_dir = Path(pack_dir)
     g = grid or load_pack_grid(pack_dir)
-    cache: dict[tuple[int, int], object] = {}
+    store = cache if cache is not None else {}
     elev = np.empty((chunk_size, chunk_size), dtype=np.float64)
     for z in range(chunk_size):
         for x in range(chunk_size):
@@ -139,7 +142,7 @@ def fill_chunk_heights(
                 chunk_earth_origin_z + z,
                 grid=g,
                 sea_level_y=sea_level_y,
-                cache=cache,
+                cache=store,
             )
             elev[z, x] = e
     # No compression: 1 m = 1 block (same as engine height mod)
@@ -161,10 +164,11 @@ def fill_chunk_landcover(
     *,
     chunk_size: int = VANILLA_CHUNK_SIZE,
     grid: EarthGrid | None = None,
+    cache: dict[tuple[int, int], object] | None = None,
 ) -> np.ndarray:
     pack_dir = Path(pack_dir)
     g = grid or load_pack_grid(pack_dir)
-    cache: dict[tuple[int, int], object] = {}
+    store = cache if cache is not None else {}
     out = np.zeros((chunk_size, chunk_size), dtype=np.uint8)
     for z in range(chunk_size):
         for x in range(chunk_size):
@@ -173,7 +177,7 @@ def fill_chunk_landcover(
                 chunk_earth_origin_x + x,
                 chunk_earth_origin_z + z,
                 grid=g,
-                cache=cache,
+                cache=store,
             )
             out[z, x] = lc
     return out
@@ -190,11 +194,20 @@ def fill_chunk_from_local_window(
 ) -> tuple[np.ndarray, np.ndarray]:
     """Map local chunk corner through window → absolute Earth → heights + landcover."""
     ex, ez = window.local_to_earth(chunk_local_origin_x, chunk_local_origin_z)
+    # One decode cache for both channels: a 16x16 chunk spans up to 2x2 tiles and
+    # each would otherwise be read + inflated twice.
+    tile_cache: dict[tuple[int, int], object] = {}
     heights = fill_chunk_heights(
-        pack_dir, ex, ez, chunk_size=chunk_size, sea_level_y=sea_level_y, grid=window.grid
+        pack_dir,
+        ex,
+        ez,
+        chunk_size=chunk_size,
+        sea_level_y=sea_level_y,
+        grid=window.grid,
+        cache=tile_cache,
     )
     lc = fill_chunk_landcover(
-        pack_dir, ex, ez, chunk_size=chunk_size, grid=window.grid
+        pack_dir, ex, ez, chunk_size=chunk_size, grid=window.grid, cache=tile_cache
     )
     return heights, lc
 

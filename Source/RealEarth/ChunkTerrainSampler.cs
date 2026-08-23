@@ -56,9 +56,8 @@ namespace RealEarth
                 return HeightInjectMath.ToByteHeight(sea);
 
             session.LocalToEarth(localX, localZ, out int ex, out int ez);
-            // Sample path must not register a player focus (MP multi-center).
-            streamer.EnsureHotAround(ex, ez);
-            bool ok = streamer.TrySample(ex, ez, out float elevM, out _, out _);
+            // Single-lock sample: hot tile inline, miss queues async prefetch (no focus).
+            bool ok = streamer.TrySamplePrefetch(ex, ez, out float elevM, out _, out _);
             TileSamplePolicy.ResolveElev(ok, elevM, cfg, out float elevResolved, out _);
             int h = TileSamplePolicy.ElevToGameYInt(elevResolved, cfg);
             return HeightInjectMath.ToByteHeight(h);
@@ -106,8 +105,7 @@ namespace RealEarth
                 return sea;
 
             session.LocalToEarth(localX, localZ, out int ex, out int ez);
-            streamer.EnsureHotAround(ex, ez);
-            bool ok = streamer.TrySample(ex, ez, out float elevM, out _, out _);
+            bool ok = streamer.TrySamplePrefetch(ex, ez, out float elevM, out _, out _);
             TileSamplePolicy.ResolveElev(ok, elevM, cfg, out float elevResolved, out _);
             int y = TileSamplePolicy.ElevToGameYInt(elevResolved, cfg);
             int cap = EngineHeight.EngineHeightMod.AllocatableColumnMaxY;
@@ -126,10 +124,9 @@ namespace RealEarth
                 return 255;
 
             session.LocalToEarth(localX, localZ, out int ex, out int ez);
-            // Landcover used during inject after height fill; prefer hot tiles only (async OK).
+            // Landcover used during inject after height fill; hot tiles only (async prefetch on miss).
             // Callers that need a guaranteed sample should EnsureHotAround(..., allowSyncLoad: true) first.
-            streamer.EnsureHotAround(ex, ez);
-            if (streamer.TrySample(ex, ez, out _, out byte lc, out _))
+            if (streamer.TrySamplePrefetch(ex, ez, out _, out byte lc, out _))
                 return lc;
             return 0; // ocean / miss
         }
@@ -144,8 +141,7 @@ namespace RealEarth
                 return 0;
 
             session.LocalToEarth(localX, localZ, out int ex, out int ez);
-            streamer.EnsureHotAround(ex, ez);
-            if (streamer.TrySample(ex, ez, out _, out _, out byte pop))
+            if (streamer.TrySamplePrefetch(ex, ez, out _, out _, out byte pop))
                 return pop;
             return 0;
         }
@@ -164,8 +160,7 @@ namespace RealEarth
             if (streamer == null)
                 return HeightInjectMath.ToByteHeight(sea);
 
-            streamer.EnsureHotAround(earthX, earthZ);
-            bool ok = streamer.TrySample(earthX, earthZ, out float elevM, out _, out _);
+            bool ok = streamer.TrySamplePrefetch(earthX, earthZ, out float elevM, out _, out _);
             TileSamplePolicy.ResolveElev(ok, elevM, cfg, out float elevResolved, out _);
             int h = TileSamplePolicy.ElevToGameYInt(elevResolved, cfg);
             return HeightInjectMath.ToByteHeight(h);
@@ -175,8 +170,7 @@ namespace RealEarth
         {
             if (streamer == null)
                 return 255;
-            streamer.EnsureHotAround(earthX, earthZ);
-            if (streamer.TrySample(earthX, earthZ, out _, out byte lc, out _))
+            if (streamer.TrySamplePrefetch(earthX, earthZ, out _, out byte lc, out _))
                 return lc;
             return 0;
         }
