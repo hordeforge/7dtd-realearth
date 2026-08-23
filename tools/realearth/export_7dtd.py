@@ -19,7 +19,9 @@ def export_heightmap_png(game_y: np.ndarray, path: Path, *, bit16: bool = True) 
         # Pillow 12+: pass dtype array; mode kw is deprecated for type changes
         Image.fromarray(arr).save(path)
     else:
-        y = np.asarray(game_y, dtype=np.uint8)
+        # Clamp, never wrap: game_y from engine-height profiles can exceed 255
+        # (Everest ≈ 8949) and a plain astype(uint8) would store 8949 % 256 = 69.
+        y = np.clip(np.rint(np.asarray(game_y, dtype=np.float64)), 0, 255).astype(np.uint8)
         Image.fromarray(y).save(path)
 
 

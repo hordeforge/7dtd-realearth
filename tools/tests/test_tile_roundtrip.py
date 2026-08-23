@@ -63,6 +63,27 @@ def test_height_respects_custom_max_y_for_future_engine_mod():
     assert int(y[0, 0]) == DEFAULT_SEA_LEVEL_GAME_Y
 
 
+def test_elevation_u16_rounds_to_nearest_meter():
+    # Terrarium decodes carry B/256 fractions; packing must round (not truncate)
+    # so stored meters match the sampled surface on a 1 m = 1 block product.
+    from realearth.tile_format import _elevation_to_u16, _u16_to_elevation
+
+    elev = np.array([[123.25, 123.75], [-10999.5, 8849.0]], dtype=np.float32)
+    back = _u16_to_elevation(_elevation_to_u16(elev))
+    assert back[0, 0] == np.float32(123.0)  # 123.25 → nearest is 123
+    assert back[0, 1] == np.float32(124.0)  # 123.75 must not truncate to 123
+    assert back[1, 1] == np.float32(8849.0)
+
+
+def test_elevation_u16_nan_fails_closed_to_zero_meters():
+    from realearth.tile_format import _elevation_to_u16, _u16_to_elevation
+
+    elev = np.array([[np.nan, 500.0]], dtype=np.float32)
+    back = _u16_to_elevation(_elevation_to_u16(elev))
+    assert float(back[0, 0]) == 0.0  # matches C# missing-sample placeholder elev
+    assert float(back[0, 1]) == 500.0
+
+
 def _hostile_header(w: int, h: int, flags: int) -> bytes:
     return HEADER_STRUCT.pack(b"RTE1", 0, 0, 1, flags, w, h, 0)
 

@@ -192,8 +192,13 @@ _ELEV_SCALE = 1  # meters
 
 
 def _elevation_to_u16(elev: np.ndarray) -> np.ndarray:
-    v = np.clip(elev + _ELEV_OFFSET_M, 0, 65535)
-    return v.astype(np.uint16)
+    # Round to the nearest meter: Terrarium decode yields B/256 fractions, and a
+    # plain astype(uint16) would truncate toward zero, biasing every stored
+    # column downward by up to 1 m on a 1 m = 1 block product. Non-finite input
+    # fails closed to 0 m ASL (matches the C# missing-sample placeholder) instead
+    # of casting NaN to platform-garbage.
+    v = np.nan_to_num(np.asarray(elev, dtype=np.float64), nan=0.0)
+    return np.clip(np.rint(v + _ELEV_OFFSET_M), 0, 65535).astype(np.uint16)
 
 
 def _u16_to_elevation(u: np.ndarray) -> np.ndarray:
