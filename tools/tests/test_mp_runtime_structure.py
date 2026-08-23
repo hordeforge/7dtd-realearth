@@ -91,3 +91,46 @@ def test_tilestreamer_has_multi_focus_and_ensure_hot():
     assert "UpdateFromAbsolute(int earthX, int earthZ, int focusId)" in src
     assert "EvictOutsideAllFoci" in src
     assert "_foci" in src
+
+
+def test_origin_slide_reinjects_loaded_chunks():
+    """SoloSlide residual: loaded chunks must be rewritten under the new origin.
+
+    Slide path must call ReinjectLoadedChunksAround after RemapAll + hot cache
+    invalidation, and the reinject core must sync-load tiles (readiness race
+    class) before rewriting columns via TryApplyHeightsToChunk.
+    """
+    src = _read("RuntimeHooks.cs")
+    assert "ReinjectLoadedChunksAround" in src
+    # Must run in the slide branch (after RemapAll), not on every tick.
+    m = re.search(r"RemapAll\([\s\S]{0,1200}?ReinjectLoadedChunksAround", src)
+    assert m, "reinject must follow RemapAll inside the origin-slide path"
+    inj = _read("ChunkTerrainInject.cs")
+    m = re.search(
+        r"public static int ReinjectLoadedChunksAround\(.*?\n        \}",
+        inj,
+        re.S,
+    )
+    assert m, "ReinjectLoadedChunksAround missing"
+    body = inj.split("ReinjectLoadedChunksAround", 1)[1]
+    reinject_core = body.split("static bool ReinjectChunkObject", 1)
+    assert len(reinject_core) == 2
+    core = reinject_core[1].split("static IEnumerable? FindLoadedChunkCollection")[0]
+    # Readiness race class: sync tile load before column rewrite.
+    assert "allowSyncLoad: true" in core
+    assert "TryApplyHeightsToChunk" in core
+    # Floor division for negative locals (float-to-block truncation class).
+    assert "FloorDiv" in core or "FloorDiv" in inj
+
+
+def test_reinject_counters_are_reset_with_session():
+    """Reinjected-chunk counter must reset per world so gates stay honest."""
+    inj = _read("ChunkTerrainInject.cs")
+    assert "SessionReinjectedChunks" in inj
+    reset = re.search(
+        r"public static void ResetSessionCounters\(\)\s*\{(?P<body>.*?)\n        \}",
+        inj,
+        re.S,
+    )
+    assert reset, "ResetSessionCounters not found"
+    assert "SessionReinjectedChunks = 0" in reset.group("body")

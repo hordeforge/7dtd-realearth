@@ -8,7 +8,8 @@ namespace RealEarth
     /// <summary>
     /// After LocalWindow origin slides, remap simulated objects so absolute Earth stays fixed.
     /// Players, vehicles, dropped items, and land-claim block positions are adjusted by -dOrigin.
-    /// Chunk mesh contents stay until regenerated (documented limit); entity/claim coords are the critical path.
+    /// Loaded chunk columns are rewritten by ChunkTerrainInject.ReinjectLoadedChunksAround
+    /// (called from the slide path); unloaded chunks regenerate against the new origin.
     /// </summary>
     public static class OriginSlideRemap
     {
@@ -29,7 +30,7 @@ namespace RealEarth
                 _logBudget--;
                 ModApi.Log(
                     $"OriginSlideRemap: dOrigin=({originDeltaX},{originDeltaZ}) remapped≈{n} " +
-                    "(entities+claims; chunk blocks regenerate on reload)");
+                    "(entities+claims; loaded chunk columns re-injected on slide path)");
             }
             return n;
         }
@@ -457,6 +458,9 @@ namespace RealEarth
             }
             catch { return null; }
         }
+
+        /// <summary>Engine World via GameManager.Instance (shared with slide remap paths).</summary>
+        internal static object? GetEngineWorld() => GetWorld();
 
         static object? GetWorld()
         {

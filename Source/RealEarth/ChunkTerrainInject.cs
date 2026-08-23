@@ -1,4 +1,6 @@
 using System;
+using System.Collections;
+using System.Collections.Generic;
 using System.Reflection;
 
 namespace RealEarth
@@ -25,6 +27,8 @@ namespace RealEarth
         public static int SessionPeakHeight { get; private set; }
         public static int SessionInjectCount { get; private set; }
         public static int SessionBlocksApplied { get; private set; }
+        /// <summary>Loaded chunks rewritten after origin slides (SoloSlide desync closure).</summary>
+        public static int SessionReinjectedChunks { get; private set; }
 
         /// <summary>Reset per-world inject counters (WorldReady / reinject reset).</summary>
         public static void ResetSessionCounters()
@@ -32,6 +36,7 @@ namespace RealEarth
             SessionPeakHeight = 0;
             SessionInjectCount = 0;
             SessionBlocksApplied = 0;
+            SessionReinjectedChunks = 0;
             _injectLogBudget = 24;
         }
 
@@ -335,6 +340,206 @@ namespace RealEarth
                 ints[i] = heights[i];
             return TryApplyHeightsToChunk(chunk, ints, null, chunkSize);
         }
+
+        /// <summary>
+        /// Re-inject loaded chunks around a local block position after an origin slide.
+        /// Loaded chunks keep pre-slide Earth columns until the engine regenerates them
+        /// (SoloSlide mesh/voxel desync); rewrite columns in place so terrain matches the
+        /// new origin immediately. SetBlock dirty flags refresh meshes. Bounded by radius
+        /// and maxChunks so a slide never hitches gen. Never throws to callers.
+        /// </summary>
+        /// <param name="world">Engine World instance (reflection, no hard reference).</param>
+        /// <param name="centerLocalXZ">Post-slide local player block coords.</param>
+        public static int ReinjectLoadedChunksAround(
+            object? world, int centerLocalX, int centerLocalZ,
+            int radiusBlocks = 128, int maxChunks = 96)
+        {
+            if (world == null || !HeightModWantsInject()) return 0;
+            int reinjected = 0;
+            try
+            {
+                var chunks = FindLoadedChunkCollection(world);
+                if (chunks == null) return 0;
+
+                int ccx = FloorDiv(centerLocalX, ChunkTerrainSampler.VanillaChunkSize);
+                int ccz = FloorDiv(centerLocalZ, ChunkTerrainSampler.VanillaChunkSize);
+                int rChunks = Math.Max(1, radiusBlocks / ChunkTerrainSampler.VanillaChunkSize);
+
+                var candidates = new List<(int dist, int cx, int cz, object chunk)>();
+                foreach (var c in chunks)
+                {
+                    if (c == null) continue;
+                    if (!TryReadChunkCoords(c, out int cx, out int cz)) continue;
+                    int d = Math.Max(Math.Abs(cx - ccx), Math.Abs(cz - ccz));
+                    if (d > rChunks) continue;
+                    candidates.Add((d, cx, cz, c));
+                }
+                // Closest chunks first so the cap keeps the play area correct.
+                candidates.Sort((a, b) => a.dist.CompareTo(b.dist));
+
+                foreach (var cand in candidates)
+                {
+                    if (reinjected >= maxChunks) break;
+                    if (ReinjectChunkObject(cand.cx, cand.cz, cand.chunk))
+                        reinjected++;
+                }
+
+                if (reinjected > 0)
+                {
+                    SessionReinjectedChunks += reinjected;
+                    if (_injectLogBudget > 0)
+                    {
+                        _injectLogBudget--;
+                        ModApi.Log(
+                            $"Origin slide reinject: {reinjected}/{candidates.Count} loaded chunks " +
+                            $"rewritten around local=({centerLocalX},{centerLocalZ}) " +
+                            $"r={radiusBlocks} sessionTotal={SessionReinjectedChunks}");
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                if (_injectLogBudget > 0)
+                {
+                    _injectLogBudget--;
+                    ModApi.Log("ReinjectLoadedChunksAround failed (non-fatal): " + ex.Message);
+                }
+            }
+            return reinjected;
+        }
+
+        /// <summary>
+        /// Rewrite one loaded chunk's columns under the current origin mapping.
+        /// Same path as OnChunkGenerated minus POI stamping / gen stats (no double-count).
+        /// </summary>
+        static bool ReinjectChunkObject(int chunkX, int chunkZ, object chunkObj)
+        {
+            var session = ModApi.Session;
+            var streamer = ModApi.Streamer;
+            if (session == null || streamer == null || chunkObj == null) return false;
+
+            int blockX = chunkX * ChunkTerrainSampler.VanillaChunkSize;
+            int blockZ = chunkZ * ChunkTerrainSampler.VanillaChunkSize;
+            session.LocalToEarth(blockX, blockZ, out int ex, out int ez);
+            // Slide may have moved into tiles not yet hot; sync-load avoids stale ocean rewrite.
+            streamer.EnsureHotAround(ex, ez, radius: 1, allowSyncLoad: true);
+
+            int n = ChunkTerrainSampler.VanillaChunkSize * ChunkTerrainSampler.VanillaChunkSize;
+            var heights = new int[n];
+            ChunkTerrainSampler.FillChunkHeightsInt(
+                session, streamer, ModApi.Config, blockX, blockZ,
+                ChunkTerrainSampler.VanillaChunkSize, heights);
+            var landcover = new byte[n];
+            ChunkTerrainSampler.FillChunkLandcover(
+                session, streamer, blockX, blockZ, ChunkTerrainSampler.VanillaChunkSize, landcover);
+            return TryApplyHeightsToChunk(chunkObj, heights, landcover);
+        }
+
+        /// <summary>
+        /// Loaded-chunk collection on World or its ChunkManager (build-dependent).
+        /// Prefers known names, then any IDictionary/IEnumerable member holding Chunk values.
+        /// </summary>
+        static IEnumerable? FindLoadedChunkCollection(object world)
+        {
+            foreach (var name in new[] { "chunkCache", "Chunks", "chunks" })
+                if (TryReadMember(world, name, out var c) && c != null && CollectionHoldsChunks(c))
+                    return EnumerateCollection(c);
+
+            foreach (var mgrName in new[] { "ChunkManager", "chunkManager", "m_ChunkManager" })
+            {
+                if (!TryReadMember(world, mgrName, out var mgr) || mgr == null) continue;
+                foreach (var name in new[] { "chunks", "chunkCache", "Chunks" })
+                    if (TryReadMember(mgr, name, out var c) && c != null && CollectionHoldsChunks(c))
+                        return EnumerateCollection(c);
+                // Build drift fallback: first collection member whose values look like Chunks.
+                const BindingFlags flags = BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic;
+                foreach (var f in mgr.GetType().GetFields(flags))
+                {
+                    try
+                    {
+                        var v = f.GetValue(mgr);
+                        if (v != null && CollectionHoldsChunks(v)) return EnumerateCollection(v);
+                    }
+                    catch { /* next */ }
+                }
+                foreach (var p in mgr.GetType().GetProperties(flags))
+                {
+                    if (p.GetIndexParameters().Length != 0) continue;
+                    try
+                    {
+                        var v = p.GetValue(mgr, null);
+                        if (v != null && CollectionHoldsChunks(v)) return EnumerateCollection(v);
+                    }
+                    catch { /* next */ }
+                }
+            }
+            return null;
+        }
+
+        static bool TryReadMember(object obj, string name, out object? value)
+        {
+            value = null;
+            try
+            {
+                const BindingFlags flags = BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic;
+                var f = obj.GetType().GetField(name, flags);
+                if (f != null) { value = f.GetValue(obj); return true; }
+                var p = obj.GetType().GetProperty(name, flags);
+                if (p != null && p.GetIndexParameters().Length == 0)
+                {
+                    value = p.GetValue(obj, null);
+                    return true;
+                }
+            }
+            catch { /* miss */ }
+            return false;
+        }
+
+        /// <summary>Peek one element to confirm the collection stores engine Chunk objects.</summary>
+        static bool CollectionHoldsChunks(object coll)
+        {
+            try
+            {
+                foreach (var item in EnumerateCollection(coll))
+                {
+                    if (item == null) continue;
+                    return item.GetType().Name.IndexOf("Chunk", StringComparison.OrdinalIgnoreCase) >= 0;
+                }
+            }
+            catch { /* ignore */ }
+            return false;
+        }
+
+        static IEnumerable EnumerateCollection(object coll)
+        {
+            if (coll is IDictionary dict)
+            {
+                foreach (DictionaryEntry de in dict)
+                    yield return de.Value!;
+                yield break;
+            }
+            if (coll is IEnumerable en)
+            {
+                foreach (var item in en)
+                    yield return item;
+            }
+        }
+
+        /// <summary>Chunk grid coords via common field/property names (build-dependent).</summary>
+        static bool TryReadChunkCoords(object chunk, out int cx, out int cz)
+        {
+            cx = cz = 0;
+            bool hasX = false;
+            bool hasZ = false;
+            foreach (var name in new[] { "chunkX", "ChunkX", "X" })
+                if (ReflectCache.TryReadIntMember(chunk, name, out cx)) { hasX = true; break; }
+            foreach (var name in new[] { "chunkZ", "ChunkZ", "Z" })
+                if (ReflectCache.TryReadIntMember(chunk, name, out cz)) { hasZ = true; break; }
+            return hasX && hasZ;
+        }
+
+        /// <summary>Floor division (negative locals must not truncate toward zero, Issue 2.13).</summary>
+        static int FloorDiv(int a, int b) => a >= 0 ? a / b : (a - b + 1) / b;
 
         static object? PickSolidBlock(byte landcover)
         {

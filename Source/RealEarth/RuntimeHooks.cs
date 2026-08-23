@@ -694,6 +694,14 @@ namespace RealEarth
                             ModApi.Session.AbsoluteX, ModApi.Session.AbsoluteZ,
                             radius: Math.Max(1, ModApi.Config?.StreamRadiusTiles ?? 2),
                             allowSyncLoad: true);
+                        // Close SoloSlide mesh/voxel desync: rewrite already-loaded chunk
+                        // columns under the new origin instead of waiting for regen.
+                        try
+                        {
+                            ChunkTerrainInject.ReinjectLoadedChunksAround(
+                                OriginSlideRemap.GetEngineWorld(), nx, nz);
+                        }
+                        catch { /* never break slide path */ }
                     }
                     ModApi.Log(
                         $"Single-map origin slide → local ({nx},{nz}) focus={focusId} " +

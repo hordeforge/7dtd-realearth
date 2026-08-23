@@ -272,7 +272,7 @@ SoloSlide recenters the host window. Everything that stored **local** XZ must re
 | Tile hot cache | Invalidate after successful slide |
 | Runtime POI stamps | Keep placed set across slide (no duplicate stamp); clear budget keys by FloorDiv |
 
-**Residual:** SoloSlide without full chunk voxel reinject can leave mesh/voxels desynced relative to new absolute underfoot. Mitigation: cache invalidate + sync prefetch. Full reinject is still the honest long-term fix.
+**Residual:** SoloSlide mesh/voxel desync after slide is closed offline by `ChunkTerrainInject.ReinjectLoadedChunksAround` (slide path rewrites loaded chunk columns under the new origin, bounded radius + nearest-first cap; unloaded chunks regenerate naturally). Live soak still pending.
 
 ---
 
@@ -442,8 +442,9 @@ When absolute origin changes by `(dx, dz)` in local space:
 5. Do **not** re-stamp all POIs (keep placed set).
 6. FOW / map buffers: per-chunk, keys FloorDiv-stable.
 7. City labels: re-project via session mapping (lon/lat truth unchanged).
+8. Re-inject loaded chunks around the player (`ReinjectLoadedChunksAround`): sync-load tiles, rewrite columns, SetBlock dirty meshes; nearest-first under a chunk cap.
 
-**Not solved by checklist alone:** already-generated chunk voxels under old absolute. That is reinject residual ([`realearth-review.md`](realearth-review.md) §4).
+**Not solved by checklist alone:** already-generated chunk voxels under old absolute. Closed offline by `ChunkTerrainInject.ReinjectLoadedChunksAround` on the slide path; live soak pending (see [`realearth-review.md`](realearth-review.md) §4).
 
 ---
 
