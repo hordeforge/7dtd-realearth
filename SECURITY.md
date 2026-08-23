@@ -6,7 +6,7 @@ It holds no user PII, credentials, or signing keys.
 ## Reporting
 
 Report vulnerabilities via GitHub Issues on this repository:
-https://github.com/maci0/7dtd-realworld/issues
+https://github.com/hordeforge/7dtd-realearth/issues
 
 Please include the affected file/entry point; [`docs/THREAT_MODEL.md`](docs/THREAT_MODEL.md)
 lists the known surfaces (tile decoder, CDN fetch path, viewer, install tooling) so reports can be aimed precisely.
