@@ -25,6 +25,9 @@ export class Map2D {
     this.dragging = false;
     this.lastX = 0;
     this.lastY = 0;
+    // active pointers by id; two down at once means a pinch-zoom gesture
+    this.pointers = new Map();
+    this.pinch = null;
 
     this.onProbe = null;
     this.onHoverSettlement = null;
@@ -32,13 +35,15 @@ export class Map2D {
     this._boundResize = () => this.resize();
     this._onPointerDown = (e) => this._pointerDown(e);
     this._onPointerMove = (e) => this._pointerMove(e);
-    this._onPointerUp = () => this._pointerUp();
+    this._onPointerUp = (e) => this._endPointer(e.pointerId);
+    this._onPointerCancel = (e) => this._endPointer(e.pointerId);
     this._onWheel = (e) => this._wheel(e);
 
     globalThis.addEventListener("resize", this._boundResize);
     canvas.addEventListener("pointerdown", this._onPointerDown);
     canvas.addEventListener("pointermove", this._onPointerMove);
     globalThis.addEventListener("pointerup", this._onPointerUp);
+    canvas.addEventListener("pointercancel", this._onPointerCancel);
     canvas.addEventListener("wheel", this._onWheel, { passive: false });
   }
 
@@ -47,6 +52,7 @@ export class Map2D {
     this.canvas.removeEventListener("pointerdown", this._onPointerDown);
     this.canvas.removeEventListener("pointermove", this._onPointerMove);
     globalThis.removeEventListener("pointerup", this._onPointerUp);
+    this.canvas.removeEventListener("pointercancel", this._onPointerCancel);
     this.canvas.removeEventListener("wheel", this._onWheel);
   }
 

@@ -38,6 +38,7 @@ Workspace root guide: [`../MODDING_BEST_PRACTICES.md`](../MODDING_BEST_PRACTICES
 make help
 make setup                 # uv sync tools + check game path
 make test                  # Python tests
+make lint                  # Ruff over tools (Python)
 make test-mp               # multiplayer origin/bubble unit tests
 make build                 # RealEarth.dll
 make install               # mod only (still needs expand for real height)

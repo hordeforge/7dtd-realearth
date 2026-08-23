@@ -57,6 +57,7 @@ WEBMOD_EXPORT_NAME ?= demo
 UV            := uv
 REEARTH       := cd $(TOOLS) && $(UV) run python -m realearth.cli
 PYTEST        := cd $(TOOLS) && $(UV) run --extra dev python -m pytest
+RUFF          := cd $(TOOLS) && $(UV) run --extra dev ruff check realearth tests
 
 # ---------------------------------------------------------------------------
 # Help
@@ -96,6 +97,7 @@ help:
 	@echo "    make test               Full Python test suite"
 	@echo "    make test-height        Height mod + height-test map tests only"
 	@echo "    make test-fast          Quick subset (coords, height, tiles)"
+	@echo "    make lint               Ruff lint over tools/realearth + tools/tests"
 	@echo ""
 	@echo "  Viewer"
 	@echo "    make viewer             Export demo pack into viewer/data/demo"
@@ -254,6 +256,9 @@ bake-height: height-map
 test test-python:
 	@$(PYTEST) -q --tb=short
 
+lint lint-python:
+	@$(RUFF)
+
 test-height:
 	@$(PYTEST) tests/test_height_mod_case.py tests/test_height_10k.py \
 		tests/test_height_test_map.py tests/test_engine_constants.py \
@@ -270,8 +275,8 @@ test-fast:
 		tests/test_multiplayer.py tests/test_host_fold.py tests/test_local_window.py \
 		tests/test_mp_runtime_structure.py -q --tb=line
 
-check: setup test-fast build viewer-lint webmod-lint
-	@echo "OK check (setup + test-fast + build + viewer-lint + webmod-lint)"
+check: setup test-fast lint-python build viewer-lint webmod-lint
+	@echo "OK check (setup + test-fast + lint-python + build + viewer-lint + webmod-lint)"
 
 # ---------------------------------------------------------------------------
 # Viewer
