@@ -4,7 +4,7 @@
 **Not:** product status tables ([MODIFICATIONS](MODIFICATIONS.md)), full architecture ([realearth-runtime](realearth-runtime.md)).  
 **Architecture:** [`realearth-runtime.md`](realearth-runtime.md).  
 **Engine surfaces:** [`realearth-surfaces.md`](realearth-surfaces.md).  
-**Generic engine RE:** [`../../7dtd-research/docs/INDEX.md`](../../7dtd-research/docs/INDEX.md).  
+**Generic engine RE:** [`../../7dtd-engine-research/docs/INDEX.md`](../../7dtd-engine-research/docs/INDEX.md).  
 **Product status dashboard:** [`MODIFICATIONS.md`](MODIFICATIONS.md) only (do not re-list Done/Partial here).  
 **Hub:** [`INDEX.md`](INDEX.md).
 
@@ -345,10 +345,10 @@ Offline tests:
 | Doc | Role |
 |---|---|
 | [`realearth-runtime.md`](realearth-runtime.md) | Architecture lessons |
-| [`terrain-height.md`](../../7dtd-research/docs/terrain-height.md) | Height API / YDim RE |
-| [`../../7dtd-realworld/docs/IMPLEMENTATION_PLAN.md`](../../7dtd-realworld/docs/IMPLEMENTATION_PLAN.md) | Priority + isolation bar |
-| [`../../7dtd-realworld/docs/ENGINE_LIMITATIONS.md`](../../7dtd-realworld/docs/ENGINE_LIMITATIONS.md) | Stock limits + residual risk §10 |
-| [`../../7dtd-realworld/docs/GAP_HARMONY_MODLETS.md`](../../7dtd-realworld/docs/GAP_HARMONY_MODLETS.md) | Gap × API matrix |
+| [`terrain-height.md`](../../7dtd-engine-research/docs/terrain-height.md) | Height API / YDim RE |
+| [`../../7dtd-realearth/docs/IMPLEMENTATION_PLAN.md`](../../7dtd-realearth/docs/IMPLEMENTATION_PLAN.md) | Priority + isolation bar |
+| [`../../7dtd-realearth/docs/ENGINE_LIMITATIONS.md`](../../7dtd-realearth/docs/ENGINE_LIMITATIONS.md) | Stock limits + residual risk §10 |
+| [`../../7dtd-realearth/docs/GAP_HARMONY_MODLETS.md`](../../7dtd-realearth/docs/GAP_HARMONY_MODLETS.md) | Gap × API matrix |
 
 ## Changelog
 

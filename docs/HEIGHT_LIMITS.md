@@ -1,7 +1,7 @@
 # Height limits: real height product, stock 255 constraint
 
 **Owns:** product vertical policy (1 m = 1 block, expand required, compress opt-in only).  
-**Not:** product surface status ([MODIFICATIONS](MODIFICATIONS.md)), Streamed inject lessons ([realearth-runtime](realearth-runtime.md)), generic stock height IL ([research terrain-height](../../7dtd-research/docs/terrain-height.md)).  
+**Not:** product surface status ([MODIFICATIONS](MODIFICATIONS.md)), Streamed inject lessons ([realearth-runtime](realearth-runtime.md)), generic stock height IL ([research terrain-height](../../7dtd-engine-research/docs/terrain-height.md)).  
 **Stock limit map:** [ENGINE_LIMITATIONS](ENGINE_LIMITATIONS.md). **Install:** [MODLET](MODLET.md). **Hub:** [INDEX](INDEX.md).
 
 ## Product policy
@@ -113,7 +113,7 @@ make engine-restore
 
 ### Tier 2b: data / policy foundation (always on with the mod)
 
-**Stock vs expanded (measured on V3.1.0 b14; values identical to the earlier V3.0.1 measurements):** see workspace [`7dtd-research/docs/terrain-height.md`](../../7dtd-research/docs/terrain-height.md).
+**Stock vs expanded (measured on V3.1.0 b14; values identical to the earlier V3.0.1 measurements):** see workspace [`7dtd-engine-research/docs/terrain-height.md`](../../7dtd-engine-research/docs/terrain-height.md).
 
 | Constant | Stock | After RealEarth expand |
 |---|---:|---:|
@@ -159,7 +159,7 @@ Audit anytime:
 ```bash
 cd tools && uv run python -m realearth.cli engine-audit
 # or workspace RE:
-# mono 7dtd-optimizer/tools/DumpTerrain.exe $ASM 7dtd-research/il/terrain-VERSION
+# mono 7dtd-server-optimizer/tools/DumpTerrain.exe $ASM 7dtd-engine-research/il/terrain-VERSION
 ```
 
 If you only raise YDim to **1024** (staging), Everest still will not fit as true 1:1 (needs sea+8849 ≈ 8949). Product expand target is **16384** with `one_to_one` mapping, not a global compress curve.
@@ -212,7 +212,7 @@ Full design: **[`DYNAMIC_CHUNK_HEIGHT.md`](DYNAMIC_CHUNK_HEIGHT.md)**.
 | Planet-scale RAM for tall columns | Near term: accept expand cost near players; long term: sparse Y ([DYNAMIC_CHUNK_HEIGHT](DYNAMIC_CHUNK_HEIGHT.md)) |
 | Horizontal continuous Earth | Absolute XZ stream ([ABSOLUTE_STREAMING](ABSOLUTE_STREAMING.md)); orthogonal to vertical expand |
 
-**Product rule:** keep **true meters in tiles**; expand is **required** for 1:1 height, not optional. Horizontal Streamed work still needs expand if mountains claim real elev_m. Status of inject/expand: [MODIFICATIONS](MODIFICATIONS.md). Engine sites: [realearth-surfaces](realearth-surfaces.md) §7. Generic constants: [research terrain-height](../../7dtd-research/docs/terrain-height.md).
+**Product rule:** keep **true meters in tiles**; expand is **required** for 1:1 height, not optional. Horizontal Streamed work still needs expand if mountains claim real elev_m. Status of inject/expand: [MODIFICATIONS](MODIFICATIONS.md). Engine sites: [realearth-surfaces](realearth-surfaces.md) §7. Generic constants: [research terrain-height](../../7dtd-engine-research/docs/terrain-height.md).
 
 ## Related docs
 
@@ -223,7 +223,7 @@ Full design: **[`DYNAMIC_CHUNK_HEIGHT.md`](DYNAMIC_CHUNK_HEIGHT.md)**.
 | [realearth-surfaces](realearth-surfaces.md) | Save-64, light 255, GetBlock index |
 | [realearth-runtime](realearth-runtime.md) | Tall crust / inject gate lessons |
 | [DYNAMIC_CHUNK_HEIGHT](DYNAMIC_CHUNK_HEIGHT.md) | Sparse Y future |
-| [research terrain-height](../../7dtd-research/docs/terrain-height.md) | Stock vs expand IL constants |
+| [research terrain-height](../../7dtd-engine-research/docs/terrain-height.md) | Stock vs expand IL constants |
 
 ## Changelog
 

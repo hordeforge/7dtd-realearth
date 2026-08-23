@@ -194,7 +194,7 @@ Implementation how-to and API choice: [GAP_HARMONY_MODLETS](GAP_HARMONY_MODLETS.
 
 ## Anti-scope
 
-AI/mesh optim → `7dtd-optimizer`. Load bots → `7dtd-loadgen`. Google 3D cities → forbidden ([REALISM](REALISM_AND_GOOGLE_EARTH.md)). Cadastral rebuild → non-goal ([DESIGN](../DESIGN.md)).
+AI/mesh optim → `7dtd-server-optimizer`. Load bots → `7dtd-loadgen`. Google 3D cities → forbidden ([REALISM](REALISM_AND_GOOGLE_EARTH.md)). Cadastral rebuild → non-goal ([DESIGN](../DESIGN.md)).
 
 ---
 
@@ -212,7 +212,7 @@ AI/mesh optim → `7dtd-optimizer`. Load bots → `7dtd-loadgen`. Google 3D citi
 | [realearth-review](realearth-review.md) | Adversarial failure catalog |
 | [IMPLEMENTATION_PLAN](IMPLEMENTATION_PLAN.md) | P0-P8 order |
 | [TODO](../TODO.md) | Executable tickets |
-| Generic engine RE | [`../../7dtd-research/docs/INDEX.md`](../../7dtd-research/docs/INDEX.md) |
+| Generic engine RE | [`../../7dtd-engine-research/docs/INDEX.md`](../../7dtd-engine-research/docs/INDEX.md) |
 
 ## Changelog
 

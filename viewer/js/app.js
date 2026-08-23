@@ -150,18 +150,19 @@ async function fetchElevationRaw(baseUrl, elevMeta) {
   return { ctx, w: c.width, h: c.height };
 }
 
-function describePack(meta, layers) {
+function describePack(meta) {
   const bbox = objOrEmpty(meta.bbox);
   const metersPerBlock = meta.meters_per_block;
   const metersText =
     metersPerBlock === null || metersPerBlock === undefined ? "" : `~${esc(metersPerBlock)} m/sample`;
   els.titleHud.textContent = strOrEmpty(meta.name) || "RealEarth";
+  const tileCount = listOrEmpty(meta.tiles).length;
   els.packInfo.innerHTML = [
     `<strong>${esc(strOrEmpty(meta.name)) || "pack"}</strong>`,
     `bbox ${fmt(bbox.west)}°,${fmt(bbox.south)}° → ${fmt(bbox.east)}°,${fmt(bbox.north)}°`,
     `samples ${esc(meta.sample_width)}×${esc(meta.sample_height)}${meta.view_width ? ` · view ${esc(meta.view_width)}×${esc(meta.view_height)}` : ""}`,
     metersText,
-    `${numOrZero(meta.settlement_count)} settlements · ${layers.length} tiles`,
+    `${numOrZero(meta.settlement_count)} settlements · ${tileCount} tiles`,
   ]
     .filter(Boolean)
     .join("<br/>");
@@ -179,7 +180,7 @@ async function loadPack(baseUrl) {
   state.meta = meta;
 
   fillLayers(meta);
-  describePack(meta, listOrEmpty(meta.layers));
+  describePack(meta);
 
   // viewer.json only names the artifacts; fetch them all in parallel instead of
   // a meta → settlements → image-per-image → elev chain.

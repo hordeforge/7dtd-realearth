@@ -121,10 +121,17 @@ def _local_stretch(
 ) -> np.ndarray:
     """Maximize relief: min elev → min_y, max → max_y; sea stays near sea_level_y."""
     elev = np.asarray(elev, dtype=np.float64)
+    # Contract (see compress_elevation): max_y > 255 returns int32; uint8 wraps
+    # tall columns. All return paths below must honor this.
+    out_dtype = np.int32 if max_y > 255 else np.uint8
     lo = float(np.nanmin(elev))
     hi = float(np.nanmax(elev))
     if hi <= lo + 1e-6:
-        return np.full(elev.shape, sea_level_y, dtype=np.uint8)
+        return np.full(
+            elev.shape,
+            np.clip(np.rint(sea_level_y), min_y, max_y),
+            dtype=out_dtype,
+        )
     # Keep sea level fixed-ish: map 0 m to sea_level_y when range crosses 0
     if lo < 0 < hi:
         out = np.empty_like(elev)
@@ -137,11 +144,9 @@ def _local_stretch(
             t = elev[land] / (hi + 1e-9)
             out[land] = sea_level_y + t * (max_y - sea_level_y)
         # Contract: max_y > 255 must return int32; uint8 wraps tall columns.
-        dtype = np.int32 if max_y > 255 else np.uint8
-        return np.clip(np.rint(out), min_y, max_y).astype(dtype)
+        return np.clip(np.rint(out), min_y, max_y).astype(out_dtype)
     t = (elev - lo) / (hi - lo)
-    dtype = np.int32 if max_y > 255 else np.uint8
-    return np.clip(np.rint(min_y + t * (max_y - min_y)), min_y, max_y).astype(dtype)
+    return np.clip(np.rint(min_y + t * (max_y - min_y)), min_y, max_y).astype(out_dtype)
 
 
 def to_heightmap_png_array(game_y: np.ndarray) -> np.ndarray:

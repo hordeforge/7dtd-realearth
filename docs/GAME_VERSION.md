@@ -40,13 +40,13 @@ Also re-apply expand if product height is required: `make engine-expand` (Steam 
 - Always build against **this** install’s `Assembly-CSharp.dll`, not a hard-coded version string.
 - Keep `Mods/0_TFP_Harmony`.
 - C# mods may need EAC off depending on settings.
-- Generic engine RE pin: [`../../7dtd-research/docs/coverage.md`](../../7dtd-research/docs/coverage.md).
+- Generic engine RE pin: [`../../7dtd-engine-research/docs/coverage.md`](../../7dtd-engine-research/docs/coverage.md).
 
 ## Height expand state (this machine)
 
 Live client and dedicated `Assembly-CSharp` may already have RealEarth YDim expand applied (`ChunkBlockYDim=16384`). Stock backups live next to the DLL as `Assembly-CSharp.dll.re_stock_bak` (`YDim=256`).
 
-Probe with `realearth engine-audit` or regenerate dumps via `DumpTerrain` (see workspace [`7dtd-research/docs/terrain-height.md`](../../7dtd-research/docs/terrain-height.md)). After Steam Verify, re-run `make engine-expand`.
+Probe with `realearth engine-audit` or regenerate dumps via `DumpTerrain` (see workspace [`7dtd-engine-research/docs/terrain-height.md`](../../7dtd-engine-research/docs/terrain-height.md)). After Steam Verify, re-run `make engine-expand`.
 
 ## Related docs
 
@@ -55,7 +55,7 @@ Probe with `realearth engine-audit` or regenerate dumps via `DumpTerrain` (see w
 | [PROTON_INSTALL](PROTON_INSTALL.md) | Proton paths |
 | [MODLET](MODLET.md) | Install + expand |
 | [HEIGHT_LIMITS](HEIGHT_LIMITS.md) | Expand policy |
-| [research coverage](../../7dtd-research/docs/coverage.md) | Engine RE pin |
+| [research coverage](../../7dtd-engine-research/docs/coverage.md) | Engine RE pin |
 
 ## Changelog
 

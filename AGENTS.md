@@ -1,4 +1,4 @@
-# AGENTS.md - 7dtd-realworld (RealEarth)
+# AGENTS.md - 7dtd-realearth (RealEarth)
 
 **1:1-scale real-world Earth** project for **7 Days to Die V3.1.0** (Henpocalypse):
 elevation, landcover heuristics, density/cities, tile streaming, longitude wrap,
@@ -77,11 +77,11 @@ uv run python -m realearth.cli bake-world --pack ../data/samples/demo_region \
 | Tree | Owns |
 |---|---|
 | `docs/` (this project) | Product design, status, Streamed lessons (`realearth-runtime`, `realearth-surfaces`, `realearth-review`, MODIFICATIONS, LON_LAT, …) |
-| `../7dtd-research/docs/` | **Generic** dedicated engine RE only (loop, AI, net, save, terrain APIs). Not product status. |
+| `../7dtd-engine-research/docs/` | **Generic** dedicated engine RE only (loop, AI, net, save, terrain APIs). Not product status. |
 
 Hub: [`docs/INDEX.md`](docs/INDEX.md) (ownership: install vs status vs gaps vs lon/lat). Do not re-list
 every doc path in answers; point agents at INDEX + the owning file. Engine RE hub:
-[`../7dtd-research/docs/INDEX.md`](../7dtd-research/docs/INDEX.md).
+[`../7dtd-engine-research/docs/INDEX.md`](../7dtd-engine-research/docs/INDEX.md).
 
 ## Layout
 
@@ -103,17 +103,17 @@ DESIGN.md           architecture and phased delivery
 | Project | Role |
 |---|---|
 | `../7dtd-loadgen` | Join bots / dedicated soak against RealEarth or stock worlds |
-| `../7dtd-apm` | Measure streamer/height cost under load |
-| `../7dtd-optimizer` | Unrelated dedicated optim product |
+| `../7dtd-server-apm` | Measure streamer/height cost under load |
+| `../7dtd-server-optimizer` | Unrelated dedicated optim product |
 
 Do not silently couple RealEarth patches into EfficientServer or APM.
 
-## Stock-game research -> 7dtd-research
+## Stock-game research -> 7dtd-engine-research
 
 Anything that studies the **stock** dedicated server belongs in
-[`../7dtd-research/`](../7dtd-research/), not here: reverse-engineering
+[`../7dtd-engine-research/`](../7dtd-engine-research/), not here: reverse-engineering
 narratives (`docs/`), the Mono.Cecil dump tooling (`tools/`), wire/protocol
 analysis, and engine cost/loop RE. This repo owns the RealEarth terrain/streaming product;
 it does not host stock-game RE docs or dumpers. When RE is needed, add it
-under `../7dtd-research/` and link back. How to RE:
-[`../7dtd-research/docs/re-methodology.md`](../7dtd-research/docs/re-methodology.md).
+under `../7dtd-engine-research/` and link back. How to RE:
+[`../7dtd-engine-research/docs/re-methodology.md`](../7dtd-engine-research/docs/re-methodology.md).

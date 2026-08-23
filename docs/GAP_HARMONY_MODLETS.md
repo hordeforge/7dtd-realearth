@@ -3,7 +3,7 @@
 **Owns:** what is still missing to implement, and **which 7D API** (XPath, IModApi, Harmony, XUi, WebMod, binary expand, bake, pipeline).  
 **Not:** compact status dashboard ([MODIFICATIONS](MODIFICATIONS.md)); stock limit map ([ENGINE_LIMITATIONS](ENGINE_LIMITATIONS.md)). Hub: [INDEX](INDEX.md).
 
-Prefer the **shallowest** API (workspace [MODDING_BEST_PRACTICES](../../MODDING_BEST_PRACTICES.md)). V3.1.0 adds no new mod API surface vs V3.0. Harmony targets: rediscover after each TFP patch ([terrain-height](../../7dtd-research/docs/terrain-height.md)).
+Prefer the **shallowest** API (workspace [MODDING_BEST_PRACTICES](../../MODDING_BEST_PRACTICES.md)). V3.1.0 adds no new mod API surface vs V3.0. Harmony targets: rediscover after each TFP patch ([terrain-height](../../7dtd-engine-research/docs/terrain-height.md)).
 
 **Rule of thumb:** XML for data tables · IModApi for session/commands · Harmony for height/gen/tick · binary expand for YDim · packs for DEM. Never a second Harmony; never private per-client origins.
 
@@ -184,7 +184,7 @@ Prefer the **shallowest** API (workspace [MODDING_BEST_PRACTICES](../../MODDING_
 | **Allocs server fixes / web map** | Commands + web map of stock world | Admin map ≠ Earth lon/lat atlas |
 | **OCB Electricity / StopFuel** | Harmony systems | Pattern: small focused Harmony; different domain |
 | **EfficientServer (this workspace)** | Harmony AI/mesh/dedicated skips | **Sibling:** measure with APM, do not put Earth inject here |
-| **7dtd-apm bridge** | Harmony timing + WebMod | Measure only |
+| **7dtd-server-apm bridge** | Harmony timing + WebMod | Measure only |
 | **7dtd-loadgen** | External LiteNet (not Mods/) | Soak RealEarth servers |
 | **MVirus** | Mod transfer to clients | Optional distribution; not geography |
 | **BackupMod** | Save zip I/O | Ops companion for tall-world saves |
@@ -594,7 +594,7 @@ Y expand validation, light/Y-mask completeness, save format, optional sparse Y l
 | [MODIFICATIONS](MODIFICATIONS.md) | Status only |
 | [IMPLEMENTATION_PLAN](IMPLEMENTATION_PLAN.md) | P0-P8 |
 | [realearth-runtime](realearth-runtime.md) | Streamed lessons |
-| [research INDEX](../../7dtd-research/docs/INDEX.md) | Generic RE |
+| [research INDEX](../../7dtd-engine-research/docs/INDEX.md) | Generic RE |
 
 ## Changelog
 

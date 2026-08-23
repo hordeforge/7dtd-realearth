@@ -3,7 +3,7 @@
   <Name value="RealEarth" />
   <DisplayName value="Real Earth" />
   <Description value="Real-world Earth for 7DTD: Streamed .rte tiles, Harmony inject, and RealEarth YDim expand (Tools/) for 1:1 tall columns. Stock fallback ~250 until expand. Requires 0_TFP_Harmony." />
-  <Author value="RealEarth" />
+  <Author value="HordeForge" />
   <Version value="0.2.1" />
-  <Website value="" />
+  <Website value="https://github.com/hordeforge/7dtd-realearth" />
 </xml>

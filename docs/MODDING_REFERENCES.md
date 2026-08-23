@@ -1,7 +1,7 @@
 # 7DTD modding references
 
 **Owns:** external modding site pointers.  
-**Not:** product install ([MODLET](MODLET.md)), engine RE ([research INDEX](../../7dtd-research/docs/INDEX.md)).  
+**Not:** product install ([MODLET](MODLET.md)), engine RE ([research INDEX](../../7dtd-engine-research/docs/INDEX.md)).  
 **Hub:** [INDEX](INDEX.md).
 
 

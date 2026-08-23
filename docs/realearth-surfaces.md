@@ -1,13 +1,13 @@
 # RealEarth critical engine surfaces (V3.1.0)
 
 **Owns:** managed engine surfaces the Streamed product depends on (product-facing RE).  
-**Not:** product Done/Partial tables ([MODIFICATIONS](MODIFICATIONS.md)), Streamed architecture lessons ([realearth-runtime](realearth-runtime.md)), pure generic loop RE ([research INDEX](../../7dtd-research/docs/INDEX.md)).  
+**Not:** product Done/Partial tables ([MODIFICATIONS](MODIFICATIONS.md)), Streamed architecture lessons ([realearth-runtime](realearth-runtime.md)), pure generic loop RE ([research INDEX](../../7dtd-engine-research/docs/INDEX.md)).  
 **Architecture lessons:** [`realearth-runtime.md`](realearth-runtime.md).  
 **Adversarial catalog:** [`realearth-review.md`](realearth-review.md).  
-**Generic engine hub:** [`../../7dtd-research/docs/INDEX.md`](../../7dtd-research/docs/INDEX.md) (loop, terrain-height, save-region without product policy).  
-**Height overview:** [`../../7dtd-research/docs/terrain-height.md`](../../7dtd-research/docs/terrain-height.md).  
-**Save deep-dive:** [`../../7dtd-research/docs/save-region.md`](../../7dtd-research/docs/save-region.md).  
-**Dump:** [`../../7dtd-research/il/realearth-surfaces-v3.1.0/`](../../7dtd-research/il/realearth-surfaces-v3.1.0/).  
+**Generic engine hub:** [`../../7dtd-engine-research/docs/INDEX.md`](../../7dtd-engine-research/docs/INDEX.md) (loop, terrain-height, save-region without product policy).  
+**Height overview:** [`../../7dtd-engine-research/docs/terrain-height.md`](../../7dtd-engine-research/docs/terrain-height.md).  
+**Save deep-dive:** [`../../7dtd-engine-research/docs/save-region.md`](../../7dtd-engine-research/docs/save-region.md).  
+**Dump:** [`../../7dtd-engine-research/il/realearth-surfaces-v3.1.0/`](../../7dtd-engine-research/il/realearth-surfaces-v3.1.0/).  
 **Product hub:** [`INDEX.md`](INDEX.md).  
 **Status:** [`MODIFICATIONS.md`](MODIFICATIONS.md) only.
 
@@ -227,7 +227,7 @@ RealEarth **SoloSlide** (session absolute recentering) is **not** the same as st
 | Stock `Origin` | Unity transforms / floating origin for precision | Engine float precision at large coords |
 | RealEarth SoloSlide | Session absolute Earth mapping + entity/claim remap | Keep Earth under a small local window |
 
-They can **interact on listen/client**. Pure dedicated does not run Origin.FixedUpdate. On client/listen, if stock Origin repositions while RealEarth holds absolute session state, local coords and Earth mapping can desync unless product listens to `Origin.OriginChanged` or keeps local window small enough that stock Origin rarely fires. Product design residual (not unmapped managed RE): see [`residuals.md`](../../7dtd-research/docs/residuals.md) process residual + product SoloSlide notes.
+They can **interact on listen/client**. Pure dedicated does not run Origin.FixedUpdate. On client/listen, if stock Origin repositions while RealEarth holds absolute session state, local coords and Earth mapping can desync unless product listens to `Origin.OriginChanged` or keeps local window small enough that stock Origin rarely fires. Product design residual (not unmapped managed RE): see [`residuals.md`](../../7dtd-engine-research/docs/residuals.md) process residual + product SoloSlide notes.
 
 ---
 
@@ -380,7 +380,7 @@ Sector-based sibling uses **% 32** per dimension (different packing).
 | `cProtectedLandClaimChunkMargin` | 1 | Claim protection margin (chunks) |
 | similar margins | 1 | bedroll, offline player, backpack, vehicle, quest, supply crate |
 
-**Note:** community docs often say `.7rg` for region containers. This assembly’s `RegionFileManager` literal for chunk payloads is **`.ttc`**. Managed type map + header constants are **closed** (this section + [`save-region.md`](../../7dtd-research/docs/save-region.md)). Optional hand-annotation of every compressed sector payload byte is listed under [`residuals.md`](../../7dtd-research/docs/residuals.md) (not required for dedi sim loop understanding).
+**Note:** community docs often say `.7rg` for region containers. This assembly’s `RegionFileManager` literal for chunk payloads is **`.ttc`**. Managed type map + header constants are **closed** (this section + [`save-region.md`](../../7dtd-engine-research/docs/save-region.md)). Optional hand-annotation of every compressed sector payload byte is listed under [`residuals.md`](../../7dtd-engine-research/docs/residuals.md) (not required for dedi sim loop understanding).
 
 ### 5.3 Chunk save version
 
@@ -392,7 +392,7 @@ Sector-based sibling uses **% 32** per dimension (different packing).
 
 ### 5.4 WorldState (**CLOSED**)
 
-Present on `World.worldState`. Managed save path **closed** in [`save-region.md`](../../7dtd-research/docs/save-region.md):
+Present on `World.worldState`. Managed save path **closed** in [`save-region.md`](../../7dtd-engine-research/docs/save-region.md):
 
 | Method | IL | Evidence |
 |---|---:|---|
@@ -413,7 +413,7 @@ No longer an open managed gap.
 | `PrefabInstance` | Placed instance bookkeeping |
 | `DynamicPrefabDecorator` | Runtime decoration |
 
-Managed surface is inventoried (method IL + call files under dump set). Product POI stamps should call into the same **CopyIntoLocal / cluster SetBlock** family. Signature variance after TFP patches is a **post-patch IL drift** residual ([`residuals.md`](../../7dtd-research/docs/residuals.md)), not an unmapped type.
+Managed surface is inventoried (method IL + call files under dump set). Product POI stamps should call into the same **CopyIntoLocal / cluster SetBlock** family. Signature variance after TFP patches is a **post-patch IL drift** residual ([`residuals.md`](../../7dtd-engine-research/docs/residuals.md)), not an unmapped type.
 
 ---
 
@@ -449,7 +449,7 @@ Methods that load **255** or **256** near light/height (non-exhaustive; dump § 
 
 `Chunk.RefreshSunlight` pattern: for each x,z start `y=255` and walk down setting light. **Above y=255 never gets sunlight under stock IL.**
 
-**Managed RE:** site inventory **closed** (this section + [`light-mesh-water.md`](../../7dtd-research/docs/light-mesh-water.md)). Product expand patcher must retarget these Y ceilings; live soak under expand is a **product** bar, not an unmapped engine surface.
+**Managed RE:** site inventory **closed** (this section + [`light-mesh-water.md`](../../7dtd-engine-research/docs/light-mesh-water.md)). Product expand patcher must retarget these Y ceilings; live soak under expand is a **product** bar, not an unmapped engine surface.
 
 ---
 
@@ -510,7 +510,7 @@ Indexing math (`y >> 2`) is expand-friendly **if** `m_BlockLayers.Length` matche
 | Chunk write/read layer bound | §5.0 **hardcoded 64** |
 | ChunkBlockChannel Read/Write | **CLOSED:** Read IL=151, Write IL=120 (lits include 1024); `dedi-complete` §12 |
 | World / Terrain height APIs | §2 |
-| WorldState.SaveLoad field set + call graph | §5.4 + [`save-region.md`](../../7dtd-research/docs/save-region.md) (IL=884) |
+| WorldState.SaveLoad field set + call graph | §5.4 + [`save-region.md`](../../7dtd-engine-research/docs/save-region.md) (IL=884) |
 | Origin.FixedUpdate on dedicated | §3.2 **no-op** (`IsDedicatedServer` → ret) |
 | Origin DoReposition fan-out | §3.3 (client/listen) |
 | Land claims / PPL | §4 |
@@ -521,7 +521,7 @@ Indexing math (`y >> 2`) is expand-friendly **if** `m_BlockLayers.Length` matche
 
 ### 11.2 Non-IL / process residuals only
 
-See canonical list: [`residuals.md`](../../7dtd-research/docs/residuals.md). Items that used to live here as “open RE”:
+See canonical list: [`residuals.md`](../../7dtd-engine-research/docs/residuals.md). Items that used to live here as “open RE”:
 
 | Item | Classification |
 |---|---|
@@ -538,9 +538,9 @@ See canonical list: [`residuals.md`](../../7dtd-research/docs/residuals.md). Ite
 ```bash
 DS="${SEVENDTD_DS_DIR:-$HOME/.local/share/Steam/steamapps/common/7 Days to Die Dedicated Server}"
 ASM="$DS/7DaysToDieServer_Data/Managed/Assembly-CSharp.dll"
-cd 7dtd-optimizer/tools
+cd 7dtd-server-container-optimizer/tools
 mcs -r:Mono.Cecil.dll -out:DumpRealEarthSurfaces.exe DumpRealEarthSurfaces.cs
-mono DumpRealEarthSurfaces.exe "$ASM" ../../7dtd-research/il/realearth-surfaces-v3.1.0
+mono DumpRealEarthSurfaces.exe "$ASM" ../../7dtd-engine-research/il/realearth-surfaces-v3.1.0
 # also: DumpTerrain.exe for WorldConstants-focused set
 ```
 
@@ -706,7 +706,7 @@ Sliding claims without updating protection maps can allow premature chunk cull o
 | PPL / m_lpBlockMap / PlaceLandProtectionBlock | **CLOSED** §3 |
 | GetPersistentPlayerList | **CLOSED** GM field IL=3 |
 
-Product SoloSlide ↔ claim/nav refresh is product residual, not unmapped managed RE. Canonical residuals: [`residuals.md`](../../7dtd-research/docs/residuals.md).
+Product SoloSlide ↔ claim/nav refresh is product residual, not unmapped managed RE. Canonical residuals: [`residuals.md`](../../7dtd-engine-research/docs/residuals.md).
 
 ## Changelog (merged source 2)
 - **2026-07-18:** §6 closed managed list; removed false “dedicated Origin still open” items.  

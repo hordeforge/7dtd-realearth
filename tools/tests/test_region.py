@@ -3,6 +3,7 @@ import unicodedata
 from pathlib import Path
 
 from realearth.region import build_region
+from realearth.settlements import decode_poi_blob
 from realearth.tile_format import read_manifest, read_tile, tile_path
 
 
@@ -68,3 +69,24 @@ def test_build_region_settlements_json_utf8_nfc(tmp_path: Path):
     rows = json.loads(raw.decode("utf-8"))
     names = [r["name"] for r in rows]
     assert names.count("São Paulo") == 1
+
+
+def test_region_tile_pois_stamp_each_place_once(tmp_path: Path):
+    """A density core snapped to a settlement name is the same place: the tile
+    POI plan must not stamp it twice (Denver sits mid-bbox for seed cities)."""
+    m = build_region(
+        -105.2,
+        39.6,
+        -104.9,
+        39.9,
+        tmp_path,
+        resolution_m=120.0,
+        source="synthetic",
+        name="PoiDedupe",
+        max_dim=256,
+    )
+    names = []
+    for t in m.tiles:
+        tile = read_tile(tile_path(tmp_path, t["tx"], t["tz"]))
+        names.extend(p["name"] for p in decode_poi_blob(tile.poi_blob))
+    assert names.count("Denver") == 1

@@ -3,7 +3,7 @@
   // scripts/build-webmod.sh (esbuild) and type-gated by scripts/lint-webmod.sh
   // (tsc --noEmit, pinned TSC_VERSION). No package.json/node_modules tracked:
   // tsc/esbuild/oxlint run through npx with versions pinned in the scripts
-  // (same policy as ../zdtd/scripts/lint-webui.sh).
+  // (same policy as ../zdtd-server/scripts/lint-webui.sh).
   //
   // The bundle runs inside the stock 7dtd dashboard, which injects its own
   // React as a component prop (WebMod contract, see webmod/README.md). The

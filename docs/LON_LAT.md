@@ -339,7 +339,7 @@ Canonical Done/Partial/Needed lives in [MODIFICATIONS](MODIFICATIONS.md) only. T
 | [MODIFICATIONS](MODIFICATIONS.md) | Product surface status (section C coords) |
 | [ENGINE_LIMITATIONS](ENGINE_LIMITATIONS.md) | Stock horizontal/topology blockers |
 | [CITY_MAP_LABELS](CITY_MAP_LABELS.md) | Discovery pins via LonLatToLocal |
-| Generic height APIs | [`../../7dtd-research/docs/terrain-height.md`](../../7dtd-research/docs/terrain-height.md) |
+| Generic height APIs | [`../../7dtd-engine-research/docs/terrain-height.md`](../../7dtd-engine-research/docs/terrain-height.md) |
 
 ## Changelog
 

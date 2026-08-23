@@ -170,7 +170,7 @@ flowchart TB
 | [ENGINE_LIMITATIONS](ENGINE_LIMITATIONS.md) | Stock vertical blockers |
 | [realearth-surfaces](realearth-surfaces.md) | GetBlock index, light 255, save-64 |
 | [MODIFICATIONS](MODIFICATIONS.md) | Expand/inject status |
-| [research terrain-height](../../7dtd-research/docs/terrain-height.md) | Stock vs expand constants |
+| [research terrain-height](../../7dtd-engine-research/docs/terrain-height.md) | Stock vs expand constants |
 
 ## Changelog
 

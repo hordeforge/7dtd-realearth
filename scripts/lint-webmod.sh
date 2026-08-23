@@ -10,7 +10,7 @@
 # tsc/oxlint run through npx pinned by TSC_VERSION/OXLINT_VERSION/
 # OXLINT_TSGOLINT_VERSION/OXLINT_STANDARDS_VERSION. The repo deliberately does
 # not track package.json/node_modules, so the versions live here as the single
-# source of truth (same policy as ../zdtd/scripts/lint-webui.sh).
+# source of truth (same policy as ../zdtd-server/scripts/lint-webui.sh).
 # Override locally: TSC_VERSION=5.9.3 OXLINT_VERSION=1.79.0 \
 #   OXLINT_TSGOLINT_VERSION=7.0.2001 bash scripts/lint-webmod.sh
 #

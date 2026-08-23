@@ -124,7 +124,7 @@ Canonical status: [MODIFICATIONS](MODIFICATIONS.md) sections B-C. Snapshot for t
 | [realearth-surfaces](realearth-surfaces.md) | Chunk / Origin / save surfaces |
 | [realearth-review](realearth-review.md) | Failure classes (inject gate, tall crust) |
 | [MODIFICATIONS](MODIFICATIONS.md) | Product status |
-| Generic RE | [`../../7dtd-research/docs/terrain-height.md`](../../7dtd-research/docs/terrain-height.md), [world-chunks](../../7dtd-research/docs/world-chunks.md) |
+| Generic RE | [`../../7dtd-engine-research/docs/terrain-height.md`](../../7dtd-engine-research/docs/terrain-height.md), [world-chunks](../../7dtd-engine-research/docs/world-chunks.md) |
 
 ## Changelog
 

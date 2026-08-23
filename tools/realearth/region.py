@@ -156,10 +156,15 @@ def build_region(
             lc_t[:th, :tw] = lc[y0:y1, x0:x1]
             pop_t[:th, :tw] = pop[y0:y1, x0:x1]
 
-            # City cores + named settlements that fall in this tile
+            # City cores + named settlements that fall in this tile.
+            # A core snapped to a settlement name is the same place; stamping
+            # both would place duplicate POIs at the same block (the
+            # settlements.json dump below applies the same NFC+casefold rule).
             plan = []
+            plan_names: set[str] = set()
             for c in cores:
                 if x0 <= c.local_x < x0 + tw and y0 <= c.local_z < y0 + th:
+                    plan_names.add(_place_name_key(c.name))
                     plan.append(
                         {
                             "name": c.name,
@@ -181,7 +186,8 @@ def build_region(
                 fz = (north - s.lat) / (north - south)
                 lx = int(fx * width) - x0
                 lz = int(fz * height) - y0
-                if 0 <= lx < tw and 0 <= lz < th:
+                if 0 <= lx < tw and 0 <= lz < th and _place_name_key(s.name) not in plan_names:
+                    plan_names.add(_place_name_key(s.name))
                     plan.append(
                         {
                             "name": s.name,

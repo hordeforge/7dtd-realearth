@@ -1,14 +1,14 @@
 # RealEarth documentation index
 
 **Owns:** product documentation hub (ownership table, reading paths, state-machine jumps).  
-**Not:** generic engine RE ([research INDEX](../../7dtd-research/docs/INDEX.md)).  
+**Not:** generic engine RE ([research INDEX](../../7dtd-engine-research/docs/INDEX.md)).  
 **Start here.** One hub so other docs do not re-list everything.
 
 **Game:** 7DTD V3.1.0 · **Product:** 1:1 Earth geography + population density
 
 ```mermaid
 flowchart TB
-  subgraph product["7dtd-realworld/docs this hub"]
+  subgraph product["7dtd-realearth/docs this hub"]
     OP[MODLET / install]
     ST[MODIFICATIONS status]
     RT[realearth-runtime]
@@ -18,7 +18,7 @@ flowchart TB
     RT --> SF
     RT --> RV
   end
-  subgraph research["7dtd-research/docs generic engine"]
+  subgraph research["7dtd-engine-research/docs generic engine"]
     RE[loop / terrain / save / net]
   end
   ST -.->|never re-own status| RT
@@ -27,7 +27,7 @@ flowchart TB
 ```
 
 **Ownership split:** product docs = RealEarth design, status, Streamed lessons.  
-**Generic dedicated engine RE** (gmUpdate, AI, net packages, stock height APIs) lives under [`../../7dtd-research/docs/INDEX.md`](../../7dtd-research/docs/INDEX.md). Do not copy status tables into research.
+**Generic dedicated engine RE** (gmUpdate, AI, net packages, stock height APIs) lives under [`../../7dtd-engine-research/docs/INDEX.md`](../../7dtd-engine-research/docs/INDEX.md). Do not copy status tables into research.
 
 ---
 
@@ -40,7 +40,7 @@ flowchart TB
 | Product architecture / phases / ideas | [`../DESIGN.md`](../DESIGN.md) | README ideas lists |
 | Prioritized implement order P0-P8 | [`IMPLEMENTATION_PLAN.md`](IMPLEMENTATION_PLAN.md) | chat-only plans |
 | Stock engine limits (1:1 Earth) | [`ENGINE_LIMITATIONS.md`](ENGINE_LIMITATIONS.md) | HEIGHT (policy only) |
-| Generic dedi ceilings (any server) | [`../../7dtd-research/docs/engine-limitations.md`](../../7dtd-research/docs/engine-limitations.md) | product status / RealEarth attack paths |
+| Generic dedi ceilings (any server) | [`../../7dtd-engine-research/docs/engine-limitations.md`](../../7dtd-engine-research/docs/engine-limitations.md) | product status / RealEarth attack paths |
 | Vertical product policy + expand | [`HEIGHT_LIMITS.md`](HEIGHT_LIMITS.md) | ENGINE (limits only) |
 | Future sparse Y | [`DYNAMIC_CHUNK_HEIGHT.md`](DYNAMIC_CHUNK_HEIGHT.md) | HEIGHT |
 | **Status of each product surface** | [`MODIFICATIONS.md`](MODIFICATIONS.md) | GAP (implementation how) |
@@ -55,12 +55,12 @@ flowchart TB
 | Open data pointers | [`DATA_SOURCES.md`](DATA_SOURCES.md) | REALISM (policy) |
 | Why not Google bulk | [`REALISM_AND_GOOGLE_EARTH.md`](REALISM_AND_GOOGLE_EARTH.md) | DATA_SOURCES |
 | Execution checklist | [`../TODO.md`](../TODO.md) | DESIGN phases |
-| **Generic engine RE hub** | [`../../7dtd-research/docs/INDEX.md`](../../7dtd-research/docs/INDEX.md) | product status / RealEarth lessons |
+| **Generic engine RE hub** | [`../../7dtd-engine-research/docs/INDEX.md`](../../7dtd-engine-research/docs/INDEX.md) | product status / RealEarth lessons |
 | Streamed runtime lessons | [`realearth-runtime.md`](realearth-runtime.md) | MODIFICATIONS (status only) |
 | Engine surfaces used by RealEarth | [`realearth-surfaces.md`](realearth-surfaces.md) | research terrain-height / save-region |
 | Adversarial review catalog | [`realearth-review.md`](realearth-review.md) | MODIFICATIONS (status only) |
 | Attack surface / threat model + security policy | [`THREAT_MODEL.md`](THREAT_MODEL.md) + [`../SECURITY.md`](../SECURITY.md) | realearth-review (robustness only), MODIFICATIONS (status) |
-| Height YDim / stock APIs (generic RE) | [`../../7dtd-research/docs/terrain-height.md`](../../7dtd-research/docs/terrain-height.md) | HEIGHT_LIMITS (product policy) |
+| Height YDim / stock APIs (generic RE) | [`../../7dtd-engine-research/docs/terrain-height.md`](../../7dtd-engine-research/docs/terrain-height.md) | HEIGHT_LIMITS (product policy) |
 
 **Status tags** (MODIFICATIONS + TODO only): **Done** · **Partial** · **Needed** · **Later** · **Ops**.  
 Never mark Done without live measure (GAP evidence checklist).
@@ -86,9 +86,9 @@ Never mark Done without live measure (GAP evidence checklist).
 
 **Product intent:** [DESIGN](../DESIGN.md) → [ENGINE_LIMITATIONS](ENGINE_LIMITATIONS.md) → [MODIFICATIONS](MODIFICATIONS.md)
 
-**Implement / retarget:** [GAP_HARMONY_MODLETS](GAP_HARMONY_MODLETS.md) → [research INDEX](../../7dtd-research/docs/INDEX.md) → [realearth-runtime](realearth-runtime.md) → [realearth-surfaces](realearth-surfaces.md) → [TODO](../TODO.md)
+**Implement / retarget:** [GAP_HARMONY_MODLETS](GAP_HARMONY_MODLETS.md) → [research INDEX](../../7dtd-engine-research/docs/INDEX.md) → [realearth-runtime](realearth-runtime.md) → [realearth-surfaces](realearth-surfaces.md) → [TODO](../TODO.md)
 
-**Generic engine RE:** [research INDEX](../../7dtd-research/docs/INDEX.md) → [coverage](../../7dtd-research/docs/coverage.md)
+**Generic engine RE:** [research INDEX](../../7dtd-engine-research/docs/INDEX.md) → [coverage](../../7dtd-engine-research/docs/coverage.md)
 
 **Streamed product deep-dive:** [realearth-runtime](realearth-runtime.md) → [realearth-surfaces](realearth-surfaces.md) → [realearth-review](realearth-review.md)
 
@@ -110,7 +110,7 @@ Never mark Done without live measure (GAP evidence checklist).
 | [GAME_VERSION](GAME_VERSION.md) | Local pins |
 | [HEIGHT_LIMITS](HEIGHT_LIMITS.md) | Real height policy |
 | [ENGINE_LIMITATIONS](ENGINE_LIMITATIONS.md) | Stock blockers for 1:1 Earth (+ §7b other) |
-| [research engine-limitations](../../7dtd-research/docs/engine-limitations.md) | Generic dedi ceilings |
+| [research engine-limitations](../../7dtd-engine-research/docs/engine-limitations.md) | Generic dedi ceilings |
 | [MODIFICATIONS](MODIFICATIONS.md) | Product surface status A-H |
 | [IMPLEMENTATION_PLAN](IMPLEMENTATION_PLAN.md) | P0-P8 order, outcomes, test gates |
 | [GAP_HARMONY_MODLETS](GAP_HARMONY_MODLETS.md) | Gaps + API choice (XPath/Harmony/…) |
@@ -143,7 +143,7 @@ Never mark Done without live measure (GAP evidence checklist).
 | Origin FixedUpdate (client vs dedi) | [realearth-surfaces](realearth-surfaces.md) §3 |
 | Claim remap on slide | [realearth-surfaces](realearth-surfaces.md) §4 |
 
-Generic engine machines (gmUpdate, AI LOD, path, chunk flags, net bands): [research INDEX](../../7dtd-research/docs/INDEX.md).
+Generic engine machines (gmUpdate, AI LOD, path, chunk flags, net bands): [research INDEX](../../7dtd-engine-research/docs/INDEX.md).
 
 ---
 

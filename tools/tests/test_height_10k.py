@@ -64,3 +64,25 @@ def test_stock_250_still_uint8():
     y = compress_elevation(elev, max_y=250, profile="relative", regional_exaggeration=1.0)
     assert y.dtype == np.uint8
     assert int(y.max()) <= 250
+
+
+def test_local_stretch_flat_field_honors_int32_contract():
+    """Flat input takes the early-return path but must keep the documented
+    dtype contract: max_y > 255 returns int32 (uint8 would wrap tall columns)."""
+    elev = np.full((4, 4), 500.0)
+    y = compress_elevation(
+        elev,
+        sea_level_y=DEFAULT_SEA_LEVEL_GAME_Y,
+        max_y=ENGINE_TARGET_MAX_Y,
+        profile="local_stretch",
+        regional_exaggeration=1.0,
+    )
+    assert y.dtype == np.int32
+    assert int(y[0, 0]) == DEFAULT_SEA_LEVEL_GAME_Y
+    stock = compress_elevation(
+        np.full((4, 4), 500.0),
+        max_y=250,
+        profile="local_stretch",
+        regional_exaggeration=1.0,
+    )
+    assert stock.dtype == np.uint8

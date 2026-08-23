@@ -1,14 +1,14 @@
 # Engine limitations RealEarth must overcome
 
 **Owns:** stock engine blockers for **1:1 Earth** (severity + RealEarth attack path).  
-**Not:** generic dedicated ceilings that apply to any server ([research engine-limitations](../../7dtd-research/docs/engine-limitations.md)), product surface status ([MODIFICATIONS](MODIFICATIONS.md)), vertical product policy ([HEIGHT_LIMITS](HEIGHT_LIMITS.md)), Streamed lessons ([realearth-runtime](realearth-runtime.md)).  
+**Not:** generic dedicated ceilings that apply to any server ([research engine-limitations](../../7dtd-engine-research/docs/engine-limitations.md)), product surface status ([MODIFICATIONS](MODIFICATIONS.md)), vertical product policy ([HEIGHT_LIMITS](HEIGHT_LIMITS.md)), Streamed lessons ([realearth-runtime](realearth-runtime.md)).  
 **Game:** 7 Days to Die V3.1.0 (Unity Mono, stock dedicated/client).  
 **Product goal:** 1:1 real Earth geography + population density (see [`../DESIGN.md`](../DESIGN.md)). **Hub:** [INDEX](INDEX.md).
 
 This is a **limitation map**, not a build plan. Each row: what the stock engine assumes, why it blocks 1:1 Earth, how hard it is, and how RealEarth attacks it.
 
 **Also read:** generic dedicated limits (single-thread sim, player O(N²) net, AI volume, Boehm GC, save/YDim, EAC) live in  
-[`../../7dtd-research/docs/engine-limitations.md`](../../7dtd-research/docs/engine-limitations.md).  
+[`../../7dtd-engine-research/docs/engine-limitations.md`](../../7dtd-engine-research/docs/engine-limitations.md).  
 Those still bind RealEarth (metro density, tall inject, MP soak) but are not Earth-specific.
 
 **Severity**
@@ -123,7 +123,7 @@ These are **engine + content** limits, not DEM bugs:
 
 ## 7b. Other stock limits that still hit RealEarth (not Earth-specific)
 
-Full generic map: [`../../7dtd-research/docs/engine-limitations.md`](../../7dtd-research/docs/engine-limitations.md). Short list for product readers:
+Full generic map: [`../../7dtd-engine-research/docs/engine-limitations.md`](../../7dtd-engine-research/docs/engine-limitations.md). Short list for product readers:
 
 | Limit (stock) | Why RealEarth cares | Severity | Product stance |
 |---|---|---|---|
@@ -217,11 +217,11 @@ Even after expand + stream + inject:
 | [realearth-runtime](realearth-runtime.md) | Streamed architecture lessons |
 | [realearth-surfaces](realearth-surfaces.md) | Expand / Origin / save surfaces |
 | [realearth-review](realearth-review.md) | Residual failure set (§4) |
-| **[research engine-limitations](../../7dtd-research/docs/engine-limitations.md)** | **Generic** dedi ceilings (sim, net, AI, GC, save) |
-| [research INDEX](../../7dtd-research/docs/INDEX.md) | Generic engine RE hub |
-| [terrain-height](../../7dtd-research/docs/terrain-height.md) | Stock vs expand height APIs |
-| [measured-scaling](../../7dtd-optimizer/docs/measured-scaling.md) | Live player/entity walls |
-| [HOST_TUNING](../../7dtd-optimizer/docs/HOST_TUNING.md) | Host hardware for dense sim |
+| **[research engine-limitations](../../7dtd-engine-research/docs/engine-limitations.md)** | **Generic** dedi ceilings (sim, net, AI, GC, save) |
+| [research INDEX](../../7dtd-engine-research/docs/INDEX.md) | Generic engine RE hub |
+| [terrain-height](../../7dtd-engine-research/docs/terrain-height.md) | Stock vs expand height APIs |
+| [measured-scaling](../../7dtd-server-optimizer/docs/measured-scaling.md) | Live player/entity walls |
+| [HOST_TUNING](../../7dtd-server-optimizer/docs/HOST_TUNING.md) | Host hardware for dense sim |
 
 ## Changelog
 

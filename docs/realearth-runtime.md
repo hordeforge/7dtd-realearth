@@ -5,8 +5,8 @@
 **Engine surfaces (product RE):** [`realearth-surfaces.md`](realearth-surfaces.md).  
 **Adversarial catalog:** [`realearth-review.md`](realearth-review.md).  
 **Lon/lat policy:** [`LON_LAT.md`](LON_LAT.md).  
-**Generic height/loop RE:** [`../../7dtd-research/docs/terrain-height.md`](../../7dtd-research/docs/terrain-height.md), [`../../7dtd-research/docs/loop.md`](../../7dtd-research/docs/loop.md).  
-**Hubs:** product [`INDEX.md`](INDEX.md) · engine [`../../7dtd-research/docs/INDEX.md`](../../7dtd-research/docs/INDEX.md).
+**Generic height/loop RE:** [`../../7dtd-engine-research/docs/terrain-height.md`](../../7dtd-engine-research/docs/terrain-height.md), [`../../7dtd-engine-research/docs/loop.md`](../../7dtd-engine-research/docs/loop.md).  
+**Hubs:** product [`INDEX.md`](INDEX.md) · engine [`../../7dtd-engine-research/docs/INDEX.md`](../../7dtd-engine-research/docs/INDEX.md).
 
 Target game: **7DTD V3.1.0**.
 
@@ -208,7 +208,7 @@ stateDiagram-v2
 
 | Lesson | Detail |
 |---|---|
-| Interfaces unpatchable | Patch implementors only ([`terrain-height.md`](../../7dtd-research/docs/terrain-height.md)) |
+| Interfaces unpatchable | Patch implementors only ([`terrain-height.md`](../../7dtd-engine-research/docs/terrain-height.md)) |
 | Product inject gate | `HasProductInjectBinding`: when expand required, **gen bind is mandatory** |
 | `_applied` | Only when useful binds exist (do not claim success on empty) |
 | Idempotent retry | `_patchedMethods` set; `TryRetryApply` retries when gen count is 0 |
@@ -354,8 +354,8 @@ Build note (this machine): `DOTNET_ROOT=~/.cache/dotnet-sdk` for RealEarth Relea
 | [`LON_LAT.md`](LON_LAT.md) | Dual coords policy (product) |
 | [`ABSOLUTE_STREAMING.md`](ABSOLUTE_STREAMING.md) | Absolute → sample → inject path |
 | [`IMPLEMENTATION_PLAN.md`](IMPLEMENTATION_PLAN.md) | P0-P8 order |
-| [`../../7dtd-research/docs/terrain-height.md`](../../7dtd-research/docs/terrain-height.md) | Stock vs expand height APIs (generic RE) |
-| [`../../7dtd-research/docs/loop.md`](../../7dtd-research/docs/loop.md) | Dedicated frame/sim loop (generic RE) |
+| [`../../7dtd-engine-research/docs/terrain-height.md`](../../7dtd-engine-research/docs/terrain-height.md) | Stock vs expand height APIs (generic RE) |
+| [`../../7dtd-engine-research/docs/loop.md`](../../7dtd-engine-research/docs/loop.md) | Dedicated frame/sim loop (generic RE) |
 | [`INDEX.md`](INDEX.md) | Product hub |
 
 ## Changelog
@@ -469,7 +469,7 @@ Same hubs as §12. Prefer the main Related docs table for navigation; this appen
 | [LON_LAT](LON_LAT.md) | Lon/lat policy (canonical) |
 | [ABSOLUTE_STREAMING](ABSOLUTE_STREAMING.md) | Absolute → inject short path |
 | [realearth-review](realearth-review.md) | Failure catalog |
-| [research terrain-height](../../7dtd-research/docs/terrain-height.md) | Vertical engine limits |
+| [research terrain-height](../../7dtd-engine-research/docs/terrain-height.md) | Vertical engine limits |
 
 ## Changelog (appendix source)
 

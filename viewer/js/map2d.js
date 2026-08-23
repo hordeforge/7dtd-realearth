@@ -231,6 +231,18 @@ export class Map2D {
   }
 
   _pointerDown(e) {
+    this.pointers.set(e.pointerId, { x: e.clientX, y: e.clientY });
+    if (this.pointers.size === 2) {
+      // second finger: switch from pan to pinch-zoom
+      const [a, b] = [...this.pointers.values()];
+      this.pinch = { dist: Math.hypot(a.x - b.x, a.y - b.y) };
+      this.dragging = false;
+      this.canvas.classList.remove("dragging");
+      return;
+    }
+    if (this.pointers.size > 2) {
+      return;
+    }
     this.dragging = true;
     this.lastX = e.clientX;
     this.lastY = e.clientY;
@@ -243,7 +255,46 @@ export class Map2D {
     this.canvas.classList.remove("dragging");
   }
 
+  _endPointer(pointerId) {
+    this.pointers.delete(pointerId);
+    this.pinch = null;
+    // one finger left after a pinch: resume panning from its position
+    const [rest] = this.pointers.values();
+    if (rest) {
+      this.dragging = true;
+      this.lastX = rest.x;
+      this.lastY = rest.y;
+      this.canvas.classList.add("dragging");
+      return;
+    }
+    this._pointerUp();
+  }
+
+  // Pinch-zoom step: scale around the current midpoint of the two pointers.
+  _pinchMove() {
+    const [a, b] = this.pointers.values();
+    const dist = Math.hypot(a.x - b.x, a.y - b.y);
+    if (dist > 0 && this.pinch.dist > 0) {
+      const rect = this.canvas.getBoundingClientRect();
+      this.zoomAt(
+        (a.x + b.x) / 2 - rect.left,
+        (a.y + b.y) / 2 - rect.top,
+        dist / this.pinch.dist
+      );
+      this.draw();
+    }
+    this.pinch = { dist };
+  }
+
   _pointerMove(e) {
+    if (this.pointers.has(e.pointerId)) {
+      this.pointers.set(e.pointerId, { x: e.clientX, y: e.clientY });
+    }
+    if (this.pinch && this.pointers.size >= 2) {
+      this._pinchMove();
+      return;
+    }
+
     const rect = this.canvas.getBoundingClientRect();
     const sx = e.clientX - rect.left;
     const sy = e.clientY - rect.top;

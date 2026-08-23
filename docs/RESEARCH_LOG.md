@@ -1,7 +1,7 @@
 # Research log (chronological)
 
 **Owns:** chronological research session log.  
-**Not:** canonical status ([MODIFICATIONS](MODIFICATIONS.md)), generic engine hub ([research INDEX](../../7dtd-research/docs/INDEX.md)).  
+**Not:** canonical status ([MODIFICATIONS](MODIFICATIONS.md)), generic engine hub ([research INDEX](../../7dtd-engine-research/docs/INDEX.md)).  
 **Hub:** [INDEX](INDEX.md).
 
 
@@ -87,11 +87,11 @@ Vanilla remains a **finite flat world**. Planetary 1:1 requires streaming + wrap
 
 ### Done
 
-- Captured Streamed product runtime architecture lessons from P0-P8 offline cores and multi-campaign adversarial reviews into `7dtd-research/docs/`:
+- Captured Streamed product runtime architecture lessons from P0-P8 offline cores and multi-campaign adversarial reviews into `7dtd-engine-research/docs/`:
   - `realearth-runtime.md` (dual coords, inject gate, tile readiness, tall crust, slide/claims, verification bar)
   - `realearth-review.md` (failure class catalog, residual risks, module map)
   - `realearth-runtime.md` (stream bubble, origin slide checklist, city edge geometry)
-- Linked from `7dtd-research/docs/INDEX.md`, `7dtd-research/docs/terrain-height.md`, and this product `INDEX.md`.
+- Linked from `7dtd-engine-research/docs/INDEX.md`, `7dtd-engine-research/docs/terrain-height.md`, and this product `INDEX.md`.
 
 ### Key conclusions locked into research
 
@@ -117,15 +117,15 @@ Vanilla remains a **finite flat world**. Planetary 1:1 requires streaming + wrap
   - `docs/realearth-runtime.md`
   - `docs/realearth-surfaces.md`
   - `docs/realearth-review.md`
-- `7dtd-research/docs/` keeps **generic** dedicated-engine RE only (loop, entity-ai, terrain-height, save-region, network, …).
+- `7dtd-engine-research/docs/` keeps **generic** dedicated-engine RE only (loop, entity-ai, terrain-height, save-region, network, …).
 - Product INDEX ownership + reading paths updated; research INDEX links product for Streamed deep-dives.
 
 ## 2026-07-18 - Engine surfaces IL RE (research)
 
 ### Done
 
-- New dump tool: `7dtd-optimizer/tools/DumpRealEarthSurfaces.cs`.
-- New dump set: `7dtd-research/il/realearth-surfaces-v3.1.0/` (~405 IL/call files).
+- New dump tool: `7dtd-server-optimizer/tools/DumpRealEarthSurfaces.cs`.
+- New dump set: `7dtd-engine-research/il/realearth-surfaces-v3.1.0/` (~405 IL/call files).
 - Narratives:
   - `7days-realworld/docs/realearth-surfaces.md` (chunk index, height APIs, region type map, expand state)
   - `7days-realworld/docs/realearth-surfaces.md` (stock Origin fan-out, PPL `m_lpBlockMap`)
@@ -164,7 +164,7 @@ Vanilla remains a **finite flat world**. Planetary 1:1 requires streaming + wrap
 |---|---|
 | [RESEARCH_NOTES](RESEARCH_NOTES.md) | Living notes |
 | [INDEX](INDEX.md) | Product hub |
-| [research INDEX](../../7dtd-research/docs/INDEX.md) | Generic RE |
+| [research INDEX](../../7dtd-engine-research/docs/INDEX.md) | Generic RE |
 
 ## Changelog
 
