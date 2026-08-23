@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.Globalization;
 using System.Reflection;
+using System.Threading;
 
 namespace RealEarth
 {
@@ -27,23 +28,38 @@ namespace RealEarth
 
         const int MaxPlaceFails = 5;
 
+        /// <summary>
+        /// Gates all mutable stamp state below. TickPlayer runs on the main thread while
+        /// OnChunkGenerated runs on the chunk-generation thread; unsynchronized
+        /// HashSet/Dictionary mutation corrupts buckets, and unlocked budget checks lose
+        /// updates (double stamps or stranded budget). Reset/OnOriginSlide clear these
+        /// collections from the main thread, so they take the same gate.
+        /// </summary>
+        static readonly object _stampGate = new object();
+
         static int _tickThrottle;
         static int _logBudget = 12;
         static int _sessionStamps;
         static List<CityMapLabels.Place>? _placesCache;
         static readonly Dictionary<string, int> _chunkCounts = new Dictionary<string, int>(StringComparer.Ordinal);
 
-        public static int SessionStampCount => _sessionStamps;
+        public static int SessionStampCount => Volatile.Read(ref _sessionStamps);
+
+        /// <summary>Consume one log-budget slot (shared across threads; see _stampGate).</summary>
+        static bool ConsumeLogBudget() => Interlocked.Decrement(ref _logBudget) >= 0;
 
         public static void Reset()
         {
-            _placed.Clear();
-            _failCount.Clear();
-            _chunkCounts.Clear();
-            _placesCache = null;
-            _tickThrottle = 0;
-            _sessionStamps = 0;
-            _logBudget = 12;
+            lock (_stampGate)
+            {
+                _placed.Clear();
+                _failCount.Clear();
+                _chunkCounts.Clear();
+                _placesCache = null;
+                _tickThrottle = 0;
+                _sessionStamps = 0;
+                Volatile.Write(ref _logBudget, 12);
+            }
         }
 
         /// <summary>Memoized session-local coords (CityMapLabels.Place cache); see LonLatToLocalCached.</summary>
@@ -56,10 +72,13 @@ namespace RealEarth
         /// </summary>
         public static void OnOriginSlide()
         {
-            _chunkCounts.Clear();
-            _tickThrottle = 0;
-            InvalidateLocalCache();
-            // Keep _placed / _sessionStamps so we do not double-stamp after slide.
+            lock (_stampGate)
+            {
+                _chunkCounts.Clear();
+                _tickThrottle = 0;
+                InvalidateLocalCache();
+                // Keep _placed / _sessionStamps so we do not double-stamp after slide.
+            }
         }
 
         static void InvalidateLocalCache()
@@ -84,63 +103,65 @@ namespace RealEarth
 
             try
             {
-                var session = ModApi.Session;
-                if (session == null) return;
-                if (_placesCache == null)
-                    _placesCache = CityMapLabels.LoadPlaces();
-                if (_placesCache == null || _placesCache.Count == 0) return;
-
-                int maxArea = DensityBudget.ClampPrefabsInArea(
-                    Math.Max(1, cfg.RuntimePoiMaxPerArea),
-                    DensityBudget.DefaultMaxPrefabsPerKm2);
-                if (_sessionStamps >= maxArea)
-                    return;
-
-                float discoverScale = cfg.CityMapDiscoverRadiusScale > 0.05f
-                    ? cfg.CityMapDiscoverRadiusScale
-                    : 1f;
-
-                foreach (var p in _placesCache)
+                lock (_stampGate)
                 {
-                    if (_sessionStamps >= maxArea) break;
-                    if (string.IsNullOrEmpty(p.Name)) continue;
-                    if (_placed.Contains(p.Name)) continue;
-                    if (_failCount.TryGetValue(p.Name, out int fails) && fails >= MaxPlaceFails)
-                        continue;
+                    var session = ModApi.Session;
+                    if (session == null) return;
+                    if (_placesCache == null)
+                        _placesCache = CityMapLabels.LoadPlaces();
+                    if (_placesCache == null || _placesCache.Count == 0) return;
 
-                    PlaceLocal(session, p, out int cx, out int cz);
-                    long dx = (long)playerLocalX - cx;
-                    long dz = (long)playerLocalZ - cz;
-                    long distSq = dx * dx + dz * dz;
-                    // Original gate: dist <= edge * 1.5 (squared to skip the sqrt).
-                    double edge = Math.Max(32, (int)(CityMapLabels.ResolveEdgeRadiusBlocks(p) * discoverScale));
-                    double reach = edge * 1.5;
-                    if (distSq > reach * reach)
-                        continue;
+                    int maxArea = DensityBudget.ClampPrefabsInArea(
+                        Math.Max(1, cfg.RuntimePoiMaxPerArea),
+                        DensityBudget.DefaultMaxPrefabsPerKm2);
+                    if (_sessionStamps >= maxArea)
+                        return;
 
-                    string chunkKey = FloorDiv(cx, 16).ToString(CultureInfo.InvariantCulture) + ":" +
-                                      FloorDiv(cz, 16).ToString(CultureInfo.InvariantCulture);
-                    int inChunk = _chunkCounts.TryGetValue(chunkKey, out int c) ? c : 0;
-                    if (DensityBudget.ClampPrefabsInChunk(inChunk + 1) <= inChunk)
-                        continue;
+                    float discoverScale = cfg.CityMapDiscoverRadiusScale > 0.05f
+                        ? cfg.CityMapDiscoverRadiusScale
+                        : 1f;
 
-                    if (TryStampPlace(session, p, cx, cz))
+                    foreach (var p in _placesCache)
                     {
-                        _placed.Add(p.Name);
-                        _chunkCounts[chunkKey] = inChunk + 1;
-                        _sessionStamps++;
-                    }
-                    else
-                    {
-                        _failCount[p.Name] = fails + 1;
+                        if (_sessionStamps >= maxArea) break;
+                        if (string.IsNullOrEmpty(p.Name)) continue;
+                        if (_placed.Contains(p.Name)) continue;
+                        if (_failCount.TryGetValue(p.Name, out int fails) && fails >= MaxPlaceFails)
+                            continue;
+
+                        PlaceLocal(session, p, out int cx, out int cz);
+                        long dx = (long)playerLocalX - cx;
+                        long dz = (long)playerLocalZ - cz;
+                        long distSq = dx * dx + dz * dz;
+                        // Original gate: dist <= edge * 1.5 (squared to skip the sqrt).
+                        double edge = Math.Max(32, (int)(CityMapLabels.ResolveEdgeRadiusBlocks(p) * discoverScale));
+                        double reach = edge * 1.5;
+                        if (distSq > reach * reach)
+                            continue;
+
+                        string chunkKey = FloorDiv(cx, 16).ToString(CultureInfo.InvariantCulture) + ":" +
+                                          FloorDiv(cz, 16).ToString(CultureInfo.InvariantCulture);
+                        int inChunk = _chunkCounts.TryGetValue(chunkKey, out int c) ? c : 0;
+                        if (DensityBudget.ClampPrefabsInChunk(inChunk + 1) <= inChunk)
+                            continue;
+
+                        if (TryStampPlace(session, p, cx, cz))
+                        {
+                            _placed.Add(p.Name);
+                            _chunkCounts[chunkKey] = inChunk + 1;
+                            _sessionStamps++;
+                        }
+                        else
+                        {
+                            _failCount[p.Name] = fails + 1;
+                        }
                     }
                 }
             }
             catch (Exception ex)
             {
-                if (_logBudget > 0)
+                if (ConsumeLogBudget())
                 {
-                    _logBudget--;
                     ModApi.Log("RuntimePoiInject: " + ex.Message);
                 }
             }
@@ -158,54 +179,56 @@ namespace RealEarth
             if (session == null) return;
             try
             {
-                if (_placesCache == null)
-                    _placesCache = CityMapLabels.LoadPlaces();
-                if (_placesCache == null || _placesCache.Count == 0) return;
-
-                int maxArea = DensityBudget.ClampPrefabsInArea(
-                    Math.Max(1, cfg.RuntimePoiMaxPerArea),
-                    DensityBudget.DefaultMaxPrefabsPerKm2);
-                if (_sessionStamps >= maxArea) return;
-
-                int minX = chunkX * 16;
-                int minZ = chunkZ * 16;
-                int maxX = minX + 16;
-                int maxZ = minZ + 16;
-                string chunkKey = chunkX.ToString(CultureInfo.InvariantCulture) + ":" +
-                                  chunkZ.ToString(CultureInfo.InvariantCulture);
-
-                foreach (var p in _placesCache)
+                lock (_stampGate)
                 {
-                    if (_sessionStamps >= maxArea) break;
-                    if (string.IsNullOrEmpty(p.Name) || _placed.Contains(p.Name)) continue;
-                    if (_failCount.TryGetValue(p.Name, out int fails) && fails >= MaxPlaceFails)
-                        continue;
+                    if (_placesCache == null)
+                        _placesCache = CityMapLabels.LoadPlaces();
+                    if (_placesCache == null || _placesCache.Count == 0) return;
 
-                    PlaceLocal(session, p, out int cx, out int cz);
-                    if (cx < minX || cx >= maxX || cz < minZ || cz >= maxZ)
-                        continue;
+                    int maxArea = DensityBudget.ClampPrefabsInArea(
+                        Math.Max(1, cfg.RuntimePoiMaxPerArea),
+                        DensityBudget.DefaultMaxPrefabsPerKm2);
+                    if (_sessionStamps >= maxArea) return;
 
-                    int inChunk = _chunkCounts.TryGetValue(chunkKey, out int c) ? c : 0;
-                    if (DensityBudget.ClampPrefabsInChunk(inChunk + 1) <= inChunk)
-                        continue;
+                    int minX = chunkX * 16;
+                    int minZ = chunkZ * 16;
+                    int maxX = minX + 16;
+                    int maxZ = minZ + 16;
+                    string chunkKey = chunkX.ToString(CultureInfo.InvariantCulture) + ":" +
+                                      chunkZ.ToString(CultureInfo.InvariantCulture);
 
-                    if (TryStampPlace(session, p, cx, cz))
+                    foreach (var p in _placesCache)
                     {
-                        _placed.Add(p.Name);
-                        _chunkCounts[chunkKey] = inChunk + 1;
-                        _sessionStamps++;
-                    }
-                    else
-                    {
-                        _failCount[p.Name] = fails + 1;
+                        if (_sessionStamps >= maxArea) break;
+                        if (string.IsNullOrEmpty(p.Name) || _placed.Contains(p.Name)) continue;
+                        if (_failCount.TryGetValue(p.Name, out int fails) && fails >= MaxPlaceFails)
+                            continue;
+
+                        PlaceLocal(session, p, out int cx, out int cz);
+                        if (cx < minX || cx >= maxX || cz < minZ || cz >= maxZ)
+                            continue;
+
+                        int inChunk = _chunkCounts.TryGetValue(chunkKey, out int c) ? c : 0;
+                        if (DensityBudget.ClampPrefabsInChunk(inChunk + 1) <= inChunk)
+                            continue;
+
+                        if (TryStampPlace(session, p, cx, cz))
+                        {
+                            _placed.Add(p.Name);
+                            _chunkCounts[chunkKey] = inChunk + 1;
+                            _sessionStamps++;
+                        }
+                        else
+                        {
+                            _failCount[p.Name] = fails + 1;
+                        }
                     }
                 }
             }
             catch (Exception ex)
             {
-                if (_logBudget > 0)
+                if (ConsumeLogBudget())
                 {
-                    _logBudget--;
                     ModApi.Log("RuntimePoiInject chunk: " + ex.Message);
                 }
             }
@@ -222,9 +245,8 @@ namespace RealEarth
             string prefabName = pool[idx];
 
             bool placed = TryPlacePrefabReflection(prefabName, localX, y, localZ);
-            if (_logBudget > 0)
+            if (ConsumeLogBudget())
             {
-                _logBudget--;
                 ModApi.Log(
                     $"RuntimePoiInject: {(placed ? "placed" : "retry-later")} '{prefabName}' " +
                     $"for '{p.Name}' band={band} local=({localX},{y},{localZ}) surface={surface}");

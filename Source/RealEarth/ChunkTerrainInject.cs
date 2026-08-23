@@ -2,6 +2,7 @@ using System;
 using System.Collections;
 using System.Collections.Generic;
 using System.Reflection;
+using System.Threading;
 
 namespace RealEarth
 {
@@ -23,6 +24,14 @@ namespace RealEarth
         static MethodInfo? _setDensityCached;
         static MethodInfo? _setBlockCached;
         static Type? _cachedChunkType;
+        /// <summary>
+        /// Serializes lazy init of the reflection caches above: chunk gen runs on the
+        /// GenerateChunks thread while origin-slide reinject runs on the main thread.
+        /// Without this, one thread can see _cachedChunkType/_blocksResolved set before
+        /// the cached methods/blocks are published and skip injection for that chunk
+        /// (permanent ocean columns baked into the save).
+        /// </summary>
+        static readonly object _initLock = new object();
         /// <summary>Highest maxH seen this session (for dedicated gates / diagnostics).</summary>
         public static int SessionPeakHeight { get; private set; }
         public static int SessionInjectCount { get; private set; }
@@ -37,8 +46,15 @@ namespace RealEarth
             SessionInjectCount = 0;
             SessionBlocksApplied = 0;
             SessionReinjectedChunks = 0;
-            _injectLogBudget = 24;
+            Volatile.Write(ref _injectLogBudget, 24);
         }
+
+        /// <summary>
+        /// Consume one log-budget slot. Interlocked because the gen thread (OnChunkGenerated)
+        /// and the main thread (origin-slide reinject) share the budget; a plain check-then-
+        /// decrement can both pass and over-log.
+        /// </summary>
+        static bool ConsumeInjectLogBudget() => Interlocked.Decrement(ref _injectLogBudget) >= 0;
 
         /// <summary>
         /// When true, product real-height inject is refused (needs expand or patches missing).
@@ -139,9 +155,8 @@ namespace RealEarth
             }
             int mid = heights[heights.Length / 2];
 
-            if (_injectLogBudget > 0)
+            if (ConsumeInjectLogBudget())
             {
-                _injectLogBudget--;
                 byte lc = landcover[landcover.Length / 2];
                 ModApi.Log(
                     $"Height inject chunk=({chunkX},{chunkZ}) earth=({ex},{ez}) " +
@@ -194,21 +209,26 @@ namespace RealEarth
             if (chunk == null || heights == null || heights.Length < chunkSize * chunkSize)
                 return false;
 
-            var t = chunk.GetType();
-            if (_cachedChunkType != t)
+            // Resolve reflection caches under one lock (gen thread + main-thread reinject).
+            MethodInfo? setDensity;
+            MethodInfo? setBlock;
+            lock (_initLock)
             {
-                _cachedChunkType = t;
-                _setDensityCached = FindSetDensity(t);
-                // Prefer full SetBlock so mesh/collision dirty flags run after inject.
-                _setBlockCached = FindSetBlock(t) ?? FindSetBlockRaw(t);
-                _setHeight = FindSetHeight(t);
+                var t = chunk.GetType();
+                if (_cachedChunkType != t)
+                {
+                    _cachedChunkType = t;
+                    _setDensityCached = FindSetDensity(t);
+                    // Prefer full SetBlock so mesh/collision dirty flags run after inject.
+                    _setBlockCached = FindSetBlock(t) ?? FindSetBlockRaw(t);
+                    _setHeight = FindSetHeight(t);
+                }
+                ResolveTerrainBlocksLocked();
+                setDensity = _setDensityCached;
+                setBlock = _setBlockCached;
             }
-            MethodInfo? setDensity = _setDensityCached;
-            MethodInfo? setBlock = _setBlockCached;
             if (setDensity == null && setBlock == null)
                 return false;
-
-            ResolveTerrainBlocks();
 
             int columnMax = EngineHeight.EngineHeightMod.AllocatableColumnMaxY;
             columnMax = Math.Max(2, Math.Min(columnMax, HeightCompress.EngineTargetMaxY));
@@ -387,9 +407,8 @@ namespace RealEarth
                 if (reinjected > 0)
                 {
                     SessionReinjectedChunks += reinjected;
-                    if (_injectLogBudget > 0)
+                    if (ConsumeInjectLogBudget())
                     {
-                        _injectLogBudget--;
                         ModApi.Log(
                             $"Origin slide reinject: {reinjected}/{candidates.Count} loaded chunks " +
                             $"rewritten around local=({centerLocalX},{centerLocalZ}) " +
@@ -399,9 +418,8 @@ namespace RealEarth
             }
             catch (Exception ex)
             {
-                if (_injectLogBudget > 0)
+                if (ConsumeInjectLogBudget())
                 {
-                    _injectLogBudget--;
                     ModApi.Log("ReinjectLoadedChunksAround failed (non-fatal): " + ex.Message);
                 }
             }
@@ -623,7 +641,8 @@ namespace RealEarth
             return null;
         }
 
-        static void ResolveTerrainBlocks()
+        /// <summary>Caller holds _initLock. Resolve terrain BlockValues once per process.</summary>
+        static void ResolveTerrainBlocksLocked()
         {
             if (_blocksResolved) return;
             _blocksResolved = true;

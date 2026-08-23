@@ -1,5 +1,6 @@
 using System;
 using System.Collections;
+using System.Threading;
 
 namespace RealEarth
 {
@@ -17,13 +18,47 @@ namespace RealEarth
         readonly EarthCoords _coords;
         readonly RealEarthConfig _cfg;
 
+        // Origin/absolute pairs are written by the player/sim thread (origin slide,
+        // tick updates) and read by the chunk-generation thread plus height-query
+        // hooks. Each XZ pair lives in one packed long published via Volatile.Read/
+        // Write so readers never observe a half-applied slide (new X with old Z
+        // would inject wrong-Earth columns).
+        long _originPacked;
+        long _absolutePacked;
+
+        static long PackXZ(int x, int z) => ((long)x << 32) | (uint)z;
+        static int UnpackX(long p) => (int)(p >> 32);
+        static int UnpackZ(long p) => unchecked((int)(p & 0xffffffffL));
+
+        void WriteOriginLocked(int earthX, int earthZ)
+            => Volatile.Write(ref _originPacked, PackXZ(earthX, earthZ));
+
+        /// <summary>Read origin as one consistent XZ pair (never torn across a slide).</summary>
+        public void ReadOrigin(out int originX, out int originZ)
+        {
+            long p = Volatile.Read(ref _originPacked);
+            originX = UnpackX(p);
+            originZ = UnpackZ(p);
+        }
+
+        void WriteAbsolute(int x, int z)
+            => Volatile.Write(ref _absolutePacked, PackXZ(x, z));
+
+        /// <summary>Read absolute position as one consistent XZ pair.</summary>
+        public void ReadAbsolute(out int ax, out int az)
+        {
+            long p = Volatile.Read(ref _absolutePacked);
+            ax = UnpackX(p);
+            az = UnpackZ(p);
+        }
+
         /// <summary>Earth-space block of local (0,0). Moves as the active window slides.</summary>
-        public int OriginEarthX { get; private set; }
-        public int OriginEarthZ { get; private set; }
+        public int OriginEarthX { get { ReadOrigin(out int ox, out _); return ox; } }
+        public int OriginEarthZ { get { ReadOrigin(out _, out int oz); return oz; } }
 
         /// <summary>Last known absolute Earth position of the primary player.</summary>
-        public int AbsoluteX { get; private set; }
-        public int AbsoluteZ { get; private set; }
+        public int AbsoluteX { get { ReadAbsolute(out int ax, out _); return ax; } }
+        public int AbsoluteZ { get { ReadAbsolute(out _, out int az); return az; } }
 
         public int LocalWindowSize => _cfg.LocalWindowSize;
         public string MapMode => _cfg.MapMode ?? "Streamed";
@@ -33,29 +68,28 @@ namespace RealEarth
         /// <summary>Absolute Earth bounds currently covered by the host window [min, max).</summary>
         public void GetActiveWindowEarthBounds(out int minX, out int minZ, out int maxX, out int maxZ)
         {
-            minX = OriginEarthX;
-            minZ = OriginEarthZ;
-            maxX = OriginEarthX + LocalWindowSize;
-            maxZ = OriginEarthZ + LocalWindowSize;
+            ReadOrigin(out int ox, out int oz);
+            minX = ox;
+            minZ = oz;
+            maxX = ox + LocalWindowSize;
+            maxZ = oz + LocalWindowSize;
         }
 
         public WorldSession(EarthCoords coords, RealEarthConfig cfg)
         {
             _coords = coords;
             _cfg = cfg;
-            OriginEarthX = 0;
-            OriginEarthZ = Math.Max(0, (_coords.WorldHeight - cfg.LocalWindowSize) / 2);
-            AbsoluteX = OriginEarthX + cfg.LocalWindowSize / 2;
-            AbsoluteZ = OriginEarthZ + cfg.LocalWindowSize / 2;
+            int ox = 0;
+            int oz = Math.Max(0, (_coords.WorldHeight - cfg.LocalWindowSize) / 2);
+            WriteOriginLocked(ox, oz);
+            WriteAbsolute(ox + cfg.LocalWindowSize / 2, oz + cfg.LocalWindowSize / 2);
         }
 
         public void SetOrigin(int earthX, int earthZ)
         {
-            if (_cfg.EnableLongitudeWrap)
-                OriginEarthX = _coords.WrapX(earthX);
-            else
-                OriginEarthX = earthX;
-            OriginEarthZ = _coords.ClampZ(earthZ);
+            int ox = _cfg.EnableLongitudeWrap ? _coords.WrapX(earthX) : earthX;
+            int oz = _coords.ClampZ(earthZ);
+            WriteOriginLocked(ox, oz);
         }
 
         /// <summary>
@@ -66,13 +100,14 @@ namespace RealEarth
             SetOrigin(originEarthX, originEarthZ);
             // Match LocalToEarth policy: wrap X only when longitude wrap enabled.
             if (_cfg.EnableLongitudeWrap)
-                AbsoluteX = _coords.WrapX(absoluteX);
+                absoluteX = _coords.WrapX(absoluteX);
             else
-                AbsoluteX = Math.Max(0, Math.Min(Math.Max(0, _coords.WorldWidth - 1), absoluteX));
-            AbsoluteZ = _coords.ClampZ(absoluteZ);
+                absoluteX = Math.Max(0, Math.Min(Math.Max(0, _coords.WorldWidth - 1), absoluteX));
+            absoluteZ = _coords.ClampZ(absoluteZ);
+            WriteAbsolute(absoluteX, absoluteZ);
             // Prefetch only (no sticky focusId=0); player tick registers real entity foci.
             ModApi.Streamer?.EnsureHotAround(
-                AbsoluteX, AbsoluteZ,
+                absoluteX, absoluteZ,
                 radius: Math.Max(1, _cfg.StreamRadiusTiles),
                 allowSyncLoad: true);
         }
@@ -90,10 +125,7 @@ namespace RealEarth
             earthX = _coords.WrapX(earthX);
             earthZ = _coords.ClampZ(earthZ);
             if (updateAbsolute)
-            {
-                AbsoluteX = earthX;
-                AbsoluteZ = earthZ;
-            }
+                WriteAbsolute(earthX, earthZ);
 
             int half = LocalWindowSize / 2;
             int ox = earthX - half;
@@ -109,8 +141,9 @@ namespace RealEarth
 
         public void LocalToEarth(int localX, int localZ, out int earthX, out int earthZ)
         {
-            earthX = OriginEarthX + localX;
-            earthZ = OriginEarthZ + localZ;
+            ReadOrigin(out int ox, out int oz);
+            earthX = ox + localX;
+            earthZ = oz + localZ;
             // Always fold into pack grid. Host worlds (RWG / large baked) generate chunks
             // far outside 0..packSize; without this, inject sampled earthX=32768 and
             // only ClampZ to the pack edge (plains forever).
@@ -141,26 +174,27 @@ namespace RealEarth
 
         public void EarthToLocal(int earthX, int earthZ, out int localX, out int localZ)
         {
+            ReadOrigin(out int ox, out int oz);
             if (_cfg.EnableLongitudeWrap || ShouldFoldHostIntoPack())
             {
-                int dx = earthX - OriginEarthX;
+                int dx = earthX - ox;
                 int w = Math.Max(1, _coords.WorldWidth);
                 dx = ((dx % w) + w + w / 2) % w - w / 2;
                 localX = dx;
             }
             else
             {
-                localX = earthX - OriginEarthX;
+                localX = earthX - ox;
             }
             if (ShouldFoldHostIntoPack() && !_cfg.EnableLongitudeWrap)
             {
-                int dz = earthZ - OriginEarthZ;
+                int dz = earthZ - oz;
                 int h = Math.Max(1, _coords.WorldHeight);
                 dz = ((dz % h) + h + h / 2) % h - h / 2;
                 localZ = dz;
             }
             else
-                localZ = earthZ - OriginEarthZ;
+                localZ = earthZ - oz;
         }
 
         public void LonLatToLocal(double lon, double lat, out int localX, out int localZ)
@@ -258,10 +292,7 @@ namespace RealEarth
             LocalToEarth(localX, localZ, out int earthX, out int earthZ);
             // MP: only primary/local player updates durable session absolute (avoid last-tick stomp).
             if (updateSessionAbsolute)
-            {
-                AbsoluteX = earthX;
-                AbsoluteZ = earthZ;
-            }
+                WriteAbsolute(earthX, earthZ);
 
             // (2) Dynamic Earth tile load around this focus (union with other players)
             // Player path allows sync tile load so inject soon after has hot tiles.
@@ -283,8 +314,7 @@ namespace RealEarth
             // Recenter when player leaves the middle band of the host (P2 policy).
             if (SessionOriginPolicy.NeedsRecentering(localX, localZ, LocalWindowSize))
             {
-                int oldOx = OriginEarthX;
-                int oldOz = OriginEarthZ;
+                ReadOrigin(out int oldOx, out int oldOz);
                 CenterWindowOnAbsolute(earthX, earthZ, updateAbsolute: updateSessionAbsolute);
                 originDeltaX = OriginEarthX - oldOx;
                 originDeltaZ = OriginEarthZ - oldOz;
@@ -310,8 +340,7 @@ namespace RealEarth
         {
             earthX = _coords.WrapX(earthX);
             earthZ = _coords.ClampZ(earthZ);
-            AbsoluteX = earthX;
-            AbsoluteZ = earthZ;
+            WriteAbsolute(earthX, earthZ);
             ModApi.Streamer?.UpdateFromAbsolute(earthX, earthZ, focusId, allowSyncLoad: true);
 
             if (IsStreamed && ShouldAllowOriginSlide() && !OriginSlideRemap.HasLandClaims())

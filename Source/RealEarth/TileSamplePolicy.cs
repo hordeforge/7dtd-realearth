@@ -1,10 +1,13 @@
 using System;
+using System.Threading;
 
 namespace RealEarth
 {
     /// <summary>
     /// Fail-closed sampling policy for missing/corrupt Earth tiles.
     /// Pure counters + decisions; streamer still owns IO.
+    /// Counters use Interlocked: height-query hooks run on the main thread AND the
+    /// chunk-generation thread, so plain read-modify-write loses updates.
     /// </summary>
     public static class TileSamplePolicy
     {
@@ -12,14 +15,14 @@ namespace RealEarth
         static long _presentHits;
         static int _logBudget = 12;
 
-        public static long MissingTileHits => _missingHits;
-        public static long PresentTileHits => _presentHits;
+        public static long MissingTileHits => Volatile.Read(ref _missingHits);
+        public static long PresentTileHits => Volatile.Read(ref _presentHits);
 
         public static void ResetCounters()
         {
-            _missingHits = 0;
-            _presentHits = 0;
-            _logBudget = 12;
+            Volatile.Write(ref _missingHits, 0);
+            Volatile.Write(ref _presentHits, 0);
+            Volatile.Write(ref _logBudget, 12);
         }
 
         /// <summary>
@@ -38,22 +41,21 @@ namespace RealEarth
         {
             if (sampleOk)
             {
-                _presentHits++;
+                Interlocked.Increment(ref _presentHits);
                 elevM = sampledElevM;
                 usedFailClosedPlaceholder = false;
                 return true;
             }
 
-            _missingHits++;
+            Interlocked.Increment(ref _missingHits);
             usedFailClosedPlaceholder = true;
             // Product always uses ocean placeholder on miss (never invent stock RWG peaks).
             // FailClosedMissingTiles=false only reduces log noise; elev is still ocean.
             bool failClosed = cfg == null || cfg.FailClosedMissingTiles;
             int sea = cfg?.SeaLevelGameY ?? HeightInjectMath.DefaultSeaLevelGameY;
             elevM = HeightInjectMath.MissingTileElevM(sea);
-            if (failClosed && _logBudget > 0)
+            if (failClosed && Interlocked.Decrement(ref _logBudget) >= 0)
             {
-                _logBudget--;
                 try
                 {
                     ModApi.Log(

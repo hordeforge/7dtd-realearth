@@ -135,8 +135,11 @@ namespace RealEarth
             }
         }
 
-        static MethodInfo? _logOut;
-        static bool _logOutResolved;
+        // Lazy-resolved once; volatile because Log is called from the main thread and
+        // async tile-load workers concurrently, and a stale flag could pair with a
+        // null delegate and permanently fall back to Console output.
+        static volatile MethodInfo? _logOut;
+        static volatile bool _logOutResolved;
 
         public static void Log(string msg)
         {
