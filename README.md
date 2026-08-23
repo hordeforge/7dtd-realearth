@@ -1,4 +1,6 @@
-# Real Earth for 7 Days to Die
+# 🌍 Pangea (RealEarth 1:1 Engine)
+
+> **Part of [HordeForge](https://github.com/hordeforge)** — High-Performance Systems Engineering for 7 Days to Die.
 
 A **1:1 scale real-world Earth** project for **7 Days to Die V3.1.0** (Henpocalypse): real elevation, landcover heuristics, city/population density, tile streaming, longitude wrap (circle the planet), and a globe-style world map.
 
