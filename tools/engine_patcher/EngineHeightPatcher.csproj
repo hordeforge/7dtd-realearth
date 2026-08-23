@@ -7,6 +7,14 @@
     <AssemblyName>EngineHeightPatcher</AssemblyName>
     <RootNamespace>RealEarth.EnginePatcher</RootNamespace>
     <AppendTargetFrameworkToOutputPath>false</AppendTargetFrameworkToOutputPath>
+    <!-- Reproducible output (same policy as Source/RealEarth/RealEarth.csproj). -->
+    <Deterministic>true</Deterministic>
+    <PathMap>$(MSBuildThisFileDirectory)=/_/</PathMap>
+    <!-- Reproducible output: no ambient git stamps (same policy and full
+         rationale as Source/RealEarth/RealEarth.csproj). -->
+    <IncludeSourceRevisionInInformationalVersion>false</IncludeSourceRevisionInInformationalVersion>
+    <EnableSourceControlManagerQueries>false</EnableSourceControlManagerQueries>
+    <ContinuousIntegrationBuild Condition="'$(CI)' == 'true'">true</ContinuousIntegrationBuild>
     <!-- Mono.Cecil ships with 0_TFP_Harmony -->
     <HarmonyDir Condition="'$(HarmonyDir)' == ''">$(SEVENDTD_GAME_DIR)/Mods/0_TFP_Harmony</HarmonyDir>
     <HarmonyDir Condition="'$(HarmonyDir)' == ''">$(HOME)/.local/share/Steam/steamapps/common/7 Days To Die/Mods/0_TFP_Harmony</HarmonyDir>

@@ -8,6 +8,22 @@
     <RootNamespace>RealEarth</RootNamespace>
     <GenerateAssemblyInfo>true</GenerateAssemblyInfo>
     <AppendTargetFrameworkToOutputPath>false</AppendTargetFrameworkToOutputPath>
+    <!-- Reproducible output: byte-identical DLL for identical inputs.
+         Deterministic pins compilation output; PathMap maps the absolute
+         project path to /_/ so checkouts from different directories (and the
+         PDB path recorded in the debug directory) do not leak into the DLL;
+         CI builds additionally normalize all source paths. -->
+    <Deterministic>true</Deterministic>
+    <PathMap>$(MSBuildThisFileDirectory)=/_/</PathMap>
+    <!-- Stamp provenance only when asked (-p:InformationalVersion=1.0.0+<sha>):
+         left automatic, SDK 8 silently bakes the ambient git HEAD into the DLL
+         version resource and a SourceLink JSON (remote URL + HEAD) into the PDB,
+         and produces nothing outside a git checkout, so two checkouts of the
+         same source yield different artifacts. Explicit -p:RepositoryUrl /
+         -p:SourceRevisionId are still honored when provenance is wanted. -->
+    <IncludeSourceRevisionInInformationalVersion>false</IncludeSourceRevisionInInformationalVersion>
+    <EnableSourceControlManagerQueries>false</EnableSourceControlManagerQueries>
+    <ContinuousIntegrationBuild Condition="'$(CI)' == 'true'">true</ContinuousIntegrationBuild>
     <!-- Steam/Proton Windows client (default; override with GameDir= or SEVENDTD_GAME_DIR) -->
     <GameDir Condition="'$(GameDir)' == ''">$(SEVENDTD_GAME_DIR)</GameDir>
     <GameDir Condition="'$(GameDir)' == ''">$(HOME)/.local/share/Steam/steamapps/common/7 Days To Die</GameDir>

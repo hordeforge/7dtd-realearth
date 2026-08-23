@@ -5,6 +5,23 @@ ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 OUT="${1:-$ROOT/dist/RealEarth}"
 GAME_DIR="${SEVENDTD_GAME_DIR:-${GameDir:-}}"
 
+# Locate a .NET SDK: explicit env, then the usual local caches (mirrors Makefile
+# and install_proton.sh; a bare dotnet host without SDKs fails cryptically).
+find_dotnet_root() {
+  for d in "${DOTNET_ROOT:-}" "$HOME/.cache/dotnet-sdk" "$HOME/.dotnet" \
+           "/usr/lib/dotnet" "/usr/share/dotnet" "/usr/local/share/dotnet"; do
+    if [[ -n "$d" && -x "$d/dotnet" ]]; then
+      echo "$d"
+      return 0
+    fi
+  done
+  echo ""
+}
+if [[ -z "${DOTNET_ROOT:-}" ]]; then
+  DOTNET_ROOT="$(find_dotnet_root)"
+fi
+export PATH="${DOTNET_ROOT:+$DOTNET_ROOT:}${PATH}"
+
 rm -rf "$OUT"
 mkdir -p "$OUT/Config" "$OUT/Data" "$OUT"
 
@@ -110,7 +127,10 @@ if [[ -n "$GAME_DIR" && -d "$GAME_DIR" ]]; then
   if [[ -f "$DLL" ]]; then
     cp "$DLL" "$OUT/"
   else
-    echo "WARNING: DLL not found"
+    # A package without the mod DLL is not a successful build: the game would
+    # load an empty mod folder. Fail loudly instead of shipping it.
+    echo "ERROR: dotnet build succeeded but no RealEarth.dll found under Source/RealEarth/bin/" >&2
+    exit 1
   fi
 else
   echo "NOTE: set SEVENDTD_GAME_DIR to build RealEarth.dll into the package."
@@ -134,7 +154,7 @@ if [[ ! -f "$PATCHER_SRC/EngineHeightPatcher.exe" && -n "${GAME_DIR:-}" ]]; then
   if [[ -d "$HARMONY" ]] && command -v dotnet >/dev/null; then
     echo "Building RealEarth EngineHeightPatcher into package..."
     dotnet build "$ROOT/tools/engine_patcher/EngineHeightPatcher.csproj" -c Release \
-      -p:HarmonyDir="$HARMONY" -v q || true
+      -p:HarmonyDir="$HARMONY" -v q
   fi
 fi
 if [[ -f "$PATCHER_SRC/EngineHeightPatcher.exe" ]]; then

@@ -7,7 +7,8 @@
 ROOT   := $(abspath $(dir $(lastword $(MAKEFILE_LIST)))/..)
 UV     := uv
 REEARTH := $(UV) run python -m realearth.cli
-PYTEST := $(UV) run --with pytest python -m pytest
+# --extra dev keeps pytest on uv.lock (a bare --with pytest would float).
+PYTEST := $(UV) run --extra dev python -m pytest
 
 help:
 	@echo "RealEarth tools/ — Python pipeline"
@@ -66,7 +67,7 @@ serve:
 	$(REEARTH) serve --port 8765 --root $(ROOT)/viewer
 
 lint:
-	$(UV) run ruff check realearth tests
+	$(UV) run --extra dev ruff check realearth tests
 
 info:
 	$(REEARTH) info

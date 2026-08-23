@@ -30,10 +30,9 @@ DLL_OUT       := $(SOURCE)/bin/Release/RealEarth.dll
 GAME_DIR      ?= $(HOME)/.local/share/Steam/steamapps/common/7 Days To Die
 export SEVENDTD_GAME_DIR := $(GAME_DIR)
 
-# Prefer a local SDK if present (cache, goal scratch, or ~/.dotnet)
+# Prefer a local SDK if present (cache or ~/.dotnet); fall back to host dotnet.
 DOTNET_ROOT   ?= $(firstword \
 	$(wildcard $(HOME)/.cache/dotnet-sdk) \
-	$(wildcard /tmp/grok-goal-*/implementer/dotnet) \
 	$(wildcard $(HOME)/.dotnet) \
 	)
 ifneq ($(DOTNET_ROOT),)
@@ -53,10 +52,11 @@ WEBMOD_DIR        := $(ROOT)/WebMod
 WEBMOD_PACK       ?= $(PACK_DEMO)
 WEBMOD_EXPORT_NAME ?= demo
 
-# uv-run tools CLI from tools/
+# uv-run tools CLI from tools/ (--extra dev keeps test deps on uv.lock;
+# a bare --with pytest would resolve the latest pytest outside the lock).
 UV            := uv
 REEARTH       := cd $(TOOLS) && $(UV) run python -m realearth.cli
-PYTEST        := cd $(TOOLS) && $(UV) run --with pytest python -m pytest
+PYTEST        := cd $(TOOLS) && $(UV) run --extra dev python -m pytest
 
 # ---------------------------------------------------------------------------
 # Help
@@ -136,6 +136,9 @@ tools-sync:
 # ---------------------------------------------------------------------------
 build build-mod dll:
 	@test -f "$(CSPROJ)"
+	@command -v dotnet >/dev/null || { echo "ERROR: dotnet not on PATH (set DOTNET_ROOT=...)" >&2; exit 1; }
+	@dotnet --version >/dev/null 2>&1 \
+		|| { echo "ERROR: no .NET SDK found (dotnet host present but SDK missing). Set DOTNET_ROOT to an SDK dir (see global.json for the pinned version)." >&2; exit 1; }
 	@echo "Building $(CSPROJ) → Release"
 	dotnet build "$(CSPROJ)" -c Release -p:GameDir="$(GAME_DIR)"
 	@test -f "$(DLL_OUT)" && ls -la "$(DLL_OUT)"

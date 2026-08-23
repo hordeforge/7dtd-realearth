@@ -21,5 +21,6 @@ jobs:
           # so self-hosted forks keep it too).
           enable-cache: true
       - run: make test-fast
+      - run: make -C tools lint
       - run: bash scripts/lint-viewer.sh
       - run: bash scripts/lint-webmod.sh
