@@ -159,6 +159,10 @@ export class GlobeView {
 
   _loop() {
     this.raf = requestAnimationFrame(() => this._loop());
+    // flat mode hides the host; skip all render work until it is shown again
+    if (this.host.hidden) {
+      return;
+    }
     this.controls.update();
     if (this.globe) {
       this.globe.rotation.y += 0.0008;

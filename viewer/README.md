@@ -69,7 +69,7 @@ Then re-export each pack and refresh the page.
 ## Notes
 
 - Serve over HTTP (not `file://`) so ES modules and fetch work.
-- Globe uses Three.js from jsDelivr CDN (needs network once).
+- Globe uses Three.js from jsDelivr CDN, fetched on first switch to globe mode (needs network once; flat map never downloads it).
 - Full-planet packs should use lower `--max-dim` or multi-res later; this viewer loads one mosaic per pack.
 
 ## Keyboard / mouse
@@ -83,12 +83,14 @@ The `pack` query parameter is relative to the viewer root. For example,
 `?pack=data/demo` loads `viewer/data/demo/viewer.json`. Keep catalog paths
 relative as well so the static site can be hosted below a URL prefix.
 
-The built-in `realearth serve` command is intended for local inspection. For a
-shared deployment, any static HTTP server can host `viewer/` as long as it sends
-JSON, JavaScript, and PNG files with normal MIME types and permits the viewer to
-fetch its data paths. The current globe imports Three.js from a public CDN, so a
-strict Content Security Policy or offline deployment must vendor/allow that
-dependency.
+The built-in `realearth serve` command is intended for local inspection. It is
+threaded (pack artifacts load in parallel), gzips text assets (HTML/CSS/JS/JSON)
+when the client accepts them, and sends `Cache-Control: no-cache` so edited packs
+revalidate via `If-Modified-Since` 304s. For a shared deployment, any static HTTP
+server can host `viewer/` as long as it sends JSON, JavaScript, and PNG files
+with normal MIME types and permits the viewer to fetch its data paths. The globe
+imports Three.js from a public CDN, so a strict Content Security Policy or
+offline deployment must vendor/allow that dependency.
 
 ## Troubleshooting
 

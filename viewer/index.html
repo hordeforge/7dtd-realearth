@@ -6,6 +6,10 @@
   <title>RealEarth Map Viewer</title>
   <link rel="icon" type="image/svg+xml" href="favicon.svg" />
   <link rel="stylesheet" href="css/app.css" />
+  <!-- three.js lives on the CDN but is only fetched when Globe mode is first
+       used; warm the connection up front so that switch does not pay DNS +
+       TLS on click. -->
+  <link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin />
   <script type="importmap">
   {
     "imports": {

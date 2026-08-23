@@ -1,5 +1,4 @@
 import { Map2D } from "./map2d.js";
-import { GlobeView } from "./globe.js";
 
 const LEGENDS = {
   elevation: [
@@ -86,11 +85,17 @@ const state = {
   elevRaw: null,
   elevMeta: null,
   map2d: null,
-  globe: null,
+  // pending/fulfilled dynamic import of globe.js (pulls three.js from the CDN);
+  // reset on failure so a later Globe click retries.
+  globeReady: null,
 };
 
 function setStatus(msg) {
   els.statusHud.textContent = msg;
+}
+
+function readyStatus() {
+  return `Loaded · ${listOrEmpty(state.meta.layers).length} layers`;
 }
 
 function renderLegend(layerId) {
@@ -129,19 +134,36 @@ function loadImage(url) {
   });
 }
 
-async function loadPack(baseUrl) {
-  setStatus("Loading pack…");
-  state.baseUrl = baseUrl.replace(/\/$/u, "");
-  const metaUrl = `${state.baseUrl}/viewer.json`;
-  const res = await fetch(metaUrl);
-  if (!res.ok) {
-    throw new Error(`Cannot load ${metaUrl} (${res.status})`);
-  }
-  const meta = await res.json();
-  state.meta = meta;
+// Optional sibling artifact; absence is not a failure.
+async function fetchSettlements(baseUrl) {
+  const res = await fetch(`${baseUrl}/settlements.json`).catch(() => null);
+  return res && res.ok ? res.json() : [];
+}
 
-  fillLayers(meta);
-  const layers = listOrEmpty(meta.layers);
+async function fetchElevationRaw(baseUrl, elevMeta) {
+  if (!elevMeta || !elevMeta.file) {
+    return null;
+  }
+  const img = await loadImage(`${baseUrl}/${elevMeta.file}`).catch(() => null);
+  if (!img) {
+    return null;
+  }
+  const c = document.createElement("canvas");
+  c.width = img.naturalWidth;
+  c.height = img.naturalHeight;
+  const ctx = c.getContext("2d", { willReadFrequently: true });
+  ctx.drawImage(img, 0, 0);
+  return { ctx, w: c.width, h: c.height };
+}
+
+async function fetchLayerImages(baseUrl, layers) {
+  const pairs = await Promise.all(
+    layers.map(async (layer) => [layer.id, await loadImage(`${baseUrl}/${layer.file}`)])
+  );
+  return Object.fromEntries(pairs);
+}
+
+function describePack(meta, layers) {
   const bbox = objOrEmpty(meta.bbox);
   const metersPerBlock = meta.meters_per_block;
   const metersText =
@@ -156,39 +178,38 @@ async function loadPack(baseUrl) {
   ]
     .filter(Boolean)
     .join("<br/>");
+}
 
-  // settlements (optional sibling artifact; absence is not a failure)
-  const sres = await fetch(`${state.baseUrl}/settlements.json`).catch(() => null);
-  state.settlements = sres && sres.ok ? await sres.json() : [];
-
-  // layer images
-  state.images = {};
-  for (const layer of layers) {
-    state.images[layer.id] = await loadImage(`${state.baseUrl}/${layer.file}`);
+async function loadPack(baseUrl) {
+  setStatus("Loading pack…");
+  state.baseUrl = baseUrl.replace(/\/$/u, "");
+  const metaUrl = `${state.baseUrl}/viewer.json`;
+  const res = await fetch(metaUrl);
+  if (!res.ok) {
+    throw new Error(`Cannot load ${metaUrl} (${res.status})`);
   }
+  const meta = await res.json();
+  state.meta = meta;
 
-  // raw elev for probe (optional artifact)
+  fillLayers(meta);
+  const layers = listOrEmpty(meta.layers);
+  describePack(meta, layers);
+
+  // viewer.json only names the artifacts; fetch them all in parallel instead of
+  // a meta → settlements → image-per-image → elev chain.
   const elevMeta = objOrEmpty(meta.elev_raw);
   state.elevMeta = elevMeta.file ? elevMeta : null;
-  state.elevRaw = null;
-  if (state.elevMeta) {
-    const img = await loadImage(`${state.baseUrl}/${state.elevMeta.file}`).catch(() => null);
-    if (img) {
-      const c = document.createElement("canvas");
-      c.width = img.naturalWidth;
-      c.height = img.naturalHeight;
-      const ctx = c.getContext("2d", { willReadFrequently: true });
-      ctx.drawImage(img, 0, 0);
-      state.elevRaw = {
-        ctx,
-        w: c.width,
-        h: c.height,
-      };
-    }
-  }
+  const [settlements, images, elevRaw] = await Promise.all([
+    fetchSettlements(state.baseUrl),
+    fetchLayerImages(state.baseUrl, layers),
+    fetchElevationRaw(state.baseUrl, state.elevMeta),
+  ]);
+  state.settlements = settlements;
+  state.images = images;
+  state.elevRaw = elevRaw;
 
   applyLayer();
-  setStatus(`Loaded · ${layers.length} layers`);
+  setStatus(readyStatus());
 }
 
 function fmt(n) {
@@ -219,14 +240,36 @@ function applyLayer() {
       showGrid: els.showGrid.checked,
       opacity: Number(els.opacity.value),
     });
-  } else {
-    ensureGlobe();
-    state.globe.setTexture(
-      img,
-      els.showSettlements.checked ? state.settlements : [],
-      state.meta.bbox
-    );
+    return;
   }
+  showOnGlobe(img);
+}
+
+// Globe mode pulls three.js from the CDN on first use; until it resolves the
+// HUD says so, and a failed import reports and falls back to the flat map
+// instead of leaving a dead globe host.
+function showOnGlobe(img) {
+  setStatus("Loading globe…");
+  ensureGlobe()
+    .then((globe) => {
+      if (!globe || state.mode !== "globe") {
+        return;
+      }
+      // re-measure in case the stage resized while flat mode was showing
+      globe.resize();
+      globe.setTexture(
+        img,
+        els.showSettlements.checked ? state.settlements : [],
+        state.meta.bbox
+      );
+      setStatus(readyStatus());
+    })
+    .catch((error) => {
+      // drop the failed import so the next Globe click retries the fetch
+      state.globeReady = null;
+      setStatus(errorMessage(error));
+      setMode("flat");
+    });
 }
 
 function ensureMap2D() {
@@ -243,10 +286,14 @@ function ensureMap2D() {
 function ensureGlobe() {
   els.mapCanvas.hidden = true;
   els.globeHost.hidden = false;
-  if (!state.globe) {
-    state.globe = new GlobeView(els.globeHost);
+  if (!state.globeReady) {
+    state.globeReady = import("./globe.js").then((module) => {
+      const globe = new module.GlobeView(els.globeHost);
+      globe.resize();
+      return globe;
+    });
   }
-  state.globe.resize();
+  return state.globeReady;
 }
 
 function updateProbe(p) {
@@ -347,9 +394,21 @@ els.jsonFile.addEventListener("change", () => {
 
 // discover extra packs if catalog exists
 async function boot() {
-  const cat = await fetch("data/catalog.json").catch(() => null);
-  if (cat && cat.ok) {
-    const list = await cat.json();
+  const params = new URLSearchParams(location.search);
+  const pack = params.get("pack") || els.packSelect.value;
+  // catalog and the initial pack are independent: fetch both at once
+  const [catalog] = await Promise.all([
+    fetch("data/catalog.json").catch(() => null),
+    loadPack(pack).catch((error) => {
+      setStatus(`Cannot load ${pack}: ${errorMessage(error)}`);
+      els.packInfo.innerHTML =
+        `Missing or broken <code>${esc(pack)}/viewer.json</code>.<br/>` +
+        `From repo: <code>realearth export-viewer --pack data/samples/demo_region --out viewer/data/demo</code><br/>` +
+        `then <code>realearth serve</code>`;
+    }),
+  ]);
+  if (catalog && catalog.ok) {
+    const list = await catalog.json();
     for (const item of list) {
       const opt = document.createElement("option");
       opt.value = item.path;
@@ -357,17 +416,7 @@ async function boot() {
       els.packSelect.append(opt);
     }
   }
-
-  const params = new URLSearchParams(location.search);
-  const pack = params.get("pack") || els.packSelect.value;
   els.packSelect.value = pack;
-  await loadPack(pack).catch((error) => {
-    setStatus(`Cannot load ${pack}: ${errorMessage(error)}`);
-    els.packInfo.innerHTML =
-      `Missing or broken <code>${esc(pack)}/viewer.json</code>.<br/>` +
-      `From repo: <code>realearth export-viewer --pack data/samples/demo_region --out viewer/data/demo</code><br/>` +
-      `then <code>realearth serve</code>`;
-  });
 }
 
 await boot();
