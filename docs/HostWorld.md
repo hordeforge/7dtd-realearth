@@ -21,4 +21,4 @@ That host is **not** the whole planet and is **not** “always fully meshed.” 
 1. `MAP_MODE=Baked scripts/install_proton.sh` installs GeneratedWorlds/RealEarth DTM.
 2. New Game → world **RealEarth** (finite heightmap, no .rte inject required).
 
-See [`docs/ABSOLUTE_STREAMING.md`](../../docs/ABSOLUTE_STREAMING.md). Offline proof: `realearth sample-chunk --pack data/samples/demo_region --lon -104.99 --lat 39.74`.
+See [`docs/ABSOLUTE_STREAMING.md`](ABSOLUTE_STREAMING.md). Offline proof: `realearth sample-chunk --pack data/samples/demo_region --lon -104.99 --lat 39.74`.

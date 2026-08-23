@@ -8,7 +8,7 @@ from pathlib import Path
 import httpx
 import pytest
 
-from realearth.cli import _ViewerHandler
+from realearth.viewer_server import ViewerHandler
 
 BIG_HTML = b"<html>" + b"x" * 4096 + b"</html>"
 SMALL_TXT = b"tiny\n"
@@ -21,7 +21,7 @@ def server(tmp_path: Path):
     (tmp_path / "tiny.txt").write_bytes(SMALL_TXT)
     (tmp_path / "tile.png").write_bytes(PNG_BYTES)
 
-    handler = functools.partial(_ViewerHandler, directory=str(tmp_path))
+    handler = functools.partial(ViewerHandler, directory=str(tmp_path))
     httpd = http.server.ThreadingHTTPServer(("127.0.0.1", 0), handler)
     thread = threading.Thread(target=httpd.serve_forever, daemon=True)
     thread.start()

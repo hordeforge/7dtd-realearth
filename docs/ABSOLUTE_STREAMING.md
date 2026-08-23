@@ -2,7 +2,7 @@
 
 **Owns:** how absolute Earth blocks feed height inject and the tile streamer; sliding host sizes.  
 **Not:** mode choice ([SINGLE_WORLD](SINGLE_WORLD.md)), MP policy ([MULTIPLAYER_STREAMING](MULTIPLAYER_STREAMING.md)), lon/lat math ([LON_LAT](LON_LAT.md)), product status ([MODIFICATIONS](MODIFICATIONS.md)).  
-**Architecture deep-dive:** [realearth-runtime](realearth-runtime.md). **Hub:** [INDEX](INDEX.md).
+**Architecture deep-dive:** [realearth-runtime](realearth-runtime.md). **Host window + install steps:** [HostWorld](HostWorld.md). **Hub:** [INDEX](INDEX.md).
 
 ## Vanilla already does chunks and combat
 

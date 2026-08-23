@@ -47,6 +47,7 @@ flowchart TB
 | **How to close gaps + which 7D API** | [`GAP_HARMONY_MODLETS.md`](GAP_HARMONY_MODLETS.md) | MODIFICATIONS (status only) |
 | Lon/lat math + distortion | [`LON_LAT.md`](LON_LAT.md) | Session docs (link) |
 | Baked vs Streamed choice | [`SINGLE_WORLD.md`](SINGLE_WORLD.md) | ABSOLUTE (inject detail) |
+| Streamed host window + install steps | [`HostWorld.md`](HostWorld.md) | ABSOLUTE (inject detail) |
 | Absolute Earth → inject path | [`ABSOLUTE_STREAMING.md`](ABSOLUTE_STREAMING.md) | SINGLE (mode choice) |
 | MP origin / bubbles | [`MULTIPLAYER_STREAMING.md`](MULTIPLAYER_STREAMING.md) | ABSOLUTE (one-line link) |
 | Density → stamps | [`CITIES_AND_DENSITY.md`](CITIES_AND_DENSITY.md) | CITY_MAP (labels only) |
