@@ -37,10 +37,10 @@ namespace RealEarth.EngineHeight
         public void SetSurfaceMeters(int worldBlockX, int worldBlockZ, float elevM)
         {
             ToEarthKey(worldBlockX, worldBlockZ, out int ex, out int ez);
-            int cx = FloorDiv(ex, 16);
-            int cz = FloorDiv(ez, 16);
-            int lx = Mod(ex, 16);
-            int lz = Mod(ez, 16);
+            int cx = EngineReflection.FloorDiv(ex, 16);
+            int cz = EngineReflection.FloorDiv(ez, 16);
+            int lx = SessionOriginPolicy.FoldCoord(ex, 16);
+            int lz = SessionOriginPolicy.FoldCoord(ez, 16);
             long key = Key(cx, cz);
             lock (_lock)
             {
@@ -64,10 +64,10 @@ namespace RealEarth.EngineHeight
         {
             elevM = 0;
             ToEarthKey(worldBlockX, worldBlockZ, out int ex, out int ez);
-            int cx = FloorDiv(ex, 16);
-            int cz = FloorDiv(ez, 16);
-            int lx = Mod(ex, 16);
-            int lz = Mod(ez, 16);
+            int cx = EngineReflection.FloorDiv(ex, 16);
+            int cz = EngineReflection.FloorDiv(ez, 16);
+            int lx = SessionOriginPolicy.FoldCoord(ex, 16);
+            int lz = SessionOriginPolicy.FoldCoord(ez, 16);
             long key = Key(cx, cz);
             lock (_lock)
             {
@@ -135,18 +135,6 @@ namespace RealEarth.EngineHeight
                 _lruNodes.Remove(old);
                 _columns.Remove(old);
             }
-        }
-
-        static int FloorDiv(int a, int b)
-        {
-            if (a >= 0) return a / b;
-            return (a - (b - 1)) / b;
-        }
-
-        static int Mod(int a, int m)
-        {
-            int r = a % m;
-            return r < 0 ? r + m : r;
         }
 
         sealed class SectionColumn

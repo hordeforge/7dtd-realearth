@@ -27,9 +27,10 @@ from realearth.density import (
     write_cities_json,
     write_prefabs_xml,
 )
+from realearth.export_7dtd import export_preview_png
 from realearth.height import compress_elevation
 from realearth.landcover import LandCover
-from realearth.settlements import SEED_SETTLEMENTS
+from realearth.settlements import SEED_SETTLEMENTS, Settlement, edge_radius_m_from_properties
 from realearth.viewer_export import mosaic_pack
 
 # Verified against this install's biomes.xml biomemapcolor
@@ -376,8 +377,6 @@ def bake_generated_world(
     spath = pack_dir / "settlements.json"
     if spath.exists():
         raw = json.loads(spath.read_text(encoding="utf-8"))
-        from realearth.settlements import Settlement, edge_radius_m_from_properties
-
         settles = []
         for s in raw:
             lon = float(s["lon"])
@@ -430,8 +429,6 @@ def bake_generated_world(
     write_spawnpoints(out_dir / "spawnpoints.xml", size, game_y, sea_level=sea_level_y)
     # main.ttw embeds full client Version string, e.g. "V 3.0.1 (b4)"
     write_main_ttw(out_dir / "main.ttw", ttw_template, version=ttw_ver)
-
-    from realearth.export_7dtd import export_preview_png
 
     export_preview_png(elev_r, lc_r, out_dir / "preview.png")
 

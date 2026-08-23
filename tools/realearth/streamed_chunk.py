@@ -13,8 +13,8 @@ from pathlib import Path
 
 import numpy as np
 
-from realearth import DEFAULT_SEA_LEVEL_GAME_Y
-from realearth.coords import EarthGrid, block_to_tile
+from realearth import DEFAULT_SEA_LEVEL_GAME_Y, ENGINE_TARGET_MAX_Y
+from realearth.coords import EarthGrid, block_to_tile, lonlat_to_block
 from realearth.height import compress_elevation
 from realearth.local_window import LocalWindow
 from realearth.tile_format import Manifest, read_manifest, read_tile, tile_path
@@ -46,8 +46,6 @@ def lonlat_to_pack_block(lon: float, lat: float, manifest: Manifest) -> tuple[in
     bbox = manifest.bbox
     if not bbox:
         # full Earth equirectangular
-        from realearth.coords import lonlat_to_block
-
         return lonlat_to_block(lon, lat, g)
     west = float(bbox["west"])
     south = float(bbox["south"])
@@ -147,8 +145,6 @@ def fill_chunk_heights(
             )
             elev[z, x] = e
     # No compression: 1 m = 1 block (same as engine height mod)
-    from realearth import ENGINE_TARGET_MAX_Y
-
     return compress_elevation(
         elev,
         sea_level_y=sea_level_y,

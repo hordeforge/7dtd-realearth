@@ -232,6 +232,27 @@ namespace RealEarth
         }
 
         /// <summary>
+        /// Heights + landcover for one chunk in the shared layout
+        /// (buf[z * chunkSize + x]). One entry point so gen-time inject and
+        /// post-slide reinject cannot drift apart.
+        /// </summary>
+        public static void FillChunkColumns(
+            WorldSession? session,
+            TileStreamer? streamer,
+            RealEarthConfig? cfg,
+            int chunkLocalOriginX,
+            int chunkLocalOriginZ,
+            int chunkSize,
+            int[] heights,
+            byte[] landcover)
+        {
+            FillChunkHeightsInt(
+                session, streamer, cfg, chunkLocalOriginX, chunkLocalOriginZ, chunkSize, heights);
+            FillChunkLandcover(
+                session, streamer, chunkLocalOriginX, chunkLocalOriginZ, chunkSize, landcover);
+        }
+
+        /// <summary>
         /// Absolute-Earth chunk fill: origin is earth block of chunk corner (not engine-local).
         /// </summary>
         public static void FillChunkHeightsAbsolute(

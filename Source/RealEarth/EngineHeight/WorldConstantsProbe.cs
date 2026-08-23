@@ -27,7 +27,7 @@ namespace RealEarth.EngineHeight
             var p = new WorldConstantsProbe();
             try
             {
-                var t = FindType("WorldConstants");
+                var t = EngineReflection.FindType("WorldConstants");
                 if (t != null)
                 {
                     p.SourceType = t.FullName ?? "WorldConstants";
@@ -38,7 +38,7 @@ namespace RealEarth.EngineHeight
                     p.ChunkDensityYDim = ReadInt(t, "ChunkDensityYDim", p.ChunkDensityYDim);
                     p.Probed = true;
                 }
-                var raw = FindType("ChunkProviderGenerateWorldFromRaw");
+                var raw = EngineReflection.FindType("ChunkProviderGenerateWorldFromRaw");
                 if (raw != null)
                     p.CMaxHeight = ReadInt(raw, "cMaxHeight", p.CMaxHeight);
             }
@@ -67,29 +67,6 @@ namespace RealEarth.EngineHeight
             {
                 return fallback;
             }
-        }
-
-        static Type? FindType(string name)
-        {
-            foreach (var asm in AppDomain.CurrentDomain.GetAssemblies())
-            {
-                try
-                {
-                    var t = asm.GetType(name, false);
-                    if (t != null) return t;
-                    if (!string.Equals(asm.GetName().Name, "Assembly-CSharp", StringComparison.OrdinalIgnoreCase))
-                        continue;
-                    foreach (var ty in asm.GetTypes())
-                        if (ty.Name == name) return ty;
-                }
-                catch (ReflectionTypeLoadException ex)
-                {
-                    foreach (var ty in ex.Types ?? Array.Empty<Type>())
-                        if (ty != null && ty.Name == name) return ty;
-                }
-                catch { /* ignore */ }
-            }
-            return null;
         }
     }
 }

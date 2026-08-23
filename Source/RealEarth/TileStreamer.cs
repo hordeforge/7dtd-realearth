@@ -143,14 +143,19 @@ namespace RealEarth
             EvictOutsideAllFoci(_cfg.UnloadRadiusTiles);
         }
 
-        /// <summary>Tile Z into pack height so large host worlds sample pack interior.</summary>
+        /// <summary>
+        /// Tile Z into pack height so large host worlds sample pack interior.
+        /// Mirrors WorldSession.FoldZ via the same SessionOriginPolicy predicate, so the
+        /// streamer and the session mapping can never disagree on out-of-pack Z.
+        /// </summary>
         int FoldPackZ(int z)
         {
-            int h = Math.Max(1, _coords.WorldHeight);
-            if (_cfg.SingleWorldSession || _cfg.HasRegionalBbox || h <= 65536)
+            if (SessionOriginPolicy.ShouldFoldHostIntoPack(
+                    _cfg.SingleWorldSession, _cfg.HasRegionalBbox,
+                    _coords.WorldWidth, _coords.WorldHeight)
+                && !_cfg.EnableLongitudeWrap)
             {
-                int r = z % h;
-                return r < 0 ? r + h : r;
+                return SessionOriginPolicy.FoldCoord(z, _coords.WorldHeight);
             }
             return _coords.ClampZ(z);
         }

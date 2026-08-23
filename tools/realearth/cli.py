@@ -12,7 +12,7 @@ import click
 from realearth import DEFAULT_SEA_LEVEL_GAME_Y, __version__
 from realearth.coords import EarthGrid, block_to_lonlat, lonlat_to_block
 from realearth.region import build_region, world_tile_indices_for_bbox
-from realearth.settlements import SEED_SETTLEMENTS, load_settlements_geojson
+from realearth.settlements import SEED_SETTLEMENTS, decode_poi_blob, load_settlements_geojson
 from realearth.tile_format import read_manifest, read_tile, tile_path
 
 
@@ -212,8 +212,6 @@ def inspect_tile_cmd(pack_dir: str, tx: int, tz: int) -> None:
     if t.population is not None:
         click.echo(f"population byte max={int(t.population.max())}")
     if t.poi_blob:
-        from realearth.settlements import decode_poi_blob
-
         pois = decode_poi_blob(t.poi_blob)
         click.echo(f"pois: {len(pois)}")
         for p in pois:
@@ -292,8 +290,6 @@ def height_test_map_cmd(
 
     Default: real Everest DEM. Use --peak-game-y 500 for a staged cone (full solid fill).
     """
-    from pathlib import Path
-
     from realearth.height_test_map import build_all
 
     root = Path(repo) if repo else Path(__file__).resolve().parents[2]
@@ -334,7 +330,6 @@ def _install_height_test(
     engine_max_game_y: int = 11000,
 ) -> None:
     """Install height-test world + Streamed tile pack for Proton client."""
-    import json
     import shutil
 
     from realearth.proton_paths import client_generated_worlds_targets

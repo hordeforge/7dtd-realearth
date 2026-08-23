@@ -22,6 +22,7 @@ from realearth.settlements import (
     Settlement,
     paint_settlement_density,
     population_to_byte,
+    urban_radius_m_from_population,
 )
 
 # Vanilla POI names present on this install (V2.x Prefabs/POIs)
@@ -446,8 +447,6 @@ def detect_city_cores(
         if settlements and best is not None and best_d < (0.35**2):
             band = best.band if best.population else band
         if edge_m <= 0:
-            from realearth.settlements import urban_radius_m_from_population
-
             edge_m = urban_radius_m_from_population(pop_est)
             edge_src = "population_fallback"
         cores.append(

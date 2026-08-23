@@ -28,10 +28,16 @@ from realearth import (
     FLY_OVER_HEADROOM_M,
 )
 from realearth.elevation import fetch_region_open_meteo, fetch_region_terrarium
-from realearth.generated_world import bake_generated_world
+from realearth.generated_world import (
+    bake_generated_world,
+    game_y_to_dtm_u16,
+    write_checksums,
+    write_dtm_raw,
+)
 from realearth.height import compress_elevation
 from realearth.landcover import LandCover
 from realearth.tile_format import EarthTile, Manifest, tile_path, write_manifest, write_tile
+from realearth.viewer_export import mosaic_pack
 
 # Local pack size (single .rte tile)
 TILE = 512
@@ -336,9 +342,6 @@ def bake_height_test_world(
         name=name,
         sea_level_y=DEFAULT_SEA_LEVEL_GAME_Y,
     )
-
-    from realearth.generated_world import game_y_to_dtm_u16, write_checksums, write_dtm_raw
-    from realearth.viewer_export import mosaic_pack
 
     data = mosaic_pack(pack_dir)
     elev = data["elevation"]

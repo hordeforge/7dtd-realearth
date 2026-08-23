@@ -123,13 +123,10 @@ namespace RealEarth
 
             int n = ChunkTerrainSampler.VanillaChunkSize * ChunkTerrainSampler.VanillaChunkSize;
             var heights = new int[n];
-            ChunkTerrainSampler.FillChunkHeightsInt(
-                session, streamer, ModApi.Config, blockX, blockZ,
-                ChunkTerrainSampler.VanillaChunkSize, heights);
-
             var landcover = new byte[n];
-            ChunkTerrainSampler.FillChunkLandcover(
-                session, streamer, blockX, blockZ, ChunkTerrainSampler.VanillaChunkSize, landcover);
+            ChunkTerrainSampler.FillChunkColumns(
+                session, streamer, ModApi.Config, blockX, blockZ,
+                ChunkTerrainSampler.VanillaChunkSize, heights, landcover);
 
             bool applied = false;
             if (chunkObj != null)
@@ -381,8 +378,8 @@ namespace RealEarth
                 var chunks = FindLoadedChunkCollection(world);
                 if (chunks == null) return 0;
 
-                int ccx = FloorDiv(centerLocalX, ChunkTerrainSampler.VanillaChunkSize);
-                int ccz = FloorDiv(centerLocalZ, ChunkTerrainSampler.VanillaChunkSize);
+                int ccx = EngineReflection.FloorDiv(centerLocalX, ChunkTerrainSampler.VanillaChunkSize);
+                int ccz = EngineReflection.FloorDiv(centerLocalZ, ChunkTerrainSampler.VanillaChunkSize);
                 int rChunks = Math.Max(1, radiusBlocks / ChunkTerrainSampler.VanillaChunkSize);
 
                 var candidates = new List<(int dist, int cx, int cz, object chunk)>();
@@ -444,12 +441,10 @@ namespace RealEarth
 
             int n = ChunkTerrainSampler.VanillaChunkSize * ChunkTerrainSampler.VanillaChunkSize;
             var heights = new int[n];
-            ChunkTerrainSampler.FillChunkHeightsInt(
-                session, streamer, ModApi.Config, blockX, blockZ,
-                ChunkTerrainSampler.VanillaChunkSize, heights);
             var landcover = new byte[n];
-            ChunkTerrainSampler.FillChunkLandcover(
-                session, streamer, blockX, blockZ, ChunkTerrainSampler.VanillaChunkSize, landcover);
+            ChunkTerrainSampler.FillChunkColumns(
+                session, streamer, ModApi.Config, blockX, blockZ,
+                ChunkTerrainSampler.VanillaChunkSize, heights, landcover);
             return TryApplyHeightsToChunk(chunkObj, heights, landcover);
         }
 
@@ -555,9 +550,6 @@ namespace RealEarth
                 if (ReflectCache.TryReadIntMember(chunk, name, out cz)) { hasZ = true; break; }
             return hasX && hasZ;
         }
-
-        /// <summary>Floor division (negative locals must not truncate toward zero, Issue 2.13).</summary>
-        static int FloorDiv(int a, int b) => a >= 0 ? a / b : (a - b + 1) / b;
 
         static object? PickSolidBlock(byte landcover)
         {

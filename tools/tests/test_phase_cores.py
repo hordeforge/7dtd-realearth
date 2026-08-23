@@ -399,8 +399,10 @@ def test_height_float_args_use_floor():
     hooks = _read("RuntimeHooks.cs")
     assert "Math.Floor(__0)" in hooks or "Math.Floor(__0)" in hooks.replace(" ", "")
     assert "HeightFloatFromFloatArgsPostfix" in hooks
-    remap = _read("OriginSlideRemap.cs")
-    assert "Math.Floor(fl)" in remap
+    # Entity position components floor centrally since TryGetPos/ReadComp moved
+    # to the shared EngineReflection helper (used by tick + origin-slide remap).
+    refl = _read("EngineReflection.cs")
+    assert "Math.Floor(fl)" in refl
 
 
 def test_sync_load_waits_inflight_and_cdn():
@@ -424,8 +426,10 @@ def test_slide_setpos_rollback():
     hooks = _read("RuntimeHooks.cs")
     assert "rolled back" in hooks or "SetPos failed" in hooks
     assert "TrySetPos" in hooks
-    # TrySetPos must return bool
-    assert "static bool TrySetPos" in hooks
+    # Slide rollback goes through the shared EngineReflection.TrySetPos (bool contract).
+    assert "EngineReflection.TrySetPos" in hooks
+    refl = _read("EngineReflection.cs")
+    assert "static bool TrySetPos" in refl
 
 
 def test_center_window_respects_update_absolute():

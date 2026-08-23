@@ -60,13 +60,10 @@ class LocalWindow:
         return True
 
     def set_origin(self, earth_x: int, earth_z: int) -> None:
-        if self.enable_longitude_wrap or self.should_fold():
-            self.origin_x = self.grid.wrap_x(earth_x) if self.enable_longitude_wrap else fold_x(
-                earth_x, self.grid.width
-            )
-            # wrap_x for fold when not longitude wrap uses fold_x
-            if not self.enable_longitude_wrap and self.should_fold():
-                self.origin_x = fold_x(earth_x, self.grid.width)
+        if self.enable_longitude_wrap:
+            self.origin_x = self.grid.wrap_x(earth_x)
+        elif self.should_fold():
+            self.origin_x = fold_x(earth_x, self.grid.width)
         else:
             self.origin_x = earth_x
         if self.should_fold() and not self.enable_longitude_wrap:
