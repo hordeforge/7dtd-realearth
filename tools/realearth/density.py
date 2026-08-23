@@ -163,6 +163,7 @@ def measure_urban_edge_radius_m(
     frac_of_peak: float = 0.12,
     min_abs: float = 40.0,
     max_radius_m: float = 80_000.0,
+    visited_scratch: np.ndarray | None = None,
 ) -> float:
     """Measure urban edge from density/built-up map data around a peak.
 
@@ -173,6 +174,10 @@ def measure_urban_edge_radius_m(
 
     This is the primary map-data source for edge_radius_m when GHSL/WorldPop
     or settlement Gaussians have been rasterized into ``density``.
+
+    ``visited_scratch``: optional caller-owned (h, w) bool array reused across
+    calls so repeated measurements on a world-size grid do not reallocate and
+    re-zero the full mask per peak. The buffer is left all-False on return.
     """
     dens = np.asarray(density, dtype=np.float64)
     h, w = dens.shape
@@ -198,7 +203,11 @@ def measure_urban_edge_radius_m(
     if dens[py, px] < thr:
         return _degenerate()
 
-    visited = np.zeros((h, w), dtype=bool)
+    visited = (
+        np.zeros((h, w), dtype=bool)
+        if visited_scratch is None
+        else visited_scratch
+    )
     stack: list[tuple[int, int]] = [(py, px)]
     while stack:
         y, x = stack.pop()
@@ -228,6 +237,9 @@ def measure_urban_edge_radius_m(
                     stack.append((ny, nx_))
 
     ys, xs = np.nonzero(visited)
+    if visited_scratch is not None:
+        # Reset only the touched cells: O(blob), not O(h*w) memset per core.
+        visited[ys, xs] = False
     if ys.size <= 1:
         return _degenerate()
 
@@ -400,6 +412,10 @@ def detect_city_cores(
             break
 
     cores: list[CityCore] = []
+    # One flood-fill mask reused across cores: allocating + zeroing a fresh
+    # (h, w) bool grid per peak costs O(cores * h * w) memset on world-size
+    # density maps; reuse keeps it O(h * w) total.
+    visited_scratch = np.zeros((h, w), dtype=bool)
     for peak, y, x in chosen:
         lon = west + (x + 0.5) / w * (east - west)
         lat = north - (y + 0.5) / h * (north - south)
@@ -408,7 +424,8 @@ def detect_city_cores(
         best = None
         best_d = 1e9
         edge_m = measure_urban_edge_radius_m(
-            dens, y, x, west, south, east, north
+            dens, y, x, west, south, east, north,
+            visited_scratch=visited_scratch,
         )
         edge_src = "density"
         if settlements:

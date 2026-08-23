@@ -53,6 +53,29 @@ def test_measure_urban_edge_from_density_blob():
     assert r < 80_000
 
 
+def test_measure_urban_edge_scratch_reuse_matches_fresh():
+    """Reused visited buffer must give identical radii and stay all-False."""
+    dens = np.zeros((64, 64), dtype=np.float64)
+    dens[28:37, 28:37] = 2000
+    dens[32, 32] = 10000
+    dens[5:9, 50:54] = 500
+    west, south, east, north = -105.15, 39.70, -104.85, 40.00
+    peaks = [(32, 32), (7, 52), (40, 10)]  # two blobs + degenerate peak
+    fresh = [
+        measure_urban_edge_radius_m(dens, y, x, west, south, east, north)
+        for y, x in peaks
+    ]
+    scratch = np.zeros(dens.shape, dtype=bool)
+    reused = [
+        measure_urban_edge_radius_m(
+            dens, y, x, west, south, east, north, visited_scratch=scratch
+        )
+        for y, x in peaks
+    ]
+    assert reused == fresh
+    assert not scratch.any()
+
+
 def test_edge_from_bbox_and_properties():
     # ~0.2° box at Denver lat → ~ half-width order 10 km
     r = edge_radius_m_from_bbox(-105.1, 39.65, -104.9, 39.85, center_lon=-105.0, center_lat=39.75)

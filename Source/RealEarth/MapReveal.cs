@@ -16,6 +16,15 @@ namespace RealEarth
         static int _radiusCooldown;
         static int _lastCx = int.MinValue;
         static int _lastCz = int.MinValue;
+        /// <summary>GamePrefs cap raised at most once per process (per-tick re-raise is pure overhead).</summary>
+        static bool _uncoveredCapRaised;
+        /// <summary>
+        /// Memoized name → type (null misses cached too). FindType walks every assembly's
+        /// type list per call; tick-path reveal used to rescan Assembly-CSharp every frame.
+        /// Member/type metadata is process-stable, matching ReflectCache semantics.
+        /// </summary>
+        static readonly System.Collections.Concurrent.ConcurrentDictionary<string, Type?> _typeCache =
+            new System.Collections.Concurrent.ConcurrentDictionary<string, Type?>();
 
         public static void TryRevealIfConfigured()
         {
@@ -69,6 +78,7 @@ namespace RealEarth
             _radiusCooldown = 0;
             _lastCx = int.MinValue;
             _lastCz = int.MinValue;
+            _uncoveredCapRaised = false;
         }
 
         public static bool RevealFullMap()
@@ -276,6 +286,7 @@ namespace RealEarth
 
         static void RaiseUncoveredChunkCap()
         {
+            if (_uncoveredCapRaised) return;
             try
             {
                 Type? prefs = FindType("GamePrefs");
@@ -299,6 +310,7 @@ namespace RealEarth
                     set.Invoke(null, new[] { key, val });
                 else
                     set.Invoke(null, new[] { key, Convert.ChangeType(val, set.GetParameters()[1].ParameterType) });
+                _uncoveredCapRaised = true;
             }
             catch
             {
@@ -508,18 +520,26 @@ namespace RealEarth
 
         static Type? FindType(string name)
         {
-            foreach (var asm in AppDomain.CurrentDomain.GetAssemblies())
+            return _typeCache.GetOrAdd(name, static n =>
             {
-                try
+                foreach (var asm in AppDomain.CurrentDomain.GetAssemblies())
                 {
-                    var t = asm.GetType(name, false);
-                    if (t != null) return t;
-                    foreach (var ty in SafeGetTypes(asm))
-                        if (ty.Name == name) return ty;
+                    try
+                    {
+                        var t = asm.GetType(n, false);
+                        if (t != null) return t;
+                        foreach (var ty in SafeGetTypes(asm))
+                            if (ty.Name == n) return ty;
+                    }
+                    catch (ReflectionTypeLoadException ex)
+                    {
+                        foreach (var ty in ex.Types)
+                            if (ty != null && ty.Name == n) return ty;
+                    }
+                    catch { /* ignore */ }
                 }
-                catch { /* ignore */ }
-            }
-            return null;
+                return null;
+            });
         }
     }
 }

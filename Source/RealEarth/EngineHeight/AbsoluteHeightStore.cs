@@ -116,7 +116,10 @@ namespace RealEarth.EngineHeight
 
         void TouchLru(long key)
         {
-            if (_lruNodes.TryGetValue(key, out var node))
+            // Hot path (every height sample in expanded mode): repeated samples of the
+            // same/nearby columns hit an already-MRU node; skipping the remove/relink
+            // keeps those touches to one dictionary lookup.
+            if (_lruNodes.TryGetValue(key, out var node) && _lru.First != node)
             {
                 _lru.Remove(node);
                 _lru.AddFirst(node);

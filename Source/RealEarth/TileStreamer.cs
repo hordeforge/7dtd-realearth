@@ -27,8 +27,8 @@ namespace RealEarth
         readonly Dictionary<long, int> _missUntilTick = new Dictionary<long, int>();
         /// <summary>In-flight disk/CDN loads.</summary>
         readonly HashSet<long> _loadInFlight = new HashSet<long>();
-        /// <summary>focusId → last absolute Earth (x,z) for that player/entity.</summary>
-        readonly Dictionary<int, (int x, int z)> _foci = new Dictionary<int, (int, int)>();
+        /// <summary>focusId → last absolute Earth (x,z) and streamed tile for that player/entity.</summary>
+        readonly Dictionary<int, (int x, int z, int tx, int tz)> _foci = new Dictionary<int, (int, int, int, int)>();
         readonly object _lock = new object();
         readonly HttpClient _http;
 
@@ -90,12 +90,24 @@ namespace RealEarth
             FocusEarthX = earthX;
             FocusEarthZ = earthZ;
 
+            _coords.BlockToTile(earthX, earthZ, out int tx, out int tz);
+
+            // Per-tick path: focus updates arrive every tick per player. When the focus
+            // is still inside the same tile the radius scan and multi-center eviction
+            // cannot change anything (this focus's tiles are never evicted while it is a
+            // registered center), so skip both instead of re-walking every hot tile
+            // under the lock the height-sample hot path shares.
             lock (_lock)
             {
-                _foci[focusId] = (earthX, earthZ);
+                if (_foci.TryGetValue(focusId, out var prev) && prev.tx == tx && prev.tz == tz)
+                {
+                    if (prev.x != earthX || prev.z != earthZ)
+                        _foci[focusId] = (earthX, earthZ, tx, tz);
+                    return;
+                }
+                _foci[focusId] = (earthX, earthZ, tx, tz);
             }
 
-            _coords.BlockToTile(earthX, earthZ, out int tx, out int tz);
             EnsureRadius(tx, tz, _cfg.StreamRadiusTiles, allowSyncLoad);
             EvictOutsideAllFoci(_cfg.UnloadRadiusTiles);
         }
@@ -582,10 +594,7 @@ namespace RealEarth
                 }
                 centers = new List<(int, int)>(_foci.Count);
                 foreach (var kv in _foci)
-                {
-                    _coords.BlockToTile(kv.Value.x, kv.Value.z, out int tx, out int tz);
-                    centers.Add((tx, tz));
-                }
+                    centers.Add((kv.Value.tx, kv.Value.tz));
             }
 
             lock (_lock)

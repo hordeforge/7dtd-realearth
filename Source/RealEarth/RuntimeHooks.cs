@@ -640,11 +640,16 @@ namespace RealEarth
             {
                 RuntimeHooks.TryRetryApply();
 
+                // Read player block pos once: FOW debug, city discovery, and the stream
+                // tick all need it (a second TryGetPos here doubled per-frame reflection
+                // boxing for every player).
+                bool hasPos = TryGetPos(__instance, out int x, out int y, out int z);
+
                 // FOW debug + city discover-on-approach need player block pos
-                if (TryGetPos(__instance, out int px, out int py, out int pz))
+                if (hasPos)
                 {
-                    MapReveal.TryRevealIfConfigured(px, pz);
-                    CityMapLabels.TickPlayer(px, pz);
+                    MapReveal.TryRevealIfConfigured(x, z);
+                    CityMapLabels.TickPlayer(x, z);
                 }
                 else
                     MapReveal.TryRevealIfConfigured();
@@ -652,7 +657,7 @@ namespace RealEarth
                 if (ModApi.Session == null || !ModApi.Session.IsStreamed)
                     return;
 
-                if (!TryGetPos(__instance, out int x, out int y, out int z))
+                if (!hasPos)
                     return;
 
                 // Stable focus id: real entityId only (no identity-hash merge of MP bubbles).

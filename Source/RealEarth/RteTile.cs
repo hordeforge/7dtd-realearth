@@ -71,10 +71,22 @@ namespace RealEarth
                 throw new InvalidDataException("elevation size mismatch");
 
             var elev = new float[samples];
-            for (int i = 0; i < elev.Length; i++)
+            if (BitConverter.IsLittleEndian)
             {
-                ushort u = (ushort)(elevRaw[i * 2] | (elevRaw[i * 2 + 1] << 8));
-                elev[i] = u - ElevOffsetM;
+                // Bulk u16 view (one memcpy) then a simple widening loop the JIT can
+                // schedule well; per-sample byte-pair shifts were 2 extra bounds checks.
+                var elevU16 = new ushort[elevRaw.Length / 2];
+                Buffer.BlockCopy(elevRaw, 0, elevU16, 0, elevRaw.Length);
+                for (int i = 0; i < elev.Length; i++)
+                    elev[i] = elevU16[i] - ElevOffsetM;
+            }
+            else
+            {
+                for (int i = 0; i < elev.Length; i++)
+                {
+                    ushort u = (ushort)(elevRaw[i * 2] | (elevRaw[i * 2 + 1] << 8));
+                    elev[i] = u - ElevOffsetM;
+                }
             }
 
             byte[]? lc = null;
