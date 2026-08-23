@@ -68,7 +68,7 @@ Implications:
 ## 3. Product principles
 
 1. **Real data over procedural fantasy.** Prefer open DEM, landcover, population; RWG is not the geography source.
-2. **Real meters over feel-curves.** `gameY = seaLevelGameY + elev_m` (with `MetersPerBlock = 1`). No global compress on the product path.
+2. **Real meters over feel-curves.** `gameY = seaLevelGameY + elev_m` (1 m = 1 block). No global compress on the product path.
 3. **Density over cadastral truth.** Population grids and built-up rasters drive how “city-like” a place is; prefabs are 7DTD stamps, not OSM building meshes.
 4. **Stream by need.** Absolute Earth is virtual; only nearby `.rte` tiles and vanilla view/sim chunks are hot.
 5. **One world session.** Baked region or Streamed Earth, still one continuous play space.
@@ -177,7 +177,7 @@ Both are **one continuous session**. Streamed is the long-term planetary mode; B
 **Inject policy (product):**
 
 ```text
-gameY = seaLevelGameY + elev_m     # MetersPerBlock = 1
+gameY = seaLevelGameY + elev_m     # 1 m = 1 block
 ```
 
 capped by `EngineMaxGameY` (default 11000) and expanded column max.
@@ -320,7 +320,6 @@ Config product defaults (see `Config/realearth.json`):
 {
   "MapMode": "Streamed",
   "SingleWorldSession": true,
-  "MetersPerBlock": 1.0,
   "SeaLevelGameY": 100,
   "EnableEngineHeightMod": true,
   "EngineHeightOneToOne": true,

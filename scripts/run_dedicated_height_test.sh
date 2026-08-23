@@ -92,7 +92,6 @@ cfg.update({
     "EngineMaxGameY": 11000,
     "EngineHeightOneToOne": True,
     "EngineHeightPreferVanillaCeiling": False,
-    "EngineHeightForceExpandedCompress": True,
     "TilePackPath": "Data/tiles",
     "WorldWidth": 512,
     "WorldHeight": 512,

@@ -163,17 +163,6 @@ def detect_ttw_version_string() -> str:
     return detect_client_versions()[1]
 
 
-def read_ttw_version(path: Path) -> str | None:
-    data = path.read_bytes()
-    if len(data) < 10 or data[:4] != b"ttw\0":
-        return None
-    # layout: ttw\0 | int32 | byte strlen | version ascii
-    slen = data[8]
-    if 9 + slen > len(data):
-        return None
-    return data[9 : 9 + slen].decode("ascii", errors="replace")
-
-
 def write_ttw_with_version(
     path: Path, template: Path, version: str | None = None
 ) -> None:
@@ -242,13 +231,6 @@ def write_spawnpoints(path: Path, size: int, game_y: np.ndarray, sea_level: int 
         lines.append(f'    <spawnpoint position="{wx},{wy:.5f},{wz}" rotation="0,{rot},0"/>')
     lines.append("</spawnpoints>\n")
     path.write_text("\n".join(lines), encoding="utf-8")
-
-
-def write_prefabs_empty(path: Path) -> None:
-    path.write_text(
-        '<?xml version="1.0" encoding="UTF-8"?>\n<prefabs>\n</prefabs>\n',
-        encoding="utf-8",
-    )
 
 
 def write_radiation(path: Path, size: int) -> None:

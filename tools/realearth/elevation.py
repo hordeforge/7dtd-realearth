@@ -206,26 +206,6 @@ def fetch_region_terrarium(
     return _resize_linear(crop.astype(np.float64), height, width).astype(np.float32)
 
 
-def load_geotiff(path: Path) -> tuple[np.ndarray, dict]:
-    """Load elevation GeoTIFF if rasterio is installed."""
-    try:
-        import rasterio
-    except ImportError as e:
-        raise ImportError("install realearth-tools[gis] for GeoTIFF support") from e
-
-    with rasterio.open(path) as ds:
-        data = ds.read(1).astype(np.float32)
-        meta = {
-            "crs": str(ds.crs),
-            "transform": list(ds.transform)[:6],
-            "bounds": ds.bounds._asdict() if hasattr(ds.bounds, "_asdict") else None,
-            "nodata": ds.nodata,
-        }
-        if ds.nodata is not None:
-            data = np.where(data == ds.nodata, np.nan, data)
-    return data, meta
-
-
 def fetch_region_geotiff(
     path: Path,
     west: float,

@@ -19,7 +19,6 @@
   "EngineHeightOneToOne": true,
   "EngineHeightPreferVanillaCeiling": false,
   "SeaLevelGameY": 100,
-  "MetersPerBlock": 1.0,
   "DefaultSpawnLon": 0.025,
   "DefaultSpawnLat": 0.025,
   "SpawnLongitude": 0.025,

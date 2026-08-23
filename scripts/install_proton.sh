@@ -108,9 +108,6 @@ cfg["EngineHeightOneToOne"] = bool(cfg.get("EngineHeightOneToOne", True))
 cfg["EngineHeightPreferVanillaCeiling"] = bool(
     cfg.get("EngineHeightPreferVanillaCeiling", False)
 )
-cfg["EngineHeightForceExpandedCompress"] = bool(
-    cfg.get("EngineHeightForceExpandedCompress", True)
-)
 # Streamed: keep wrap on for full-planet; regional demo pack manifest overrides at runtime
 if map_mode.lower() == "streamed":
     cfg["EnableLongitudeWrap"] = True

@@ -41,7 +41,6 @@ namespace RealEarth
         /// <summary>Globe overlay (not wired to UI yet). Default off until implemented.</summary>
         [DataMember] public bool EnableGlobeMap { get; set; } = false;
         [DataMember] public int SeaLevelGameY { get; set; } = 100;
-        [DataMember] public float MetersPerBlock { get; set; } = 1f;
         [DataMember] public string TileCdnBaseUrl { get; set; } = "";
 
         /// <summary>Optional spawn override (degrees). 0,0 with UseDefaultSpawn uses DefaultSpawn*.</summary>
@@ -135,11 +134,6 @@ namespace RealEarth
         /// If true, clamp to vanilla ~255. Not a product mode; prefer expand + 1:1.
         /// </summary>
         [DataMember] public bool EngineHeightPreferVanillaCeiling { get; set; } = false;
-
-        /// <summary>
-        /// Kept for compatibility with older configs.
-        /// </summary>
-        [DataMember] public bool EngineHeightForceExpandedCompress { get; set; } = true;
 
         /// <summary>
         /// Optional regional pack bbox (degrees). When set, lon/lat maps linearly into

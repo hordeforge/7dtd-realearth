@@ -125,15 +125,6 @@ class LocalWindow:
             local_z = earth_z - self.origin_z
         return local_x, local_z
 
-    def active_bounds(self) -> tuple[int, int, int, int]:
-        """Earth [minX, minZ, maxX, maxZ) covered by the host window."""
-        return (
-            self.origin_x,
-            self.origin_z,
-            self.origin_x + self.size,
-            self.origin_z + self.size,
-        )
-
     def tick_player_local(
         self,
         local_x: int,

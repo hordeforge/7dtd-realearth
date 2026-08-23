@@ -142,7 +142,6 @@ There is **no** WGS84 geodesic, UTM zone, or Web Mercator path in the runtime.
 | Issue | Detail |
 |---|---|
 | Point lon wrap | `LonLatToBlock` normalizes lon into [-180, 180] |
-| **Bbox tile lists** | `lonlat_bbox_to_tiles` documents **no antimeridian split**; a box west=170, east=-170 is wrong |
 | Regional bbox | Assumes `east > west` continuous; cannot express a dateline-straddling region without a custom pack |
 | Settlements | Places near ±180 work as points; area queries and pack bboxes that cross the dateline do not |
 
@@ -303,7 +302,7 @@ Product slogan is **1 m = 1 block** after Y expand for **height**, and for **hor
 
 | Path | Notes |
 |---|---|
-| `tools/realearth/coords.py` | Full-Earth map; `lonlat_bbox_to_tiles` **no** dateline split |
+| `tools/realearth/coords.py` | Full-Earth map; point wrap only; no dateline split helper |
 | `tools/realearth/streamed_chunk.py` | `lonlat_to_pack_block` bbox path |
 | `Source/RealEarth/EarthCoords.cs` | WrapX, ClampZ, BlockToLonLat, LonLatToBlock |
 | `Source/RealEarth/WorldSession.cs` | Dual frame, fold, LonLatToLocal / LocalToLonLat |

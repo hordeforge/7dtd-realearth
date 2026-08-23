@@ -38,7 +38,6 @@ Vanilla remains a **finite flat world**. Planetary 1:1 requires streaming + wrap
 - `realearth export-viewer` mosaics packs to PNG + `viewer.json`.
 - `realearth serve` hosts `viewer/` on port 8765.
 - Layers: hybrid, elevation hillshade, landcover, population; settlements; probe lon/lat.
-- In-browser RTE decoder stub (`viewer/js/rte.js`) for future streaming.
 
 ## 2026-07-15 - Modding website references
 

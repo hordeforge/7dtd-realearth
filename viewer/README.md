@@ -71,7 +71,6 @@ Then re-export each pack and refresh the page.
 - Serve over HTTP (not `file://`) so ES modules and fetch work.
 - Globe uses Three.js from jsDelivr CDN (needs network once).
 - Full-planet packs should use lower `--max-dim` or multi-res later; this viewer loads one mosaic per pack.
-- In-browser `.rte` decoder lives in `js/rte.js` for future tile streaming; the current path uses PNG mosaics.
 
 ## Keyboard / mouse
 
@@ -106,6 +105,5 @@ dependency.
 ## Development notes
 
 `js/app.js` coordinates controls and datasets, `js/map2d.js` renders the flat
-view, `js/globe.js` renders the sphere, and `js/rte.js` contains the experimental
-browser tile decoder. After editing, test both views, pack switching, settlement
+view, and `js/globe.js` renders the sphere. After editing, test both views, pack switching, settlement
 hover, cursor probing, and a narrow/mobile viewport.

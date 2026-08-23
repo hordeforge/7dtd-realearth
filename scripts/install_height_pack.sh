@@ -73,7 +73,6 @@ cfg = {
     "EngineMaxGameY": int("$ENGINE_MAX"),
     "EngineHeightOneToOne": True,
     "EngineHeightPreferVanillaCeiling": False,
-    "EngineHeightForceExpandedCompress": True,
     "TilePackPath": "Data/tiles",
     "WorldWidth": 512,
     "WorldHeight": 512,

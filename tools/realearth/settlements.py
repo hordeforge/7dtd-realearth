@@ -9,9 +9,6 @@ from pathlib import Path
 
 import numpy as np
 
-from realearth.coords import EarthGrid, lonlat_to_block
-from realearth.landcover import LandCover
-
 
 @dataclass(frozen=True, slots=True)
 class Settlement:
@@ -301,54 +298,6 @@ def paint_settlement_density(
         dens[z0:z1, x0:x1] += peak * np.exp(-d2)
 
     return dens
-
-
-def stamp_plan_for_tile(
-    tile_x: int,
-    tile_z: int,
-    settlements: list[Settlement],
-    grid: EarthGrid | None = None,
-    tile_size: int = 512,
-) -> list[dict]:
-    """Build a JSON-serializable POI plan for prefab stamping at runtime / export."""
-    g = grid or EarthGrid(tile_size=tile_size)
-    origin_x = tile_x * g.tile_size
-    origin_z = tile_z * g.tile_size
-    plan: list[dict] = []
-    for s in settlements:
-        bx, bz = lonlat_to_block(s.lon, s.lat, g)
-        if not (
-            origin_x <= bx < origin_x + g.tile_size and origin_z <= bz < origin_z + g.tile_size
-        ):
-            continue
-        plan.append(
-            {
-                "name": s.name,
-                "band": s.band,
-                "population": s.population,
-                "local_x": bx - origin_x,
-                "local_z": bz - origin_z,
-                "lon": s.lon,
-                "lat": s.lat,
-                "prefab_pack": {
-                    "metro": "prefabs/city_metro",
-                    "large_city": "prefabs/city_large",
-                    "town": "prefabs/town",
-                    "village": "prefabs/village",
-                    "hamlet": "prefabs/hamlet",
-                }.get(s.band, "prefabs/hamlet"),
-            }
-        )
-    return plan
-
-
-def apply_urban_landcover(lc: np.ndarray, pop_bytes: np.ndarray, threshold: int = 90) -> np.ndarray:
-    """Mark high-density cells as URBAN on the landcover map (land only)."""
-    out = np.array(lc, copy=True)
-    urban = pop_bytes >= threshold
-    land = out != int(LandCover.OCEAN)
-    out[urban & land] = LandCover.URBAN
-    return out
 
 
 def encode_poi_blob(plan: list[dict]) -> bytes:
