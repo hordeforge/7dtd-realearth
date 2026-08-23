@@ -1,11 +1,14 @@
 name: ci
-on: [push, pull_request]
+on:
+  push:
+    branches: [main]
+  pull_request:
 
 # Least privilege: the pipeline only needs to read the code.
 permissions:
   contents: read
 
-# Cancel superseded runs on the same ref (push + pull_request double-fires).
+# Cancel superseded runs on the same ref (a PR branch updates only fire once).
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
   cancel-in-progress: true
@@ -14,12 +17,22 @@ jobs:
   tools:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
-      - uses: astral-sh/setup-uv@v6
+      # Actions pinned by full commit SHA (tag in comment) so a moved tag or a
+      # compromised major-version release cannot inject code into the pipeline.
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
+      - uses: astral-sh/setup-uv@d0cc045d04ccac9d8b7881df0226f9e82c39688e # v6.8.0
         with:
           # Cache uv wheels/venv between runs (default on hosted runners; pinned here
           # so self-hosted forks keep it too).
           enable-cache: true
+      # oxlint/tsgolint/anti-slop toolchain for lint-viewer.sh + lint-webmod.sh;
+      # key hashes the scripts that pin those versions, so a bump invalidates it.
+      - uses: actions/cache@0057852bfaa89a56745cba8c7296529d2fc39830 # v4.3.0
+        with:
+          path: ~/.cache/realearth/oxlint-standards
+          key: oxlint-standards-${{ runner.os }}-${{ hashFiles('scripts/lint-viewer.sh', 'scripts/lint-webmod.sh') }}
+          restore-keys: |
+            oxlint-standards-${{ runner.os }}-
       - run: make test-fast
       - run: make -C tools lint
       - run: bash scripts/lint-viewer.sh

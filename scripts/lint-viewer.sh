@@ -25,13 +25,32 @@ anti_slop_sha="${ANTI_SLOP_SHA:-6d538555cb151d4121ed51a27db81890eacf8ae9}"
 cache_dir="${XDG_CACHE_HOME:-$HOME/.cache}/realearth/oxlint-standards"
 js_dir="$root/viewer/js"
 
+# GitHub archive downloads fail intermittently; retry with deterministic
+# backoff so a transient 5xx does not turn the lint stage red.
+fetch_retry() {
+  local url="$1" out="$2" attempt delay
+  for attempt in 1 2 3; do
+    if curl -fsSL "$url" -o "$out"; then
+      return 0
+    fi
+    rm -f "$out"
+    delay=$((attempt * 2))
+    echo "realearth: lint-viewer: fetch failed (attempt $attempt), retrying in ${delay}s" >&2
+    sleep "$delay"
+  done
+  return 1
+}
+
 mkdir -p "$cache_dir"
 if [ ! -d "$cache_dir/anti-slop-src" ]; then
-  curl -fsSL "https://github.com/dmmulroy/anti-slop/archive/$anti_slop_sha.tar.gz" -o "$cache_dir/anti-slop.tar.gz"
+  fetch_retry "https://github.com/dmmulroy/anti-slop/archive/$anti_slop_sha.tar.gz" \
+    "$cache_dir/anti-slop.tar.gz"
   mkdir -p "$cache_dir/anti-slop-src"
   tar xzf "$cache_dir/anti-slop.tar.gz" -C "$cache_dir/anti-slop-src" --strip-components=2 "anti-slop-$anti_slop_sha/src"
 fi
-npm install --prefix "$cache_dir" --no-audit --no-fund --no-save --no-package-lock \
+# prefer-offline: reuse the npm cache when warm (CI cache hit) instead of
+# re-resolving against the registry on every run; cold cache fetches as usual.
+npm install --prefix "$cache_dir" --prefer-offline --no-audit --no-fund --no-save --no-package-lock \
   "@rikalabs/oxlint-standards@$oxlint_standards_version" \
   "@oxlint/plugins@$oxlint_plugins_version" >/dev/null 2>&1 || {
   echo "realearth: lint-viewer: could not install @rikalabs/oxlint-standards@$oxlint_standards_version + @oxlint/plugins@$oxlint_plugins_version into $cache_dir (offline?)" >&2
