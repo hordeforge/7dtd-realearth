@@ -44,8 +44,12 @@ namespace RealEarth
 
         public void LonLatToBlock(double lon, double lat, out int x, out int z)
         {
-            while (lon < -180.0) lon += 360.0;
-            while (lon > 180.0) lon -= 360.0;
+            // O(1) wrap into [-180, 180): a large finite input (config typo, bad GPS
+            // string) must not spin a decrement loop on the caller's thread; NaN falls
+            // through to the cast below and WrapX folds the result into range.
+            double t = (lon + 180.0) % 360.0;
+            if (t < 0) t += 360.0;
+            lon = t - 180.0;
             if (lat < -90.0) lat = -90.0;
             if (lat > 90.0) lat = 90.0;
             x = WrapX((int)((lon + 180.0) / 360.0 * WorldWidth));

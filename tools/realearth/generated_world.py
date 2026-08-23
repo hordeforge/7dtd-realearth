@@ -368,7 +368,10 @@ def bake_generated_world(
     Image.fromarray(pop_r, mode="L").save(out_dir / "population.png")
 
     # City cores from density peaks + named settlements
-    dens_float = pop_r.astype(np.float64) * 80.0  # invert log-ish byte → density proxy
+    # Exact inverse of settlements.population_to_byte (50*log10(p+1)): the byte
+    # channel is log-encoded, so a linear scale misreads mid-density towns as
+    # large cities when detect_city_cores re-bands them.
+    dens_float = np.float64(10.0) ** (pop_r.astype(np.float64) / 50.0) - 1.0
     settles = list(SEED_SETTLEMENTS)
     spath = pack_dir / "settlements.json"
     if spath.exists():

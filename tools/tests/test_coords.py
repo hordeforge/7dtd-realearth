@@ -21,3 +21,14 @@ def test_nyc_in_northern_hemisphere():
     assert -75 < lon < -73
     tx, tz = block_to_tile(x, z)
     assert tx >= 0 and tz >= 0
+
+
+def test_out_of_range_lon_folds_o1():
+    # Contract shared by tools/realearth/coords.py and EarthCoords.LonLatToBlock:
+    # any finite lon folds into [-180, 180) and maps to the same block as its
+    # wrapped value. The C# side must do this in O(1) (no per-360 decrement loop):
+    # a config typo like SpawnLongitude=1120000000000 froze the game thread there.
+    for raw in (540.0, 721.0, -190.0, -540.0, 200.0, -200.0):
+        x_raw, _ = lonlat_to_block(raw, 0.0)
+        x_wrapped, _ = lonlat_to_block(((raw + 180.0) % 360.0) - 180.0, 0.0)
+        assert x_raw == x_wrapped

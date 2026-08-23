@@ -104,3 +104,27 @@ def test_write_map_info_escapes_hostile_name(tmp_path: Path):
     root = ET.parse(p).getroot()
     props = {e.get("name"): e.get("value") for e in root.findall("property")}
     assert props["Description"] == f"RealEarth continuous single map: {hostile}"
+
+
+def test_population_byte_roundtrip_bands():
+    """Decoded density bytes must land in the same band the encoder saw.
+
+    bake_generated_world inverts settlements.population_to_byte (50*log10(p+1))
+    so detect_city_cores re-bands cores identically to the streamed path. The
+    old linear proxy (byte*80) read a ~1500 people/km2 town (byte 159) as 12720,
+    i.e. large_city instead of town.
+    """
+    from realearth.density import density_to_band
+    from realearth.settlements import population_to_byte
+
+    for people_km2, want_band in [
+        (1500.0, "town"),
+        (5000.0, "large_city"),
+        (15000.0, "metro"),
+        # Not exactly 80: one byte of quantization is ~2% there, so a value on
+        # the exact band boundary can decode just below it.
+        (100.0, "hamlet"),
+    ]:
+        byte = int(population_to_byte(np.array([people_km2]))[0])
+        decoded = 10.0 ** (byte / 50.0) - 1.0
+        assert density_to_band(decoded) == want_band
