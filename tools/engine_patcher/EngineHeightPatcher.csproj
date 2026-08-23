@@ -4,6 +4,13 @@
     <TargetFramework>net48</TargetFramework>
     <LangVersion>latest</LangVersion>
     <Nullable>enable</Nullable>
+    <!-- Analyzers as a gate (off by default for net48): warnings are errors.
+         Kept at the default analysis mode: Recommended/All fire CA1303/CA1305
+         localization pedantry on every CLI Console.WriteLine, noise this
+         offline tool should not drown in. Revisit if it grows a UI. -->
+    <EnableNETAnalyzers>true</EnableNETAnalyzers>
+    <AnalysisLevel>latest</AnalysisLevel>
+    <TreatWarningsAsErrors>true</TreatWarningsAsErrors>
     <AssemblyName>EngineHeightPatcher</AssemblyName>
     <RootNamespace>RealEarth.EnginePatcher</RootNamespace>
     <AppendTargetFrameworkToOutputPath>false</AppendTargetFrameworkToOutputPath>

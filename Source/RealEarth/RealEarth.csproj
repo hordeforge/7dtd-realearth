@@ -3,6 +3,15 @@
     <TargetFramework>net48</TargetFramework>
     <LangVersion>latest</LangVersion>
     <Nullable>enable</Nullable>
+    <!-- Static analysis as a gate: EnableNETAnalyzers defaults off for net48,
+         and warnings that stay warnings get ignored; both are raised to errors
+         so a defect cannot merge unseen. Tree builds warning-free today;
+         keep it that way. Next ratchet step is AnalysisMode=Recommended:
+         blocked today by legacy-convention findings (CA1707 underscore names
+         in 7DTD console commands, CA1051 public fields), not by noise alone. -->
+    <EnableNETAnalyzers>true</EnableNETAnalyzers>
+    <AnalysisLevel>latest</AnalysisLevel>
+    <TreatWarningsAsErrors>true</TreatWarningsAsErrors>
     <AllowUnsafeBlocks>false</AllowUnsafeBlocks>
     <AssemblyName>RealEarth</AssemblyName>
     <RootNamespace>RealEarth</RootNamespace>

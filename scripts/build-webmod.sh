@@ -31,6 +31,9 @@ npx --yes "esbuild@$esbuild_version" "$root/webmod/src/index.ts" \
 
 cp "$root/webmod/styling.css" "$out_dir/styling.css"
 
+# The single quotes are deliberate: this is a JS program passed verbatim to
+# node; letting the shell expand $-expressions here would corrupt it.
+# shellcheck disable=SC2016
 node -e '
 globalThis.window = globalThis;
 require(process.argv[1]);

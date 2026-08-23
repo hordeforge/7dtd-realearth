@@ -4,6 +4,11 @@
     <TargetFramework>net8.0</TargetFramework>
     <ImplicitUsings>enable</ImplicitUsings>
     <Nullable>enable</Nullable>
+    <!-- Analyzers as a gate: warnings are errors. Recommended mode passes
+         warning-free today (All fires CA1307 on the dump filters); keep it. -->
+    <AnalysisLevel>latest</AnalysisLevel>
+    <AnalysisMode>Recommended</AnalysisMode>
+    <TreatWarningsAsErrors>true</TreatWarningsAsErrors>
     <AssemblyName>7dtd-network-protocol-inspector</AssemblyName>
   </PropertyGroup>
   <ItemGroup>

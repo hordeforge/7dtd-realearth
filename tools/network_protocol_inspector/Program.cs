@@ -3,7 +3,7 @@ using Mono.Cecil.Cil;
 var asm=AssemblyDefinition.ReadAssembly(args[0]);
 var all=new List<TypeDefinition>();
 void Walk(TypeDefinition t){all.Add(t);foreach(var n in t.NestedTypes)Walk(n);}
-foreach(var t in asm.MainModule.Types) Walk(t);
+foreach(var ty in asm.MainModule.Types) Walk(ty);
 var t=all.First(x=>x.Name=="NetConnectionSimple");
 foreach(var m in t.Methods.Where(m=>m.Name.Contains("Write")||m.Name.Contains("Send")||m.Name.Contains("Compress")||m.Name.Contains("Reader")||m.Name.Contains("Append"))){
   Console.WriteLine("\n## "+m.Name);

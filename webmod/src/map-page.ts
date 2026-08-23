@@ -84,7 +84,7 @@ function elevationText(pack: LoadedPack | null, point: ProbePoint): string {
   const x = Math.min(elev.width - 1, Math.max(0, Math.trunc(point.u * elev.width)));
   const y = Math.min(elev.height - 1, Math.max(0, Math.trunc(point.v * elev.height)));
   const { data } = elev.ctx.getImageData(x, y, 1, 1);
-  const t = data[0] / BYTE_MAX;
+  const t = (data[0] ?? 0) / BYTE_MAX;
   const meters = pack.elevMeta.offset_m + t * pack.elevMeta.scale_m;
   return `${meters.toFixed(0)} m (approx)`;
 }

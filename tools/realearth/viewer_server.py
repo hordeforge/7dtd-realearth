@@ -68,7 +68,9 @@ class ViewerHandler(http.server.SimpleHTTPRequestHandler):
             return True
         return int(mtime) > since.timestamp()
 
-    def send_head(self):  # noqa: ANN201 - matches stdlib untyped signature
+    # No return annotation: this overrides stdlib's untyped
+    # BaseHTTPRequestHandler.send_head.
+    def send_head(self):
         accept = self.headers.get("Accept-Encoding", "")
         path = self.translate_path(self.path)
         suffix = os.path.splitext(path)[1].lower()

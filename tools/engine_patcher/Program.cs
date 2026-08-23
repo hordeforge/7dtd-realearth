@@ -147,7 +147,10 @@ namespace RealEarth.EnginePatcher
                     ".local/share/Steam/steamapps/common/7 Days To Die/7DaysToDie_Data/Managed/Assembly-CSharp.dll");
             }
 
-            if (!File.Exists(gameDll))
+            // Explicit null test (not just IsNullOrEmpty): net48 reference
+            // assemblies carry no nullable annotations, so only this pattern
+            // tells the compiler gameDll is non-null below.
+            if (gameDll is null || !File.Exists(gameDll))
             {
                 Console.Error.WriteLine("ERROR: Assembly-CSharp.dll not found: " + gameDll);
                 Console.Error.WriteLine("Pass --dll /path/to/Assembly-CSharp.dll");

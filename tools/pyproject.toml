@@ -38,4 +38,7 @@ target-version = "py311"
 # E501 enforces the 100-column cap; B is bug-prone patterns (zip strict,
 # loop-variable closures); I/SIM/C4/UP keep style mechanical and current.
 # All groups proven clean over realearth/ + tests/ before enabling.
+# RUF100 fails any noqa whose rule is not enabled or not triggered, so a
+# suppression cannot silently outlive its finding.
 select = ["E", "F", "W", "I", "B", "UP", "C4", "SIM"]
+extend-select = ["RUF100"]

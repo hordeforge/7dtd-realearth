@@ -33,6 +33,16 @@ jobs:
           key: oxlint-standards-${{ runner.os }}-${{ hashFiles('scripts/lint-viewer.sh', 'scripts/lint-webmod.sh') }}
           restore-keys: |
             oxlint-standards-${{ runner.os }}-
+      # C# analysis gate. The RealEarth mod DLL itself needs the proprietary
+      # game DLLs (Assembly-CSharp / UnityEngine.CoreModule) as references and
+      # can only be built on a machine with the game installed (see
+      # AGENTS.md "Build / install"); stubs would manufacture false confidence.
+      # NetworkProtocolInspector builds standalone against NuGet Mono.Cecil and
+      # runs with TreatWarningsAsErrors + analyzers on, so CI still compiles
+      # and analyzer-gates what can be compiled here.
+      - uses: actions/setup-dotnet@67a3573c9a986a3f9c594539f4ab511d57bb3ce9 # v4
+      - run: dotnet build tools/network_protocol_inspector/NetworkProtocolInspector.csproj -c Release
+      - run: shellcheck scripts/*.sh
       - run: make test-fast
       - run: make -C tools lint
       - run: bash scripts/lint-viewer.sh

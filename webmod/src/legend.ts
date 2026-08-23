@@ -7,6 +7,13 @@ export type LegendRow = {
   label: string;
 };
 
+// The fallback lives outside the Record so its type stays concrete under
+// noUncheckedIndexedAccess (index-signature lookups are T | undefined).
+const HYBRID_LEGEND: ReadonlyArray<LegendRow> = [
+  { color: "#3dd6c6", label: "Terrain + cover blend" },
+  { color: "#f0a500", label: "Settlement markers" },
+];
+
 const LEGENDS: Record<string, ReadonlyArray<LegendRow>> = {
   elevation: [
     { color: "#0a285a", label: "Deep / ocean" },
@@ -28,13 +35,9 @@ const LEGENDS: Record<string, ReadonlyArray<LegendRow>> = {
     { color: "#f07020", label: "Medium" },
     { color: "#ff2020", label: "High" },
   ],
-  hybrid: [
-    { color: "#3dd6c6", label: "Terrain + cover blend" },
-    { color: "#f0a500", label: "Settlement markers" },
-  ],
+  hybrid: HYBRID_LEGEND,
 };
 
 export function legendFor(layerId: string): ReadonlyArray<LegendRow> {
-  const rows = LEGENDS[layerId];
-  return rows === undefined ? LEGENDS.hybrid : rows;
+  return LEGENDS[layerId] ?? HYBRID_LEGEND;
 }

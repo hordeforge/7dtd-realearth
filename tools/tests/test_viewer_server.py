@@ -82,7 +82,9 @@ def test_parallel_requests_are_concurrent(server: str):
     def fetch(path: str) -> None:
         try:
             responses.append(httpx.get(f"{server}{path}", headers={"Accept-Encoding": "gzip"}))
-        except Exception as exc:  # noqa: BLE001 - surfaced via the assertion below
+        # Broad catch is deliberate: any transport failure is collected and
+        # asserted below, so the test reports it instead of the thread dying.
+        except Exception as exc:
             errors.append(exc)
 
     threads = [threading.Thread(target=fetch, args=(p,)) for p in paths]
