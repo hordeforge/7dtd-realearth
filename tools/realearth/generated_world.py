@@ -19,7 +19,7 @@ from xml.sax.saxutils import escape as saxutils_escape
 import numpy as np
 from PIL import Image
 
-from realearth.bake_world import snap_world_size
+from realearth.bake_world import resize_arrays, snap_world_size
 from realearth.density import (
     apply_urban_from_density,
     detect_city_cores,
@@ -340,23 +340,7 @@ def bake_generated_world(
     bbox = man.bbox or {"west": -180, "south": -90, "east": 180, "north": 90}
 
     # Resize to world size
-    elev_i = Image.fromarray(np.asarray(elev, dtype=np.float32), mode="F")
-    elev_r = np.asarray(elev_i.resize((size, size), Image.Resampling.BILINEAR), dtype=np.float32)
-    lc_r = np.asarray(
-        Image.fromarray(np.asarray(lc, dtype=np.uint8), mode="L").resize(
-            (size, size), Image.Resampling.NEAREST
-        ),
-        dtype=np.uint8,
-    )
-    if pop is not None:
-        pop_r = np.asarray(
-            Image.fromarray(np.asarray(pop, dtype=np.uint8), mode="L").resize(
-                (size, size), Image.Resampling.BILINEAR
-            ),
-            dtype=np.uint8,
-        )
-    else:
-        pop_r = np.zeros((size, size), dtype=np.uint8)
+    elev_r, lc_r, pop_r = resize_arrays(elev, lc, pop, size)
 
     # Urban biome from density
     lc_r = apply_urban_from_density(lc_r, pop_r, urban_threshold=90)

@@ -25,6 +25,11 @@ namespace RealEarth
         const ushort FlagLc = 1 << 1;
         const ushort FlagPoi = 1 << 2;
 
+        /// <summary>RTE1 magic check for an in-memory tile header.</summary>
+        public static bool HasMagic(byte[] head)
+            => head.Length >= 4 && head[0] == (byte)'R' && head[1] == (byte)'T'
+                && head[2] == (byte)'E' && head[3] == (byte)'1';
+
         /// <summary>
         /// Upper bound on tile samples (w*h). Real packs use 512x512; this only rejects
         /// hostile headers that would otherwise allocate unbounded memory.
@@ -42,8 +47,7 @@ namespace RealEarth
             using var ms = new MemoryStream(data);
             using var br = new BinaryReader(ms);
             var magic = br.ReadBytes(4);
-            if (magic.Length != 4 || magic[0] != (byte)'R' || magic[1] != (byte)'T'
-                || magic[2] != (byte)'E' || magic[3] != (byte)'1')
+            if (!HasMagic(magic))
             {
                 throw new InvalidDataException("Not an RTE1 tile");
             }

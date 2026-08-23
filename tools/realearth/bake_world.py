@@ -32,10 +32,10 @@ def snap_world_size(size: int) -> int:
     return max(2048, min(16384, int(round(size / 2048.0) * 2048)))
 
 
-def _resize_arrays(
+def resize_arrays(
     elev: np.ndarray,
     lc: np.ndarray,
-    pop: np.ndarray,
+    pop: np.ndarray | None,
     size: int,
 ) -> tuple[np.ndarray, np.ndarray, np.ndarray]:
     """Resize mosaics to square `size` x `size` for a single continuous world."""
@@ -47,12 +47,15 @@ def _resize_arrays(
         ),
         dtype=np.uint8,
     )
-    pop_r = np.asarray(
-        Image.fromarray(np.asarray(pop, dtype=np.uint8), mode="L").resize(
-            (size, size), Image.Resampling.BILINEAR
-        ),
-        dtype=np.uint8,
-    )
+    if pop is not None:
+        pop_r = np.asarray(
+            Image.fromarray(np.asarray(pop, dtype=np.uint8), mode="L").resize(
+                (size, size), Image.Resampling.BILINEAR
+            ),
+            dtype=np.uint8,
+        )
+    else:
+        pop_r = np.zeros((size, size), dtype=np.uint8)
     return elev_r, lc_r, pop_r
 
 
@@ -77,7 +80,7 @@ def bake_world_from_pack(
     man: Manifest = data["manifest"]
     world_name = name or man.name or "RealEarth"
 
-    elev_r, lc_r, pop_r = _resize_arrays(elev, lc, pop, size)
+    elev_r, lc_r, pop_r = resize_arrays(elev, lc, pop, size)
     game_y = compress_elevation(elev_r, sea_level_y=sea_level_y)
 
     export_dir = out_dir / "export_7dtd"

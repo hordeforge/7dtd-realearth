@@ -699,7 +699,7 @@ namespace RealEarth
                         try
                         {
                             ChunkTerrainInject.ReinjectLoadedChunksAround(
-                                OriginSlideRemap.GetEngineWorld(), nx, nz);
+                                ReflectCache.GetEngineWorld(), nx, nz);
                         }
                         catch { /* never break slide path */ }
                     }
@@ -1119,9 +1119,9 @@ namespace RealEarth
                     var vecType = ps[0].ParameterType;
                     var vec = Activator.CreateInstance(vecType);
                     if (vec == null) continue;
-                    WriteComp(vec, "x", x);
-                    WriteComp(vec, "y", y);
-                    WriteComp(vec, "z", z);
+                    ReflectCache.WriteComp(vec, "x", x);
+                    ReflectCache.WriteComp(vec, "y", y);
+                    ReflectCache.WriteComp(vec, "z", z);
                     m.Invoke(entity, new[] { vec });
                     return true;
                 }
@@ -1133,18 +1133,5 @@ namespace RealEarth
             return false;
         }
 
-        static void WriteComp(object vec, string name, float value)
-        {
-            var t = vec.GetType();
-            var f = t.GetField(name);
-            if (f != null)
-            {
-                f.SetValue(vec, Convert.ChangeType(value, f.FieldType));
-                return;
-            }
-            var p = t.GetProperty(name);
-            if (p != null && p.CanWrite)
-                p.SetValue(vec, Convert.ChangeType(value, p.PropertyType), null);
-        }
     }
 }

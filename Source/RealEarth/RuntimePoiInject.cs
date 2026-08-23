@@ -141,20 +141,7 @@ namespace RealEarth
 
                         string chunkKey = FloorDiv(cx, 16).ToString(CultureInfo.InvariantCulture) + ":" +
                                           FloorDiv(cz, 16).ToString(CultureInfo.InvariantCulture);
-                        int inChunk = _chunkCounts.TryGetValue(chunkKey, out int c) ? c : 0;
-                        if (DensityBudget.ClampPrefabsInChunk(inChunk + 1) <= inChunk)
-                            continue;
-
-                        if (TryStampPlace(session, p, cx, cz))
-                        {
-                            _placed.Add(p.Name);
-                            _chunkCounts[chunkKey] = inChunk + 1;
-                            _sessionStamps++;
-                        }
-                        else
-                        {
-                            _failCount[p.Name] = fails + 1;
-                        }
+                        StampWithBudget(session, p, cx, cz, chunkKey);
                     }
                 }
             }
@@ -208,20 +195,7 @@ namespace RealEarth
                         if (cx < minX || cx >= maxX || cz < minZ || cz >= maxZ)
                             continue;
 
-                        int inChunk = _chunkCounts.TryGetValue(chunkKey, out int c) ? c : 0;
-                        if (DensityBudget.ClampPrefabsInChunk(inChunk + 1) <= inChunk)
-                            continue;
-
-                        if (TryStampPlace(session, p, cx, cz))
-                        {
-                            _placed.Add(p.Name);
-                            _chunkCounts[chunkKey] = inChunk + 1;
-                            _sessionStamps++;
-                        }
-                        else
-                        {
-                            _failCount[p.Name] = fails + 1;
-                        }
+                        StampWithBudget(session, p, cx, cz, chunkKey);
                     }
                 }
             }
@@ -231,6 +205,27 @@ namespace RealEarth
                 {
                     ModApi.Log("RuntimePoiInject chunk: " + ex.Message);
                 }
+            }
+        }
+
+        /// <summary>
+        /// Shared stamp tail for TickPlayer / OnChunkGenerated (caller holds _stampGate):
+        /// chunk-budget gate, place attempt, and success/fail accounting.
+        /// </summary>
+        static void StampWithBudget(WorldSession session, CityMapLabels.Place p, int cx, int cz, string chunkKey)
+        {
+            int inChunk = _chunkCounts.TryGetValue(chunkKey, out int c) ? c : 0;
+            if (DensityBudget.ClampPrefabsInChunk(inChunk + 1) <= inChunk)
+                return;
+            if (TryStampPlace(session, p, cx, cz))
+            {
+                _placed.Add(p.Name);
+                _chunkCounts[chunkKey] = inChunk + 1;
+                _sessionStamps++;
+            }
+            else
+            {
+                _failCount[p.Name] = (_failCount.TryGetValue(p.Name, out int fails) ? fails : 0) + 1;
             }
         }
 
@@ -290,7 +285,7 @@ namespace RealEarth
                     : getPrefab.Invoke(pm, new object[] { prefabName, true });
                 if (prefab == null) return false;
 
-                object? world = GetWorld();
+                object? world = ReflectCache.GetEngineWorld();
                 if (world == null) return false;
                 foreach (var m in world.GetType().GetMethods(BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic))
                 {
@@ -312,9 +307,9 @@ namespace RealEarth
                                 var vec = Activator.CreateInstance(ps[i].ParameterType);
                                 if (vec != null)
                                 {
-                                    WriteComp(vec, "x", x + 0.5f);
-                                    WriteComp(vec, "y", y);
-                                    WriteComp(vec, "z", z + 0.5f);
+                                    ReflectCache.WriteComp(vec, "x", x + 0.5f);
+                                    ReflectCache.WriteComp(vec, "y", y);
+                                    ReflectCache.WriteComp(vec, "z", z + 0.5f);
                                 }
                                 args[i] = vec;
                             }
@@ -352,17 +347,6 @@ namespace RealEarth
             return (a - (b - 1)) / b;
         }
 
-        static object? GetWorld()
-        {
-            try
-            {
-                var gmType = Type.GetType("GameManager, Assembly-CSharp");
-                var inst = gmType?.GetProperty("Instance")?.GetValue(null);
-                return inst?.GetType().GetProperty("World")?.GetValue(inst);
-            }
-            catch { return null; }
-        }
-
         static Type? FindType(string name)
         {
             foreach (var asm in AppDomain.CurrentDomain.GetAssemblies())
@@ -380,20 +364,6 @@ namespace RealEarth
                 catch { /* ignore */ }
             }
             return null;
-        }
-
-        static void WriteComp(object vec, string name, float value)
-        {
-            var t = vec.GetType();
-            var f = t.GetField(name);
-            if (f != null)
-            {
-                f.SetValue(vec, Convert.ChangeType(value, f.FieldType));
-                return;
-            }
-            var p = t.GetProperty(name);
-            if (p != null && p.CanWrite)
-                p.SetValue(vec, Convert.ChangeType(value, p.PropertyType), null);
         }
     }
 }

@@ -134,12 +134,6 @@ function loadImage(url) {
   });
 }
 
-// Optional sibling artifact; absence is not a failure.
-async function fetchSettlements(baseUrl) {
-  const res = await fetch(`${baseUrl}/settlements.json`).catch(() => null);
-  return res && res.ok ? res.json() : [];
-}
-
 async function fetchElevationRaw(baseUrl, elevMeta) {
   if (!elevMeta || !elevMeta.file) {
     return null;
@@ -154,13 +148,6 @@ async function fetchElevationRaw(baseUrl, elevMeta) {
   const ctx = c.getContext("2d", { willReadFrequently: true });
   ctx.drawImage(img, 0, 0);
   return { ctx, w: c.width, h: c.height };
-}
-
-async function fetchLayerImages(baseUrl, layers) {
-  const pairs = await Promise.all(
-    layers.map(async (layer) => [layer.id, await loadImage(`${baseUrl}/${layer.file}`)])
-  );
-  return Object.fromEntries(pairs);
 }
 
 function describePack(meta, layers) {
@@ -192,16 +179,23 @@ async function loadPack(baseUrl) {
   state.meta = meta;
 
   fillLayers(meta);
-  const layers = listOrEmpty(meta.layers);
-  describePack(meta, layers);
+  describePack(meta, listOrEmpty(meta.layers));
 
   // viewer.json only names the artifacts; fetch them all in parallel instead of
   // a meta → settlements → image-per-image → elev chain.
   const elevMeta = objOrEmpty(meta.elev_raw);
   state.elevMeta = elevMeta.file ? elevMeta : null;
   const [settlements, images, elevRaw] = await Promise.all([
-    fetchSettlements(state.baseUrl),
-    fetchLayerImages(state.baseUrl, layers),
+    // optional sibling artifact; absence is not a failure
+    fetch(`${state.baseUrl}/settlements.json`)
+      .then((response) => (response && response.ok ? response.json() : []))
+      .catch(() => []),
+    Promise.all(
+      listOrEmpty(meta.layers).map(async (layer) => [
+        layer.id,
+        await loadImage(`${state.baseUrl}/${layer.file}`),
+      ])
+    ).then(Object.fromEntries),
     fetchElevationRaw(state.baseUrl, state.elevMeta),
   ]);
   state.settlements = settlements;
@@ -242,13 +236,9 @@ function applyLayer() {
     });
     return;
   }
-  showOnGlobe(img);
-}
-
-// Globe mode pulls three.js from the CDN on first use; until it resolves the
-// HUD says so, and a failed import reports and falls back to the flat map
-// instead of leaving a dead globe host.
-function showOnGlobe(img) {
+  // Globe mode pulls three.js from the CDN on first use; until it resolves the
+  // HUD says so, and a failed import reports and falls back to the flat map
+  // instead of leaving a dead globe host.
   setStatus("Loading globe…");
   ensureGlobe()
     .then((globe) => {
@@ -313,9 +303,8 @@ function updateProbe(p) {
     const x = Math.min(state.elevRaw.w - 1, Math.max(0, Math.floor(p.u * state.elevRaw.w)));
     const y = Math.min(state.elevRaw.h - 1, Math.max(0, Math.floor(p.v * state.elevRaw.h)));
     const pix = state.elevRaw.ctx.getImageData(x, y, 1, 1).data;
-    // PNG 16-bit may be read as 8-bit per channel in canvas; use red as coarse proxy if needed
-    // Prefer luminance of exported elevation_raw (16-bit becomes dual-byte in some browsers).
-    // Our export is single-channel I;16; browsers often expand. Fall back to R channel scale.
+    // Exported elevation_raw is single-channel I;16 but canvas often decodes it
+    // as one 8-bit byte per pixel; the first channel is a coarse height proxy.
     const t = pix[0] / 255;
     const elev = numOrZero(state.elevMeta.offset_m) + t * (numOrZero(state.elevMeta.scale_m) || 4500);
     elevText = `${elev.toFixed(0)} m (approx)`;

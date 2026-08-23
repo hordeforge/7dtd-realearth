@@ -62,5 +62,32 @@ namespace RealEarth
             }
             return false;
         }
+
+        /// <summary>GameManager.Instance.World via reflection (null when unavailable).</summary>
+        public static object? GetEngineWorld()
+        {
+            try
+            {
+                var gmType = Type.GetType("GameManager, Assembly-CSharp");
+                var inst = gmType?.GetProperty("Instance")?.GetValue(null);
+                return inst?.GetType().GetProperty("World")?.GetValue(inst);
+            }
+            catch { return null; }
+        }
+
+        /// <summary>Set a named float member on a reflected Vector3-like struct.</summary>
+        public static void WriteComp(object vec, string name, float value)
+        {
+            var t = vec.GetType();
+            var f = t.GetField(name);
+            if (f != null)
+            {
+                f.SetValue(vec, Convert.ChangeType(value, f.FieldType));
+                return;
+            }
+            var p = t.GetProperty(name);
+            if (p != null && p.CanWrite)
+                p.SetValue(vec, Convert.ChangeType(value, p.PropertyType), null);
+        }
     }
 }

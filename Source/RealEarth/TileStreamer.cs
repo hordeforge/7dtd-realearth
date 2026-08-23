@@ -353,9 +353,7 @@ namespace RealEarth
             try
             {
                 var bytes = FetchTileBytesAsync(url).ConfigureAwait(false).GetAwaiter().GetResult();
-                if (bytes == null || bytes.Length < 8
-                    || bytes[0] != (byte)'R' || bytes[1] != (byte)'T'
-                    || bytes[2] != (byte)'E' || bytes[3] != (byte)'1')
+                if (bytes == null || bytes.Length < 8 || !RteTile.HasMagic(bytes))
                 {
                     ModApi.Log($"CDN sync tile {tx},{tz}: bad payload");
                     MarkMiss(key);
@@ -525,9 +523,7 @@ namespace RealEarth
                         return;
                     }
                     bytes = await FetchTileBytesAsync(url).ConfigureAwait(false);
-                    if (bytes == null || bytes.Length < 8
-                        || bytes[0] != (byte)'R' || bytes[1] != (byte)'T'
-                        || bytes[2] != (byte)'E' || bytes[3] != (byte)'1')
+                    if (bytes == null || bytes.Length < 8 || !RteTile.HasMagic(bytes))
                     {
                         ModApi.Log($"CDN tile {tx},{tz}: bad payload (not RTE1)");
                         MarkMiss(key);

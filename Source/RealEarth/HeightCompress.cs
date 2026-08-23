@@ -74,33 +74,11 @@ namespace RealEarth
                 double drop = shallow * 14.0 + deep * (seaLevelY - minY - 14);
                 y = seaLevelY - drop;
             }
-            else if (maxY <= 255)
-            {
-                // Classic relative curve into a short band
-                double h = elevM;
-                int yLowEnd = seaLevelY + 48;
-                int yMidEnd = seaLevelY + 148;
-                int yHighEnd = maxY;
-                if (h <= 500)
-                {
-                    double t = h / 500.0;
-                    y = seaLevelY + t * (yLowEnd - seaLevelY);
-                }
-                else if (h <= 3000)
-                {
-                    double t = (h - 500.0) / 2500.0;
-                    y = yLowEnd + t * (yMidEnd - yLowEnd);
-                }
-                else
-                {
-                    double t = Math.Min(Math.Max((h - 3000.0) / 6000.0, 0), 1);
-                    t = 1.0 - Math.Pow(1.0 - t, 1.4);
-                    y = yMidEnd + t * (yHighEnd - yMidEnd);
-                }
-            }
             else
             {
-                // Tall band (Everest + fly room): stretch piecewise curve across full maxY
+                // Piecewise relative curve across [seaLevelY..maxY]; the anchors stretch
+                // with maxY, so short bands keep the classic shape while tall bands
+                // (Everest + fly room) spread over the full ceiling.
                 double h = elevM;
                 int yLowEnd = seaLevelY + Math.Max(48, maxY / 16);
                 int yMidEnd = seaLevelY + Math.Max(148, maxY / 3);

@@ -106,7 +106,7 @@ namespace RealEarth
 
             try
             {
-                object? world = GetWorld();
+                object? world = ReflectCache.GetEngineWorld();
                 if (world == null) return null;
                 foreach (var mn in new[] { "GetPersistentPlayerList", "GetPersistentPlayers" })
                 {
@@ -184,7 +184,7 @@ namespace RealEarth
             int n = 0;
             try
             {
-                object? world = GetWorld();
+                object? world = ReflectCache.GetEngineWorld();
                 if (world == null) return 0;
 
                 // World.Entities (EntityList / dictionary / list)
@@ -459,20 +459,6 @@ namespace RealEarth
             catch { return null; }
         }
 
-        /// <summary>Engine World via GameManager.Instance (shared with slide remap paths).</summary>
-        internal static object? GetEngineWorld() => GetWorld();
-
-        static object? GetWorld()
-        {
-            try
-            {
-                var gmType = Type.GetType("GameManager, Assembly-CSharp");
-                var inst = gmType?.GetProperty("Instance")?.GetValue(null);
-                return inst?.GetType().GetProperty("World")?.GetValue(inst);
-            }
-            catch { return null; }
-        }
-
         static Type? FindType(string name)
         {
             foreach (var asm in AppDomain.CurrentDomain.GetAssemblies())
@@ -548,9 +534,9 @@ namespace RealEarth
                     var vecType = ps[0].ParameterType;
                     var vec = Activator.CreateInstance(vecType);
                     if (vec == null) continue;
-                    WriteComp(vec, "x", x);
-                    WriteComp(vec, "y", y);
-                    WriteComp(vec, "z", z);
+                    ReflectCache.WriteComp(vec, "x", x);
+                    ReflectCache.WriteComp(vec, "y", y);
+                    ReflectCache.WriteComp(vec, "z", z);
                     m.Invoke(entity, new[] { vec });
                     return true;
                 }
@@ -558,9 +544,9 @@ namespace RealEarth
                 object? pos = t.GetField("position", BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic)?.GetValue(entity);
                 if (pos != null)
                 {
-                    WriteComp(pos, "x", x);
-                    WriteComp(pos, "y", y);
-                    WriteComp(pos, "z", z);
+                    ReflectCache.WriteComp(pos, "x", x);
+                    ReflectCache.WriteComp(pos, "y", y);
+                    ReflectCache.WriteComp(pos, "z", z);
                     return true;
                 }
             }
@@ -568,18 +554,5 @@ namespace RealEarth
             return false;
         }
 
-        static void WriteComp(object vec, string name, float value)
-        {
-            var t = vec.GetType();
-            var f = t.GetField(name);
-            if (f != null)
-            {
-                f.SetValue(vec, Convert.ChangeType(value, f.FieldType));
-                return;
-            }
-            var p = t.GetProperty(name);
-            if (p != null && p.CanWrite)
-                p.SetValue(vec, Convert.ChangeType(value, p.PropertyType), null);
-        }
     }
 }
