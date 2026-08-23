@@ -46,3 +46,4 @@ Thumbs.db
 
 # uv cache
 .uv-cache/
+*.lock
