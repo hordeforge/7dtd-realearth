@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Generic;
 using System.IO;
 using System.Runtime.Serialization;
 using System.Runtime.Serialization.Json;
@@ -148,6 +149,109 @@ namespace RealEarth
         public bool HasRegionalBbox =>
             BboxEast > BboxWest && BboxNorth > BboxSouth;
 
+        /// <summary>
+        /// Startup guard: clamp out-of-range numerics to safe values and collect warnings
+        /// for unknown enum-like strings. Runs once at init so bad config fails loud
+        /// instead of misbehaving mid-session. Returns one message per issue found.
+        /// </summary>
+        public IReadOnlyList<string> Validate()
+        {
+            var warnings = new List<string>();
+
+            if (!MapMode.Equals("Streamed", StringComparison.OrdinalIgnoreCase)
+                && !MapMode.Equals("Baked", StringComparison.OrdinalIgnoreCase))
+                warnings.Add(
+                    $"MapMode '{MapMode}' is not Streamed|Baked; treated as Streamed (anything but Baked).");
+
+            var origin = (MultiplayerOriginMode ?? "").Trim();
+            if (!origin.Equals("SoloSlide", StringComparison.OrdinalIgnoreCase)
+                && !origin.Equals("SharedFixed", StringComparison.OrdinalIgnoreCase)
+                && !origin.Equals("SharedSlide", StringComparison.OrdinalIgnoreCase))
+                warnings.Add(
+                    $"MultiplayerOriginMode '{MultiplayerOriginMode}' is not " +
+                    "SoloSlide|SharedFixed|SharedSlide; unknown modes slide only when clearly solo.");
+
+            if (WorldWidth <= 0)
+            {
+                WorldWidth = 40_075_017;
+                warnings.Add("WorldWidth <= 0; reset to full-planet width.");
+            }
+            if (WorldHeight <= 0)
+            {
+                WorldHeight = 20_003_931;
+                warnings.Add("WorldHeight <= 0; reset to full-planet height.");
+            }
+            if (TileSize <= 0)
+            {
+                TileSize = 512;
+                warnings.Add("TileSize <= 0; reset to 512.");
+            }
+            if (StreamRadiusTiles < 0)
+            {
+                StreamRadiusTiles = 0;
+                warnings.Add("StreamRadiusTiles < 0; reset to 0.");
+            }
+            if (UnloadRadiusTiles < StreamRadiusTiles)
+            {
+                UnloadRadiusTiles = StreamRadiusTiles + 1;
+                warnings.Add(
+                    $"UnloadRadiusTiles must exceed StreamRadiusTiles; reset to {UnloadRadiusTiles}.");
+            }
+            if (LocalWindowSize <= 0)
+            {
+                LocalWindowSize = Math.Min(WorldWidth, WorldHeight);
+                warnings.Add($"LocalWindowSize <= 0; reset to {LocalWindowSize}.");
+            }
+            if (SeaLevelGameY <= 0)
+            {
+                SeaLevelGameY = 100;
+                warnings.Add("SeaLevelGameY <= 0; reset to 100.");
+            }
+            if (EngineMaxGameY <= SeaLevelGameY)
+                warnings.Add(
+                    $"EngineMaxGameY ({EngineMaxGameY}) <= SeaLevelGameY ({SeaLevelGameY}); " +
+                    "height mapping collapses, raise EngineMaxGameY.");
+
+            if (CityMapMinPopulation < 0)
+            {
+                CityMapMinPopulation = 0;
+                warnings.Add("CityMapMinPopulation < 0; reset to 0.");
+            }
+            if (CityMapMaxLabels < 0)
+            {
+                CityMapMaxLabels = 250;
+                warnings.Add("CityMapMaxLabels < 0; reset to 250.");
+            }
+            if (CityMapDiscoverRadiusScale <= 0f)
+            {
+                CityMapDiscoverRadiusScale = 1.0f;
+                warnings.Add("CityMapDiscoverRadiusScale <= 0; reset to 1.0.");
+            }
+            if (RuntimePoiMaxPerArea < 0)
+            {
+                RuntimePoiMaxPerArea = 80;
+                warnings.Add("RuntimePoiMaxPerArea < 0; reset to 80.");
+            }
+            if (FullSolidBlockFillMaxSurface < 0)
+            {
+                FullSolidBlockFillMaxSurface = 0;
+                warnings.Add("FullSolidBlockFillMaxSurface < 0; reset to 0.");
+            }
+
+            if (SpawnLongitude < -180 || SpawnLongitude > 180
+                || SpawnLatitude < -90 || SpawnLatitude > 90)
+                warnings.Add(
+                    $"SpawnLongitude/Latitude ({SpawnLongitude}, {SpawnLatitude}) " +
+                    "outside [-180,180] x [-90,90] degrees.");
+            if (DefaultSpawnLon < -180 || DefaultSpawnLon > 180
+                || DefaultSpawnLat < -90 || DefaultSpawnLat > 90)
+                warnings.Add(
+                    $"DefaultSpawnLon/Lat ({DefaultSpawnLon}, {DefaultSpawnLat}) " +
+                    "outside [-180,180] x [-90,90] degrees.");
+
+            return warnings;
+        }
+
         public static RealEarthConfig Load(string path)
         {
             if (!File.Exists(path))
@@ -167,9 +271,19 @@ namespace RealEarth
                 return cfg;
             }
 
-            using var fs = File.OpenRead(path);
-            var ser = new DataContractJsonSerializer(typeof(RealEarthConfig));
-            return ser.ReadObject(fs) as RealEarthConfig ?? new RealEarthConfig();
+            try
+            {
+                using var fs = File.OpenRead(path);
+                var ser = new DataContractJsonSerializer(typeof(RealEarthConfig));
+                return ser.ReadObject(fs) as RealEarthConfig ?? new RealEarthConfig();
+            }
+            catch (Exception ex)
+            {
+                throw new InvalidOperationException(
+                    $"Config '{path}' is not a valid realearth.json ({ex.Message}). " +
+                    "Fix or delete the file; built-in defaults apply until then.",
+                    ex);
+            }
         }
 
         public void Save(string path)

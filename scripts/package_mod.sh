@@ -26,17 +26,18 @@ cfg.setdefault("LocalWindowSize", 1024)
 cfg.setdefault("MultiplayerOriginMode", "SoloSlide")
 cfg.setdefault("StreamRadiusTiles", 2)
 cfg.setdefault("UnloadRadiusTiles", 4)
-# StockSafe = fallback until Tools/apply_engine_expand runs (expand is part of RealEarth)
+# Real-height product default (HEIGHT_LIMITS.md): expand required, no compression.
 cfg["EngineHeightStockSafe"] = False
-cfg.setdefault("DebugRevealFullMap", True)
+# Debug FOW keys stay OFF in shipped packages (dev values: reveal=true, radius=128).
+cfg.setdefault("DebugRevealFullMap", False)
 cfg.setdefault("ShowCityNamesOnMap", True)
 cfg.setdefault("CityMapDiscoverRadiusScale", 1.0)
-cfg.setdefault("DebugMapRevealRadiusChunks", 128)
+cfg.setdefault("DebugMapRevealRadiusChunks", 0)
 cfg.setdefault("EnableEngineHeightMod", True)
 with open(path, "w", encoding="utf-8") as f:
     json.dump(cfg, f, indent=2)
     f.write("\n")
-print("packaged config (StockSafe fallback until YDim expand)")
+print("packaged config (real-height product defaults, debug FOW off)")
 PY
 fi
 if [[ -f "$ROOT/Config/realearth.advanced_height.json" ]]; then

@@ -40,6 +40,8 @@ namespace RealEarth
                 }
 
                 Config = RealEarthConfig.Load(Path.Combine(ModPath, "Config", "realearth.json"));
+                foreach (var warning in Config.Validate())
+                    Log($"config: {warning}");
 
                 var tileRoot = Path.IsPathRooted(Config.TilePackPath)
                     ? Config.TilePackPath

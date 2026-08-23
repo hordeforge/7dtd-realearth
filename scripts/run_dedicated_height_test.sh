@@ -10,6 +10,15 @@ CONFIG="$ROOT/scripts/serverconfig_height_test.xml"
 WORLD_NAME="${RE_WORLD_NAME:-RealEarth_H500}"
 WAIT_SEC="${RE_SERVER_WAIT:-180}"
 SOAK_SEC="${RE_SERVER_SOAK:-35}"
+for pair in "RE_SERVER_WAIT:$WAIT_SEC" "RE_SERVER_SOAK:$SOAK_SEC"; do
+  v="${pair#*:}"
+  case "$v" in
+    ""|*[!0-9]*)
+      echo "ERROR: ${pair%%:*} must be a non-negative integer (got: $v)" >&2
+      exit 1
+      ;;
+  esac
+done
 SCRATCH_OUT="${RE_SCRATCH:-}"
 DOTNET_ROOT="${DOTNET_ROOT:-$HOME/.cache/dotnet-sdk}"
 export PATH="${DOTNET_ROOT}:${PATH}"
@@ -165,6 +174,12 @@ rm -rf "$USERDATA/Saves/HeightTest500" "$USERDATA/Saves/$WORLD_NAME" 2>/dev/null
 
 # Point serverconfig GameWorld + raise max players for 1000+ simulated-client load
 MAX_PLAYERS="${RE_SERVER_MAX_PLAYERS:-1024}"
+case "$MAX_PLAYERS" in
+  ""|*[!0-9]*|0)
+    echo "ERROR: RE_SERVER_MAX_PLAYERS must be a positive integer (got: $MAX_PLAYERS)" >&2
+    exit 1
+    ;;
+esac
 TMPCFG="$USERDATA/serverconfig_height_test.xml"
 python3 - <<PY
 from pathlib import Path

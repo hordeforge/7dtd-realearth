@@ -81,8 +81,15 @@ install_mod() {
   [[ -f "$ROOT/Config/realearth.advanced_height.json" ]] && \
     cp -f "$ROOT/Config/realearth.advanced_height.json" "$dest/Config/"
 
-  # MAP_MODE=Streamed (default for 1:1 inject) or Baked (finite DTM world)
-  local map_mode="${MAP_MODE:-Streamed}"
+# MAP_MODE=Streamed (default for 1:1 inject) or Baked (finite DTM world)
+local map_mode="${MAP_MODE:-Streamed}"
+case "$map_mode" in
+  Streamed|Baked) ;;
+  *)
+    echo "ERROR: MAP_MODE must be Streamed or Baked (got: $map_mode)" >&2
+    exit 1
+    ;;
+esac
   if command -v python3 >/dev/null; then
     python3 - <<'PY' "$dest/Config/realearth.json" "$map_mode" "$ROOT/data/samples/demo_region"
 import json, sys
@@ -102,7 +109,10 @@ cfg["TilePackPath"] = "Data/tiles"
 cfg["DebugRevealFullMap"] = bool(cfg.get("DebugRevealFullMap", False))
 # Height: RealEarth YDim expand is part of this mod (Tools/). StockSafe = fallback only.
 cfg["EnableEngineHeightMod"] = bool(cfg.get("EnableEngineHeightMod", True))
-cfg["EngineHeightStockSafe"] = bool(cfg.get("EngineHeightStockSafe", True))
+# Product rule: real meters (1 m = 1 block). StockSafe must default off (HEIGHT_LIMITS.md).
+if "EngineHeightStockSafe" not in cfg:
+    print("WARN: EngineHeightStockSafe missing from source config; defaulting to false")
+cfg["EngineHeightStockSafe"] = bool(cfg.get("EngineHeightStockSafe", False))
 cfg["EngineMaxGameY"] = int(cfg.get("EngineMaxGameY") or 11000)
 cfg["EngineHeightOneToOne"] = bool(cfg.get("EngineHeightOneToOne", True))
 cfg["EngineHeightPreferVanillaCeiling"] = bool(

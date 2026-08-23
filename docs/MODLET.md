@@ -64,16 +64,62 @@ Optional experiment only: set `EngineHeightStockSafe=true` to compress into ~0-2
 ## Config
 
 - Default `Config/realearth.json`: real height (`EngineHeightStockSafe=false`, `EngineHeightOneToOne=true`). Use `make install-full`.
-- `Config/realearth.advanced_height.json`: tall-profile template (Everest spawn; same policy).
+- `Config/realearth.advanced_height.json`: tall-profile template (Everest spawn; dev FOW on).
+
+At init the mod validates the config and logs one `[RealEarth] config:` line per issue,
+clamping out-of-range numbers to safe values (unknown `MapMode` behaves as Streamed).
+Install/package scripts (`make install`, `make package`) reject `MAP_MODE` values other
+than `Streamed|Baked`.
+
+### Environment variables (install + dedicated helpers)
+
+All optional; defaults shown. Scripts fail fast when numeric values are invalid.
+
+| Variable | Default | Used by |
+|---|---|---|
+| `SEVENDTD_GAME_DIR` | Steam client path | install/expand/package (`make install GAME_DIR=...` exports it) |
+| `SEVENDTD_SERVER_DIR` | Dedicated server path | dedicated start/expand/install helpers |
+| `MAP_MODE` / `GAME_DIR` | `Streamed` / Steam path | `make install*`; only `Streamed\\|Baked` accepted |
+| `DOTNET_ROOT` | auto-detected local SDK caches | build + scripts |
+| `RE_DEDICATED_USERDATA` | `~/.cache/realearth-dedicated` | dedicated helpers |
+| `RE_WORLD_NAME` | script default (`RealEarth_H500`, `RWG`, `Navezgane`) | dedicated helpers |
+| `RE_WORLD_GEN_SIZE` / `RE_WORLD_GEN_SEED` | `4096` / `botpoi4k` | `start_dedicated_prefab.sh` |
+| `RE_GAME_NAME` | `BotPoi_<world>_<size>` | dedicated helpers |
+| `RE_SERVER_MAX_PLAYERS` | `1024` (height test) / `64` (prefab) | serverconfig injection |
+| `RE_SERVER_WAIT` / `RE_SERVER_SOAK` | `180` / `35` seconds | `run_dedicated_height_test.sh` |
+| `RE_SCRATCH` / `RE_LOADTEST_ROOT` | unset / `../7dtd-loadgen` | load-test wiring |
+| `RE_YDIM` | `16384` | `apply_engine_expand.sh` |
+| `STEAM_DIR` | auto-detect | `tools/` Proton path resolution |
+
+### Main keys
+
+| Key | Default | Valid values / meaning |
+|---|---|---|
+| `MapMode` | `Streamed` | `Streamed` (sliding window over full Earth) or `Baked` (one finite DTM world) |
+| `MultiplayerOriginMode` | `SoloSlide` | `SoloSlide`, `SharedFixed` (MP combat), `SharedSlide` |
+| `TilePackPath` | `Data/tiles` | Pack dir with `.rte` tiles (+ optional `earth.manifest.json`) |
+| `WorldWidth` / `WorldHeight` | full planet | Host canvas extent; regional packs override via manifest |
+| `TileSize` | `512` | `.rte` tile edge in blocks |
+| `StreamRadiusTiles` / `UnloadRadiusTiles` | `2` / `4` | Per-player tile bubble; unload must exceed stream radius |
+| `LocalWindowSize` | `1024` | Finite host window; clamped to pack extent at init |
+| `EnableLongitudeWrap` | `false` | Antimeridian wrap on full-planet canvases only |
+| `SeaLevelGameY` | `100` | Game Y of sea surface |
+| `FailClosedMissingTiles` | `true` | Log (and refuse to invent) missing DEM tiles |
+| `EnableEngineHeightMod` | `true` | Height sampling/inject for Streamed packs |
+| `EngineHeightStockSafe` | `false` | Opt-in compress for stock engines; **not** product path |
+| `EngineMaxGameY` | `11000` | 1:1 ceiling (sea + Everest + headroom) after expand |
+| `SpawnLongitude` / `SpawnLatitude` | `0` | Degrees; `0,0` falls back to `DefaultSpawn*` |
 
 ## Debug map FOW (config keys)
 
+Shipped configs keep both off (`Config/realearth.advanced_height.json` is the dev template).
+
 | Key | Default | Meaning |
 |---|---|---|
-| `DebugRevealFullMap` | `true` | Fill FOW for host extent once after load |
-| `DebugMapRevealRadiusChunks` | `128` | ~2048 m radius around player (tracks travel) |
+| `DebugRevealFullMap` | `false` | Fill FOW for host extent once after load (dev: `true`) |
+| `DebugMapRevealRadiusChunks` | `0` (off) | ~2048 m radius around player, tracks travel (dev: `128`) |
 
-F1: `rereveal`. Set both off for production-like FOW.
+F1: `rereveal`.
 
 ## City names (config keys)
 
@@ -100,4 +146,5 @@ F1: `recities` / `recities reset` / `recities here`. XML: `Config/nav_objects.xm
 
 ## Changelog
 
+- **2026-08-23:** Config key reference + env-var table; FOW defaults corrected to shipped values (`false`/`0`); startup validation documented.
 - **2026-07-19:** Related docs.

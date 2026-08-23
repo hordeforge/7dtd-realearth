@@ -22,9 +22,21 @@ USERDATA="${RE_DEDICATED_USERDATA:-$HOME/.cache/realearth-dedicated}"
 # RWG = generate; otherwise must exist under Data/Worlds/
 WORLD_NAME="${RE_WORLD_NAME:-RWG}"
 WORLD_GEN_SIZE="${RE_WORLD_GEN_SIZE:-4096}"
+case "$WORLD_GEN_SIZE" in
+  ""|*[!0-9]*|0)
+    echo "ERROR: RE_WORLD_GEN_SIZE must be a positive integer (got: $WORLD_GEN_SIZE)" >&2
+    exit 1
+    ;;
+esac
 WORLD_GEN_SEED="${RE_WORLD_GEN_SEED:-botpoi4k}"
 GAME_NAME="${RE_GAME_NAME:-BotPoi_${WORLD_NAME}_${WORLD_GEN_SIZE}}"
 MAX_PLAYERS="${RE_SERVER_MAX_PLAYERS:-64}"
+case "$MAX_PLAYERS" in
+  ""|*[!0-9]*|0)
+    echo "ERROR: RE_SERVER_MAX_PLAYERS must be a positive integer (got: $MAX_PLAYERS)" >&2
+    exit 1
+    ;;
+esac
 CONFIG_SRC="$ROOT/scripts/serverconfig_height_test.xml"
 
 if [[ ! -x "$DS_DIR/7DaysToDieServer.x86_64" ]]; then

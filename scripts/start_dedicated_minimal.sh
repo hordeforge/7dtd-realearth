@@ -11,6 +11,12 @@ USERDATA="${RE_DEDICATED_USERDATA:-$HOME/.cache/realearth-dedicated}"
 CONFIG_SRC="$ROOT/scripts/serverconfig_height_test.xml"
 WORLD_NAME="${RE_WORLD_NAME:-RealEarth_H500}"
 MAX_PLAYERS="${RE_SERVER_MAX_PLAYERS:-1024}"
+case "$MAX_PLAYERS" in
+  ""|*[!0-9]*|0)
+    echo "ERROR: RE_SERVER_MAX_PLAYERS must be a positive integer (got: $MAX_PLAYERS)" >&2
+    exit 1
+    ;;
+esac
 DOTNET_ROOT="${DOTNET_ROOT:-$HOME/.cache/dotnet-sdk}"
 export PATH="${DOTNET_ROOT}:${PATH}"
 export DOTNET_ROOT
