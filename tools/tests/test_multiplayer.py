@@ -61,6 +61,27 @@ def test_solo_slide_recenters_near_edge():
     assert 1 <= nx <= win.size - 2
 
 
+def test_solo_slide_fails_closed_when_multiplayer_or_unknown_count():
+    """Mirror SessionOriginPolicy.AllowOriginSlide: SoloSlide slides only when the
+    player count is known and <= 1 (MP groups never slide; unknown fails closed)."""
+    g = EarthGrid()
+    for count in (3, -1):
+        win = LocalWindow(
+            grid=g,
+            size=1024,
+            enable_longitude_wrap=True,
+            multiplayer_origin_mode="SoloSlide",
+            player_count=count,
+        )
+        win.center_on_absolute(1_000_000, 2_000_000)
+        origin = (win.origin_x, win.origin_z)
+        assert win.should_allow_slide() is False
+        slid, nx, nz, _, _ = win.tick_player_local(win.size - 5, 10)
+        assert slid is False
+        assert (win.origin_x, win.origin_z) == origin
+        assert nx == win.size - 5
+
+
 def test_shared_slide_blocks_when_multiplayer():
     g = EarthGrid()
     win = LocalWindow(

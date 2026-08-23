@@ -38,7 +38,9 @@ class LocalWindow:
     # When True (or pack is small), large host coords fold into pack [0,w)×[0,h)
     fold_host_into_pack: bool = False
     multiplayer_origin_mode: OriginMode = "SoloSlide"
-    # For SharedSlide: estimate of concurrent players (1 ⇒ allow slide)
+    # Concurrent-player estimate for the slide policy below: SoloSlide /
+    # SharedSlide slide only when the count is known and <= 1, mirroring
+    # SessionOriginPolicy.AllowOriginSlide (unknown counts fail closed).
     player_count: int = 1
 
     def should_fold(self) -> bool:
@@ -54,10 +56,10 @@ class LocalWindow:
         mode = (self.multiplayer_origin_mode or "SoloSlide").strip()
         if mode == "SharedFixed":
             return False
-        if mode == "SharedSlide":
-            return self.player_count <= 1
-        # SoloSlide (default)
-        return True
+        # SoloSlide / SharedSlide / unknown modes: slide only when the player
+        # count is known and <= 1. Unknown (< 0) fails closed so an MP session
+        # cannot desync builds on a bad estimate, same as the C# policy.
+        return 0 <= self.player_count <= 1
 
     def set_origin(self, earth_x: int, earth_z: int) -> None:
         if self.enable_longitude_wrap:

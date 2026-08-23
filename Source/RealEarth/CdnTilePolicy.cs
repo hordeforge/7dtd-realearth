@@ -46,7 +46,8 @@ namespace RealEarth
         public static bool IsSafeTileUrl(string? url)
         {
             if (string.IsNullOrWhiteSpace(url)) return false;
-            foreach (char c in url)
+            // net48 ref assemblies carry no [NotNullWhen] flow hints (same as cdnBase above).
+            foreach (char c in url!)
                 if (c == '\r' || c == '\n' || c < 0x20) return false;
             if (!Uri.TryCreate(url, UriKind.Absolute, out Uri? u)) return false;
             if (!u.Scheme.Equals("https", StringComparison.OrdinalIgnoreCase)) return false;
