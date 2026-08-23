@@ -9,6 +9,7 @@ import gzip
 import http.server
 import io
 import json
+import math
 import os
 import sys
 from pathlib import Path
@@ -28,6 +29,12 @@ def main() -> None:
     """RealEarth tools: real-world data → 7 Days to Die tiles / heightmaps."""
 
 
+def _require_finite(name: str, value: float) -> None:
+    """Reject NaN/inf coordinates as usage errors instead of crashing later."""
+    if not math.isfinite(value):
+        raise click.BadParameter(f"must be a finite number, got {value}", param_hint=name)
+
+
 @main.command("info")
 def info_cmd() -> None:
     """Print grid constants and scale facts."""
@@ -41,11 +48,15 @@ def info_cmd() -> None:
     click.echo("Longitude wraps; latitude clamps at poles.")
 
 
-@main.command("lonlat")
+# Numeric positionals may be negative (-74.006); without this Click reads the
+# leading dash as an option and every Americas longitude fails.
+@main.command("lonlat", context_settings={"ignore_unknown_options": True})
 @click.argument("lon", type=float)
 @click.argument("lat", type=float)
 def lonlat_cmd(lon: float, lat: float) -> None:
     """Convert lon lat → block X Z and tile indices."""
+    _require_finite("LON", lon)
+    _require_finite("LAT", lat)
     g = EarthGrid()
     x, z = lonlat_to_block(lon, lat, g)
     click.echo(f"block: {x} {z}")
@@ -140,8 +151,11 @@ def build_region_cmd(
 
 
 @main.command("demo")
-@click.option("--out", "out_dir", type=click.Path(), default="data/samples/demo_region")
-@click.option("--source", type=click.Choice(["synthetic", "open_meteo"]), default="synthetic")
+@click.option("--out", "out_dir", type=click.Path(), default="data/samples/demo_region",
+              show_default=True, help="Output directory")
+@click.option("--source", type=click.Choice(["synthetic", "open_meteo"]),
+              default="synthetic", show_default=True,
+              help="Elevation source (synthetic needs no network)")
 def demo_cmd(out_dir: str, source: str) -> None:
     """Build a small playable demo region (approx Denver area footprint)."""
     # ~0.5 deg box around Denver (~40-50 km) at 60 m/sample → small pack
@@ -166,7 +180,13 @@ def demo_cmd(out_dir: str, source: str) -> None:
 @click.argument("pack_dir", type=click.Path(exists=True))
 def list_tiles_cmd(pack_dir: str) -> None:
     """List tiles in a pack from earth.manifest.json."""
-    m = read_manifest(Path(pack_dir) / "earth.manifest.json")
+    man_path = Path(pack_dir) / "earth.manifest.json"
+    if not man_path.is_file():
+        raise click.ClickException(
+            f"no earth.manifest.json in {pack_dir} "
+            f"(create a pack first: realearth build-region ... --out {pack_dir})"
+        )
+    m = read_manifest(man_path)
     click.echo(json.dumps(m.to_dict(), indent=2))
 
 
@@ -178,7 +198,9 @@ def inspect_tile_cmd(pack_dir: str, tx: int, tz: int) -> None:
     """Print stats for one .rte tile."""
     path = tile_path(Path(pack_dir), tx, tz)
     if not path.exists():
-        raise click.ClickException(f"missing {path}")
+        raise click.ClickException(
+            f"missing {path} (tiles in this pack: realearth list-tiles {pack_dir})"
+        )
     t = read_tile(path)
     elev = t.elevation_m
     click.echo(f"tile ({tx},{tz}) shape={elev.shape}")
@@ -209,15 +231,18 @@ def inspect_tile_cmd(pack_dir: str, tx: int, tz: int) -> None:
 
 
 @main.command("planet-tiles")
-@click.option("--west", type=float, required=True)
-@click.option("--south", type=float, required=True)
-@click.option("--east", type=float, required=True)
-@click.option("--north", type=float, required=True)
-@click.option("--tile-size", type=int, default=512)
+@click.option("--west", type=float, required=True, help="West longitude")
+@click.option("--south", type=float, required=True, help="South latitude")
+@click.option("--east", type=float, required=True, help="East longitude")
+@click.option("--north", type=float, required=True, help="North latitude")
+@click.option("--tile-size", type=int, default=512, show_default=True,
+              help="Tile edge in blocks")
 def planet_tiles_cmd(
     west: float, south: float, east: float, north: float, tile_size: int
 ) -> None:
     """List absolute Earth tile indices covering a bbox (planning full planet builds)."""
+    if east <= west or north <= south:
+        raise click.ClickException("bbox must have east>west and north>south")
     tiles = world_tile_indices_for_bbox(west, south, east, north, tile_size=tile_size)
     click.echo(f"{len(tiles)} tiles")
     for tx, tz in tiles[:50]:
@@ -226,7 +251,7 @@ def planet_tiles_cmd(
         click.echo(f"... and {len(tiles) - 50} more")
 
 
-@main.command("wrap-check")
+@main.command("wrap-check", context_settings={"ignore_unknown_options": True})
 @click.argument("x", type=int)
 def wrap_check_cmd(x: int) -> None:
     """Show wrapped X on the full Earth grid (antimeridian)."""
@@ -251,7 +276,8 @@ def wrap_check_cmd(x: int) -> None:
     show_default=True,
     help="DEM: real AWS Terrarium | Open-Meteo | synthetic cone",
 )
-@click.option("--terrarium-zoom", type=int, default=11, show_default=True)
+@click.option("--terrarium-zoom", type=int, default=11, show_default=True,
+              help="Terrarium tile zoom (8=coarse, 12=detail, more downloads)")
 @click.option("--pack-size", type=int, default=512, show_default=True, help=".rte grid edge")
 @click.option(
     "--peak-game-y",
@@ -471,8 +497,17 @@ def sample_chunk_cmd(
         load_pack_manifest,
     )
 
+    if (lon is None) != (lat is None):
+        raise click.ClickException("--lon and --lat must be given together")
+    if (origin_x is None) != (origin_z is None):
+        raise click.ClickException("--x and --z must be given together")
+    if lon is not None and origin_x is not None:
+        raise click.ClickException("choose one location mode: --lon/--lat or --x/--z, not both")
+
     pack = Path(pack_dir)
-    if lon is not None and lat is not None:
+    if lon is not None:
+        _require_finite("--lon", lon)
+        _require_finite("--lat", lat)
         info = demo_pack_chunk_at_lonlat(pack, lon, lat, chunk_size=chunk_size)
         click.echo(f"lon/lat {lon} {lat} → pack earth {info['earth']}")
         click.echo(f"window origin {info['origin']} chunk_local {info['chunk_local']}")
@@ -482,20 +517,16 @@ def sample_chunk_cmd(
         )
         return
 
-    if origin_x is None or origin_z is None:
-        # default: first tile origin in manifest or (0,0)
-        man = load_pack_manifest(pack)
-        origin_x = origin_x if origin_x is not None else 0
-        origin_z = origin_z if origin_z is not None else 0
-        sea = man.sea_level_game_y if man else DEFAULT_SEA_LEVEL_GAME_Y
-    else:
-        man = load_pack_manifest(pack)
-        sea = man.sea_level_game_y if man else DEFAULT_SEA_LEVEL_GAME_Y
+    man = load_pack_manifest(pack)
+    sea = man.sea_level_game_y if man else DEFAULT_SEA_LEVEL_GAME_Y
+    # default origin: (0,0)
+    ox = origin_x if origin_x is not None else 0
+    oz = origin_z if origin_z is not None else 0
 
-    heights = fill_chunk_heights(pack, origin_x, origin_z, chunk_size=chunk_size, sea_level_y=sea)
-    lc = fill_chunk_landcover(pack, origin_x, origin_z, chunk_size=chunk_size)
+    heights = fill_chunk_heights(pack, ox, oz, chunk_size=chunk_size, sea_level_y=sea)
+    lc = fill_chunk_landcover(pack, ox, oz, chunk_size=chunk_size)
     mid = chunk_size // 2
-    click.echo(f"chunk origin ({origin_x},{origin_z}) size={chunk_size}")
+    click.echo(f"chunk origin ({ox},{oz}) size={chunk_size}")
     click.echo(
         f"heights min={int(heights.min())} mid={int(heights[mid, mid])} max={int(heights.max())} "
         f"landcover_mid={int(lc[mid, mid])}"
@@ -503,14 +534,16 @@ def sample_chunk_cmd(
 
 
 @main.command("window-slide")
-@click.option("--size", type=int, default=1024, show_default=True)
-@click.option("--earth-x", type=int, required=True)
-@click.option("--earth-z", type=int, required=True)
+@click.option("--size", type=int, default=1024, show_default=True,
+              help="Local window edge in blocks")
+@click.option("--earth-x", type=int, required=True, help="Absolute Earth X to center on")
+@click.option("--earth-z", type=int, required=True, help="Absolute Earth Z to center on")
 @click.option(
     "--local-x", type=int, default=None,
     help="Player local X (default: near edge to force slide)",
 )
-@click.option("--local-z", type=int, default=None)
+@click.option("--local-z", type=int, default=None,
+              help="Player local Z (default: window mid-row)")
 @click.option("--no-wrap", is_flag=True, help="Disable longitude wrap")
 def window_slide_cmd(
     size: int,
@@ -546,7 +579,8 @@ def window_slide_cmd(
 @click.option("--size", type=int, default=4096, show_default=True,
               help="World edge in blocks (2048–16384, snapped to mult of 2048)")
 @click.option("--name", default=None, help="World display name")
-@click.option("--sea-level", "sea_level_y", type=int, default=32, show_default=True)
+@click.option("--sea-level", "sea_level_y", type=int, default=32, show_default=True,
+              help="Sea level in game Y blocks")
 @click.option(
     "--generated/--heightmap-only",
     default=True,
@@ -718,7 +752,13 @@ class _ViewerHandler(http.server.SimpleHTTPRequestHandler):
     default=None,
     help="Directory to serve (default: repo viewer/ next to tools/)",
 )
-def serve_cmd(port: int, bind: str, root: str | None) -> None:
+@click.option(
+    "--no-browser",
+    is_flag=True,
+    default=False,
+    help="Do not open the web browser (scripts / SSH)",
+)
+def serve_cmd(port: int, bind: str, root: str | None, no_browser: bool) -> None:
     """Serve the web map viewer (static files)."""
     import webbrowser
 
@@ -739,8 +779,9 @@ def serve_cmd(port: int, bind: str, root: str | None) -> None:
         url = f"http://{bind}:{port}/"
         click.echo(f"RealEarth viewer at {url}")
         click.echo(f"Serving {serve_root}")
-        with contextlib.suppress(Exception):
-            webbrowser.open(url)
+        if not no_browser:
+            with contextlib.suppress(Exception):
+                webbrowser.open(url)
         try:
             httpd.serve_forever()
         except KeyboardInterrupt:
