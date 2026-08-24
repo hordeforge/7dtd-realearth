@@ -44,13 +44,18 @@ function numOrZero(candidate) {
 function errorMessage(error) {
   return error instanceof Error ? error.message : String(error);
 }
-function esc(text) {
-  return String(text)
-    .replaceAll("&", "&amp;")
-    .replaceAll("<", "&lt;")
-    .replaceAll(">", "&gt;")
-    .replaceAll('"', "&quot;")
-    .replaceAll("'", "&#39;");
+// Pack paths are joined into fetch URLs. They must stay inside the served
+// export tree: no absolute paths, no scheme (cross-origin pack injection),
+// no backslashes, no dot-dot traversal.
+function isSafePackPath(candidate) {
+  return (
+    typeof candidate === "string" &&
+    candidate !== "" &&
+    !candidate.startsWith("/") &&
+    !candidate.includes("\\") &&
+    !/^[a-z][a-z0-9+.-]*:/iu.test(candidate) &&
+    !candidate.split("/").includes("..")
+  );
 }
 
 const els = {
@@ -98,18 +103,19 @@ function readyStatus() {
   return `Loaded · ${listOrEmpty(state.meta.layers).length} layers`;
 }
 
-function isSafeCssColor(value) {
-  return typeof value === "string" && /^#(?:[0-9a-fA-F]{3}|[0-9a-fA-F]{6})$/.test(value.trim());
-}
 function renderLegend(layerId) {
   els.legend.replaceChildren();
   const rows = LEGENDS[layerId] || LEGENDS.hybrid;
-  for (const [color, label] of rows) {
+  for (const [legendColor, label] of rows) {
     const row = document.createElement("div");
     row.className = "legend-row";
     const swatch = document.createElement("span");
     swatch.className = "swatch";
-    swatch.style.background = isSafeCssColor(color) ? color : "#808080";
+    const safeColor =
+      typeof legendColor === "string" && /^#(?:[0-9a-fA-F]{3}|[0-9a-fA-F]{6})$/u.test(legendColor)
+        ? legendColor
+        : "#808080";
+    swatch.style.background = safeColor;
     row.append(swatch, document.createTextNode(String(label)));
     els.legend.append(row);
   }
@@ -180,11 +186,16 @@ function describePack(meta) {
     } else {
       els.packInfo.append(document.createTextNode(lines[i]));
     }
-    if (i < lines.length - 1) els.packInfo.append(document.createElement("br"));
+    if (i < lines.length - 1) {
+      els.packInfo.append(document.createElement("br"));
+    }
   }
 }
 
 async function loadPack(baseUrl) {
+  if (!isSafePackPath(baseUrl)) {
+    throw new Error(`Refusing unsafe pack path: ${String(baseUrl)}`);
+  }
   setStatus("Loading pack…");
   state.baseUrl = baseUrl.replace(/\/$/u, "");
   const metaUrl = `${state.baseUrl}/viewer.json`;
@@ -341,7 +352,8 @@ function showTip(s, sx, sy) {
     s.population === null || s.population === undefined ? "?" : s.population.toLocaleString();
   els.settlementTip.replaceChildren();
   const strong = document.createElement("strong");
-  strong.textContent = String(s.name ?? "");
+  const settlementName = typeof s.name === "string" ? s.name : "";
+  strong.textContent = settlementName;
   els.settlementTip.append(strong);
   els.settlementTip.append(document.createElement("br"));
   els.settlementTip.append(document.createTextNode(`${String(strOrEmpty(s.band))} \u00B7 pop ${String(population)}`));
@@ -410,8 +422,10 @@ els.jsonFile.addEventListener("change", () => {
 // discover extra packs if catalog exists
 async function boot() {
   const params = new URLSearchParams(location.search);
-  const pack = params.get("pack") || els.packSelect.value;
-  // catalog and the initial pack are independent: fetch both at once
+  // A crafted ?pack= link must not point the viewer at other origins or
+  // outside the served tree; unsafe values fall back to the bundled pack.
+  const requested = params.get("pack");
+  const pack = isSafePackPath(requested) ? requested : els.packSelect.value;
   const [catalog] = await Promise.all([
     fetch("data/catalog.json").catch(() => null),
     loadPack(pack).catch((error) => {

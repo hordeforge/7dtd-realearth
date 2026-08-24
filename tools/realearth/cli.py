@@ -28,6 +28,25 @@ def _require_finite(name: str, value: float) -> None:
         raise click.BadParameter(f"must be a finite number, got {value}", param_hint=name)
 
 
+def _safe_name_component(meta: dict[str, object], key: str, default: str) -> str:
+    """Read a single path component from pack metadata; never trust it verbatim.
+
+    Pack metadata can travel (shared packs), and the name is joined onto
+    GeneratedWorlds paths before destructive rmtree/copytree. Reject anything
+    that could escape that directory instead of resolving it.
+    """
+    name = str(meta.get(key) or default)
+    if (
+        not name
+        or name in (".", "..")
+        or "/" in name
+        or "\\" in name
+        or Path(name).name != name
+    ):
+        raise ValueError(f"pack metadata {key} must be a plain directory name, got {name!r}")
+    return name
+
+
 @main.command("info")
 def info_cmd() -> None:
     """Print grid constants and scale facts."""
@@ -339,7 +358,7 @@ def _install_height_test(
     summit_lon, summit_lat = 86.925, 27.988
     if ht.is_file():
         meta = json.loads(ht.read_text(encoding="utf-8"))
-        world_name = str(meta.get("name") or world_name)
+        world_name = _safe_name_component(meta, "name", world_name)
         engine_max_game_y = int(meta.get("engine_max_game_y") or engine_max_game_y)
         summit_lon = float(meta.get("summit_lon") or summit_lon)
         summit_lat = float(meta.get("summit_lat") or summit_lat)

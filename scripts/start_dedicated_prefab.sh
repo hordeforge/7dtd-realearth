@@ -21,6 +21,14 @@ DS_DIR="${SEVENDTD_SERVER_DIR:-$HOME/.local/share/Steam/steamapps/common/7 Days 
 USERDATA="${RE_DEDICATED_USERDATA:-$HOME/.cache/realearth-dedicated}"
 # RWG = generate; otherwise must exist under Data/Worlds/
 WORLD_NAME="${RE_WORLD_NAME:-RWG}"
+# WORLD_NAME lands in generated configs and the Data/Worlds path: restrict it
+# to a single plain directory name so it cannot traverse or break quoting.
+case "$WORLD_NAME" in
+  ""|*[!A-Za-z0-9._-]*|[!A-Za-z0-9]*)
+    echo "ERROR: RE_WORLD_NAME must be a plain directory name ([A-Za-z0-9._-], leading alnum; got: $WORLD_NAME)" >&2
+    exit 1
+    ;;
+esac
 WORLD_GEN_SIZE="${RE_WORLD_GEN_SIZE:-4096}"
 case "$WORLD_GEN_SIZE" in
   ""|*[!0-9]*|0)
@@ -78,19 +86,20 @@ serverplatforms=Steam,LAN,Local,
 EOF
 fi
 
-# Stop previous dedicated
+# Stop previous dedicated. Match only servers under THIS install dir so
+# unrelated 7DTD servers on a shared host are never signalled.
 for d in /proc/[0-9]*; do
   pid=${d#/proc/}
   [[ -L "$d/exe" ]] || continue
   exe=$(readlink "$d/exe" 2>/dev/null || true)
-  case "$exe" in *7DaysToDieServer.x86_64) kill "$pid" 2>/dev/null || true ;; esac
+  case "$exe" in "$DS_DIR"/*7DaysToDieServer.x86_64) kill "$pid" 2>/dev/null || true ;; esac
 done
 sleep 2
 for d in /proc/[0-9]*; do
   pid=${d#/proc/}
   [[ -L "$d/exe" ]] || continue
   exe=$(readlink "$d/exe" 2>/dev/null || true)
-  case "$exe" in *7DaysToDieServer.x86_64) kill -9 "$pid" 2>/dev/null || true ;; esac
+  case "$exe" in "$DS_DIR"/*7DaysToDieServer.x86_64) kill -9 "$pid" 2>/dev/null || true ;; esac
 done
 sleep 1
 
