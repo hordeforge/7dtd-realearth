@@ -47,5 +47,7 @@ Thumbs.db
 # uv cache
 .uv-cache/
 
+
 # scratch
 .scratch/
+*.lock
