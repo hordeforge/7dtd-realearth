@@ -96,7 +96,7 @@ All optional; defaults shown. Scripts fail fast when numeric values are invalid.
 | Key | Default | Valid values / meaning |
 |---|---|---|
 | `MapMode` | `Streamed` | `Streamed` (sliding window over full Earth) or `Baked` (one finite DTM world) |
-| `MultiplayerOriginMode` | `SoloSlide` | `SoloSlide`, `SharedFixed` (MP combat), `SharedSlide` |
+| `MultiplayerOriginMode` | `SoloSlide` | `SoloSlide`, `SharedFixed` (MP combat), `SharedSlide` (accepted alias; slides only when solo today, same as SoloSlide) |
 | `TilePackPath` | `Data/tiles` | Pack dir with `.rte` tiles (+ optional `earth.manifest.json`) |
 | `WorldWidth` / `WorldHeight` | full planet | Host canvas extent; regional packs override via manifest |
 | `TileSize` | `512` | `.rte` tile edge in blocks |

@@ -20,8 +20,10 @@ viewer/data/**
 viewer/js/**
 viewer/node_modules
 
-# WebMod build output + exported pack data (regenerate with webmod / webmod-export)
-WebMod/**
+# webmod build output + exported pack data (regenerate with make webmod /
+# make webmod-export). Lives inside the tracked webmod/ tree: a sibling
+# "WebMod/" would collide with it on case-insensitive filesystems.
+webmod/build/
 
 # Baked single-world exports (large)
 worlds/**

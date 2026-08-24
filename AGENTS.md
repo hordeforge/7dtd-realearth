@@ -92,7 +92,7 @@ tools/              Python realearth pipeline (uv project)
 scripts/            install, expand, dedicated helpers
 docs/               product docs (RealEarth-owned narratives)
 viewer/             web map (flat + globe)
-webmod/             stock dashboard webui source (ts); WebMod/ built bundle
+webmod/             stock dashboard webui source (ts); built bundle under webmod/build/
 data/               samples and generated packs (runtime artifacts)
 worlds/             baked worlds (runtime artifacts)
 DESIGN.md           architecture and phased delivery

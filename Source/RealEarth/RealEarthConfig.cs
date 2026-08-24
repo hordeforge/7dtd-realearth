@@ -34,7 +34,8 @@ namespace RealEarth
         /// <summary>
         /// SoloSlide (default for planetary travel): host window recenters on absolute pos.
         /// SharedFixed: freeze window origin (co-located multiplayer combat).
-        /// SharedSlide: slide only when solo / group co-located (partial).
+        /// SharedSlide: accepted alias, but currently slides only when solo (player count ≤ 1),
+        /// same as SoloSlide; co-located group sliding is not implemented yet.
         /// </summary>
         [DataMember] public string MultiplayerOriginMode { get; set; } = "SoloSlide";
 
@@ -183,6 +184,11 @@ namespace RealEarth
                 warnings.Add(
                     $"MultiplayerOriginMode '{MultiplayerOriginMode}' is not " +
                     "SoloSlide|SharedFixed|SharedSlide; unknown modes slide only when clearly solo.");
+            if (origin.Equals("SharedSlide", StringComparison.OrdinalIgnoreCase))
+                warnings.Add(
+                    "MultiplayerOriginMode 'SharedSlide' currently slides only when the player " +
+                    "count is 1 (same as SoloSlide); co-located group sliding is not implemented. " +
+                    "Use SharedFixed for multiplayer combat coords.");
 
             if (WorldWidth <= 0)
             {

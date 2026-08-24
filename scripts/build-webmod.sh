@@ -1,9 +1,14 @@
 #!/usr/bin/env bash
-# Compile the webmod TypeScript sources (webmod/src) into the WebMod bundle
-# that the stock 7dtd dashboard loads as a web mod:
+# Compile the webmod TypeScript sources (webmod/src) into the webmod build
+# bundle that is packaged as the WebMod folder loaded by the stock 7dtd
+# dashboard:
 #
-#   WebMod/bundle.js      IIFE that publishes window.RealEarth (entry index.ts)
-#   WebMod/styling.css    copy of webmod/styling.css
+#   webmod/build/bundle.js      IIFE that publishes window.RealEarth (entry index.ts)
+#   webmod/build/styling.css    copy of webmod/styling.css
+#
+# The output lives inside the tracked webmod/ tree: a sibling "WebMod/" would
+# collide with it on case-insensitive filesystems (macOS, Windows). The
+# packaged mod folder keeps the game-required WebMod name (see package_mod.sh).
 #
 # esbuild runs through npx pinned by ESBUILD_VERSION (same convention as
 # scripts/lint-webmod.sh; the repo does not track package.json/node_modules).
@@ -16,7 +21,7 @@ set -euo pipefail
 
 root="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 esbuild_version="${ESBUILD_VERSION:-0.28.2}"
-out_dir="$root/WebMod"
+out_dir="$root/webmod/build"
 
 mkdir -p "$out_dir"
 

@@ -37,11 +37,16 @@ webmod/
   tsconfig.json      strict TS; DOM lib only, no npm type packages
   src/               TypeScript sources (compiled, not shipped raw)
   styling.css        stylesheet served as the web mod's styling.css
+  build/             build output + exported pack data (git-ignored)
 scripts/
-  build-webmod.sh    esbuild -> WebMod/bundle.js + styling.css + smoke test
+  build-webmod.sh    esbuild -> webmod/build/bundle.js + styling.css + smoke test
   lint-webmod.sh     tsc --noEmit + oxlint (anti-slop + strict, deny warnings)
-WebMod/              build output + exported pack data (git-ignored)
 ```
+
+The build output lives under `webmod/build` (inside this tracked tree): a
+sibling `WebMod/` would collide with `webmod/` on case-insensitive
+filesystems. Only the packaged mod folder uses the game-required `WebMod`
+name (see `scripts/package_mod.sh`).
 
 ## Build / lint / export
 
@@ -51,13 +56,13 @@ No `package.json`/`node_modules` are tracked; tsc/esbuild/oxlint run through
 
 ```bash
 make webmod-lint            # tsc --strict + oxlint, warnings fail
-make webmod-export          # export demo pack into WebMod/data/demo
-make webmod                 # bundle WebMod/bundle.js + copy styling.css
-make package                # includes WebMod/ in dist/RealEarth/WebMod/
+make webmod-export          # export demo pack into webmod/build/data/demo
+make webmod                 # bundle webmod/build/bundle.js + copy styling.css
+make package                # packages it as dist/RealEarth/WebMod/
 ```
 
 `make webmod-export PACK=<path> WEBMOD_EXPORT_NAME=<name>` exports a real pack
-into `WebMod/data/<name>`; reference it in the UI as `data/<name>`.
+into `webmod/build/data/<name>`; reference it in the UI as `data/<name>`.
 
 ## Manual integration test
 
@@ -75,7 +80,7 @@ The demo pack ships by default; larger packs are regenerated with
 ## Notes
 
 - Data is served by the stock static handler (DirectAccess, no cache), so
-  replacing files under `WebMod/data` applies on refresh.
+  replacing files under the packaged mod's `WebMod/data` applies on refresh.
 - The bundle is a plain IIFE: no top-level await, no external imports, no
   CDN dependencies, so the dashboard can load it offline once assets exist.
 - Out of scope for v1: globe view (see the standalone `viewer/`), stock-map

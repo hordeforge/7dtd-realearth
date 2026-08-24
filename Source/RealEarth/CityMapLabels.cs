@@ -247,7 +247,10 @@ namespace RealEarth
         /// </summary>
         public static int ResolveEdgeRadiusBlocks(Place p)
         {
-            if (p.EdgeRadiusM > 32)
+            // Any measured extent outranks the population formula (docs/CITY_MAP_LABELS.md
+            // source priority; mirrors Python effective_edge_radius_m's > 0 test). The
+            // result is still floored at 32 blocks below.
+            if (p.EdgeRadiusM > 0)
             {
                 if (string.IsNullOrEmpty(p.EdgeSource))
                     p.EdgeSource = "map";
@@ -436,19 +439,41 @@ namespace RealEarth
                 if (objStart < 0) break;
                 int objEnd = FindMatchingBrace(json, objStart);
                 if (objEnd < 0) break;
-                string obj = json.Substring(objStart, objEnd - objStart + 1);
-                // Skip nested containers that are not place rows (no "lon" key).
-                if (obj.IndexOf("\"lon\"", StringComparison.OrdinalIgnoreCase) < 0
-                    && obj.IndexOf("\"Lat\"", StringComparison.OrdinalIgnoreCase) < 0)
+                if (ContainsNestedObject(json, objStart, objEnd))
                 {
-                    i = objEnd + 1;
+                    // Container object ({ "cores": [...], "meta": {...} }): parsing it
+                    // whole would yield one Frankenstein place from whichever keys
+                    // appear first, and skipping to objEnd would drop every row after
+                    // it. Descend so each nested place object is visited itself.
+                    i = objStart + 1;
                     continue;
                 }
-                var place = ParsePlaceObject(obj);
+                var place = ParsePlaceObject(json.Substring(objStart, objEnd - objStart + 1));
                 if (place != null && !string.IsNullOrEmpty(place.Name))
                     into.Add(place);
                 i = objEnd + 1;
             }
+        }
+
+        /// <summary>True when [start,end] spans a nested '{' outside any string literal.</summary>
+        static bool ContainsNestedObject(string json, int start, int end)
+        {
+            bool inStr = false;
+            bool esc = false;
+            for (int i = start + 1; i < end; i++)
+            {
+                char c = json[i];
+                if (inStr)
+                {
+                    if (esc) esc = false;
+                    else if (c == '\\') esc = true;
+                    else if (c == '"') inStr = false;
+                    continue;
+                }
+                if (c == '"') inStr = true;
+                else if (c == '{') return true;
+            }
+            return false;
         }
 
         static int FindMatchingBrace(string json, int openIdx)

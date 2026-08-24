@@ -144,6 +144,30 @@ def test_origin_slide_reinjects_loaded_chunks():
     assert "FloorDiv" in core or "FloorDiv" in inj
 
 
+def test_chunk_index_hooks_are_prefetch_only():
+    """ChunkIndexPostfix must stay prefetch-only (double-inject failure class).
+
+    The broad Generate*/Fill* (int,int) bind set is intentional (fragile after
+    TFP renames by design), so the postfix must never rewrite columns or touch
+    foci: GenerateTerrainPostfix owns inject, player ticks own foci.
+    """
+    src = _read("RuntimeHooks.cs")
+    m = re.search(
+        r"public static void ChunkIndexPostfix\([^)]*\)\s*\{(?P<body>.*?)\n        \}",
+        src,
+        re.S,
+    )
+    assert m, "ChunkIndexPostfix not found"
+    body = m.group("body")
+    assert "EnsureHotAround" in body
+    # Never a full column rewrite from the index hooks.
+    assert "OnChunkGenerated" not in body
+    assert "SampleChunkColumns" not in body
+    assert "TryApplyHeightsToChunk" not in body
+    # Never registers a stream focus (focus-0 stomp class).
+    assert "UpdateFromAbsolute" not in body
+
+
 def test_reinject_counters_are_reset_with_session():
     """Reinjected-chunk counter must reset per world so gates stay honest."""
     inj = _read("ChunkTerrainInject.cs")

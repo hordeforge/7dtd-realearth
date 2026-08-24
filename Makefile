@@ -47,8 +47,11 @@ PACK_DEMO     := $(ROOT)/data/samples/demo_region
 PACK_HEIGHT   := $(ROOT)/data/samples/height_test
 WORLD_HEIGHT  := $(ROOT)/worlds/RealEarth_HeightTest
 
-# WebMod (stock dashboard webui) build knobs
-WEBMOD_DIR        := $(ROOT)/WebMod
+# WebMod (stock dashboard webui) build knobs. Build output goes under
+# webmod/build (inside the tracked source tree, git-ignored): a sibling
+# "WebMod/" would collide with webmod/ on case-insensitive filesystems.
+# package_mod.sh renames it to the game-required WebMod/ when packaging.
+WEBMOD_DIR        := $(ROOT)/webmod/build
 WEBMOD_PACK       ?= $(PACK_DEMO)
 WEBMOD_EXPORT_NAME ?= demo
 
@@ -106,8 +109,8 @@ help:
 	@echo "    make viewer-lint        tsc --strict + oxlint (anti-slop + strict)"
 	@echo ""
 	@echo "  WebMod (dashboard webui)"
-	@echo "    make webmod-export      Export demo pack into WebMod/data/demo"
-	@echo "    make webmod             Build WebMod/bundle.js + styling.css"
+	@echo "    make webmod-export      Export demo pack into webmod/build/data/demo"
+	@echo "    make webmod             Build webmod/build/bundle.js + styling.css"
 	@echo "    make webmod-lint        tsc --strict + oxlint (anti-slop + strict)"
 	@echo ""
 	@echo "  Misc"

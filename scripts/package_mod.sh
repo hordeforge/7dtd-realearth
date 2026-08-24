@@ -155,13 +155,15 @@ else
   echo "      Heightmap export under Data/tiles/export_7dtd still works without the DLL."
 fi
 
-# Stock dashboard webui (WebMod auto-served by the game webserver)
-if [[ -d "$ROOT/WebMod" ]]; then
+# Stock dashboard webui (WebMod auto-served by the game webserver). Build
+# output lives in webmod/build (see build-webmod.sh for why); the packaged
+# folder keeps the game-required WebMod name.
+if [[ -d "$ROOT/webmod/build" ]]; then
   mkdir -p "$OUT/WebMod"
-  cp -a "$ROOT/WebMod/." "$OUT/WebMod/"
+  cp -a "$ROOT/webmod/build/." "$OUT/WebMod/"
   echo "Packaged WebMod/ (stock dashboard webui)"
 else
-  echo "NOTE: no WebMod/ build output — run make webmod-export + make webmod to include the dashboard webui."
+  echo "NOTE: no webmod/build output — run make webmod-export + make webmod to include the dashboard webui."
 fi
 
 # RealEarth YDim expand tools (part of this mod)
