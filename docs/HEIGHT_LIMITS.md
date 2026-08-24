@@ -34,7 +34,10 @@ So: on **stock** YDim=256, true Everest columns are impossible. The product fix 
 | Profile | Use |
 |---|---|
 | `one_to_one` | **Product mapping** (sea + elev_m); set max_y high enough |
+| `linear_clamp` | Linear scale into `[min_y, max_y]` then clamp (simple alt mapping) |
 | `relative` / `local_stretch` | Legacy / opt-in stock experiments only |
+
+Default profile is `relative` (stock curve); callers must pass `profile="one_to_one"` explicitly for product height.
 
 Do not bake product worlds assuming compress-into-255 is desired.
 
@@ -227,4 +230,5 @@ Full design: **[`DYNAMIC_CHUNK_HEIGHT.md`](DYNAMIC_CHUNK_HEIGHT.md)**.
 
 ## Changelog
 
+- **2026-08-25:** Offline-helper profile table now lists `linear_clamp`; notes default `relative` and explicit product `one_to_one`.
 - **2026-07-18:** Bottom line aligned with product expand-required policy; related docs; ownership header.

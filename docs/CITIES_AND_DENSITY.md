@@ -15,16 +15,16 @@ RealEarth places settlements from **open density data**, not Google building foo
 | **Named places** (points) | City names, seed peaks (Natural Earth / GeoNames / seed list) |
 | **Urban edge** (`edge_radius_m`) | Discover footprint + optional stamp falloff |
 
-Bands (density peak → stamp pack):
+Bands (density peak → stamp pack; thresholds from `density.py::density_to_band`):
 
-| Band | Rough density | Prefab style | Gameplay intent (ideas) |
+| Band | Peak density (people/km²) | Prefab style | Gameplay intent (ideas) |
 |---|---|---|---|
-| metro | very high | downtown blocks, commercial strips | Highest loot/pressure caps; trader hub candidate |
-| large_city | high | downtown fillers, modern houses | Dense POIs, harder nights |
-| town | medium | commercial strip, gas station, mixed houses | Default “settled” feel |
-| village | low-medium | rural houses, farm, church | Sparse POIs |
-| hamlet | low | cabin, cottage, barn | Wilderness transition |
-| rural_scatter | sparse | isolated cabins/farms | True wilderness + rare stamps |
+| metro | ≥ 15000 | downtown blocks, commercial strips | Highest loot/pressure caps; trader hub candidate |
+| large_city | ≥ 5000 | downtown fillers, modern houses | Dense POIs, harder nights |
+| town | ≥ 1500 | commercial strip, gas station, mixed houses | Default “settled” feel |
+| village | ≥ 400 | rural houses, farm, church | Sparse POIs |
+| hamlet | ≥ 80 | cabin, cottage, barn | Wilderness transition |
+| rural_scatter | < 80 | isolated cabins/farms | True wilderness + rare stamps |
 
 ```mermaid
 flowchart LR
@@ -124,4 +124,5 @@ Traders at cores, OSM corridors, density→gamestage, content pack split: see **
 
 ## Changelog
 
+- **2026-08-25:** Band table records the concrete people/km² thresholds implemented in `density_to_band` (was qualitative only).
 - **2026-07-19:** Ownership header; pipeline mermaid; related docs.
