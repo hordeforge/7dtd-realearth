@@ -74,8 +74,10 @@ make -C .. viewer && make -C .. serve
 # → http://127.0.0.1:8765/
 
 # ONE continuous in-game map (Baked, up to 16k) - single save, edge-to-edge
+# writes a GeneratedWorlds folder (dtm.raw + biomes.png + map_info.xml);
+# copy it into ~/.local/share/7DaysToDie/GeneratedWorlds and start a new game
 realearth bake-world --pack ../data/samples/demo_region --size 8192 --out ../worlds/RealEarth_8k
-# → use worlds/RealEarth_8k/heightmap.png + biomes.png with a heightmap importer
+# PNG-only output for a custom heightmap importer: add --heightmap-only
 
 # Or real elevation for a small bbox (network, rate-limited)
 realearth build-region \
@@ -95,10 +97,10 @@ data/samples/demo_region/
  tiles/{z}/{x}.rte
  settlements.json
  export_7dtd/
- heightmap.png # 16-bit for custom heightmap importers
- biomes.png
- preview.png
- export_meta.json
+  heightmap.png # 16-bit for custom heightmap importers
+  biomes.png
+  preview.png
+  export_meta.json
 ```
 
 ### Install heightmap into 7DTD (Phase 0 path)

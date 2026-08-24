@@ -176,7 +176,7 @@ LiteNetLib join bots (probe, full join, wander until world death, respawn) live 
 sibling repo **`7dtd-loadgen`** (not in this tree). See that project’s README:
 
 ```bash
-cd ../7dtd-loadgen   # or ~/Desktop/7dtd/7dtd-loadgen
+cd ../7dtd-loadgen   # sibling checkout next to this repo
 make help
 make selftest         # mock-server CI gate
 make dedicated-4k     # RWG 4k with POIs/sleepers

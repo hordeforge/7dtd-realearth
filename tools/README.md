@@ -27,7 +27,7 @@ uv sync --extra gis --extra dev
 Tests:
 
 ```bash
-uv run --with pytest pytest
+uv run --extra dev python -m pytest
 # or: make -C .. test
 ```
 
