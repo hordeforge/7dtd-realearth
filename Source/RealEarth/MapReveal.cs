@@ -18,13 +18,6 @@ namespace RealEarth
         static int _lastCz = int.MinValue;
         /// <summary>GamePrefs cap raised at most once per process (per-tick re-raise is pure overhead).</summary>
         static bool _uncoveredCapRaised;
-        /// <summary>
-        /// Memoized name → type (null misses cached too). FindType walks every assembly's
-        /// type list per call; tick-path reveal used to rescan Assembly-CSharp every frame.
-        /// Member/type metadata is process-stable, matching ReflectCache semantics.
-        /// </summary>
-        static readonly System.Collections.Concurrent.ConcurrentDictionary<string, Type?> _typeCache =
-            new System.Collections.Concurrent.ConcurrentDictionary<string, Type?>();
 
         public static void TryRevealIfConfigured()
         {
@@ -83,7 +76,8 @@ namespace RealEarth
 
         public static bool RevealFullMap()
         {
-            if (!TryGetFowAdd(out object fow, out MethodInfo add))
+            if (!TryGetFowAdd(out object? fow, out MethodInfo? add)
+                || fow == null || add == null)
                 return false;
 
             if (!TryGetWorldChunkBounds(out int minCx, out int minCz, out int maxCx, out int maxCz))
@@ -108,8 +102,8 @@ namespace RealEarth
                 return true;
             }
 
-            int cx = FloorDiv(localBlockX, 16);
-            int cz = FloorDiv(localBlockZ, 16);
+            int cx = EngineReflection.FloorDiv(localBlockX, 16);
+            int cz = EngineReflection.FloorDiv(localBlockZ, 16);
             // Re-fill when player moved ≥ 8 chunks or every ~2s of ticks after cooldown
             if (Math.Abs(cx - _lastCx) < 8 && Math.Abs(cz - _lastCz) < 8 && _lastCx != int.MinValue)
             {
@@ -117,7 +111,8 @@ namespace RealEarth
                 return true;
             }
 
-            if (!TryGetFowAdd(out object fow, out MethodInfo add))
+            if (!TryGetFowAdd(out object? fow, out MethodInfo? add)
+                || fow == null || add == null)
                 return false;
 
             int minCx = cx - radiusChunks;
@@ -211,16 +206,19 @@ namespace RealEarth
             }
         }
 
-        static bool TryGetFowAdd(out object fow, out MethodInfo add)
+        static bool TryGetFowAdd(out object? fow, out MethodInfo? add)
         {
-            fow = GetFowDatabase()!;
-            add = null!;
+            fow = GetFowDatabase();
             if (fow == null)
+            {
+                add = null;
                 return false;
+            }
             var m = FindAdd(fow.GetType());
             if (m == null)
             {
                 ModApi.Log("MapReveal: MapChunkDatabase.Add(int,int,ushort[]) not found.");
+                add = null;
                 return false;
             }
             add = m;
@@ -289,8 +287,8 @@ namespace RealEarth
             if (_uncoveredCapRaised) return;
             try
             {
-                Type? prefs = FindType("GamePrefs");
-                Type? enumType = FindType("EnumGamePrefs");
+                Type? prefs = EngineReflection.FindType("GamePrefs");
+                Type? enumType = EngineReflection.FindType("EnumGamePrefs");
                 if (prefs == null || enumType == null) return;
                 object? key = Enum.Parse(enumType, "MaxUncoveredMapChunksPerPlayer");
                 MethodInfo? set = null;
@@ -322,7 +320,7 @@ namespace RealEarth
         {
             try
             {
-                Type? gmType = FindType("GameManager");
+                Type? gmType = EngineReflection.FindType("GameManager");
                 if (gmType == null) return null;
                 object? inst = gmType.GetProperty("Instance", BindingFlags.Static | BindingFlags.Public)?.GetValue(null)
                     ?? gmType.GetField("Instance", BindingFlags.Static | BindingFlags.Public | BindingFlags.NonPublic)?.GetValue(null);
@@ -416,7 +414,7 @@ namespace RealEarth
             minCx = minCz = maxCx = maxCz = 0;
             try
             {
-                Type? gmType = FindType("GameManager");
+                Type? gmType = EngineReflection.FindType("GameManager");
                 object? inst = gmType?.GetProperty("Instance", BindingFlags.Static | BindingFlags.Public)?.GetValue(null);
                 object? world = gmType?.GetProperty("World")?.GetValue(inst);
                 if (world == null) return false;
@@ -452,10 +450,10 @@ namespace RealEarth
 
                 ReadVec3i(args[0]!, out int minX, out _, out int minZ);
                 ReadVec3i(args[1]!, out int maxX, out _, out int maxZ);
-                minCx = FloorDiv(minX, 16);
-                minCz = FloorDiv(minZ, 16);
-                maxCx = FloorDiv(maxX, 16);
-                maxCz = FloorDiv(maxZ, 16);
+                minCx = EngineReflection.FloorDiv(minX, 16);
+                minCz = EngineReflection.FloorDiv(minZ, 16);
+                maxCx = EngineReflection.FloorDiv(maxX, 16);
+                maxCz = EngineReflection.FloorDiv(maxZ, 16);
                 if (maxCx < minCx) (minCx, maxCx) = (maxCx, minCx);
                 if (maxCz < minCz) (minCz, maxCz) = (maxCz, minCz);
                 return maxCx > minCx || maxCz > minCz || (maxX != 0 || maxZ != 0);
@@ -475,19 +473,13 @@ namespace RealEarth
             z = Convert.ToInt32(t.GetField("z")?.GetValue(v) ?? t.GetProperty("z")?.GetValue(v, null) ?? 0);
         }
 
-        static int FloorDiv(int a, int b)
-        {
-            if (a >= 0) return a / b;
-            return (a - (b - 1)) / b;
-        }
-
         static int ReadMapChunkSize()
         {
             try
             {
-                Type? t = FindType("MapChunkDatabase");
+                Type? t = EngineReflection.FindType("MapChunkDatabase");
                 var f = t?.GetField("MapChunkSize", BindingFlags.Static | BindingFlags.Public | BindingFlags.NonPublic)
-                        ?? FindType("Constants")?.GetField("MapChunkSize", BindingFlags.Static | BindingFlags.Public);
+                        ?? EngineReflection.FindType("Constants")?.GetField("MapChunkSize", BindingFlags.Static | BindingFlags.Public);
                 if (f == null)
                 {
                     foreach (var asm in AppDomain.CurrentDomain.GetAssemblies())
@@ -516,30 +508,6 @@ namespace RealEarth
             {
                 return (ex.Types ?? Array.Empty<Type>()).Where(t => t != null)!;
             }
-        }
-
-        static Type? FindType(string name)
-        {
-            return _typeCache.GetOrAdd(name, static n =>
-            {
-                foreach (var asm in AppDomain.CurrentDomain.GetAssemblies())
-                {
-                    try
-                    {
-                        var t = asm.GetType(n, false);
-                        if (t != null) return t;
-                        foreach (var ty in SafeGetTypes(asm))
-                            if (ty.Name == n) return ty;
-                    }
-                    catch (ReflectionTypeLoadException ex)
-                    {
-                        foreach (var ty in ex.Types)
-                            if (ty != null && ty.Name == n) return ty;
-                    }
-                    catch { /* ignore */ }
-                }
-                return null;
-            });
         }
     }
 }

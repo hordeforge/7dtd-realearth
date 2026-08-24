@@ -11,7 +11,14 @@ import numpy as np
 from PIL import Image
 
 from realearth.landcover import landcover_to_biome_rgb
-from realearth.tile_format import Manifest, read_manifest, read_tile, tile_path
+from realearth.tile_format import MAX_TILE_SAMPLES, Manifest, read_manifest, read_tile, tile_path
+
+# Hostile-manifest guard: the mosaic allocates full-grid arrays, so manifest
+# integers must be clamped like the binary tile header is (MAX_TILE_SAMPLES).
+# 16x the single-tile ceiling admits every documented regional pack (up to
+# ~16k x 16k samples) while rejecting absurd dims before np.full OOMs.
+MAX_MOSAIC_SAMPLES = MAX_TILE_SAMPLES * 16
+MAX_MOSAIC_TILE_SIZE = 4096
 
 
 def _hillshade(elev: np.ndarray) -> np.ndarray:
@@ -88,12 +95,21 @@ def mosaic_pack(pack_dir: Path) -> dict[str, np.ndarray]:
     ts = man.tile_size
     max_tx = max(t["tx"] for t in man.tiles)
     max_tz = max(t["tz"] for t in man.tiles)
+    if ts <= 0 or ts > MAX_MOSAIC_TILE_SIZE:
+        raise ValueError(f"manifest tile_size out of range (1..{MAX_MOSAIC_TILE_SIZE}): {ts}")
+    if min(max_tx, max_tz) < 0 or min(man.world_width, man.world_height) < 0:
+        raise ValueError("manifest tile indices and world dims must be non-negative")
     # Prefer manifest sample dimensions when present
     width = man.world_width if man.world_width > 0 else (max_tx + 1) * ts
     height = man.world_height if man.world_height > 0 else (max_tz + 1) * ts
     # Pad to tile grid for placement, then crop
     grid_w = (max_tx + 1) * ts
     grid_h = (max_tz + 1) * ts
+    if grid_w * grid_h > MAX_MOSAIC_SAMPLES:
+        raise ValueError(
+            f"manifest implies {grid_w}x{grid_h} mosaic ({grid_w * grid_h} samples); "
+            f"cap is {MAX_MOSAIC_SAMPLES}. Pack looks corrupt or hostile."
+        )
 
     elev = np.full((grid_h, grid_w), -100.0, dtype=np.float32)
     lc = np.zeros((grid_h, grid_w), dtype=np.uint8)

@@ -38,6 +38,10 @@ def compress_elevation(
     When max_y > 255 returns int32; otherwise uint8 (stock columns).
     """
     elev = np.asarray(elev_m, dtype=np.float64)
+    # Fail closed like .rte packing (tile_format._elevation_to_u16): non-finite
+    # input becomes 0 m ASL. Raw NaN would slip past every band mask and clip,
+    # then cast to uninitialized/garbage game heights.
+    elev = np.where(np.isfinite(elev), elev, 0.0)
     max_y = int(min(max(max_y, min_y + 1), ENGINE_TARGET_MAX_Y))
     out_dtype = np.int32 if max_y > 255 else np.uint8
 

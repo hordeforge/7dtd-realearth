@@ -125,6 +125,10 @@ def _section(data: bytes, off: int, expected_raw: int) -> tuple[bytes, int]:
         raise ValueError("truncated section header")
     n = struct.unpack_from("<I", data, off)[0]
     off += 4
+    if n < 0 or off + n > len(data):
+        raise ValueError(f"section length out of range: {n}")
+    if n > 16 * 1024 * 1024:
+        raise ValueError(f"section too large: {n}")
     raw = _inflate_exact(data[off : off + n], expected_raw)
     return raw, off + n
 
@@ -136,6 +140,10 @@ def decode_tile(data: bytes) -> EarthTile:
     magic, tx, tz, ver, flags, w, h, _ = HEADER_STRUCT.unpack_from(data, 0)
     if magic != MAGIC:
         raise ValueError(f"bad magic: {magic!r}")
+    if ver > FORMAT_VERSION:
+        # Fail closed on future formats: a v2 layout change must never be
+        # silently misdecoded as v1 (garbage columns read as valid terrain).
+        raise ValueError(f"unsupported tile version: {ver} (max {FORMAT_VERSION})")
     if w <= 0 or h <= 0 or w * h > MAX_TILE_SAMPLES:
         raise ValueError(f"tile dims out of range: {w}x{h}")
     samples = w * h
@@ -160,8 +168,12 @@ def decode_tile(data: bytes) -> EarthTile:
         population = np.frombuffer(raw, dtype=np.uint8).reshape((h, w)).copy()
 
     if flags & FLAG_HAS_POI and off < len(data):
+        if off + 4 > len(data):
+            raise ValueError("truncated POI header")
         n = struct.unpack_from("<I", data, off)[0]
         off += 4
+        if n < 0 or off + n > len(data) or n > 4 * 1024 * 1024:
+            raise ValueError(f"POI length out of range: {n}")
         poi_blob = data[off : off + n]
 
     return EarthTile(

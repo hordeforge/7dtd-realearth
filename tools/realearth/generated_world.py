@@ -19,6 +19,7 @@ from xml.sax.saxutils import escape as saxutils_escape
 import numpy as np
 from PIL import Image
 
+from realearth import DEFAULT_SEA_LEVEL_GAME_Y
 from realearth.bake_world import resize_arrays, snap_world_size
 from realearth.density import (
     apply_urban_from_density,
@@ -27,9 +28,10 @@ from realearth.density import (
     write_cities_json,
     write_prefabs_xml,
 )
+from realearth.export_7dtd import export_preview_png
 from realearth.height import compress_elevation
 from realearth.landcover import LandCover
-from realearth.settlements import SEED_SETTLEMENTS
+from realearth.settlements import SEED_SETTLEMENTS, Settlement, edge_radius_m_from_properties
 from realearth.viewer_export import mosaic_pack
 
 # Verified against this install's biomes.xml biomemapcolor
@@ -202,7 +204,12 @@ def write_map_info(path: Path, size: int, name: str, game_version: str | None = 
     path.write_text(xml, encoding="utf-8")
 
 
-def write_spawnpoints(path: Path, size: int, game_y: np.ndarray, sea_level: int = 32) -> None:
+def write_spawnpoints(
+    path: Path,
+    size: int,
+    game_y: np.ndarray,
+    sea_level: int = DEFAULT_SEA_LEVEL_GAME_Y,
+) -> None:
     """Spawn points in world-centered coords (origin at map center)."""
     h, w = game_y.shape
     half = size // 2
@@ -318,7 +325,7 @@ def bake_generated_world(
     *,
     size: int = 4096,
     name: str = "RealEarth",
-    sea_level_y: int = 32,
+    sea_level_y: int = DEFAULT_SEA_LEVEL_GAME_Y,
     ttw_template: Path | None = None,
     game_version: str | None = None,
 ) -> dict:
@@ -376,8 +383,6 @@ def bake_generated_world(
     spath = pack_dir / "settlements.json"
     if spath.exists():
         raw = json.loads(spath.read_text(encoding="utf-8"))
-        from realearth.settlements import Settlement, edge_radius_m_from_properties
-
         settles = []
         for s in raw:
             lon = float(s["lon"])
@@ -430,8 +435,6 @@ def bake_generated_world(
     write_spawnpoints(out_dir / "spawnpoints.xml", size, game_y, sea_level=sea_level_y)
     # main.ttw embeds full client Version string, e.g. "V 3.0.1 (b4)"
     write_main_ttw(out_dir / "main.ttw", ttw_template, version=ttw_ver)
-
-    from realearth.export_7dtd import export_preview_png
 
     export_preview_png(elev_r, lc_r, out_dir / "preview.png")
 

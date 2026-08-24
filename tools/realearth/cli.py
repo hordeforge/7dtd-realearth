@@ -12,7 +12,7 @@ import click
 from realearth import DEFAULT_SEA_LEVEL_GAME_Y, __version__
 from realearth.coords import EarthGrid, block_to_lonlat, lonlat_to_block
 from realearth.region import build_region, world_tile_indices_for_bbox
-from realearth.settlements import SEED_SETTLEMENTS, load_settlements_geojson
+from realearth.settlements import SEED_SETTLEMENTS, decode_poi_blob, load_settlements_geojson
 from realearth.tile_format import read_manifest, read_tile, tile_path
 
 
@@ -26,6 +26,25 @@ def _require_finite(name: str, value: float) -> None:
     """Reject NaN/inf coordinates as usage errors instead of crashing later."""
     if not math.isfinite(value):
         raise click.BadParameter(f"must be a finite number, got {value}", param_hint=name)
+
+
+def _safe_name_component(meta: dict[str, object], key: str, default: str) -> str:
+    """Read a single path component from pack metadata; never trust it verbatim.
+
+    Pack metadata can travel (shared packs), and the name is joined onto
+    GeneratedWorlds paths before destructive rmtree/copytree. Reject anything
+    that could escape that directory instead of resolving it.
+    """
+    name = str(meta.get(key) or default)
+    if (
+        not name
+        or name in (".", "..")
+        or "/" in name
+        or "\\" in name
+        or Path(name).name != name
+    ):
+        raise ValueError(f"pack metadata {key} must be a plain directory name, got {name!r}")
+    return name
 
 
 @main.command("info")
@@ -212,8 +231,6 @@ def inspect_tile_cmd(pack_dir: str, tx: int, tz: int) -> None:
     if t.population is not None:
         click.echo(f"population byte max={int(t.population.max())}")
     if t.poi_blob:
-        from realearth.settlements import decode_poi_blob
-
         pois = decode_poi_blob(t.poi_blob)
         click.echo(f"pois: {len(pois)}")
         for p in pois:
@@ -292,8 +309,6 @@ def height_test_map_cmd(
 
     Default: real Everest DEM. Use --peak-game-y 500 for a staged cone (full solid fill).
     """
-    from pathlib import Path
-
     from realearth.height_test_map import build_all
 
     root = Path(repo) if repo else Path(__file__).resolve().parents[2]
@@ -334,7 +349,6 @@ def _install_height_test(
     engine_max_game_y: int = 11000,
 ) -> None:
     """Install height-test world + Streamed tile pack for Proton client."""
-    import json
     import shutil
 
     from realearth.proton_paths import client_generated_worlds_targets
@@ -344,7 +358,7 @@ def _install_height_test(
     summit_lon, summit_lat = 86.925, 27.988
     if ht.is_file():
         meta = json.loads(ht.read_text(encoding="utf-8"))
-        world_name = str(meta.get("name") or world_name)
+        world_name = _safe_name_component(meta, "name", world_name)
         engine_max_game_y = int(meta.get("engine_max_game_y") or engine_max_game_y)
         summit_lon = float(meta.get("summit_lon") or summit_lon)
         summit_lat = float(meta.get("summit_lat") or summit_lat)
@@ -572,7 +586,8 @@ def window_slide_cmd(
 @click.option("--size", type=int, default=4096, show_default=True,
               help="World edge in blocks (2048–16384, snapped to mult of 2048)")
 @click.option("--name", default=None, help="World display name")
-@click.option("--sea-level", "sea_level_y", type=int, default=32, show_default=True,
+@click.option("--sea-level", "sea_level_y", type=int, default=DEFAULT_SEA_LEVEL_GAME_Y,
+              show_default=True,
               help="Sea level in game Y blocks")
 @click.option(
     "--generated/--heightmap-only",
@@ -665,6 +680,13 @@ def export_viewer_cmd(pack_dir: str, out_dir: str, max_dim: int, name: str | Non
 def serve_cmd(port: int, bind: str, root: str | None, no_browser: bool) -> None:
     """Serve the web map viewer (static files)."""
     from realearth.viewer_server import serve
+
+    if bind not in ("127.0.0.1", "localhost", "::1"):
+        click.echo(
+            f"WARNING: viewer bound to {bind} (exposes packs unauthenticated). "
+            "Prefer --bind 127.0.0.1 for local preview.",
+            err=True,
+        )
 
     if root:
         serve_root = Path(root).resolve()

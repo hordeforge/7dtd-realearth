@@ -16,12 +16,14 @@ from pathlib import Path
 
 import numpy as np
 
+from realearth import DEFAULT_SEA_LEVEL_GAME_Y
 from realearth.elevation import grid_lonlat
 from realearth.landcover import LandCover
 from realearth.settlements import (
     Settlement,
     paint_settlement_density,
     population_to_byte,
+    urban_radius_m_from_population,
 )
 
 # Vanilla POI names present on this install (V2.x Prefabs/POIs)
@@ -446,8 +448,6 @@ def detect_city_cores(
         if settlements and best is not None and best_d < (0.35**2):
             band = best.band if best.population else band
         if edge_m <= 0:
-            from realearth.settlements import urban_radius_m_from_population
-
             edge_m = urban_radius_m_from_population(pop_est)
             edge_src = "population_fallback"
         cores.append(
@@ -482,7 +482,7 @@ def stamp_prefabs_from_density(
     game_y: np.ndarray,
     *,
     world_size: int,
-    sea_level: int = 32,
+    sea_level: int = DEFAULT_SEA_LEVEL_GAME_Y,
     cores: list[CityCore] | None = None,
     seed: int = 7,
     max_prefabs_per_chunk: int = 4,
@@ -614,15 +614,38 @@ def stamp_prefabs_from_density(
 
 
 def _dedupe_stamps(stamps: list[PrefabStamp], min_dist: int = 20) -> list[PrefabStamp]:
-    out: list[PrefabStamp] = []
+    """Keep the first stamp per Chebyshev-min_dist cell neighborhood.
+
+    Spatial-hash keyed by min_dist buckets: a candidate can only collide with
+    kept stamps in its own or adjacent buckets (|dx| < min_dist implies the
+    bucket indices differ by at most 1), so the scan is O(n) instead of the
+    O(n^2) all-pairs check that stalled on dense world-size stamp plans.
+    """
+    if min_dist <= 0:
+        return list(stamps)
+    kept: list[PrefabStamp] = []
+    grid: dict[tuple[int, int], list[PrefabStamp]] = {}
     for s in stamps:
-        if any(
-            abs(s.world_x - o.world_x) < min_dist and abs(s.world_z - o.world_z) < min_dist
-            for o in out
-        ):
-            continue
-        out.append(s)
-    return out
+        bx = s.world_x // min_dist
+        bz = s.world_z // min_dist
+        dup = False
+        for dx in (-1, 0, 1):
+            for dz in (-1, 0, 1):
+                for o in grid.get((bx + dx, bz + dz), ()):
+                    if (
+                        abs(s.world_x - o.world_x) < min_dist
+                        and abs(s.world_z - o.world_z) < min_dist
+                    ):
+                        dup = True
+                        break
+                if dup:
+                    break
+            if dup:
+                break
+        if not dup:
+            kept.append(s)
+            grid.setdefault((bx, bz), []).append(s)
+    return kept
 
 
 def write_prefabs_xml(path: Path, stamps: list[PrefabStamp]) -> None:

@@ -159,6 +159,25 @@ def test_p4_session_snapshot_roundtrip():
     assert "EnsureHotAround" in hooks  # WorldReady must not stomp focus
 
 
+def test_p4_session_restore_is_scoped_to_world_save():
+    """The global mod Config fallback must never restore another world's position.
+
+    Snapshots carry a hashed world-save scope; restore skips candidates whose
+    scope differs from the current save (unknown scopes on either side apply,
+    so legacy snapshots and offline contexts behave as before).
+    """
+    src = _read("SessionStateStore.cs")
+    assert "ScopeForCurrentWorld" in src
+    assert "\"scope\"" in src
+    # Restore gate: a mismatched candidate is skipped, not applied.
+    assert "different world scope" in src
+    # Explicit operator path bypasses the gate (ConsoleCmdReSession load <path>).
+    m = re.search(r"bool explicitPath = !string\.IsNullOrEmpty\(path\);", src)
+    assert m, "explicit-path override for the scope gate missing"
+    wsp = _read("WorldSavePath.cs")
+    assert "SessionScopeId" in wsp
+
+
 # --- P5 SharedFixed (covered in p2 allow_origin_slide) ---
 def test_p5_shared_fixed_enforcement_in_product():
     assert allow_origin_slide("SharedFixed", 1024, 1_000_000, 1_000_000, 2) is False
@@ -399,8 +418,10 @@ def test_height_float_args_use_floor():
     hooks = _read("RuntimeHooks.cs")
     assert "Math.Floor(__0)" in hooks or "Math.Floor(__0)" in hooks.replace(" ", "")
     assert "HeightFloatFromFloatArgsPostfix" in hooks
-    remap = _read("OriginSlideRemap.cs")
-    assert "Math.Floor(fl)" in remap
+    # Entity position components floor centrally since TryGetPos/ReadComp moved
+    # to the shared EngineReflection helper (used by tick + origin-slide remap).
+    refl = _read("EngineReflection.cs")
+    assert "Math.Floor(fl)" in refl
 
 
 def test_sync_load_waits_inflight_and_cdn():
@@ -424,8 +445,10 @@ def test_slide_setpos_rollback():
     hooks = _read("RuntimeHooks.cs")
     assert "rolled back" in hooks or "SetPos failed" in hooks
     assert "TrySetPos" in hooks
-    # TrySetPos must return bool
-    assert "static bool TrySetPos" in hooks
+    # Slide rollback goes through the shared EngineReflection.TrySetPos (bool contract).
+    assert "EngineReflection.TrySetPos" in hooks
+    refl = _read("EngineReflection.cs")
+    assert "static bool TrySetPos" in refl
 
 
 def test_center_window_respects_update_absolute():

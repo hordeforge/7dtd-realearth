@@ -102,7 +102,10 @@ namespace RealEarth
         /// </summary>
         [DataMember] public bool EnableRuntimePoiInject { get; set; } = true;
 
-        /// <summary>Max runtime POI stamps per session (area budget).</summary>
+        /// <summary>
+        /// Max runtime POI stamps per session (area budget). Values above the hard
+        /// budget cap (DensityBudget.DefaultMaxPrefabsPerKm2 = 80) clamp to 80.
+        /// </summary>
         [DataMember] public int RuntimePoiMaxPerArea { get; set; } = 80;
 
         /// <summary>
@@ -248,6 +251,21 @@ namespace RealEarth
                 warnings.Add(
                     $"DefaultSpawnLon/Lat ({DefaultSpawnLon}, {DefaultSpawnLat}) " +
                     "outside [-180,180] x [-90,90] degrees.");
+
+            if (!string.IsNullOrWhiteSpace(TileCdnBaseUrl))
+            {
+                string t = TileCdnBaseUrl.Trim();
+                bool hasControl = false;
+                foreach (char c in t) if (c == '\r' || c == '\n' || c < 0x20) { hasControl = true; break; }
+                if (hasControl)
+                    warnings.Add("TileCdnBaseUrl contains control characters; CDN disabled.");
+                else if (!Uri.TryCreate(t.TrimEnd('/'), UriKind.Absolute, out Uri? u))
+                    warnings.Add($"TileCdnBaseUrl '{TileCdnBaseUrl}' is not a valid absolute URL; CDN disabled.");
+                else if (!u.Scheme.Equals("https", StringComparison.OrdinalIgnoreCase))
+                    warnings.Add($"TileCdnBaseUrl scheme must be https (got {u.Scheme}); CDN disabled.");
+                else if (!string.IsNullOrEmpty(u.UserInfo))
+                    warnings.Add("TileCdnBaseUrl must not contain userinfo; CDN disabled.");
+            }
 
             return warnings;
         }

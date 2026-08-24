@@ -75,7 +75,7 @@ provenance and distinguish prototypes from verified in-game behavior.
   after each live game-version validation.
 - [ ] Add a first-time operator guide covering backup, install, verification,
   troubleshooting, rollback, and save compatibility.
-- [ ] Choose and add a code license before public distribution.
+- [x] Choose and add a code license before public distribution (MIT, [`LICENSE`](LICENSE)).
 - [ ] Run Python tests, multiplayer tests, build, package inspection, and a clean
   install smoke test before a release.
 

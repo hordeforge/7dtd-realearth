@@ -9,6 +9,19 @@ import type { Bbox, ElevRawMeta, LayerInfo, PackMeta, Settlement } from "./types
 
 const DEFAULT_ELEV_SCALE_M = 4500;
 
+// Pack paths are joined onto MOD_BASE_URL for every fetch. A path from the
+// ?pack= query param (or the pack input) must stay inside the mod's served
+// tree: no absolute paths, no scheme, no backslashes, no dot-dot traversal.
+export function isSafePackPath(path: string): boolean {
+  return (
+    path !== "" &&
+    !path.startsWith("/") &&
+    !path.includes("\\") &&
+    !/^[a-z][a-z0-9+.-]*:/iu.test(path) &&
+    !path.split("/").includes("..")
+  );
+}
+
 export type LoadedLayer = {
   id: string;
   image: HTMLImageElement;
@@ -193,6 +206,9 @@ async function loadElevRaw(
 }
 
 export async function loadPack(baseUrl: string, path: string): Promise<LoadedPack> {
+  if (!isSafePackPath(path)) {
+    throw new Error(`Refusing unsafe pack path: ${path}`);
+  }
   const base = `${baseUrl}${path}/`;
   const meta = packMetaFrom(await fetchJson(`${base}viewer.json`));
   if (meta.layers.length === 0) {

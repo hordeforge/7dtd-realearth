@@ -24,10 +24,17 @@ Optional GIS stack (GeoTIFF DEM ingest):
 uv sync --extra gis --extra dev
 ```
 
+Optional engine audit (`realearth engine-audit` against a live
+Assembly-CSharp.dll; without it the audit uses documented 3.0.1 defaults):
+
+```bash
+uv sync --extra audit --extra dev
+```
+
 Tests:
 
 ```bash
-uv run --with pytest pytest
+uv run --extra dev python -m pytest
 # or: make -C .. test
 ```
 

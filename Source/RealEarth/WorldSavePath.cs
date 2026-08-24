@@ -34,12 +34,25 @@ namespace RealEarth
         /// <summary>Mod Config fallback path (always available).</summary>
         public static string ModFallbackSessionPath() => SessionStateStore.DefaultSessionPath();
 
+        /// <summary>
+        /// Stable identity of the current world save (save dir path, else world name).
+        /// Null when unavailable (offline / unit contexts). Session snapshots carry a
+        /// hash of this so one world's position can never restore into another via the
+        /// global mod Config fallback file.
+        /// </summary>
+        public static string? SessionScopeId()
+        {
+            string? dir = TryGetSaveGameDir();
+            if (!string.IsNullOrEmpty(dir)) return dir;
+            return TryWorldName();
+        }
+
         public static string? TryGetSaveGameDir()
         {
             try
             {
                 // GameIO.GetSaveGameDir() static
-                Type? gameIo = FindType("GameIO");
+                Type? gameIo = EngineReflection.FindType("GameIO");
                 if (gameIo != null)
                 {
                     foreach (var mn in new[] { "GetSaveGameDir", "GetSaveGameDirectory", "GetPlayerDataDir" })
@@ -82,7 +95,7 @@ namespace RealEarth
         {
             try
             {
-                Type? gameIo = FindType("GameIO");
+                Type? gameIo = EngineReflection.FindType("GameIO");
                 if (gameIo != null)
                 {
                     foreach (var mn in new[] { "GetUserGameDataDir", "GetUserDataPath", "GetSaveGameRootDir" })
@@ -129,14 +142,14 @@ namespace RealEarth
                     }
                 }
                 // GamePrefs.GetString(EnumGamePrefs.GameWorld)
-                Type? prefs = FindType("GamePrefs");
+                Type? prefs = EngineReflection.FindType("GamePrefs");
                 if (prefs != null)
                 {
                     var getString = prefs.GetMethod("GetString", BindingFlags.Static | BindingFlags.Public | BindingFlags.NonPublic);
                     if (getString != null)
                     {
                         // Try enum value by name
-                        Type? enumT = FindType("EnumGamePrefs");
+                        Type? enumT = EngineReflection.FindType("EnumGamePrefs");
                         if (enumT != null && enumT.IsEnum)
                         {
                             foreach (var name in new[] { "GameWorld", "GameName" })
@@ -154,27 +167,6 @@ namespace RealEarth
                 }
             }
             catch { /* ignore */ }
-            return null;
-        }
-
-        static Type? FindType(string name)
-        {
-            foreach (var asm in AppDomain.CurrentDomain.GetAssemblies())
-            {
-                try
-                {
-                    var t = asm.GetType(name, false);
-                    if (t != null) return t;
-                    foreach (var ty in asm.GetTypes())
-                        if (ty.Name == name) return ty;
-                }
-                catch (ReflectionTypeLoadException ex)
-                {
-                    foreach (var ty in ex.Types ?? Array.Empty<Type>())
-                        if (ty != null && ty.Name == name) return ty;
-                }
-                catch { /* ignore */ }
-            }
             return null;
         }
     }

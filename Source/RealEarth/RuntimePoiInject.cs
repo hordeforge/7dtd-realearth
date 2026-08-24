@@ -139,8 +139,8 @@ namespace RealEarth
                         if (distSq > reach * reach)
                             continue;
 
-                        string chunkKey = FloorDiv(cx, 16).ToString(CultureInfo.InvariantCulture) + ":" +
-                                          FloorDiv(cz, 16).ToString(CultureInfo.InvariantCulture);
+                        string chunkKey = EngineReflection.FloorDiv(cx, 16).ToString(CultureInfo.InvariantCulture) + ":" +
+                                          EngineReflection.FloorDiv(cz, 16).ToString(CultureInfo.InvariantCulture);
                         StampWithBudget(session, p, cx, cz, chunkKey);
                     }
                 }
@@ -263,7 +263,7 @@ namespace RealEarth
         {
             try
             {
-                Type? pmType = FindType("PrefabManager");
+                Type? pmType = EngineReflection.FindType("PrefabManager");
                 object? pm = pmType?.GetProperty("Instance", BindingFlags.Static | BindingFlags.Public | BindingFlags.NonPublic)?.GetValue(null)
                     ?? pmType?.GetField("Instance", BindingFlags.Static | BindingFlags.Public | BindingFlags.NonPublic)?.GetValue(null);
                 if (pm == null || pmType == null) return false;
@@ -338,32 +338,6 @@ namespace RealEarth
             }
             catch { /* ignore */ }
             return false;
-        }
-
-        static int FloorDiv(int a, int b)
-        {
-            if (b == 0) return 0;
-            if (a >= 0) return a / b;
-            return (a - (b - 1)) / b;
-        }
-
-        static Type? FindType(string name)
-        {
-            foreach (var asm in AppDomain.CurrentDomain.GetAssemblies())
-            {
-                try
-                {
-                    foreach (var ty in asm.GetTypes())
-                        if (ty.Name == name) return ty;
-                }
-                catch (ReflectionTypeLoadException ex)
-                {
-                    foreach (var ty in ex.Types ?? Array.Empty<Type>())
-                        if (ty != null && ty.Name == name) return ty;
-                }
-                catch { /* ignore */ }
-            }
-            return null;
         }
     }
 }

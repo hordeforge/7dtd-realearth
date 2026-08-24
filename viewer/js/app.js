@@ -44,13 +44,18 @@ function numOrZero(candidate) {
 function errorMessage(error) {
   return error instanceof Error ? error.message : String(error);
 }
-function esc(text) {
-  return String(text)
-    .replaceAll("&", "&amp;")
-    .replaceAll("<", "&lt;")
-    .replaceAll(">", "&gt;")
-    .replaceAll('"', "&quot;")
-    .replaceAll("'", "&#39;");
+// Pack paths are joined into fetch URLs. They must stay inside the served
+// export tree: no absolute paths, no scheme (cross-origin pack injection),
+// no backslashes, no dot-dot traversal.
+function isSafePackPath(candidate) {
+  return (
+    typeof candidate === "string" &&
+    candidate !== "" &&
+    !candidate.startsWith("/") &&
+    !candidate.includes("\\") &&
+    !/^[a-z][a-z0-9+.-]*:/iu.test(candidate) &&
+    !candidate.split("/").includes("..")
+  );
 }
 
 const els = {
@@ -99,17 +104,25 @@ function readyStatus() {
 }
 
 function renderLegend(layerId) {
+  els.legend.replaceChildren();
   const rows = LEGENDS[layerId] || LEGENDS.hybrid;
-  els.legend.innerHTML = rows
-    .map(
-      ([color, label]) =>
-        `<div class="legend-row"><span class="swatch" style="background:${color}"></span>${label}</div>`
-    )
-    .join("");
+  for (const [legendColor, label] of rows) {
+    const row = document.createElement("div");
+    row.className = "legend-row";
+    const swatch = document.createElement("span");
+    swatch.className = "swatch";
+    const safeColor =
+      typeof legendColor === "string" && /^#(?:[0-9a-fA-F]{3}|[0-9a-fA-F]{6})$/u.test(legendColor)
+        ? legendColor
+        : "#808080";
+    swatch.style.background = safeColor;
+    row.append(swatch, document.createTextNode(String(label)));
+    els.legend.append(row);
+  }
 }
 
 function fillLayers(meta) {
-  els.layerSelect.innerHTML = "";
+  els.layerSelect.replaceChildren();
   const layers = listOrEmpty(meta.layers);
   for (const layer of layers) {
     const opt = document.createElement("option");
@@ -154,21 +167,35 @@ function describePack(meta) {
   const bbox = objOrEmpty(meta.bbox);
   const metersPerBlock = meta.meters_per_block;
   const metersText =
-    metersPerBlock === null || metersPerBlock === undefined ? "" : `~${esc(metersPerBlock)} m/sample`;
+    metersPerBlock === null || metersPerBlock === undefined ? "" : `~${String(metersPerBlock)} m/sample`;
   els.titleHud.textContent = strOrEmpty(meta.name) || "RealEarth";
   const tileCount = listOrEmpty(meta.tiles).length;
-  els.packInfo.innerHTML = [
-    `<strong>${esc(strOrEmpty(meta.name)) || "pack"}</strong>`,
-    `bbox ${fmt(bbox.west)}°,${fmt(bbox.south)}° → ${fmt(bbox.east)}°,${fmt(bbox.north)}°`,
-    `samples ${esc(meta.sample_width)}×${esc(meta.sample_height)}${meta.view_width ? ` · view ${esc(meta.view_width)}×${esc(meta.view_height)}` : ""}`,
+  const lines = [
+    strOrEmpty(meta.name) || "pack",
+    `bbox ${fmt(bbox.west)}\u00B0,${fmt(bbox.south)}\u00B0 \u2192 ${fmt(bbox.east)}\u00B0,${fmt(bbox.north)}\u00B0`,
+    `samples ${String(meta.sample_width)}\u00D7${String(meta.sample_height)}${meta.view_width ? ` \u00B7 view ${String(meta.view_width)}\u00D7${String(meta.view_height)}` : ""}`,
     metersText,
-    `${numOrZero(meta.settlement_count)} settlements · ${tileCount} tiles`,
-  ]
-    .filter(Boolean)
-    .join("<br/>");
+    `${String(numOrZero(meta.settlement_count))} settlements \u00B7 ${String(tileCount)} tiles`,
+  ].filter(Boolean);
+  els.packInfo.replaceChildren();
+  for (let i = 0; i < lines.length; i += 1) {
+    if (i === 0) {
+      const strong = document.createElement("strong");
+      strong.textContent = lines[i];
+      els.packInfo.append(strong);
+    } else {
+      els.packInfo.append(document.createTextNode(lines[i]));
+    }
+    if (i < lines.length - 1) {
+      els.packInfo.append(document.createElement("br"));
+    }
+  }
 }
 
 async function loadPack(baseUrl) {
+  if (!isSafePackPath(baseUrl)) {
+    throw new Error(`Refusing unsafe pack path: ${String(baseUrl)}`);
+  }
   setStatus("Loading pack…");
   state.baseUrl = baseUrl.replace(/\/$/u, "");
   const metaUrl = `${state.baseUrl}/viewer.json`;
@@ -323,7 +350,15 @@ function showTip(s, sx, sy) {
   els.settlementTip.style.top = `${sy}px`;
   const population =
     s.population === null || s.population === undefined ? "?" : s.population.toLocaleString();
-  els.settlementTip.innerHTML = `<strong>${esc(s.name)}</strong><br/>${esc(strOrEmpty(s.band))} · pop ${esc(population)}<br/>${esc(s.lat?.toFixed?.(3))}°, ${esc(s.lon?.toFixed?.(3))}°`;
+  els.settlementTip.replaceChildren();
+  const strong = document.createElement("strong");
+  const settlementName = typeof s.name === "string" ? s.name : "";
+  strong.textContent = settlementName;
+  els.settlementTip.append(strong);
+  els.settlementTip.append(document.createElement("br"));
+  els.settlementTip.append(document.createTextNode(`${String(strOrEmpty(s.band))} \u00B7 pop ${String(population)}`));
+  els.settlementTip.append(document.createElement("br"));
+  els.settlementTip.append(document.createTextNode(`${String(s.lat?.toFixed?.(3) ?? "?")}\u00B0, ${String(s.lon?.toFixed?.(3) ?? "?")}\u00B0`));
 }
 
 function setMode(mode) {
@@ -387,16 +422,24 @@ els.jsonFile.addEventListener("change", () => {
 // discover extra packs if catalog exists
 async function boot() {
   const params = new URLSearchParams(location.search);
-  const pack = params.get("pack") || els.packSelect.value;
-  // catalog and the initial pack are independent: fetch both at once
+  // A crafted ?pack= link must not point the viewer at other origins or
+  // outside the served tree; unsafe values fall back to the bundled pack.
+  const requested = params.get("pack");
+  const pack = isSafePackPath(requested) ? requested : els.packSelect.value;
   const [catalog] = await Promise.all([
     fetch("data/catalog.json").catch(() => null),
     loadPack(pack).catch((error) => {
       setStatus(`Cannot load ${pack}: ${errorMessage(error)}`);
-      els.packInfo.innerHTML =
-        `Missing or broken <code>${esc(pack)}/viewer.json</code>.<br/>` +
-        `From repo: <code>realearth export-viewer --pack data/samples/demo_region --out viewer/data/demo</code><br/>` +
-        `then <code>realearth serve</code>`;
+      els.packInfo.replaceChildren();
+      els.packInfo.append(document.createTextNode(`Missing or broken ${String(pack)}/viewer.json.`));
+      els.packInfo.append(document.createElement("br"));
+      const hint1 = document.createElement("code");
+      hint1.textContent = "realearth export-viewer --pack data/samples/demo_region --out viewer/data/demo";
+      els.packInfo.append(document.createTextNode("From repo: "), hint1);
+      els.packInfo.append(document.createElement("br"));
+      const hint2 = document.createElement("code");
+      hint2.textContent = "realearth serve";
+      els.packInfo.append(document.createTextNode("then "), hint2);
     }),
   ]);
   if (catalog && catalog.ok) {

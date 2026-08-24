@@ -69,7 +69,7 @@ export class GlobeView {
     if (this.texture) {
       this.texture.dispose();
     }
-    this.host.innerHTML = "";
+    this.host.replaceChildren();
   }
 
   resize() {

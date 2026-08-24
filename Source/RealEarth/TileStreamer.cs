@@ -143,14 +143,19 @@ namespace RealEarth
             EvictOutsideAllFoci(_cfg.UnloadRadiusTiles);
         }
 
-        /// <summary>Tile Z into pack height so large host worlds sample pack interior.</summary>
+        /// <summary>
+        /// Tile Z into pack height so large host worlds sample pack interior.
+        /// Mirrors WorldSession.FoldZ via the same SessionOriginPolicy predicate, so the
+        /// streamer and the session mapping can never disagree on out-of-pack Z.
+        /// </summary>
         int FoldPackZ(int z)
         {
-            int h = Math.Max(1, _coords.WorldHeight);
-            if (_cfg.SingleWorldSession || _cfg.HasRegionalBbox || h <= 65536)
+            if (SessionOriginPolicy.ShouldFoldHostIntoPack(
+                    _cfg.SingleWorldSession, _cfg.HasRegionalBbox,
+                    _coords.WorldWidth, _coords.WorldHeight)
+                && !_cfg.EnableLongitudeWrap)
             {
-                int r = z % h;
-                return r < 0 ? r + h : r;
+                return SessionOriginPolicy.FoldCoord(z, _coords.WorldHeight);
             }
             return _coords.ClampZ(z);
         }
@@ -443,7 +448,12 @@ namespace RealEarth
         /// </summary>
         async Task<byte[]> FetchTileBytesAsync(string url)
         {
+            if (!CdnTilePolicy.IsSafeTileUrl(url))
+                throw new InvalidDataException("tile URL must be https");
             using var resp = await _http.GetAsync(url, HttpCompletionOption.ResponseHeadersRead).ConfigureAwait(false);
+            // Defense-in-depth: reject redirects that downgrade to http (HttpClient follows by default).
+            if (resp.RequestMessage?.RequestUri != null && !resp.RequestMessage.RequestUri.Scheme.Equals("https", StringComparison.OrdinalIgnoreCase))
+                throw new InvalidDataException("tile redirect must remain https");
             resp.EnsureSuccessStatusCode();
             long? declared = resp.Content.Headers.ContentLength;
             if (declared.HasValue && (declared.Value < 8 || declared.Value > MaxCdnTileBytes))

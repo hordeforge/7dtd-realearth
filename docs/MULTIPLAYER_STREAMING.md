@@ -127,6 +127,8 @@ Baked playable maps can still be 4096-8192 for a full single-file region.
 }
 ```
 
+Shipped template `Config/realearth.mp.json` keeps `EnableLongitudeWrap=false` for regional canvases; enable wrap only on a full-planet pack (manifest forces it off below 10M blocks).
+
 Rough hot area per player at tile 512, radius 3: about **7×7 tiles ≈ 3.5 km × 3.5 km** of Earth data, independent of LocalWindowSize.
 
 ## Practical shipping advice
@@ -174,7 +176,7 @@ LiteNetLib join bots (probe, full join, wander until world death, respawn) live 
 sibling repo **`7dtd-loadgen`** (not in this tree). See that project’s README:
 
 ```bash
-cd ../7dtd-loadgen   # or ~/Desktop/7dtd/7dtd-loadgen
+cd ../7dtd-loadgen   # sibling checkout next to this repo
 make help
 make selftest         # mock-server CI gate
 make dedicated-4k     # RWG 4k with POIs/sleepers

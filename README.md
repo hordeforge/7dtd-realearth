@@ -2,6 +2,12 @@
 
 > **Part of [HordeForge](https://github.com/hordeforge)** — High-Performance Systems Engineering for 7 Days to Die.
 
+![CI](https://github.com/hordeforge/7dtd-realearth/actions/workflows/ci.yml/badge.svg)
+![license](https://img.shields.io/github/license/hordeforge/7dtd-realearth)
+![release](https://img.shields.io/github/v/release/hordeforge/7dtd-realearth)
+![languages](https://img.shields.io/github/languages/count/hordeforge/7dtd-realearth)
+![top language](https://img.shields.io/github/languages/top/hordeforge/7dtd-realearth)
+
 A **1:1 scale real-world Earth** project for **7 Days to Die V3.1.0** (Henpocalypse): real elevation, landcover heuristics, city/population density, tile streaming, longitude wrap (circle the planet), and a globe-style world map.
 
 This is **not** a single giant heightmap. Earth at 1 block = 1 m is ~40,075 km wide. Vanilla maps top out around 8–16 km. RealEarth uses **offline tile packs** + a **Harmony runtime** that streams only what is near the player.
@@ -68,8 +74,10 @@ make -C .. viewer && make -C .. serve
 # → http://127.0.0.1:8765/
 
 # ONE continuous in-game map (Baked, up to 16k) - single save, edge-to-edge
+# writes a GeneratedWorlds folder (dtm.raw + biomes.png + map_info.xml);
+# copy it into ~/.local/share/7DaysToDie/GeneratedWorlds and start a new game
 realearth bake-world --pack ../data/samples/demo_region --size 8192 --out ../worlds/RealEarth_8k
-# → use worlds/RealEarth_8k/heightmap.png + biomes.png with a heightmap importer
+# PNG-only output for a custom heightmap importer: add --heightmap-only
 
 # Or real elevation for a small bbox (network, rate-limited)
 realearth build-region \
@@ -89,10 +97,10 @@ data/samples/demo_region/
  tiles/{z}/{x}.rte
  settlements.json
  export_7dtd/
- heightmap.png # 16-bit for custom heightmap importers
- biomes.png
- preview.png
- export_meta.json
+  heightmap.png # 16-bit for custom heightmap importers
+  biomes.png
+  preview.png
+  export_meta.json
 ```
 
 ### Install heightmap into 7DTD (Phase 0 path)
@@ -249,5 +257,5 @@ release backlog.
 
 ## License
 
-Code in this repository: choose/add a license before publishing. 
+Code in this repository is licensed under the MIT License ([`LICENSE`](LICENSE)).
 Third-party geodata: see ATTRIBUTION.md; you are responsible for compliance.

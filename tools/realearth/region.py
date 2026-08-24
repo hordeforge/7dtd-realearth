@@ -13,6 +13,7 @@ from realearth.density import (
     apply_urban_from_density,
     build_density_field,
     detect_city_cores,
+    measure_edge_at_lonlat,
     write_cities_json,
 )
 from realearth.elevation import (
@@ -29,6 +30,7 @@ from realearth.settlements import (
     Settlement,
     encode_poi_blob,
     normalize_place_name,
+    settlement_to_json_dict,
 )
 from realearth.tile_format import EarthTile, Manifest, tile_path, write_manifest, write_tile
 
@@ -242,9 +244,6 @@ def build_region(
         )
 
     # Human-readable settlement dump with map-derived urban edge (m).
-    from realearth.density import measure_edge_at_lonlat
-    from realearth.settlements import settlement_to_json_dict
-
     present = [
         s
         for s in settlements
@@ -267,9 +266,7 @@ def build_region(
                 edge = c.edge_radius_m
                 src = c.edge_source
                 break
-        from realearth.settlements import Settlement as _S
-
-        row_s = _S(
+        row_s = Settlement(
             name=s.name,
             lon=s.lon,
             lat=s.lat,
@@ -317,7 +314,16 @@ def world_tile_indices_for_bbox(
     north: float,
     tile_size: int = DEFAULT_TILE_SIZE,
 ) -> list[tuple[int, int]]:
-    """Absolute Earth tile indices for a bbox (for full-planet pipelines)."""
+    """Absolute Earth tile indices for a bbox (for full-planet pipelines).
+
+    Raises ValueError on non-finite or inverted bounds (east>west, north>south),
+    mirroring the `planet-tiles` CLI. An antimeridian-straddling bbox given as
+    west > east would otherwise expand to a near-full-planet span and hang.
+    """
+    if east <= west or north <= south:
+        raise ValueError(
+            f"bbox must have east>west and north>south, got {west},{south} -> {east},{north}"
+        )
     g = EarthGrid(tile_size=tile_size)
     x0, z_south = lonlat_to_block(west, south, g)
     x1, z_north = lonlat_to_block(east, north, g)

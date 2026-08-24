@@ -14,6 +14,14 @@ case "$MAP_MODE" in
     exit 1
     ;;
 esac
+# The positional is rm -rf'd below: refuse anything that is not a safe
+# destination name/path (empty, root, or a traversal escape).
+case "$OUT" in
+  ""|/|*..*)
+    echo "ERROR: package output path must be a plain directory (got: '$OUT')" >&2
+    exit 1
+    ;;
+esac
 
 # Locate a .NET SDK: explicit env, then the usual local caches (mirrors Makefile
 # and install_proton.sh; a bare dotnet host without SDKs fails cryptically).

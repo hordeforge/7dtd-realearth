@@ -140,63 +140,11 @@ namespace RealEarth
             EnforceInjectGate();
         }
 
+        /// <summary>
+        /// Harmony types resolve with an assembly hint through the shared cached scanner.
+        /// </summary>
         static Type? FindType(string fullName, string? asmHint = null)
-        {
-            foreach (var asm in AppDomain.CurrentDomain.GetAssemblies())
-            {
-                if (asmHint != null
-                    && !string.Equals(asm.GetName().Name, asmHint, StringComparison.OrdinalIgnoreCase))
-                    continue;
-                try
-                {
-                    var t = asm.GetType(fullName, false);
-                    if (t != null) return t;
-                }
-                catch { /* ignore */ }
-            }
-
-            string shortName = fullName.Contains(".") ? fullName.Split('.').Last() : fullName;
-            foreach (var asm in AppDomain.CurrentDomain.GetAssemblies())
-            {
-                try
-                {
-                    foreach (var t in asm.GetTypes())
-                    {
-                        if (t.Name == shortName || t.FullName == fullName)
-                            return t;
-                    }
-                }
-                catch (ReflectionTypeLoadException ex)
-                {
-                    foreach (var t in ex.Types ?? Array.Empty<Type>())
-                    {
-                        if (t != null && (t.Name == shortName || t.FullName == fullName))
-                            return t;
-                    }
-                }
-                catch { /* ignore */ }
-            }
-            return null;
-        }
-
-        static Type? ScanTypeByName(string name)
-        {
-            foreach (var asm in AppDomain.CurrentDomain.GetAssemblies())
-            {
-                try
-                {
-                    var t = asm.GetTypes().FirstOrDefault(x => x.Name == name);
-                    if (t != null) return t;
-                }
-                catch (ReflectionTypeLoadException ex)
-                {
-                    var t = ex.Types?.FirstOrDefault(x => x != null && x.Name == name);
-                    if (t != null) return t;
-                }
-                catch { /* ignore */ }
-            }
-            return null;
-        }
+            => EngineReflection.FindType(fullName, asmHint);
 
         static MethodInfo? FindMethod(Type type, string name)
         {
@@ -249,7 +197,7 @@ namespace RealEarth
             // EntityPlayerLocal second: any client-only override still gets a focus tick.
             foreach (var tn in new[] { "EntityPlayer", "EntityPlayerLocal" })
             {
-                var t = ScanTypeByName(tn);
+                var t = EngineReflection.FindType(tn);
                 if (t == null) continue;
                 bool typeDone = false;
                 foreach (var mn in new[] { "Update", "OnUpdatePosition", "MoveEntityHeaded" })
@@ -271,7 +219,7 @@ namespace RealEarth
             int unloadPatched = 0;
             foreach (var tn in new[] { "EntityPlayer", "EntityAlive" })
             {
-                var t = ScanTypeByName(tn);
+                var t = EngineReflection.FindType(tn);
                 if (t == null) continue;
                 foreach (var mn in new[] { "OnEntityUnload", "Despawn", "Kill" })
                 {
@@ -300,7 +248,7 @@ namespace RealEarth
         static int TryPatchWorldSpawn()
         {
             int n = 0;
-            var t = ScanTypeByName("GameManager");
+            var t = EngineReflection.FindType("GameManager");
             if (t != null)
             {
                 foreach (var mn in new[] { "StartGame", "WorldLoaded", "RequestToSpawnPlayer" })
@@ -328,7 +276,7 @@ namespace RealEarth
                 }
             }
             // World.SaveWorldState also writes to GetSaveGameDir — hook as secondary.
-            var wt = ScanTypeByName("World");
+            var wt = EngineReflection.FindType("World");
             if (wt != null)
             {
                 var m = FindMethod(wt, "SaveWorldState");
@@ -633,6 +581,8 @@ namespace RealEarth
         static int _peakLogBudget = 3;
         /// <summary>Budget for tick-path errors so persistent failures stay visible without spam.</summary>
         static int _tickErrLogBudget = 8;
+        /// <summary>Hoisted: TryGetEntityId runs every frame per player (no per-call alloc).</summary>
+        static readonly string[] EntityIdMemberNames = { "entityId", "EntityId", "EntityID" };
 
         public static void PlayerTickPostfix(object __instance)
         {
@@ -643,7 +593,7 @@ namespace RealEarth
                 // Read player block pos once: FOW debug, city discovery, and the stream
                 // tick all need it (a second TryGetPos here doubled per-frame reflection
                 // boxing for every player).
-                bool hasPos = TryGetPos(__instance, out int x, out int y, out int z);
+                bool hasPos = EngineReflection.TryGetPos(__instance, out int x, out int y, out int z);
 
                 // FOW debug + city discover-on-approach need player block pos
                 if (hasPos)
@@ -676,7 +626,7 @@ namespace RealEarth
                         out int dOx, out int dOz, focusId, updateSessionAbsolute: updateAbs))
                 {
                     // Origin already moved; if we cannot reposition the sliding player, roll origin back.
-                    if (!TrySetPos(__instance, nx, y, nz))
+                    if (!EngineReflection.TrySetPos(__instance, nx, y, nz))
                     {
                         if (dOx != 0 || dOz != 0)
                         {
@@ -756,7 +706,7 @@ namespace RealEarth
             try
             {
                 var t = entity.GetType();
-                foreach (var name in new[] { "entityId", "EntityId", "EntityID" })
+                foreach (var name in EntityIdMemberNames)
                 {
                     if (ReflectCache.TryReadIntMember(entity, name, out int v))
                         return v;
@@ -1065,77 +1015,6 @@ namespace RealEarth
             cx = Convert.ToInt32(xObj);
             cz = Convert.ToInt32(zObj);
             return true;
-        }
-
-        static bool TryGetPos(object entity, out int x, out int y, out int z)
-        {
-            x = y = z = 0;
-            var t = entity.GetType();
-            object? pos = ReflectCache.PropPub(t, "position")?.GetValue(entity, null)
-                ?? ReflectCache.PropPub(t, "Position")?.GetValue(entity, null)
-                ?? ReflectCache.FieldPub(t, "position")?.GetValue(entity)
-                ?? ReflectCache.FieldPub(t, "Position")?.GetValue(entity);
-            if (pos == null) return false;
-            x = ReadComp(pos, "x");
-            y = ReadComp(pos, "y");
-            z = ReadComp(pos, "z");
-            return true;
-        }
-
-        static int ReadComp(object vec, string name)
-        {
-            var t = vec.GetType();
-            var f = ReflectCache.FieldPub(t, name);
-            if (f != null)
-            {
-                var v = f.GetValue(vec);
-                return ToFloorInt(v);
-            }
-            var p = ReflectCache.PropPub(t, name);
-            if (p != null)
-            {
-                var v = p.GetValue(vec, null);
-                return ToFloorInt(v);
-            }
-            return 0;
-        }
-
-        static int ToFloorInt(object? v)
-        {
-            switch (v)
-            {
-                case float fl: return (int)Math.Floor(fl);
-                case double d: return (int)Math.Floor(d);
-                case null: return 0;
-                default: return Convert.ToInt32(v);
-            }
-        }
-
-        static bool TrySetPos(object entity, int x, int y, int z)
-        {
-            try
-            {
-                var t = entity.GetType();
-                foreach (var m in t.GetMethods(BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic))
-                {
-                    if (m.Name != "SetPosition" && m.Name != "SetPos") continue;
-                    var ps = m.GetParameters();
-                    if (ps.Length != 1) continue;
-                    var vecType = ps[0].ParameterType;
-                    var vec = Activator.CreateInstance(vecType);
-                    if (vec == null) continue;
-                    ReflectCache.WriteComp(vec, "x", x);
-                    ReflectCache.WriteComp(vec, "y", y);
-                    ReflectCache.WriteComp(vec, "z", z);
-                    m.Invoke(entity, new[] { vec });
-                    return true;
-                }
-            }
-            catch
-            {
-                // ignore
-            }
-            return false;
         }
 
     }

@@ -210,7 +210,7 @@ namespace RealEarth
         {
             try
             {
-                Type? t = FindType(typeName);
+                Type? t = EngineReflection.FindType(typeName);
                 if (t == null) return 0;
                 object? inst = t.GetProperty("Instance", BindingFlags.Static | BindingFlags.Public | BindingFlags.NonPublic)?.GetValue(null)
                     ?? t.GetField("Instance", BindingFlags.Static | BindingFlags.Public | BindingFlags.NonPublic)?.GetValue(null);
@@ -270,12 +270,12 @@ namespace RealEarth
             if (entity == null || ReferenceEquals(entity, exclude))
                 return false;
             // Skip pure abstract / manager nodes without position
-            if (!TryGetPos(entity, out int x, out int y, out int z))
+            if (!EngineReflection.TryGetPos(entity, out int x, out int y, out int z))
                 return false;
             SessionOriginPolicy.RemapLocalAfterOriginDelta(x, z, dOx, dOz, out int nx, out int nz);
             if (nx == x && nz == z)
                 return false;
-            return TrySetPos(entity, nx, y, nz);
+            return EngineReflection.TrySetPos(entity, nx, y, nz);
         }
 
         /// <summary>
@@ -457,101 +457,6 @@ namespace RealEarth
                 return clone;
             }
             catch { return null; }
-        }
-
-        static Type? FindType(string name)
-        {
-            foreach (var asm in AppDomain.CurrentDomain.GetAssemblies())
-            {
-                try
-                {
-                    var t = asm.GetType(name, false);
-                    if (t != null) return t;
-                    foreach (var ty in asm.GetTypes())
-                        if (ty.Name == name) return ty;
-                }
-                catch (ReflectionTypeLoadException ex)
-                {
-                    foreach (var ty in ex.Types ?? Array.Empty<Type>())
-                        if (ty != null && ty.Name == name) return ty;
-                }
-                catch { /* ignore */ }
-            }
-            return null;
-        }
-
-        static bool TryGetPos(object entity, out int x, out int y, out int z)
-        {
-            x = y = z = 0;
-            try
-            {
-                var t = entity.GetType();
-                object? pos = t.GetProperty("position")?.GetValue(entity, null)
-                    ?? t.GetProperty("Position")?.GetValue(entity, null)
-                    ?? t.GetField("position", BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic)?.GetValue(entity);
-                if (pos == null) return false;
-                x = ReadComp(pos, "x");
-                y = ReadComp(pos, "y");
-                z = ReadComp(pos, "z");
-                return true;
-            }
-            catch { return false; }
-        }
-
-        static int ReadComp(object vec, string name)
-        {
-            var t = vec.GetType();
-            var f = t.GetField(name);
-            if (f != null)
-            {
-                var v = f.GetValue(vec);
-                // Floor: negative engine XZ after fold/slide must not truncate toward zero.
-                if (v is float fl) return (int)Math.Floor(fl);
-                if (v is double d) return (int)Math.Floor(d);
-                return Convert.ToInt32(v);
-            }
-            var p = t.GetProperty(name);
-            if (p != null)
-            {
-                var v = p.GetValue(vec, null);
-                if (v is float fl) return (int)Math.Floor(fl);
-                if (v is double d) return (int)Math.Floor(d);
-                return Convert.ToInt32(v);
-            }
-            return 0;
-        }
-
-        static bool TrySetPos(object entity, int x, int y, int z)
-        {
-            try
-            {
-                var t = entity.GetType();
-                foreach (var m in t.GetMethods(BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic))
-                {
-                    if (m.Name != "SetPosition" && m.Name != "SetPos") continue;
-                    var ps = m.GetParameters();
-                    if (ps.Length != 1) continue;
-                    var vecType = ps[0].ParameterType;
-                    var vec = Activator.CreateInstance(vecType);
-                    if (vec == null) continue;
-                    ReflectCache.WriteComp(vec, "x", x);
-                    ReflectCache.WriteComp(vec, "y", y);
-                    ReflectCache.WriteComp(vec, "z", z);
-                    m.Invoke(entity, new[] { vec });
-                    return true;
-                }
-                // Direct position field write
-                object? pos = t.GetField("position", BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic)?.GetValue(entity);
-                if (pos != null)
-                {
-                    ReflectCache.WriteComp(pos, "x", x);
-                    ReflectCache.WriteComp(pos, "y", y);
-                    ReflectCache.WriteComp(pos, "z", z);
-                    return true;
-                }
-            }
-            catch { /* ignore */ }
-            return false;
         }
 
     }

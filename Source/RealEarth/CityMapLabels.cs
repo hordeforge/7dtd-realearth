@@ -93,14 +93,16 @@ namespace RealEarth
 
         /// <summary>
         /// Each player tick: discover cities whose edge you entered; labels always at center.
+        /// force=true (console `recities here`) bypasses the shared tick throttle so the
+        /// command always runs a real discovery pass instead of decrementing the counter.
         /// </summary>
-        public static void TickPlayer(int playerLocalX, int playerLocalZ)
+        public static void TickPlayer(int playerLocalX, int playerLocalZ, bool force = false)
         {
             var cfg = ModApi.Config;
             if (cfg == null || !cfg.ShowCityNamesOnMap)
                 return;
 
-            if (_tickThrottle > 0)
+            if (!force && _tickThrottle > 0)
             {
                 _tickThrottle--;
                 return;
@@ -738,7 +740,7 @@ namespace RealEarth
             try
             {
                 if (_navMgrType == null)
-                    _navMgrType = FindType("NavObjectManager");
+                    _navMgrType = EngineReflection.FindType("NavObjectManager");
                 var t = _navMgrType;
                 if (t == null) return null;
                 var f = t.GetField("Instance", BindingFlags.Static | BindingFlags.Public | BindingFlags.NonPublic)
@@ -779,27 +781,6 @@ namespace RealEarth
                 var ps = m.GetParameters();
                 if (ps.Length >= 2 && ps[0].ParameterType == typeof(string) && ps[1].ParameterType.Name == "Vector3")
                     return m;
-            }
-            return null;
-        }
-
-        static Type? FindType(string name)
-        {
-            foreach (var asm in AppDomain.CurrentDomain.GetAssemblies())
-            {
-                try
-                {
-                    var t = asm.GetType(name, false);
-                    if (t != null) return t;
-                    foreach (var ty in asm.GetTypes())
-                        if (ty.Name == name) return ty;
-                }
-                catch (ReflectionTypeLoadException ex)
-                {
-                    foreach (var ty in ex.Types)
-                        if (ty != null && ty.Name == name) return ty;
-                }
-                catch { /* ignore */ }
             }
             return null;
         }

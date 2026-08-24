@@ -96,13 +96,24 @@ namespace RealEarth.EnginePatcher
             "NormalZ",
         };
 
+        static int Log2Exact(int v)
+        {
+            int pow = 0;
+            while ((1 << pow) < v) pow++;
+            if ((1 << pow) != v)
+                throw new ArgumentException("value is not a power of two: " + v);
+            return pow;
+        }
+
         static void SetYDim(int yDim)
         {
             // Power-of-two only (bitmasks / YPow)
             if (yDim < 256 || (yDim & (yDim - 1)) != 0)
                 throw new ArgumentException("YDim must be power of two >= 256, got " + yDim);
             TargetYDim = yDim;
-            TargetYPow = (int)Math.Log(yDim, 2);
+            // Integer log2: (int)Math.Log(yDim, 2) truncates, so a double result
+            // of 13.9999... would desync YPow/masks from the validated YDim.
+            TargetYPow = Log2Exact(yDim);
             TargetYDimM1 = yDim - 1;
             TargetLayers = yDim / LayerHeight;
             TargetVolumeBits = 16 * 16 * yDim;

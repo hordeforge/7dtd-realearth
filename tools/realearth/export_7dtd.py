@@ -7,6 +7,7 @@ from pathlib import Path
 import numpy as np
 from PIL import Image
 
+from realearth import DEFAULT_SEA_LEVEL_GAME_Y
 from realearth.height import compress_elevation, to_heightmap_png_array
 from realearth.landcover import landcover_to_biome_rgb
 
@@ -63,7 +64,7 @@ def export_region_pack(
     landcover: np.ndarray,
     out_dir: Path,
     *,
-    sea_level_y: int = 32,
+    sea_level_y: int = DEFAULT_SEA_LEVEL_GAME_Y,
     name: str = "RealEarthRegion",
 ) -> dict:
     """Export a vanilla-friendly region folder: heightmap, biomes, preview, meta."""

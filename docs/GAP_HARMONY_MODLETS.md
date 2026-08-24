@@ -93,8 +93,8 @@ Prefer the **shallowest** API (workspace [MODDING_BEST_PRACTICES](../../MODDING_
 | **What** | F1 / dedicated console commands auto-discovered from mod assemblies |
 | **Strengths** | Fast debug; no UI; works dedicated |
 | **Weaknesses** | Not player UX; not a data plane |
-| **RealEarth now** | `reheight`, `rereveal`, `recities` |
-| **Later** | `relonlat`, session dump, tile cache stats |
+| **RealEarth now** | `reheight`, `rereveal`, `recities`, `reinject`, `resession` |
+| **Later** | `relonlat`, tile cache stats |
 | **Vs others** | TFP_CommandExtensions stock sample; ServerTools dozens of cmds |
 
 #### Harmony (via stock 0_TFP_Harmony)

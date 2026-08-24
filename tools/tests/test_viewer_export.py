@@ -1,3 +1,4 @@
+import json
 from pathlib import Path
 
 import pytest
@@ -70,4 +71,33 @@ def test_mosaic_pack_still_raises_when_all_tiles_missing(tmp_path: Path):
     for t in man.tiles:
         tile_path(pack, t["tx"], t["tz"]).unlink()
     with pytest.raises(FileNotFoundError):
+        mosaic_pack(pack)
+
+
+@pytest.mark.parametrize(
+    ("field", "value"),
+    [
+        ("tile_size", 0),
+        ("tile_size", 100000),
+        ("world_width", -1),
+        ("world_height", -1),
+    ],
+)
+def test_mosaic_pack_rejects_hostile_manifest_dims(tmp_path: Path, field: str, value: int):
+    """Manifest integers must not steer np.full into an unbounded allocation."""
+    pack = _tiny_region(tmp_path)
+    raw = json.loads((pack / "earth.manifest.json").read_text(encoding="utf-8"))
+    raw[field] = value
+    (pack / "earth.manifest.json").write_text(json.dumps(raw), encoding="utf-8")
+    with pytest.raises(ValueError, match="manifest"):
+        mosaic_pack(pack)
+
+
+def test_mosaic_pack_rejects_oversized_tile_grid(tmp_path: Path):
+    """A manifest claiming a huge tile grid must fail loudly, not OOM."""
+    pack = _tiny_region(tmp_path)
+    raw = json.loads((pack / "earth.manifest.json").read_text(encoding="utf-8"))
+    raw["tiles"] = [{"tx": 0, "tz": 0}, {"tx": 100000, "tz": 100000}]
+    (pack / "earth.manifest.json").write_text(json.dumps(raw), encoding="utf-8")
+    with pytest.raises(ValueError, match="cap is"):
         mosaic_pack(pack)

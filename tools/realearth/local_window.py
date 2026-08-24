@@ -38,7 +38,9 @@ class LocalWindow:
     # When True (or pack is small), large host coords fold into pack [0,w)×[0,h)
     fold_host_into_pack: bool = False
     multiplayer_origin_mode: OriginMode = "SoloSlide"
-    # For SharedSlide: estimate of concurrent players (1 ⇒ allow slide)
+    # Concurrent-player estimate for the slide policy below: SoloSlide /
+    # SharedSlide slide only when the count is known and <= 1, mirroring
+    # SessionOriginPolicy.AllowOriginSlide (unknown counts fail closed).
     player_count: int = 1
 
     def should_fold(self) -> bool:
@@ -54,19 +56,16 @@ class LocalWindow:
         mode = (self.multiplayer_origin_mode or "SoloSlide").strip()
         if mode == "SharedFixed":
             return False
-        if mode == "SharedSlide":
-            return self.player_count <= 1
-        # SoloSlide (default)
-        return True
+        # SoloSlide / SharedSlide / unknown modes: slide only when the player
+        # count is known and <= 1. Unknown (< 0) fails closed so an MP session
+        # cannot desync builds on a bad estimate, same as the C# policy.
+        return 0 <= self.player_count <= 1
 
     def set_origin(self, earth_x: int, earth_z: int) -> None:
-        if self.enable_longitude_wrap or self.should_fold():
-            self.origin_x = self.grid.wrap_x(earth_x) if self.enable_longitude_wrap else fold_x(
-                earth_x, self.grid.width
-            )
-            # wrap_x for fold when not longitude wrap uses fold_x
-            if not self.enable_longitude_wrap and self.should_fold():
-                self.origin_x = fold_x(earth_x, self.grid.width)
+        if self.enable_longitude_wrap:
+            self.origin_x = self.grid.wrap_x(earth_x)
+        elif self.should_fold():
+            self.origin_x = fold_x(earth_x, self.grid.width)
         else:
             self.origin_x = earth_x
         if self.should_fold() and not self.enable_longitude_wrap:

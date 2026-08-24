@@ -99,18 +99,39 @@ namespace RealEarth
             RealEarthConfig? cfg,
             int localX,
             int localZ)
+            => SampleColumnInt(session, streamer, cfg, localX, localZ, out _);
+
+        /// <summary>
+        /// One locked streamer sample per column yields elevation AND landcover.
+        /// Shared by SampleGameHeightIntExplicit and the fused FillChunkColumns so a
+        /// chunk fill costs one sample per column instead of one per channel.
+        /// landcover is 255 when session/streamer are absent and 0 on a tile miss
+        /// (same contract as SampleLandcover).
+        /// </summary>
+        static int SampleColumnInt(
+            WorldSession? session,
+            TileStreamer? streamer,
+            RealEarthConfig? cfg,
+            int localX,
+            int localZ,
+            out byte landcover)
         {
             int sea = cfg?.SeaLevelGameY ?? HeightInjectMath.DefaultSeaLevelGameY;
             if (session == null || streamer == null)
+            {
+                landcover = 255;
                 return sea;
+            }
 
             session.LocalToEarth(localX, localZ, out int ex, out int ez);
-            bool ok = streamer.TrySamplePrefetch(ex, ez, out float elevM, out _, out _);
+            // Single-lock sample: hot tile inline, miss queues async prefetch (no focus).
+            bool ok = streamer.TrySamplePrefetch(ex, ez, out float elevM, out byte lc, out _);
             TileSamplePolicy.ResolveElev(ok, elevM, cfg, out float elevResolved, out _);
             int y = TileSamplePolicy.ElevToGameYInt(elevResolved, cfg);
             int cap = EngineHeight.EngineHeightMod.AllocatableColumnMaxY;
             if (y > cap) y = cap;
             if (y < 1) y = 1;
+            landcover = ok ? lc : (byte)0;
             return y;
         }
 
@@ -227,6 +248,53 @@ namespace RealEarth
                 {
                     landcover[z * chunkSize + x] = SampleLandcover(
                         session, streamer, chunkLocalOriginX + x, chunkLocalOriginZ + z);
+                }
+            }
+        }
+
+        /// <summary>
+        /// Heights + landcover for one chunk in the shared layout
+        /// (buf[z * chunkSize + x]). One entry point so gen-time inject and
+        /// post-slide reinject cannot drift apart.
+        /// Streamed path: both channels come from ONE locked streamer sample per
+        /// column; the engine-height path keeps its dedicated height store/policy
+        /// sample plus a separate landcover sample.
+        /// </summary>
+        public static void FillChunkColumns(
+            WorldSession? session,
+            TileStreamer? streamer,
+            RealEarthConfig? cfg,
+            int chunkLocalOriginX,
+            int chunkLocalOriginZ,
+            int chunkSize,
+            int[] heights,
+            byte[] landcover)
+        {
+            if (heights == null || heights.Length < chunkSize * chunkSize)
+                throw new ArgumentException("heights buffer too small");
+            if (landcover == null || landcover.Length < chunkSize * chunkSize)
+                throw new ArgumentException("landcover buffer too small");
+
+            if (EngineHeight.EngineHeightMod.Active)
+            {
+                // Expanded path: heights must flow through the engine-height
+                // store/policy, which samples independently.
+                FillChunkHeightsInt(
+                    session, streamer, cfg, chunkLocalOriginX, chunkLocalOriginZ, chunkSize, heights);
+                FillChunkLandcover(
+                    session, streamer, chunkLocalOriginX, chunkLocalOriginZ, chunkSize, landcover);
+                return;
+            }
+
+            for (int z = 0; z < chunkSize; z++)
+            {
+                for (int x = 0; x < chunkSize; x++)
+                {
+                    int i = z * chunkSize + x;
+                    heights[i] = SampleColumnInt(
+                        session, streamer, cfg,
+                        chunkLocalOriginX + x, chunkLocalOriginZ + z,
+                        out landcover[i]);
                 }
             }
         }

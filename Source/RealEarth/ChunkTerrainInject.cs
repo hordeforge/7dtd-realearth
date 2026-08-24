@@ -32,21 +32,41 @@ namespace RealEarth
         /// (permanent ocean columns baked into the save).
         /// </summary>
         static readonly object _initLock = new object();
+        // Counters are cross-thread: the gen thread increments inject stats while the
+        // main thread resets them at WorldReady and adds reinject totals. Plain
+        // read-modify-write would lose updates; Interlocked + Volatile.Read keeps them honest.
+        static int _sessionPeakHeight;
+        static int _sessionInjectCount;
+        static int _sessionBlocksApplied;
+        static int _sessionReinjectedChunks;
+
         /// <summary>Highest maxH seen this session (for dedicated gates / diagnostics).</summary>
-        public static int SessionPeakHeight { get; private set; }
-        public static int SessionInjectCount { get; private set; }
-        public static int SessionBlocksApplied { get; private set; }
+        public static int SessionPeakHeight => Volatile.Read(ref _sessionPeakHeight);
+        public static int SessionInjectCount => Volatile.Read(ref _sessionInjectCount);
+        public static int SessionBlocksApplied => Volatile.Read(ref _sessionBlocksApplied);
         /// <summary>Loaded chunks rewritten after origin slides (SoloSlide desync closure).</summary>
-        public static int SessionReinjectedChunks { get; private set; }
+        public static int SessionReinjectedChunks => Volatile.Read(ref _sessionReinjectedChunks);
 
         /// <summary>Reset per-world inject counters (WorldReady / reinject reset).</summary>
         public static void ResetSessionCounters()
         {
-            SessionPeakHeight = 0;
-            SessionInjectCount = 0;
-            SessionBlocksApplied = 0;
-            SessionReinjectedChunks = 0;
+            Interlocked.Exchange(ref _sessionPeakHeight, 0);
+            Interlocked.Exchange(ref _sessionInjectCount, 0);
+            Interlocked.Exchange(ref _sessionBlocksApplied, 0);
+            Interlocked.Exchange(ref _sessionReinjectedChunks, 0);
             Volatile.Write(ref _injectLogBudget, 24);
+        }
+
+        /// <summary>Atomic max for the session peak (gen thread only writer, reset races WorldReady).</summary>
+        static void RaiseSessionPeak(int maxH)
+        {
+            int cur = Volatile.Read(ref _sessionPeakHeight);
+            while (maxH > cur)
+            {
+                int prev = Interlocked.CompareExchange(ref _sessionPeakHeight, maxH, cur);
+                if (prev == cur) break;
+                cur = prev;
+            }
         }
 
         /// <summary>
@@ -123,17 +143,15 @@ namespace RealEarth
 
             int n = ChunkTerrainSampler.VanillaChunkSize * ChunkTerrainSampler.VanillaChunkSize;
             var heights = new int[n];
-            ChunkTerrainSampler.FillChunkHeightsInt(
-                session, streamer, ModApi.Config, blockX, blockZ,
-                ChunkTerrainSampler.VanillaChunkSize, heights);
-
             var landcover = new byte[n];
-            ChunkTerrainSampler.FillChunkLandcover(
-                session, streamer, blockX, blockZ, ChunkTerrainSampler.VanillaChunkSize, landcover);
+            ChunkTerrainSampler.FillChunkColumns(
+                session, streamer, ModApi.Config, blockX, blockZ,
+                ChunkTerrainSampler.VanillaChunkSize, heights, landcover);
 
             bool applied = false;
+            int appliedColumns = 0;
             if (chunkObj != null)
-                applied = TryApplyHeightsToChunk(chunkObj, heights, landcover);
+                applied = TryApplyHeightsToChunk(chunkObj, heights, landcover, ChunkTerrainSampler.VanillaChunkSize, out appliedColumns);
 
             // Runtime density/POI stamps for urban cells (budgeted).
             try
@@ -148,10 +166,10 @@ namespace RealEarth
                 if (heights[i] > maxH) maxH = heights[i];
             if (applied)
             {
-                SessionInjectCount++;
-                SessionBlocksApplied++;
-                if (maxH > SessionPeakHeight)
-                    SessionPeakHeight = maxH;
+                Interlocked.Increment(ref _sessionInjectCount);
+                // Count real applied columns, not one per chunk.
+                Interlocked.Add(ref _sessionBlocksApplied, appliedColumns);
+                RaiseSessionPeak(maxH);
             }
             int mid = heights[heights.Length / 2];
 
@@ -178,7 +196,9 @@ namespace RealEarth
         /// Effective max surface for full solid block+density fill via reflection.
         /// Never auto-selects Everest-scale dual fill (millions of Invoke calls hang gen).
         /// Config FullSolidBlockFillMaxSurface &gt; 0 opts into a higher dual-fill ceiling.
-        /// Tall columns above this: solid density full height + block crust (Issue 2).
+        /// Tall columns above this: bedrock plug + block crust + air clear only;
+        /// the interior below the crust is intentionally left untouched
+        /// (documented residual: docs/realearth-runtime.md "Intentional hollow").
         /// </summary>
         public static int EffectiveFullDualFillMaxSurface()
         {
@@ -198,20 +218,40 @@ namespace RealEarth
         /// <summary>
         /// Fill solid terrain for 1:1 heights.
         /// Full dual block+density through EffectiveFullDualFillMaxSurface (default 520).
-        /// Above that: solid density entire column + block crust + bedrock (not hollow).
+        /// Above that: bedrock plug + solid crust under the surface + air clear.
+        /// The interior between plug and crust is intentionally NOT written
+        /// (never full-column Reflect to Everest; see docs/realearth-runtime.md).
         /// </summary>
         public static bool TryApplyHeightsToChunk(object chunk, int[] heights, int chunkSize = 16)
-            => TryApplyHeightsToChunk(chunk, heights, landcover: null, chunkSize);
+            => TryApplyHeightsToChunk(chunk, heights, landcover: null, chunkSize, out _);
 
         public static bool TryApplyHeightsToChunk(
-            object chunk, int[] heights, byte[]? landcover, int chunkSize = 16)
+            object chunk, int[] heights, byte[]? landcover, int chunkSize)
+            => TryApplyHeightsToChunk(chunk, heights, landcover, chunkSize, out _);
+
+        /// <summary>
+        /// Core apply. appliedColumns counts columns with at least one successful
+        /// density/block write; it is returned per call instead of stored in a shared
+        /// static because the gen thread and main-thread reinject can run concurrently.
+        /// </summary>
+        public static bool TryApplyHeightsToChunk(
+            object chunk, int[] heights, byte[]? landcover, int chunkSize, out int appliedColumns)
         {
+            appliedColumns = 0;
             if (chunk == null || heights == null || heights.Length < chunkSize * chunkSize)
                 return false;
 
             // Resolve reflection caches under one lock (gen thread + main-thread reinject).
+            // Everything read afterwards is copied to locals so no unlocked static reads race
+            // a first-time resolve on the other thread.
             MethodInfo? setDensity;
             MethodInfo? setBlock;
+            MethodInfo? setHeight;
+            object? solidBlock;
+            object? dirtBlock;
+            object? snowBlock;
+            object? sandBlock;
+            object? airBlock;
             lock (_initLock)
             {
                 var t = chunk.GetType();
@@ -226,6 +266,12 @@ namespace RealEarth
                 ResolveTerrainBlocksLocked();
                 setDensity = _setDensityCached;
                 setBlock = _setBlockCached;
+                setHeight = _setHeight;
+                solidBlock = _solidBlock;
+                dirtBlock = _dirtBlock;
+                snowBlock = _snowBlock;
+                sandBlock = _sandBlock;
+                airBlock = _airBlock;
             }
             if (setDensity == null && setBlock == null)
                 return false;
@@ -243,30 +289,35 @@ namespace RealEarth
                 airDens = Convert.ChangeType((sbyte)127, densType);
             }
 
-            object[]? heightArgs = _setHeight != null ? new object[3] : null;
+            object[]? heightArgs = setHeight != null ? new object[3] : null;
             bool heightIsByte = false;
-            if (_setHeight != null)
+            if (setHeight != null)
             {
-                var hps = _setHeight.GetParameters();
+                var hps = setHeight.GetParameters();
                 heightIsByte = hps.Length >= 3 && hps[2].ParameterType == typeof(byte);
             }
             object[]? blockArgs = setBlock != null ? new object[4] : null;
             object[]? densArgs = setDensity != null ? new object[4] : null;
 
             bool any = false;
+            int columns = 0;
             int failures = 0;
             for (int z = 0; z < chunkSize; z++)
             {
                 for (int x = 0; x < chunkSize; x++)
                 {
+                    bool colAny = false;
                     int surface = heights[z * chunkSize + x];
                     surface = Math.Max(1, Math.Min(columnMax - 1, surface));
                     byte lc = landcover != null && landcover.Length > z * chunkSize + x
                         ? landcover[z * chunkSize + x]
                         : (byte)255;
-                    object solid = PickSolidBlock(lc) ?? _solidBlock ?? _airBlock!;
+                    // No `!` fallback: when reflection resolved nothing (density-only builds)
+                    // the block write is skipped below rather than NRE-ing mid-chunk.
+                    object? solid = PickSolidBlock(lc, dirtBlock, snowBlock, sandBlock, solidBlock)
+                        ?? solidBlock;
 
-                    if (_setHeight != null && heightArgs != null)
+                    if (setHeight != null && heightArgs != null)
                     {
                         try
                         {
@@ -275,7 +326,7 @@ namespace RealEarth
                             heightArgs[2] = heightIsByte
                                 ? (object)(byte)Math.Min(255, surface)
                                 : surface;
-                            _setHeight.Invoke(chunk, heightArgs);
+                            setHeight.Invoke(chunk, heightArgs);
                         }
                         catch { /* optional */ }
                     }
@@ -301,22 +352,24 @@ namespace RealEarth
                                 densArgs[3] = solidCell ? solidDens : airDens;
                                 setDensity.Invoke(chunk, densArgs);
                                 any = true;
+                                colAny = true;
                             }
                             catch
                             {
                                 failures++;
                             }
                         }
-                        if (setBlock != null && blockArgs != null && solid != null && _airBlock != null)
+                        if (blockArgs != null && solid != null && airBlock != null)
                         {
                             try
                             {
                                 blockArgs[0] = x;
                                 blockArgs[1] = y;
                                 blockArgs[2] = z;
-                                blockArgs[3] = solidCell ? solid : _airBlock;
-                                setBlock.Invoke(chunk, blockArgs);
+                                blockArgs[3] = solidCell ? solid : airBlock;
+                                setBlock!.Invoke(chunk, blockArgs);
                                 any = true;
+                                colAny = true;
                             }
                             catch
                             {
@@ -345,10 +398,13 @@ namespace RealEarth
                         for (int y = surface; y <= yWriteHi; y++)
                             WriteColumnCell(y, solidCell: false);
                     }
+                    if (colAny)
+                        columns++;
                     if (failures > 64 && !any)
                         return false;
                 }
             }
+            appliedColumns = columns;
             return any;
         }
 
@@ -381,8 +437,8 @@ namespace RealEarth
                 var chunks = FindLoadedChunkCollection(world);
                 if (chunks == null) return 0;
 
-                int ccx = FloorDiv(centerLocalX, ChunkTerrainSampler.VanillaChunkSize);
-                int ccz = FloorDiv(centerLocalZ, ChunkTerrainSampler.VanillaChunkSize);
+                int ccx = EngineReflection.FloorDiv(centerLocalX, ChunkTerrainSampler.VanillaChunkSize);
+                int ccz = EngineReflection.FloorDiv(centerLocalZ, ChunkTerrainSampler.VanillaChunkSize);
                 int rChunks = Math.Max(1, radiusBlocks / ChunkTerrainSampler.VanillaChunkSize);
 
                 var candidates = new List<(int dist, int cx, int cz, object chunk)>();
@@ -406,7 +462,7 @@ namespace RealEarth
 
                 if (reinjected > 0)
                 {
-                    SessionReinjectedChunks += reinjected;
+                    Interlocked.Add(ref _sessionReinjectedChunks, reinjected);
                     if (ConsumeInjectLogBudget())
                     {
                         ModApi.Log(
@@ -444,13 +500,11 @@ namespace RealEarth
 
             int n = ChunkTerrainSampler.VanillaChunkSize * ChunkTerrainSampler.VanillaChunkSize;
             var heights = new int[n];
-            ChunkTerrainSampler.FillChunkHeightsInt(
-                session, streamer, ModApi.Config, blockX, blockZ,
-                ChunkTerrainSampler.VanillaChunkSize, heights);
             var landcover = new byte[n];
-            ChunkTerrainSampler.FillChunkLandcover(
-                session, streamer, blockX, blockZ, ChunkTerrainSampler.VanillaChunkSize, landcover);
-            return TryApplyHeightsToChunk(chunkObj, heights, landcover);
+            ChunkTerrainSampler.FillChunkColumns(
+                session, streamer, ModApi.Config, blockX, blockZ,
+                ChunkTerrainSampler.VanillaChunkSize, heights, landcover);
+            return TryApplyHeightsToChunk(chunkObj, heights, landcover, ChunkTerrainSampler.VanillaChunkSize, out _);
         }
 
         /// <summary>
@@ -556,27 +610,33 @@ namespace RealEarth
             return hasX && hasZ;
         }
 
-        /// <summary>Floor division (negative locals must not truncate toward zero, Issue 2.13).</summary>
-        static int FloorDiv(int a, int b) => a >= 0 ? a / b : (a - b + 1) / b;
-
-        static object? PickSolidBlock(byte landcover)
+        /// <summary>
+        /// Map coarse landcover → terrain block from the caller's locked-init snapshot
+        /// (no unlocked static reads on the gen/reinject threads).
+        /// </summary>
+        static object? PickSolidBlock(
+            byte landcover,
+            object? dirtBlock,
+            object? snowBlock,
+            object? sandBlock,
+            object? solidBlock)
         {
-            // Map coarse landcover → terrain block when resolved.
+            // Map coarse landcover codes to terrain blocks when resolved.
             switch (landcover)
             {
                 case 0:
                 case 1:
-                    return _solidBlock; // water underlay still needs solid floor under sea
+                    return solidBlock; // water underlay still needs solid floor under sea
                 case 2:
                 case 10:
-                    return _snowBlock ?? _solidBlock;
+                    return snowBlock ?? solidBlock;
                 case 5:
                 case 11:
-                    return _sandBlock ?? _dirtBlock ?? _solidBlock;
+                    return sandBlock ?? dirtBlock ?? solidBlock;
                 case 3:
-                    return _dirtBlock ?? _solidBlock;
+                    return dirtBlock ?? solidBlock;
                 default:
-                    return _dirtBlock ?? _solidBlock;
+                    return dirtBlock ?? solidBlock;
             }
         }
 
@@ -611,7 +671,7 @@ namespace RealEarth
             return null;
         }
 
-        /// <summary>Prefer SetBlockRaw when present (fewer side effects / faster than full SetBlock).</summary>
+        /// <summary>Fallback when full SetBlock is absent (raw write skips mesh dirty flags).</summary>
         static MethodInfo? FindSetBlockRaw(Type t)
         {
             foreach (var m in t.GetMethods(BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic))

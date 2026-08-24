@@ -42,7 +42,9 @@ namespace RealEarth
                     float old = ModApi.Config?.CityMapDiscoverRadiusScale ?? 1f;
                     if (ModApi.Config != null)
                         ModApi.Config.CityMapDiscoverRadiusScale = 50f;
-                    CityMapLabels.TickPlayer((int)System.Math.Floor(pos.x), (int)System.Math.Floor(pos.z));
+                    // force=true bypasses the shared tick throttle (command must
+                    // always run a real discovery pass, not decrement the counter).
+                    CityMapLabels.TickPlayer((int)System.Math.Floor(pos.x), (int)System.Math.Floor(pos.z), force: true);
                     if (ModApi.Config != null)
                         ModApi.Config.CityMapDiscoverRadiusScale = old;
                     Out("[RealEarth] recities here: discovery pass with temporary large radius.");

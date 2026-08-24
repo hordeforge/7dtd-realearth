@@ -1,16 +1,52 @@
 """CLI contract tests: exit codes, clean errors, help consistency."""
 
+import json
 from pathlib import Path
 
+import pytest
 from click.testing import CliRunner
 
-from realearth.cli import main
+from realearth.cli import _safe_name_component, main
 
 
 def test_version_exits_zero() -> None:
     result = CliRunner().invoke(main, ["--version"])
     assert result.exit_code == 0
     assert "version" in result.stdout
+
+
+def test_safe_name_component_accepts_plain_names() -> None:
+    assert (
+        _safe_name_component({"name": "RealEarth_H500"}, "name", "Fallback")
+        == "RealEarth_H500"
+    )
+    assert _safe_name_component({}, "name", "Fallback") == "Fallback"
+
+
+@pytest.mark.parametrize(
+    "bad",
+    ["../../etc", "/etc/passwd", "a/b", "a\\b", "..", "."],
+)
+def test_safe_name_component_rejects_traversal(bad: str) -> None:
+    with pytest.raises(ValueError):
+        _safe_name_component({"name": bad}, "name", "Fallback")
+
+
+def test_install_height_test_rejects_hostile_pack_name(tmp_path: Path) -> None:
+    """Pack metadata name must never steer rmtree/copytree outside GeneratedWorlds."""
+    pack = tmp_path / "pack"
+    pack.mkdir()
+    (pack / "height_test.json").write_text(
+        json.dumps({"name": "../../victim"}), encoding="utf-8"
+    )
+    victim = tmp_path / "victim"
+    victim.mkdir()
+    (victim / "keep.txt").write_text("x", encoding="utf-8")
+    from realearth.cli import _install_height_test
+
+    with pytest.raises(ValueError, match="plain directory name"):
+        _install_height_test(tmp_path, pack, tmp_path / "world")
+    assert (victim / "keep.txt").is_file()
 
 
 def test_unknown_command_is_usage_error() -> None:
