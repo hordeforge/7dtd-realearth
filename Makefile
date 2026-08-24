@@ -7,7 +7,7 @@ SHELL := /bin/bash
 .DEFAULT_GOAL := help
 .PHONY: help help-all \
 	setup tools-sync \
-	test test-fast test-height test-python test-mp \
+	test test-fast test-height test-python test-mp coverage \
 	build build-mod dll \
 	install install-full install-baked install-streamed install-height install-height-500 \
 	height-test height-map height-map-500 height-map-install height-map-500-install \
@@ -278,6 +278,21 @@ test-fast:
 		tests/test_proton_paths.py tests/test_elevation_terrarium.py \
 		tests/test_multiplayer.py tests/test_host_fold.py tests/test_local_window.py \
 		tests/test_mp_runtime_structure.py -q --tb=line
+
+# Line coverage of the realearth package under the same fast pytest list
+# test-fast runs. Writes tools/.coverage; CI renders it into the README
+# badge with scripts/coverage_badge.py.
+COV := $(UV) run --extra dev --with coverage python -m coverage
+
+coverage:
+	rm -f $(TOOLS)/.coverage $(TOOLS)/.coverage.*
+	cd $(TOOLS) && $(COV) run --append --source=realearth -m pytest tests/test_coords.py tests/test_tile_roundtrip.py \
+		tests/test_height_mod_case.py tests/test_height_10k.py \
+		tests/test_region.py tests/test_viewer_export.py \
+		tests/test_proton_paths.py tests/test_elevation_terrarium.py \
+		tests/test_multiplayer.py tests/test_host_fold.py \
+		tests/test_local_window.py tests/test_mp_runtime_structure.py -q --tb=line
+	cd $(TOOLS) && $(COV) report -m
 
 check: setup test-fast lint-python build viewer-build viewer-lint webmod-lint
 	@echo "OK check (setup + test-fast + lint-python + build + viewer-build + viewer-lint + webmod-lint)"
