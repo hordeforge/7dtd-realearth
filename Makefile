@@ -282,7 +282,7 @@ test-fast:
 # Line coverage of the realearth package under the same fast pytest list
 # test-fast runs. Writes tools/.coverage; CI renders it into the README
 # badge with scripts/coverage_badge.py.
-COV := $(UV) run --extra dev --with coverage python -m coverage
+COV := $(UV) run --extra dev python -m coverage
 
 coverage:
 	rm -f $(TOOLS)/.coverage $(TOOLS)/.coverage.*

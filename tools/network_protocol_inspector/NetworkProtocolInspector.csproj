@@ -12,6 +12,6 @@
     <AssemblyName>7dtd-network-protocol-inspector</AssemblyName>
   </PropertyGroup>
   <ItemGroup>
-    <PackageReference Include="Mono.Cecil" Version="0.11.5" />
+    <PackageReference Include="Mono.Cecil" Version="0.11.6" />
   </ItemGroup>
 </Project>

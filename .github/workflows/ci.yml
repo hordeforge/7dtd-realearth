@@ -62,7 +62,7 @@ jobs:
         with:
           enable-cache: true
       - run: make coverage
-      - run: cd tools && uv run --extra dev --with coverage python ../scripts/coverage_badge.py "$RUNNER_TEMP/coverage.svg"
+      - run: cd tools && uv run --extra dev python ../scripts/coverage_badge.py "$RUNNER_TEMP/coverage.svg"
       - name: Publish the badge to the badges branch
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
