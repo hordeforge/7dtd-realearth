@@ -333,10 +333,13 @@ function ensureGlobe(): Promise<GlobeView> {
   if (state.globeReady === null) {
     state.globeReady = import("./globe.js").then((globeModule) => {
       const globe = new globeModule.GlobeView(els.globeHost);
+      // Publish before any fallible setup: a throw below must leave the
+      // instance reachable so failure handlers can dispose it instead of
+      // orphaning its render loop and resize listener.
+      state.globeInstance = globe;
       globe.resize();
       globe.setSpin(spinEnabledFromButton());
       globe.setPlayerMarker(state.player);
-      state.globeInstance = globe;
       return globe;
     });
   }
@@ -404,6 +407,10 @@ function applyLayer(): void {
     .catch((error: unknown) => {
       // drop the failed import so the next Globe click retries the fetch
       state.globeReady = null;
+      // A constructed view must be torn down or its requestAnimationFrame
+      // loop, resize listener, and WebGL context outlive this attempt (and
+      // multiply with every retry).
+      state.globeInstance?.dispose();
       state.globeInstance = null;
       state.mode = "flat";
       setModeButtons("flat");
@@ -430,6 +437,8 @@ function flyGlobeTo(position: LonLatPoint): void {
     })
     .catch((error: unknown) => {
       state.globeReady = null;
+      // Same teardown contract as applyLayer: never orphan a live view.
+      state.globeInstance?.dispose();
       state.globeInstance = null;
       setStatus(errorMessage(error));
       setMode("flat");

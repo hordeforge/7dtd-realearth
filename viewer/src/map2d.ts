@@ -66,7 +66,7 @@ export class Map2D {
   private readonly boundResize: () => void;
   private readonly onPointerDown: (event: PointerEvent) => void;
   private readonly onPointerMove: (event: PointerEvent) => void;
-  private readonly onPointerUp: () => void;
+  private readonly onPointerUp: (event: PointerEvent) => void;
   private readonly onPointerCancel: (event: PointerEvent) => void;
   private readonly onWheel: (event: WheelEvent) => void;
   private readonly onKeyDown: (event: KeyboardEvent) => void;
@@ -99,7 +99,17 @@ export class Map2D {
     this.boundResize = () => this.resize();
     this.onPointerDown = (event) => this.pointerDown(event);
     this.onPointerMove = (event) => this.pointerMove(event);
-    this.onPointerUp = () => this.pointerUp();
+    this.onPointerUp = (event) => {
+      // Tracked pointers release like pointercancel so the Map cannot grow by
+      // one entry per tap (touch/pen issue a fresh pointerId per contact, and
+      // stale entries corrupted the two-pointer pinch size checks). Foreign
+      // releases still clear the drag latch.
+      if (this.pointers.has(event.pointerId)) {
+        this.endPointer(event.pointerId);
+        return;
+      }
+      this.pointerUp();
+    };
     this.onPointerCancel = (event) => this.endPointer(event.pointerId);
     this.onWheel = (event) => this.wheel(event);
     this.onKeyDown = (event) => this.keyDown(event);

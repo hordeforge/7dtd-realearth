@@ -225,6 +225,9 @@ export class GlobeView {
   private globe: THREE.Mesh<THREE.SphereGeometry, THREE.MeshStandardMaterial> | null = null;
   private atmosphere: THREE.Mesh<THREE.SphereGeometry, THREE.MeshBasicMaterial> | null = null;
   private texture: THREE.Texture | null = null;
+  // Full-earth composite built by regionOnEarth(); tracked separately because
+  // Material.dispose() does not free textures bound as .map.
+  private earthTexture: THREE.CanvasTexture | null = null;
   private spinEnabled = true;
   private interacting = false;
   private lastInteractionAt = 0;
@@ -265,6 +268,9 @@ export class GlobeView {
     this.renderer.dispose();
     if (this.texture !== null) {
       this.texture.dispose();
+    }
+    if (this.earthTexture !== null) {
+      this.earthTexture.dispose();
     }
     this.host.replaceChildren();
   }
@@ -377,11 +383,20 @@ export class GlobeView {
       this.globe.geometry.dispose();
       this.globe.material.dispose();
     }
+    // Release the previous composite before building a new one: without this,
+    // every re-texture (layer change, settlements toggle, pack switch) leaked
+    // a GPU-resident 4096x2048 canvas texture.
+    if (this.earthTexture !== null) {
+      this.earthTexture.dispose();
+      this.earthTexture = null;
+    }
     // Equirectangular: three.js SphereGeometry UVs already match lon/lat.
     // Region packs are pasted onto a full-earth canvas instead.
     let mapTexture: THREE.Texture = texture;
     if (bbox !== null && bbox.east - bbox.west < FULL_EARTH_SPAN_DEGREES) {
-      mapTexture = regionOnEarth(image, bbox);
+      const composite = regionOnEarth(image, bbox);
+      this.earthTexture = composite;
+      mapTexture = composite;
     }
     mapTexture.anisotropy = this.renderer.capabilities.getMaxAnisotropy();
     const geometry = new THREE.SphereGeometry(1, GLOBE_SEGMENTS_WIDE, GLOBE_SEGMENTS_HIGH);
@@ -395,7 +410,12 @@ export class GlobeView {
     this.globe.rotation.z =
       ((AXIAL_TILT_DEGREES * Math.PI) / HALF_CIRCLE_DEGREES) * AXIAL_TILT_FACTOR;
     this.scene.add(this.globe);
+    this.replaceAtmosphere();
+    this.placeMarkers(settlements);
+  }
 
+  // Tear down and rebuild the atmosphere halo (geometry + material each time).
+  private replaceAtmosphere(): void {
     if (this.atmosphere !== null) {
       this.scene.remove(this.atmosphere);
       this.atmosphere.geometry.dispose();
@@ -415,8 +435,6 @@ export class GlobeView {
       })
     );
     this.scene.add(this.atmosphere);
-
-    this.placeMarkers(settlements);
   }
 
   private addLights(): void {
