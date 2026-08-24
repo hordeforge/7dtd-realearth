@@ -66,8 +66,20 @@ export type ProbePoint = {
   iy: number;
 };
 
+// A geographic point used for navigation targets: jump inputs, ?player=
+// deep links, and the optional data/player.json position feed.
+export type LonLatPoint = {
+  lon: number;
+  lat: number;
+};
+
 // Entry of the served data/catalog.json listing extra packs.
 export type CatalogEntry = {
   path: string;
+  name: string;
+};
+
+// One fix of the optional player position feed (data/player.json).
+export type PlayerFix = LonLatPoint & {
   name: string;
 };

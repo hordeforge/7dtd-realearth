@@ -32,11 +32,35 @@ Optional query: `http://127.0.0.1:8765/?pack=data/demo`
 | Feature | Description |
 |---|---|
 | Flat map | Pan, zoom, opacity, tile grid overlay |
-| Globe | Three.js sphere; region packs drawn on Earth with bbox highlight |
+| Globe | Three.js sphere mirroring the active layer; region packs are composited onto full Earth with a bbox highlight, auto-framed on entry |
+| Globe navigation | Drag to orbit, scroll/pinch or `+/−` buttons to zoom, eased fly-to (`frameRegion`, jump targets), idle spin with pause-on-interaction and a Spin toggle |
 | Layers | Hybrid, elevation (hillshade), land cover, population density |
 | Settlements | Markers + hover tooltip from `settlements.json` |
 | Probe | Lon/lat under cursor; approximate elevation from raw elev PNG |
+| Player | Optional live marker + jump-to-player (button, `P` key, deep link, polled feed) |
 | Multi-pack | `data/catalog.json` lists extra datasets |
+
+## Player position
+
+The viewer can show and jump to a live player position. Three entry points,
+all optional and independent:
+
+- **Feed file**: `viewer/data/player.json`, polled every 5 s:
+
+  ```json
+  { "name": "Maci", "lon": -104.99, "lat": 39.74 }
+  ```
+
+  Malformed or out-of-range fixes are ignored; an absent file just hides the
+  marker. Anything that can write that file (a game mod hook, a script
+  parsing the server log) moves the marker without a reload.
+- **Deep link**: `?player=lat,lon` (Google-Maps-style lat first) seeds the
+  jump inputs and flies there after the pack loads.
+- **Manual**: the "Jump to lat, lon" inputs plus `Go`, or press `P` for the
+  latest feed fix.
+
+Jump works in both views: the flat map recenters, the globe flies an eased
+great-circle hop to the target.
 
 ## Export layout
 

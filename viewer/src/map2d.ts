@@ -5,7 +5,7 @@
 // fit. Typed port of the original viewer canvas controller; the dashboard
 // variant lives in ../webmod/src/map2d.ts.
 
-import type { Bbox, ProbePoint, Settlement } from "./types.js";
+import type { Bbox, LonLatPoint, ProbePoint, Settlement } from "./types.js";
 
 const MAX_DEVICE_PIXEL_RATIO = 2;
 const FIT_PADDING_PX = 40;
@@ -27,6 +27,10 @@ const SETTLEMENT_DOT_RADIUS_PX = 5;
 const SETTLEMENT_OUTLINE_WIDTH_PX = 1.5;
 const SETTLEMENT_LABEL_FONT_PX = 12;
 const SETTLEMENT_LABEL_OFFSET_PX = 3;
+const PLAYER_COLOR = "#ff4466";
+const PLAYER_RING_COLOR = "#ffffff";
+const PLAYER_DOT_RADIUS_PX = 5;
+const PLAYER_RING_WIDTH_PX = 2;
 const BACKGROUND_COLOR = "#070a10";
 const SETTLEMENT_COLOR = "#f0a500";
 const SETTLEMENT_OUTLINE_COLOR = "#041012";
@@ -67,6 +71,7 @@ export class Map2D {
   private readonly onWheel: (event: WheelEvent) => void;
   private readonly onKeyDown: (event: KeyboardEvent) => void;
   private image: HTMLImageElement | null = null;
+  private playerPosition: LonLatPoint | null = null;
   private settlements: Array<Settlement> = [];
   private bbox: Bbox = { west: -180, south: -90, east: 180, north: 90 };
   private showSettlements = true;
@@ -202,7 +207,31 @@ export class Map2D {
     if (this.showSettlements) {
       this.drawSettlements(this.image);
     }
+    if (this.playerPosition !== null) {
+      this.drawPlayer(this.image);
+    }
     this.ctx.restore();
+  }
+
+  // Show or hide the player position marker.
+  setPlayer(position: LonLatPoint | null): void {
+    this.playerPosition = position;
+    this.draw();
+  }
+
+  // Recenter the view on a lon/lat at the current zoom.
+  centerOn(position: LonLatPoint): void {
+    const parent = this.canvas.parentElement;
+    if (parent === null || this.image === null) {
+      return;
+    }
+    const point = this.lonLatToImage(position.lon, position.lat, this.image);
+    if (point === null) {
+      return;
+    }
+    this.tx = parent.clientWidth / 2 - point.x * this.scale;
+    this.ty = parent.clientHeight / 2 - point.y * this.scale;
+    this.draw();
   }
 
   private clearWithBackground(width: number, height: number): void {
@@ -259,6 +288,25 @@ export class Map2D {
         point.y + SETTLEMENT_LABEL_OFFSET_PX / this.scale
       );
     }
+  }
+
+  private drawPlayer(image: HTMLImageElement): void {
+    const position = this.playerPosition;
+    if (position === null) {
+      return;
+    }
+    const point = this.lonLatToImage(position.lon, position.lat, image);
+    if (point === null) {
+      return;
+    }
+    const radius = Math.max(SETTLEMENT_DOT_MIN_RADIUS_PX, PLAYER_DOT_RADIUS_PX / this.scale);
+    this.ctx.beginPath();
+    this.ctx.fillStyle = PLAYER_COLOR;
+    this.ctx.strokeStyle = PLAYER_RING_COLOR;
+    this.ctx.lineWidth = PLAYER_RING_WIDTH_PX / this.scale;
+    this.ctx.arc(point.x, point.y, radius, 0, FULL_CIRCLE_RADIANS);
+    this.ctx.fill();
+    this.ctx.stroke();
   }
 
   private lonLatToImage(
@@ -427,8 +475,8 @@ export class Map2D {
   }
 
   // Scale around a screen point, keeping that point anchored. Shared by the
-  // wheel and the keyboard zoom so both behave identically.
-  private zoomAt(sx: number, sy: number, factor: number): void {
+  // wheel, the keyboard zoom, and the on-screen zoom buttons.
+  zoomAt(sx: number, sy: number, factor: number): void {
     const nextScale = Math.max(MIN_ZOOM, Math.min(MAX_ZOOM, this.scale * factor));
     const ix = (sx - this.tx) / this.scale;
     const iy = (sy - this.ty) / this.scale;

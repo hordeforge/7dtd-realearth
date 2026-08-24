@@ -271,6 +271,65 @@ body {
   text-align: right;
 }
 
+.hud-right {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 8px;
+}
+
+#playerHud {
+  background: rgba(10, 14, 22, 0.92);
+  border: 1px solid var(--danger);
+  border-radius: 10px;
+  padding: 8px 12px;
+  font-family: var(--mono);
+  font-size: 0.75rem;
+}
+
+#viewTools {
+  position: absolute;
+  right: 16px;
+  bottom: 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  z-index: 6;
+}
+
+#viewTools button {
+  width: 40px;
+  height: 40px;
+  border-radius: 10px;
+  background: rgba(10, 14, 22, 0.92);
+  border: 1px solid var(--border);
+  color: var(--text);
+  font-size: 1.2rem;
+  line-height: 1;
+  cursor: pointer;
+}
+
+#viewTools button:hover {
+  border-color: var(--accent);
+}
+
+.jump-row {
+  display: grid;
+  grid-template-columns: 1fr 1fr auto;
+  gap: 6px;
+}
+
+.jump-row input {
+  min-width: 0;
+  background: var(--panel-2);
+  color: var(--text);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 8px;
+  font-family: var(--mono);
+  font-size: 0.8rem;
+}
+
 #settlementTip {
   position: absolute;
   z-index: 5;

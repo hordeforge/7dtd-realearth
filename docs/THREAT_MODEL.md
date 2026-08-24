@@ -43,7 +43,7 @@ Fixes belong to sec-review passes; this file records location and impact only.
 | E5 | Web dashboard integration (stock webserver serves `WebMod/bundle.js`) | Runs inside the game webserver's authenticated admin session; calls `/api/serverstats`; loads pack URLs from admin localStorage | `webmod/src/index.ts`; `overview.ts:13`; `settings-store.ts:14,42`; `pack.ts:135,162` |
 | E6 | Pipeline CLI (`demo`,`region`,`bake-world`,`export-viewer`,`serve`) | GeoJSON files, GeoTIFFs, CLI args, remote API responses | `tools/realearth/cli.py:19` |
 | E7 | Third-party fetches in pipeline | open-meteo elevation API, AWS terrarium PNG tiles | `tools/realearth/elevation.py:43,112,175` |
-| E8 | Static viewer server + browser app | Same-origin JSON/PNG; user-supplied local JSON file | `cli.py:617-663`; `viewer/src/pack.ts` (`fetchJson`, `loadImage`, `loadSettlements`), `viewer/src/app.ts` (`jsonFile` handler, `boot`) |
+| E8 | Static viewer server + browser app | Same-origin JSON/PNG; user-supplied local JSON file; optional same-origin `data/player.json` position feed (coerced/range-checked, absence tolerated) | `cli.py:617-663`; `viewer/src/pack.ts` (`fetchJson`, `loadImage`, `loadSettlements`), `viewer/src/app.ts` (`jsonFile` handler, `boot`, `playerFrom`) |
 | E9 | Install/expand scripts + IL patcher | Writes into Steam dirs; patches game DLL; lint gates fetch SHA-pinned GitHub tarballs | `scripts/install_proton.sh`, `scripts/install_height_pack.sh`; `engine_patcher/Program.cs`; `scripts/lint-webmod.sh`, `lint-viewer.sh` (pinned tarball fetches) |
 
 E5 is easy to miss: whenever an operator opens the control-panel port, our bundle is network-reachable content (auth is the game's, behavior is ours).

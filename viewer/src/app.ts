@@ -6,11 +6,25 @@
 import { asRecord, asString, errorMessage } from "./coerce.js";
 import { DEFAULT_ELEV_SCALE_M, isSafePackPath, loadPack, packMetaFrom } from "./pack.js";
 import type { ElevRawCanvas, LoadedPack } from "./pack.js";
-import type { CatalogEntry, ElevRawMeta, PackMeta, ProbePoint, Settlement } from "./types.js";
+import type {
+  CatalogEntry,
+  ElevRawMeta,
+  LonLatPoint,
+  PackMeta,
+  PlayerFix,
+  ProbePoint,
+  Settlement,
+} from "./types.js";
 import type { GlobeView } from "./globe.js";
 import { Map2D } from "./map2d.js";
 
 const CATALOG_URL = "data/catalog.json";
+const PLAYER_URL = "data/player.json";
+const PLAYER_POLL_MS = 5000;
+const ZOOM_BUTTON_STEP = 1.25;
+const ZOOM_BUTTON_STEP_OUT = 1 / ZOOM_BUTTON_STEP;
+const LON_LIMIT_DEGREES = 180;
+const LAT_LIMIT_DEGREES = 90;
 const DEFAULT_LAYER_ID = "hybrid";
 // Exported elevation_raw is single-channel I;16 but canvas often decodes it as
 // one 8-bit byte per pixel; the first channel is a coarse height proxy.
@@ -69,6 +83,14 @@ const els = {
   showSettlements: requiredElement(HTMLInputElement, "#showSettlements"),
   showGrid: requiredElement(HTMLInputElement, "#showGrid"),
   opacity: requiredElement(HTMLInputElement, "#opacity"),
+  btnJumpPlayer: requiredElement(HTMLButtonElement, "#btnJumpPlayer"),
+  btnSpinToggle: requiredElement(HTMLButtonElement, "#btnSpinToggle"),
+  jumpLat: requiredElement(HTMLInputElement, "#jumpLat"),
+  jumpLon: requiredElement(HTMLInputElement, "#jumpLon"),
+  btnJumpCoords: requiredElement(HTMLButtonElement, "#btnJumpCoords"),
+  btnZoomIn: requiredElement(HTMLButtonElement, "#btnZoomIn"),
+  btnZoomOut: requiredElement(HTMLButtonElement, "#btnZoomOut"),
+  playerHud: requiredElement(HTMLDivElement, "#playerHud"),
   legend: requiredElement(HTMLDivElement, "#legend"),
   btnFlat: requiredElement(HTMLButtonElement, "#btnFlat"),
   btnGlobe: requiredElement(HTMLButtonElement, "#btnGlobe"),
@@ -94,9 +116,15 @@ type ViewerState = {
   elevRaw: ElevRawCanvas | null;
   elevMeta: ElevRawMeta | null;
   map2d: Map2D | null;
+  // live instance once the dynamic globe import resolved; null otherwise
+  globeInstance: GlobeView | null;
   // pending/fulfilled dynamic import of globe.ts (pulls three.js from the
   // CDN); reset on failure so a later Globe click retries.
   globeReady: Promise<GlobeView> | null;
+  // latest fix from the optional data/player.json feed; null when absent
+  player: PlayerFix | null;
+  // set when a pack loads so the globe flies to frame its region once
+  globeNeedsFrame: boolean;
 };
 
 const state: ViewerState = {
@@ -108,7 +136,10 @@ const state: ViewerState = {
   elevRaw: null,
   elevMeta: null,
   map2d: null,
+  globeInstance: null,
   globeReady: null,
+  player: null,
+  globeNeedsFrame: true,
 };
 
 function setStatus(message: string): void {
@@ -209,8 +240,7 @@ function updateProbe(point: ProbePoint | null): void {
   els.pElev.textContent = elevationAt(point.u, point.v);
 }
 
-function showTip(settlement: Settlement | null, sx: number, sy: number): void {
-  if (settlement === null) {
+function showTip(settlement: Settlement | null, sx: number, sy: number): void {  if (settlement === null) {
     els.settlementTip.hidden = true;
     return;
   }
@@ -234,6 +264,56 @@ function showTip(settlement: Settlement | null, sx: number, sy: number): void {
   );
 }
 
+function coordinateFromText(raw: string, min: number, max: number): number | null {
+  const text = raw.trim();
+  if (text === "") {
+    return null;
+  }
+  const value = Number(text);
+  if (!Number.isFinite(value)) {
+    return null;
+  }
+  return value >= min && value <= max ? value : null;
+}
+
+function finiteNumberIn(candidate: unknown, min: number, max: number): number | null {
+  if (typeof candidate !== "number" || !Number.isFinite(candidate)) {
+    return null;
+  }
+  return candidate >= min && candidate <= max ? candidate : null;
+}
+
+// Boundary parse of one data/player.json fix; anything malformed or out of
+// range means "no known player position".
+function playerFrom(candidate: unknown): PlayerFix | null {
+  const record = asRecord(candidate);
+  const lon = finiteNumberIn(record.lon, -LON_LIMIT_DEGREES, LON_LIMIT_DEGREES);
+  const lat = finiteNumberIn(record.lat, -LAT_LIMIT_DEGREES, LAT_LIMIT_DEGREES);
+  if (lon === null || lat === null) {
+    return null;
+  }
+  const name = asString(record.name);
+  return { name: name === "" ? "Player" : name, lon, lat };
+}
+
+// Deep link format: ?player=lat,lon (Google-Maps-style order).
+function playerParamFrom(raw: string | null): LonLatPoint | null {
+  if (raw === null) {
+    return null;
+  }
+  const [latText, lonText] = raw.split(",");
+  if (latText === undefined || lonText === undefined) {
+    return null;
+  }
+  const lat = coordinateFromText(latText, -LAT_LIMIT_DEGREES, LAT_LIMIT_DEGREES);
+  const lon = coordinateFromText(lonText, -LON_LIMIT_DEGREES, LON_LIMIT_DEGREES);
+  return lat === null || lon === null ? null : { lon, lat };
+}
+
+function spinEnabledFromButton(): boolean {
+  return els.btnSpinToggle.getAttribute("aria-pressed") === "true";
+}
+
 function ensureMap2D(): Map2D {
   if (state.map2d === null) {
     const map2d = new Map2D(els.mapCanvas);
@@ -254,10 +334,29 @@ function ensureGlobe(): Promise<GlobeView> {
     state.globeReady = import("./globe.js").then((globeModule) => {
       const globe = new globeModule.GlobeView(els.globeHost);
       globe.resize();
+      globe.setSpin(spinEnabledFromButton());
+      globe.setPlayerMarker(state.player);
+      state.globeInstance = globe;
       return globe;
     });
   }
   return state.globeReady;
+}
+
+function renderFlat(image: HTMLImageElement, meta: PackMeta): void {
+  const map2d = ensureMap2D();
+  map2d.setImage(image, {
+    bbox: meta.bbox,
+    settlements: state.settlements,
+    tileSize: meta.tile_size,
+    sampleWidth: meta.sample_width,
+    sampleHeight: meta.sample_height,
+  });
+  map2d.setLayerFlags({
+    showSettlements: els.showSettlements.checked,
+    showGrid: els.showGrid.checked,
+    opacity: Number(els.opacity.value),
+  });
 }
 
 function setModeButtons(mode: ViewerMode): void {
@@ -276,19 +375,7 @@ function applyLayer(): void {
   renderLegend(state.layerId);
 
   if (state.mode === "flat") {
-    const map2d = ensureMap2D();
-    map2d.setImage(image, {
-      bbox: meta.bbox,
-      settlements: state.settlements,
-      tileSize: meta.tile_size,
-      sampleWidth: meta.sample_width,
-      sampleHeight: meta.sample_height,
-    });
-    map2d.setLayerFlags({
-      showSettlements: els.showSettlements.checked,
-      showGrid: els.showGrid.checked,
-      opacity: Number(els.opacity.value),
-    });
+    renderFlat(image, meta);
     return;
   }
   // Globe mode pulls three.js from the CDN on first use; until it resolves
@@ -307,15 +394,21 @@ function applyLayer(): void {
         els.showSettlements.checked ? state.settlements : [],
         meta.bbox
       );
+      globe.setPlayerMarker(state.player);
+      if (state.globeNeedsFrame) {
+        state.globeNeedsFrame = false;
+        globe.frameRegion(meta.bbox);
+      }
       setStatus(readyStatus());
     })
     .catch((error: unknown) => {
       // drop the failed import so the next Globe click retries the fetch
       state.globeReady = null;
+      state.globeInstance = null;
       state.mode = "flat";
       setModeButtons("flat");
       setStatus(errorMessage(error));
-      applyLayer();
+      renderFlat(image, meta);
     });
 }
 
@@ -325,12 +418,86 @@ function setMode(mode: ViewerMode): void {
   applyLayer();
 }
 
+// Fly the globe camera to a lon/lat (Google-Earth-style hop).
+function flyGlobeTo(position: LonLatPoint): void {
+  ensureGlobe()
+    .then((globe) => {
+      if (state.mode !== "globe") {
+        return;
+      }
+      globe.resize();
+      globe.flyTo(position);
+    })
+    .catch((error: unknown) => {
+      state.globeReady = null;
+      state.globeInstance = null;
+      setStatus(errorMessage(error));
+      setMode("flat");
+    });
+}
+
+function goTo(position: LonLatPoint): void {
+  if (state.mode === "globe") {
+    flyGlobeTo(position);
+    return;
+  }
+  ensureMap2D().centerOn(position);
+  setStatus(`Centered on ${position.lat.toFixed(TOOLTIP_COORD_DECIMALS)}, ${position.lon.toFixed(TOOLTIP_COORD_DECIMALS)}`);
+}
+
+function zoomActiveView(factor: number): void {
+  if (state.mode === "flat") {
+    const map2d = state.map2d;
+    const parent = els.mapCanvas.parentElement;
+    if (map2d === null || parent === null) {
+      return;
+    }
+    map2d.zoomAt(parent.clientWidth / 2, parent.clientHeight / 2, factor);
+    map2d.draw();
+    return;
+  }
+  state.globeInstance?.zoomBy(factor);
+}
+
+function setSpinToggle(enabled: boolean): void {
+  els.btnSpinToggle.setAttribute("aria-pressed", String(enabled));
+  els.btnSpinToggle.classList.toggle("active", enabled);
+  state.globeInstance?.setSpin(enabled);
+}
+
+function toggleSpin(): void {
+  setSpinToggle(!spinEnabledFromButton());
+}
+
+// Publish a player fix (or its absence) to the sidebar, HUD, and both views.
+function applyPlayer(player: PlayerFix | null): void {
+  state.player = player;
+  els.btnJumpPlayer.disabled = player === null;
+  els.playerHud.hidden = player === null;
+  if (player !== null) {
+    els.playerHud.textContent =
+      `${player.name} · ${player.lat.toFixed(TOOLTIP_COORD_DECIMALS)}°, ` +
+      `${player.lon.toFixed(TOOLTIP_COORD_DECIMALS)}°`;
+  }
+  state.map2d?.setPlayer(player);
+  state.globeInstance?.setPlayerMarker(player);
+}
+
+function refreshPlayer(): void {
+  // The feed is optional; absence or a stale response between polls is
+  // normal for offline packs.
+  fetch(PLAYER_URL, { cache: "no-store" })
+    .then(async (response) => applyPlayer(response.ok ? playerFrom(await response.json()) : null))
+    .catch(() => applyPlayer(null));
+}
+
 function adoptPack(pack: LoadedPack): void {
   state.meta = pack.meta;
   state.images = pack.images;
   state.settlements = pack.settlements;
   state.elevRaw = pack.elevRaw;
   state.elevMeta = pack.meta.elev_raw;
+  state.globeNeedsFrame = true;
   fillLayers(pack.meta);
   describePack(pack.meta);
   applyLayer();
@@ -391,6 +558,14 @@ async function boot(): Promise<void> {
     }
   }
   els.packSelect.value = pack;
+  // ?player=lat,lon seeds the jump inputs and flies there after the pack
+  // settles, whichever view ends up active.
+  const linkedPlayer = playerParamFrom(params.get("player"));
+  if (linkedPlayer !== null) {
+    els.jumpLat.value = String(linkedPlayer.lat);
+    els.jumpLon.value = String(linkedPlayer.lon);
+    goTo(linkedPlayer);
+  }
 }
 
 // events
@@ -419,6 +594,44 @@ els.packSelect.addEventListener("change", () => {
       els.packInfo.textContent = errorMessage(error);
     });
 });
+
+els.btnJumpPlayer.addEventListener("click", () => {
+  if (state.player !== null) {
+    goTo(state.player);
+  }
+});
+els.btnJumpCoords.addEventListener("click", () => {
+  const lat = coordinateFromText(els.jumpLat.value, -LAT_LIMIT_DEGREES, LAT_LIMIT_DEGREES);
+  const lon = coordinateFromText(els.jumpLon.value, -LON_LIMIT_DEGREES, LON_LIMIT_DEGREES);
+  if (lat === null || lon === null) {
+    setStatus("Jump needs lat in [-90, 90] and lon in [-180, 180]");
+    return;
+  }
+  goTo({ lon, lat });
+});
+els.btnSpinToggle.addEventListener("click", () => toggleSpin());
+els.btnZoomIn.addEventListener("click", () => zoomActiveView(ZOOM_BUTTON_STEP));
+els.btnZoomOut.addEventListener("click", () => zoomActiveView(ZOOM_BUTTON_STEP_OUT));
+
+// "p" anywhere outside a form field jumps to the latest player fix.
+globalThis.addEventListener("keydown", (event: KeyboardEvent) => {
+  const target = event.target;
+  const typing =
+    target instanceof HTMLInputElement ||
+    target instanceof HTMLTextAreaElement ||
+    target instanceof HTMLSelectElement;
+  if (typing || event.ctrlKey || event.metaKey || event.altKey) {
+    return;
+  }
+  if (event.key.toLowerCase() === "p" && state.player !== null) {
+    goTo(state.player);
+  }
+});
+
+// optional live position feed; polled so an external writer (game mod,
+// script) can move the marker without reloading
+refreshPlayer();
+setInterval(refreshPlayer, PLAYER_POLL_MS);
 
 els.jsonFile.addEventListener("change", () => {
   const file = els.jsonFile.files?.[0];

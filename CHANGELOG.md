@@ -11,6 +11,14 @@ tags are `v<version>`.
 
 ## [Unreleased]
 
+### Added
+
+- Viewer globe navigation: eased fly-to jumps, `+/−` zoom buttons, idle spin
+  with pause-on-interaction and a Spin toggle, and jump-to-player in both
+  views (button, `P` key, `?player=lat,lon` deep link, or the optional
+  polled `viewer/data/player.json` feed). Region packs are composited at 4k
+  with anisotropic filtering and auto-framed when the globe opens.
+
 ### Changed
 
 - The web map viewer is now written in TypeScript (`viewer/src/*.ts`) instead

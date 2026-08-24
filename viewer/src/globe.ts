@@ -6,7 +6,7 @@
 
 import * as THREE from "three";
 import { OrbitControls } from "three/addons/controls/OrbitControls.js";
-import type { Bbox, Settlement } from "./types.js";
+import type { Bbox, LonLatPoint, Settlement } from "./types.js";
 
 const MAX_DEVICE_PIXEL_RATIO = 2;
 const FIELD_OF_VIEW_DEGREES = 45;
@@ -46,8 +46,23 @@ const MARKER_RADIUS = 0.012;
 const MARKER_SEGMENTS = 10;
 const MARKER_COLOR = 0xF0_A5_00;
 const MARKER_ALTITUDE = 1.02;
-const EARTH_TEXTURE_WIDTH = 2048;
-const EARTH_TEXTURE_HEIGHT = 1024;
+const PLAYER_PIN_COLOR = 0xFF_44_66;
+const PIN_HEAD_RADIUS = 0.014;
+const PIN_HEAD_SEGMENTS = 16;
+const PIN_STEM_RADIUS = 0.0035;
+const PIN_STEM_HEIGHT = 0.07;
+const PIN_BASE_RING_RADIUS = 0.02;
+const PIN_BASE_TUBE = 0.0035;
+// Fly-to animation (Google-Earth-style eased great-circle hop).
+const FLY_DURATION_MS = 1200;
+const FLY_PARALLEL_EPSILON = 1e-6;
+const SPIN_IDLE_DELAY_MS = 2000;
+const EASE_CUBIC_IN_FACTOR = 4;
+const DOT_RANGE_MIN = -1;
+// Full-earth composite resolution; 4k keeps exported regions readable while
+// zooming without ballooning GPU memory on mobile.
+const EARTH_TEXTURE_WIDTH = 4096;
+const EARTH_TEXTURE_HEIGHT = 2048;
 const OCEAN_COLOR = "#0a2744";
 const GRATICULE_LINE_STYLE = "rgba(255,255,255,0.04)";
 const MERIDIAN_GRID_LINES = 36;
@@ -56,6 +71,11 @@ const HIGHLIGHT_LINE_STYLE = "rgba(240,165,0,0.8)";
 const HIGHLIGHT_LINE_WIDTH = 2;
 // Region spans at least this wide already cover the globe; paste them as-is.
 const FULL_EARTH_SPAN_DEGREES = 350;
+// Camera framing for region packs: closer for tighter regions, clamped to a
+// range that keeps the region and some surrounding Earth visible.
+const FRAME_DISTANCE_BASE = 1.2;
+const FRAME_SPAN_DIVISOR = 50;
+const FRAME_MAX_DISTANCE = 3.5;
 const HALF_CIRCLE_DEGREES = 180;
 const QUARTER_CIRCLE_DEGREES = 90;
 const FULL_CIRCLE_DEGREES = 360;
@@ -97,6 +117,7 @@ function regionOnEarth(image: HTMLImageElement, bbox: Bbox): THREE.CanvasTexture
   if (ctx === null) {
     throw new Error("GlobeView: earth canvas 2d context unavailable");
   }
+  ctx.imageSmoothingQuality = "high";
   ctx.fillStyle = OCEAN_COLOR;
   ctx.fillRect(0, 0, EARTH_TEXTURE_WIDTH, EARTH_TEXTURE_HEIGHT);
   drawGraticule(ctx);
@@ -126,6 +147,56 @@ function lonLatToVec3(lon: number, lat: number, radius: number): THREE.Vector3 {
   return new THREE.Vector3(x, y, z);
 }
 
+type FlyAnimation = {
+  fromDirection: THREE.Vector3;
+  toDirection: THREE.Vector3;
+  fromDistance: number;
+  toDistance: number;
+  startedAt: number;
+};
+
+function easeInOutCubic(t: number): number {
+  if (t < CENTERED_BIAS) {
+    return EASE_CUBIC_IN_FACTOR * t * t * t;
+  }
+  const inverted = 2 * t - 2;
+  return 1 + (inverted * inverted * inverted) / 2;
+}
+
+// Spherical interpolation between two unit direction vectors; near-parallel
+// inputs fall back to lerp+normalize because the slerp weights blow up.
+function slerpDirection(
+  from: THREE.Vector3,
+  to: THREE.Vector3,
+  t: number,
+  out: THREE.Vector3
+): THREE.Vector3 {
+  const dot = THREE.MathUtils.clamp(from.dot(to), DOT_RANGE_MIN, 1);
+  const angle = Math.acos(dot);
+  if (angle < FLY_PARALLEL_EPSILON) {
+    return out.copy(from).lerp(to, t).normalize();
+  }
+  const sinAngle = Math.sin(angle);
+  const fromWeight = Math.sin((1 - t) * angle) / sinAngle;
+  const toWeight = Math.sin(t * angle) / sinAngle;
+  return out.copy(from).multiplyScalar(fromWeight).addScaledVector(to, toWeight).normalize();
+}
+
+// Dispose every geometry/material in a group and empty it. Backwards index
+// walk so removal never skips children.
+function clearGroup(group: THREE.Group): void {
+  for (let i = group.children.length - 1; i >= 0; i -= 1) {
+    const child = group.children[i];
+    if (child instanceof THREE.Mesh) {
+      child.geometry.dispose();
+      child.material.dispose();
+    }
+    if (child !== undefined) {
+      group.remove(child);
+    }
+  }
+}
+
 export class GlobeView {
   private readonly host: HTMLElement;
   private readonly renderer: THREE.WebGLRenderer;
@@ -139,12 +210,25 @@ export class GlobeView {
   private readonly controls: OrbitControls;
   private readonly markers = new THREE.Group();
   private readonly markerMeshes: Array<MarkerMesh> = [];
+  private readonly playerPin = new THREE.Group();
   // Auto-rotation pauses for users who ask the OS to reduce motion.
   private readonly reduceMotion = globalThis.matchMedia("(prefers-reduced-motion: reduce)");
   private readonly onResize = () => this.resize();
+  private readonly onControlsStart = () => {
+    this.interacting = true;
+    this.lastInteractionAt = performance.now();
+  };
+  private readonly onControlsEnd = () => {
+    this.interacting = false;
+    this.lastInteractionAt = performance.now();
+  };
   private globe: THREE.Mesh<THREE.SphereGeometry, THREE.MeshStandardMaterial> | null = null;
   private atmosphere: THREE.Mesh<THREE.SphereGeometry, THREE.MeshBasicMaterial> | null = null;
   private texture: THREE.Texture | null = null;
+  private spinEnabled = true;
+  private interacting = false;
+  private lastInteractionAt = 0;
+  private fly: FlyAnimation | null = null;
   private raf = 0;
 
   constructor(host: HTMLElement) {
@@ -159,10 +243,13 @@ export class GlobeView {
     this.controls.minDistance = CONTROLS_MIN_DISTANCE;
     this.controls.maxDistance = CONTROLS_MAX_DISTANCE;
     this.controls.enablePan = false;
+    this.controls.addEventListener("start", this.onControlsStart);
+    this.controls.addEventListener("end", this.onControlsEnd);
 
     this.addLights();
     this.addStarfield();
     this.scene.add(this.markers);
+    this.scene.add(this.playerPin);
 
     globalThis.addEventListener("resize", this.onResize);
     this.resize();
@@ -172,6 +259,8 @@ export class GlobeView {
   dispose(): void {
     cancelAnimationFrame(this.raf);
     globalThis.removeEventListener("resize", this.onResize);
+    this.controls.removeEventListener("start", this.onControlsStart);
+    this.controls.removeEventListener("end", this.onControlsEnd);
     this.controls.dispose();
     this.renderer.dispose();
     if (this.texture !== null) {
@@ -186,6 +275,86 @@ export class GlobeView {
     this.camera.aspect = width / Math.max(1, height);
     this.renderer.setSize(width, height, false);
     this.camera.updateProjectionMatrix();
+  }
+
+  // Toggle the idle auto-rotation (the Spin button).
+  setSpin(enabled: boolean): void {
+    this.spinEnabled = enabled;
+  }
+
+  // Dolly the camera in (factor > 1) or out (factor < 1), clamped to the
+  // same range OrbitControls enforces.
+  zoomBy(factor: number): void {
+    const offset = this.camera.position.clone().sub(this.controls.target);
+    const nextLength = THREE.MathUtils.clamp(
+      offset.length() / factor,
+      CONTROLS_MIN_DISTANCE,
+      CONTROLS_MAX_DISTANCE
+    );
+    this.camera.position.copy(this.controls.target).add(offset.setLength(nextLength));
+  }
+
+  // Fly the camera to a lon/lat along an eased great-circle hop, keeping (or
+  // setting) the viewing distance. Cancels any in-flight animation.
+  flyTo(target: LonLatPoint, distance: number | null = null): void {
+    const offset = this.camera.position.clone().sub(this.controls.target);
+    const currentDistance = offset.length();
+    const toDistance =
+      distance === null
+        ? THREE.MathUtils.clamp(currentDistance, CONTROLS_MIN_DISTANCE, CONTROLS_MAX_DISTANCE)
+        : THREE.MathUtils.clamp(distance, CONTROLS_MIN_DISTANCE, CONTROLS_MAX_DISTANCE);
+    this.fly = {
+      fromDirection: offset.normalize(),
+      toDirection: lonLatToVec3(target.lon, target.lat, 1),
+      fromDistance: currentDistance,
+      toDistance,
+      startedAt: performance.now(),
+    };
+    this.lastInteractionAt = performance.now();
+  }
+
+  // Fly to a comfortable framing of a region bbox: centered on it, closer
+  // for tighter regions. Used when the globe first shows a pack.
+  frameRegion(bbox: Bbox): void {
+    const span = Math.max(bbox.east - bbox.west, bbox.north - bbox.south);
+    this.flyTo(
+      { lon: (bbox.west + bbox.east) / 2, lat: (bbox.south + bbox.north) / 2 },
+      THREE.MathUtils.clamp(
+        FRAME_DISTANCE_BASE + span / FRAME_SPAN_DIVISOR,
+        CONTROLS_MIN_DISTANCE,
+        FRAME_MAX_DISTANCE
+      )
+    );
+  }
+
+  // Show or remove the player pin ("you are here").
+  setPlayerMarker(position: LonLatPoint | null): void {    clearGroup(this.playerPin);
+    if (position === null) {
+      return;
+    }
+    const material = new THREE.MeshBasicMaterial({ color: PLAYER_PIN_COLOR });
+    this.playerPin.position.copy(lonLatToVec3(position.lon, position.lat, 1));
+    this.playerPin.quaternion.setFromUnitVectors(
+      new THREE.Vector3(0, 1, 0),
+      this.playerPin.position.clone().normalize()
+    );
+    const stem = new THREE.Mesh(
+      new THREE.CylinderGeometry(PIN_STEM_RADIUS, PIN_STEM_RADIUS, PIN_STEM_HEIGHT),
+      material
+    );
+    stem.position.y = PIN_STEM_HEIGHT / 2;
+    const head = new THREE.Mesh(
+      new THREE.SphereGeometry(PIN_HEAD_RADIUS, PIN_HEAD_SEGMENTS, PIN_HEAD_SEGMENTS),
+      material
+    );
+    head.position.y = PIN_STEM_HEIGHT + PIN_HEAD_RADIUS;
+    const baseRing = new THREE.Mesh(
+      new THREE.TorusGeometry(PIN_BASE_RING_RADIUS, PIN_BASE_TUBE),
+      material
+    );
+    baseRing.rotation.x = -Math.PI / 2;
+    baseRing.position.y = 0.002;
+    this.playerPin.add(stem, head, baseRing);
   }
 
   setTexture(
@@ -214,6 +383,7 @@ export class GlobeView {
     if (bbox !== null && bbox.east - bbox.west < FULL_EARTH_SPAN_DEGREES) {
       mapTexture = regionOnEarth(image, bbox);
     }
+    mapTexture.anisotropy = this.renderer.capabilities.getMaxAnisotropy();
     const geometry = new THREE.SphereGeometry(1, GLOBE_SEGMENTS_WIDE, GLOBE_SEGMENTS_HIGH);
     const material = new THREE.MeshStandardMaterial({
       map: mapTexture,
@@ -298,14 +468,50 @@ export class GlobeView {
     this.markerMeshes.length = 0;
   }
 
+  private stepFly(now: number): void {
+    const animation = this.fly;
+    if (animation === null) {
+      return;
+    }
+    const rawT = (now - animation.startedAt) / FLY_DURATION_MS;
+    const t = THREE.MathUtils.clamp(rawT, 0, 1);
+    const eased = easeInOutCubic(t);
+    this.camera.position
+      .copy(this.controls.target)
+      .addScaledVector(
+        slerpDirection(
+          animation.fromDirection,
+          animation.toDirection,
+          eased,
+          new THREE.Vector3()
+        ),
+        animation.fromDistance + (animation.toDistance - animation.fromDistance) * eased
+      );
+    this.camera.lookAt(this.controls.target);
+    if (t >= 1) {
+      this.fly = null;
+      this.lastInteractionAt = now;
+    }
+  }
+
   private loop(): void {
     this.raf = requestAnimationFrame(() => this.loop());
     // flat mode hides the host; skip all render work until it is shown again
     if (this.host.hidden) {
       return;
     }
+    this.stepFly(performance.now());
     this.controls.update();
-    if (this.globe !== null && !this.reduceMotion.matches) {
+    // Auto-spin only while the user is idle, has not switched it off, and the
+    // OS does not ask for reduced motion.
+    const idleMs = performance.now() - this.lastInteractionAt;
+    if (
+      this.globe !== null &&
+      this.spinEnabled &&
+      !this.interacting &&
+      !this.reduceMotion.matches &&
+      idleMs > SPIN_IDLE_DELAY_MS
+    ) {
       this.globe.rotation.y += SPIN_RADIANS_PER_FRAME;
     }
     this.renderer.render(this.scene, this.camera);
