@@ -25,9 +25,6 @@ namespace RealEarth
         static readonly ConcurrentDictionary<(Type, string), PropertyInfo?> PubProps =
             new ConcurrentDictionary<(Type, string), PropertyInfo?>();
 
-        static readonly ConcurrentDictionary<(Type, string), FieldInfo?> PubFields =
-            new ConcurrentDictionary<(Type, string), FieldInfo?>();
-
         /// <summary>Public+non-public instance lookup.</summary>
         public static PropertyInfo? Prop(Type t, string name)
             => Props.GetOrAdd((t, name), k => k.Item1.GetProperty(k.Item2, AnyInstance));
@@ -39,10 +36,6 @@ namespace RealEarth
         /// <summary>Public+non-public instance lookup.</summary>
         public static FieldInfo? Field(Type t, string name)
             => Fields.GetOrAdd((t, name), k => k.Item1.GetField(k.Item2, AnyInstance));
-
-        /// <summary>Public-only instance lookup (mirrors plain Type.GetField).</summary>
-        public static FieldInfo? FieldPub(Type t, string name)
-            => PubFields.GetOrAdd((t, name), k => k.Item1.GetField(k.Item2));
 
         public static bool TryReadIntMember(object obj, string name, out int value)
         {

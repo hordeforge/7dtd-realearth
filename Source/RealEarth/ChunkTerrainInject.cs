@@ -103,17 +103,6 @@ namespace RealEarth
             return true;
         }
 
-        public static bool TryOverrideHeightFloat(int worldX, int worldZ, out float height)
-        {
-            if (!TryOverrideHeightInt(worldX, worldZ, out int h))
-            {
-                height = 0f;
-                return false;
-            }
-            height = h;
-            return true;
-        }
-
         /// <summary>
         /// Byte API: only used by legacy signatures. When engine is expanded we still
         /// cannot fit 8949 in a byte — inject owns the real column. Return min(255,h).
@@ -127,6 +116,29 @@ namespace RealEarth
             return true;
         }
 
+        /// <summary>
+        /// Shared chunk sampling: chunk coords → Earth block origin → sync-load hot
+        /// tiles → fill heights+landcover. One copy so gen-time inject and post-slide
+        /// reinject cannot drift (sync load is mandatory on both: async race bakes
+        /// permanent ocean columns). Returns the Earth-space chunk origin for logging.
+        /// </summary>
+        static void SampleChunkColumns(
+            WorldSession session, TileStreamer streamer,
+            int chunkX, int chunkZ,
+            int[] heights, byte[] landcover,
+            out int earthOriginX, out int earthOriginZ)
+        {
+            int blockX = chunkX * ChunkTerrainSampler.VanillaChunkSize;
+            int blockZ = chunkZ * ChunkTerrainSampler.VanillaChunkSize;
+            session.LocalToEarth(blockX, blockZ, out earthOriginX, out earthOriginZ);
+            // Gen rewrite must sync-load tiles (async race → permanent ocean columns).
+            // Do not register focusId=0 (would stomp MP bubbles).
+            streamer.EnsureHotAround(earthOriginX, earthOriginZ, radius: 1, allowSyncLoad: true);
+            ChunkTerrainSampler.FillChunkColumns(
+                session, streamer, ModApi.Config, blockX, blockZ,
+                ChunkTerrainSampler.VanillaChunkSize, heights, landcover);
+        }
+
         public static void OnChunkGenerated(object? chunkProvider, int chunkX, int chunkZ, object? chunkObj)
         {
             if (!HeightModWantsInject()) return;
@@ -134,19 +146,11 @@ namespace RealEarth
             var streamer = ModApi.Streamer;
             if (session == null || streamer == null) return;
 
-            int blockX = chunkX * ChunkTerrainSampler.VanillaChunkSize;
-            int blockZ = chunkZ * ChunkTerrainSampler.VanillaChunkSize;
-            session.LocalToEarth(blockX, blockZ, out int ex, out int ez);
-            // Gen rewrite must sync-load tiles (async race → permanent ocean columns).
-            // Do not register focusId=0 (would stomp MP bubbles).
-            streamer.EnsureHotAround(ex, ez, radius: 1, allowSyncLoad: true);
-
             int n = ChunkTerrainSampler.VanillaChunkSize * ChunkTerrainSampler.VanillaChunkSize;
             var heights = new int[n];
             var landcover = new byte[n];
-            ChunkTerrainSampler.FillChunkColumns(
-                session, streamer, ModApi.Config, blockX, blockZ,
-                ChunkTerrainSampler.VanillaChunkSize, heights, landcover);
+            SampleChunkColumns(session, streamer, chunkX, chunkZ, heights, landcover,
+                out int ex, out int ez);
 
             bool applied = false;
             int appliedColumns = 0;
@@ -492,18 +496,10 @@ namespace RealEarth
             var streamer = ModApi.Streamer;
             if (session == null || streamer == null || chunkObj == null) return false;
 
-            int blockX = chunkX * ChunkTerrainSampler.VanillaChunkSize;
-            int blockZ = chunkZ * ChunkTerrainSampler.VanillaChunkSize;
-            session.LocalToEarth(blockX, blockZ, out int ex, out int ez);
-            // Slide may have moved into tiles not yet hot; sync-load avoids stale ocean rewrite.
-            streamer.EnsureHotAround(ex, ez, radius: 1, allowSyncLoad: true);
-
             int n = ChunkTerrainSampler.VanillaChunkSize * ChunkTerrainSampler.VanillaChunkSize;
             var heights = new int[n];
             var landcover = new byte[n];
-            ChunkTerrainSampler.FillChunkColumns(
-                session, streamer, ModApi.Config, blockX, blockZ,
-                ChunkTerrainSampler.VanillaChunkSize, heights, landcover);
+            SampleChunkColumns(session, streamer, chunkX, chunkZ, heights, landcover, out _, out _);
             return TryApplyHeightsToChunk(chunkObj, heights, landcover, ChunkTerrainSampler.VanillaChunkSize, out _);
         }
 

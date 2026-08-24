@@ -85,7 +85,7 @@ namespace RealEarth.EngineHeight
         }
 
         public static bool EngineExpanded =>
-            Probe != null && Probe.ChunkBlockYDim > 256;
+            Probe != null && ExpandProductGuard.IsExpanded(Probe.ChunkBlockYDim);
 
         public static int AllocatableColumnMaxY
         {
@@ -112,6 +112,12 @@ namespace RealEarth.EngineHeight
                            ? cfg.EngineMaxGameY
                            : HeightCompress.EngineTargetMaxY);
 
+            // One mapping decision: policy owns the mode; 1:1 fallback keeps
+            // unpoliced contexts (policy null) on the linear product path.
+            int MapElev(float elevM) => policy != null
+                ? policy.MapMetersToGameY(elevM)
+                : HeightInjectMath.MetersToGameYOneToOne(elevM, sea, maxY);
+
             if (session != null && streamer != null)
             {
                 session.LocalToEarth(localX, localZ, out int ex, out int ez);
@@ -124,33 +130,18 @@ namespace RealEarth.EngineHeight
                 if (present)
                     Store.SetSurfaceMeters(localX, localZ, elevResolved);
                 // Map elev (real DEM or fail-closed ocean placeholder) through height policy.
-                int mapped;
-                if (policy != null)
-                    mapped = policy.MapMetersToGameY(elevResolved);
-                else
-                    mapped = HeightInjectMath.MetersToGameYOneToOne(elevResolved, sea, maxY);
-                return ClampToAllocatable(mapped);
+                return ClampToAllocatable(MapElev(elevResolved));
             }
 
             if (Store.TryGetSurfaceMeters(localX, localZ, out float cached))
             {
                 // Cached values were written only on present DEM samples.
-                int mapped;
-                if (policy != null)
-                    mapped = policy.MapMetersToGameY(cached);
-                else
-                    mapped = HeightInjectMath.MetersToGameYOneToOne(cached, sea, maxY);
-                return ClampToAllocatable(mapped);
+                return ClampToAllocatable(MapElev(cached));
             }
 
             // No session/streamer: still fail-closed ocean (count as miss).
             TileSamplePolicy.ResolveElev(false, 0f, cfg, out float elevMiss, out _);
-            int mappedMiss;
-            if (policy != null)
-                mappedMiss = policy.MapMetersToGameY(elevMiss);
-            else
-                mappedMiss = HeightInjectMath.MetersToGameYOneToOne(elevMiss, sea, maxY);
-            return ClampToAllocatable(mappedMiss);
+            return ClampToAllocatable(MapElev(elevMiss));
         }
 
         static int ClampToAllocatable(int gameY)

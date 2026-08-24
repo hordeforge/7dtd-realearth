@@ -15,15 +15,13 @@ namespace RealEarth.EngineHeight
         public int SeaLevelGameY { get; }
         public bool OneToOne { get; }
         public bool StockSafeMode { get; }
-        public int VanillaCap => Probe.VanillaMaxSurfaceY;
-
         public EngineHeightPolicy(WorldConstantsProbe probe, RealEarthConfig cfg)
         {
             Probe = probe ?? WorldConstantsProbe.Probe();
             Enabled = cfg.EnableEngineHeightMod;
             SeaLevelGameY = cfg.SeaLevelGameY;
 
-            bool expanded = Probe.ChunkBlockYDim > 256;
+            bool expanded = ExpandProductGuard.IsExpanded(Probe.ChunkBlockYDim);
             // Compress only when the operator opts into StockSafe on a stock engine.
             StockSafeMode = !expanded && cfg.EngineHeightStockSafe;
             bool preferVanilla = StockSafeMode || cfg.EngineHeightPreferVanillaCeiling;
@@ -55,17 +53,8 @@ namespace RealEarth.EngineHeight
             return HeightCompress.CompressExpanded(elevM, SeaLevelGameY, MaxGameY, minY: 1);
         }
 
-        public int CompressMetersInt(float elevM) => MapMetersToGameY(elevM);
-
         public byte ToStockByte(float elevM)
-        {
-            int y = MapMetersToGameY(elevM);
-            if (y < 1) return 1;
-            if (y > 255) return 255;
-            return (byte)y;
-        }
-
-        public byte CompressMeters(float elevM) => ToStockByte(elevM);
+            => HeightInjectMath.ToByteHeight(MapMetersToGameY(elevM));
 
         public string Describe()
         {

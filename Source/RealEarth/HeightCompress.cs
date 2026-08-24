@@ -15,16 +15,13 @@ namespace RealEarth
         /// <summary>Extra meters/blocks of air above Everest for flight / build headroom.</summary>
         public const int FlyOverHeadroomM = 2000;
 
-        /// <summary>Default sea level game Y used when sizing the world ceiling.</summary>
-        public const int DefaultSeaLevelGameY = 100;
-
         /// <summary>
         /// Height-mod ceiling: sea + Everest + fly-over (+ pad to a clean cap).
         /// With 1:1, Everest surface ≈ 8949 (sea 100); ~2 km of air remains above the summit.
         /// 100 + 8849 + 2000 = 10949 → cap 11000.
         /// </summary>
         public const int EngineTargetMaxY =
-            DefaultSeaLevelGameY + EverestMetersAsl + FlyOverHeadroomM + 51; // 11000
+            HeightInjectMath.DefaultSeaLevelGameY + EverestMetersAsl + FlyOverHeadroomM + 51; // 11000
 
         public static byte Compress(float elevM, int seaLevelY = 100, int maxY = 250, int minY = 1)
         {
@@ -105,25 +102,6 @@ namespace RealEarth
             if (y < minY) y = minY;
             if (y > maxY) y = maxY;
             return (int)Math.Round(y);
-        }
-
-        /// <summary>
-        /// Pack int game Y into a byte for vanilla APIs that only store 0..255.
-        /// <b>1:1 mode:</b> clamp (not scale) so lowlands stay correct meters/blocks;
-        /// peaks flat-top at 255 until the engine column is expanded.
-        /// <b>Legacy scale mode:</b> optional relative fit into 1..255 (distorts 1:1).
-        /// </summary>
-        public static byte ToVanillaByte(int gameY, int maxY = EngineTargetMaxY, bool oneToOne = true)
-        {
-            if (gameY <= 0) return 1;
-            if (gameY <= 255) return (byte)gameY;
-            if (oneToOne)
-                return 255; // hard stock ceiling; do not rescale (keeps 1 m = 1 block below 255)
-            maxY = Math.Max(256, maxY);
-            int scaled = 1 + (int)Math.Round((gameY / (double)maxY) * 254.0);
-            if (scaled > 255) scaled = 255;
-            if (scaled < 1) scaled = 1;
-            return (byte)scaled;
         }
     }
 }

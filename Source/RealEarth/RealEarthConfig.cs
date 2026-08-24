@@ -39,8 +39,6 @@ namespace RealEarth
         [DataMember] public string MultiplayerOriginMode { get; set; } = "SoloSlide";
 
         [DataMember] public bool EnableLongitudeWrap { get; set; } = false;
-        /// <summary>Globe overlay (not wired to UI yet). Default off until implemented.</summary>
-        [DataMember] public bool EnableGlobeMap { get; set; } = false;
         [DataMember] public int SeaLevelGameY { get; set; } = 100;
         [DataMember] public string TileCdnBaseUrl { get; set; } = "";
 
@@ -151,6 +149,18 @@ namespace RealEarth
 
         public bool HasRegionalBbox =>
             BboxEast > BboxWest && BboxNorth > BboxSouth;
+
+        /// <summary>
+        /// Explicit Spawn* when either is non-zero; else DefaultSpawn*.
+        /// (Exact lon=0,lat=0 still requires setting DefaultSpawn* to 0,0.)
+        /// One copy so init spawn and world-ready respawn cannot drift.
+        /// </summary>
+        public void ResolveSpawnLonLat(out double lon, out double lat)
+        {
+            bool explicitSpawn = SpawnLongitude != 0 || SpawnLatitude != 0;
+            lon = explicitSpawn ? SpawnLongitude : DefaultSpawnLon;
+            lat = explicitSpawn ? SpawnLatitude : DefaultSpawnLat;
+        }
 
         /// <summary>
         /// Startup guard: clamp out-of-range numerics to safe values and collect warnings

@@ -28,16 +28,5 @@ namespace RealEarth
             if (stockSafe) return "stock-safe-compress";
             return "needs-expand";
         }
-
-        /// <summary>
-        /// Cap content max game Y to what the engine can allocate (expanded or stock).
-        /// </summary>
-        public static int AllocatableMaxGameY(int contentMaxY, int chunkBlockYDim)
-        {
-            int engineCap = chunkBlockYDim > 0 ? chunkBlockYDim - 1 : 255;
-            if (engineCap < 2) engineCap = 2;
-            if (contentMaxY < 1) contentMaxY = 1;
-            return contentMaxY < engineCap ? contentMaxY : engineCap;
-        }
     }
 }

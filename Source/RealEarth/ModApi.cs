@@ -60,7 +60,6 @@ namespace RealEarth
 
                 Streamer = new TileStreamer(tileRoot, Coords, Config);
                 Session = new WorldSession(Coords, Config);
-                GlobeMapState.Enabled = Config.EnableGlobeMap;
                 // Height: product is 1:1 real meters after YDim expand (StockSafe is opt-in only)
                 EngineHeight.EngineHeightMod.Init(Config);
                 // Only force Streamed for tall inject when the engine was actually expanded
@@ -74,13 +73,7 @@ namespace RealEarth
                     Session = new WorldSession(Coords, Config);
                 }
                 // Prefer explicit Spawn* when either is non-zero; else DefaultSpawn*.
-                // (Exact lon=0,lat=0 still requires setting DefaultSpawn* to 0,0.)
-                double spawnLon = (Config.SpawnLongitude != 0 || Config.SpawnLatitude != 0)
-                    ? Config.SpawnLongitude
-                    : Config.DefaultSpawnLon;
-                double spawnLat = (Config.SpawnLongitude != 0 || Config.SpawnLatitude != 0)
-                    ? Config.SpawnLatitude
-                    : Config.DefaultSpawnLat;
+                Config.ResolveSpawnLonLat(out double spawnLon, out double spawnLat);
                 Session.SpawnAtLonLat(spawnLon, spawnLat);
 
                 int yDim = EngineHeight.EngineHeightMod.Probe?.ChunkBlockYDim ?? 256;

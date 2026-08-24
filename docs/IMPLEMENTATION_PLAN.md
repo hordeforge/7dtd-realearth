@@ -30,7 +30,6 @@
 - YDim expand, layers, Y-bound IL
 - Client + dedicated parity
 - Backup / re-apply after Steam Verify
-- Sparse Y (**Later**, P8)
 - `.7rg` tall-Y validation (**Needed**, with P0/P1 soak)
 
 ### B Harmony / inject
@@ -76,7 +75,7 @@
 | P5 | SharedFixed via `SessionOriginPolicy` + `realearth.mp.json` | `test_p5_*` |
 | P6 | `DensityBudget` + `clamp_prefabs_in_chunk` inside stamp planner | `test_stamp_prefabs_applies_density_budget_*` |
 | P7 | `CdnTilePolicy` + TileStreamer CDN URL | `test_p7_*` |
-| P8 | `SparseYScaffold` + AbsoluteHeightStore | `test_p8_*` |
+| P8 | AbsoluteHeightStore (SparseYScaffold section math removed as dead) | `test_p8_*` |
 
 Also: `InjectPatchStats`, `reinject` console, loadgen run manifests.
 

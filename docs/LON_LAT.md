@@ -305,7 +305,7 @@ Product slogan is **1 m = 1 block** after Y expand for **height**, and for **hor
 | `tools/realearth/coords.py` | Full-Earth map; point wrap only; no dateline split helper |
 | `tools/realearth/streamed_chunk.py` | `lonlat_to_pack_block` bbox path |
 | `Source/RealEarth/EarthCoords.cs` | WrapX, ClampZ, BlockToLonLat, LonLatToBlock |
-| `Source/RealEarth/WorldSession.cs` | Dual frame, fold, LonLatToLocal / LocalToLonLat |
+| `Source/RealEarth/WorldSession.cs` | Dual frame, fold, LonLatToLocal / EarthToLonLat |
 | `Source/RealEarth/ModApi.cs` | Manifest → width/bbox/wrap |
 | `Source/RealEarth/CityMapLabels.cs` | Places in lon/lat; discovery in local blocks |
 | `tools/tests/test_coords.py` | Basic round-trip / wrap / NYC smoke |

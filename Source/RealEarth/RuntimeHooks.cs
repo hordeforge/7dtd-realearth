@@ -26,6 +26,15 @@ namespace RealEarth
         /// </summary>
         static readonly HashSet<MethodBase> _patchedMethods = new HashSet<MethodBase>();
 
+        /// <summary>
+        /// Applied means something useful bound. Recomputed from actual stats after
+        /// every patch attempt so a failed bind never latches a stale true.
+        /// </summary>
+        static bool HasUsefulBinding
+            => InjectPatchStats.HasMinimalInjectBinding
+                || InjectPatchStats.PlayerTickPatches > 0
+                || InjectPatchStats.WorldReadyPatches > 0;
+
         public static void Apply()
         {
             if (_applied) return;
@@ -66,9 +75,7 @@ namespace RealEarth
                 int gen = TryPatchChunkTerrainGenerate();
                 n += gen > 0 ? 1 : 0;
                 // Only mark applied when something useful bound; else leave false so Apply can re-run.
-                _applied = InjectPatchStats.HasMinimalInjectBinding
-                    || InjectPatchStats.PlayerTickPatches > 0
-                    || InjectPatchStats.WorldReadyPatches > 0;
+                _applied = HasUsefulBinding;
                 EnforceInjectGate();
                 ModApi.Log(
                     $"RuntimeHooks: {n} patch group(s). MapMode={ModApi.Config.MapMode} " +
@@ -79,9 +86,7 @@ namespace RealEarth
             {
                 ModApi.Log($"RuntimeHooks failed: {ex.Message}");
                 // Recompute gate from actual binds (do not leave InjectBlocked stuck true with healthy patches).
-                _applied = InjectPatchStats.HasMinimalInjectBinding
-                    || InjectPatchStats.PlayerTickPatches > 0
-                    || InjectPatchStats.WorldReadyPatches > 0;
+                _applied = HasUsefulBinding;
                 EnforceInjectGate();
             }
         }
@@ -130,9 +135,7 @@ namespace RealEarth
                     InjectPatchStats.AddPlayerTick(TryPatchPlayerTick());
                 if (InjectPatchStats.WorldReadyPatches == 0)
                     InjectPatchStats.AddWorldReady(TryPatchWorldSpawn());
-                _applied = InjectPatchStats.HasMinimalInjectBinding
-                    || InjectPatchStats.PlayerTickPatches > 0
-                    || InjectPatchStats.WorldReadyPatches > 0;
+                _applied = HasUsefulBinding;
             }
             catch (Exception ex)
             {
@@ -774,25 +777,21 @@ namespace RealEarth
                     return;
 
                 // Prefer durable session restore; else config spawn lon/lat.
+                // Both paths prefetch the spawn area hot (restore inline, spawn via
+                // SpawnAtLonLat); player tick registers real entity focus ids later.
                 bool restored = SessionStateStore.TryLoad(session);
                 if (restored)
                 {
                     ModApi.Log(
                         $"Session restored absolute=({session.AbsoluteX},{session.AbsoluteZ}) " +
                         $"origin=({session.OriginEarthX},{session.OriginEarthZ})");
-                    // Prefetch only; player tick will register real entity focus ids.
                     ModApi.Streamer?.EnsureHotAround(
                         session.AbsoluteX, session.AbsoluteZ,
                         radius: Math.Max(1, cfg.StreamRadiusTiles), allowSyncLoad: true);
                 }
                 else
                 {
-                    double lon = cfg.SpawnLongitude != 0 || cfg.SpawnLatitude != 0
-                        ? cfg.SpawnLongitude
-                        : cfg.DefaultSpawnLon;
-                    double lat = cfg.SpawnLongitude != 0 || cfg.SpawnLatitude != 0
-                        ? cfg.SpawnLatitude
-                        : cfg.DefaultSpawnLat;
+                    cfg.ResolveSpawnLonLat(out double lon, out double lat);
                     session.SpawnAtLonLat(lon, lat);
                 }
 
@@ -816,11 +815,6 @@ namespace RealEarth
                         $"Spawn sample pack-center earth=({mid},{midZ}) gameY={h} " +
                         $"(expect ~500 staged / ~8949 Everest DEM; focus not stomped)");
                 }
-
-                // Ensure spawn area hot for early inject (still no sticky focusId=0).
-                ModApi.Streamer?.EnsureHotAround(
-                    session.AbsoluteX, session.AbsoluteZ,
-                    radius: Math.Max(1, cfg.StreamRadiusTiles), allowSyncLoad: true);
 
                 MapReveal.Reset();
                 MapReveal.TryRevealIfConfigured();

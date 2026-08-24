@@ -261,9 +261,6 @@ namespace RealEarth
             return Math.Max(32, (int)Math.Round(p.EdgeRadiusM));
         }
 
-        /// <summary>Legacy name for tests / callers; same as ResolveEdgeRadiusBlocks.</summary>
-        public static int EstimateEdgeRadius(Place p) => ResolveEdgeRadiusBlocks(p);
-
         // Band from population lives in RuntimePoiInject.BandFromPop (single ladder;
         // pack rows carry "band" so this class never needs its own copy).
 
@@ -499,38 +496,27 @@ namespace RealEarth
         /// </summary>
         static void ApplyEdgeFromObject(string obj, Place place)
         {
-            if (TryReadDouble(obj, "edge_radius_m", out var erm) && erm > 0)
+            foreach (var key in new[] { "edge_radius_m", "radius_m", "urban_radius_m" })
             {
-                place.EdgeRadiusM = erm;
-                if (TryReadString(obj, "edge_source", out var src) && !string.IsNullOrEmpty(src))
-                    place.EdgeSource = src;
-                else
+                if (TryReadDouble(obj, key, out var m) && m > 0)
+                {
+                    place.EdgeRadiusM = m;
+                    // edge_source override honored only on the canonical field.
+                    if (TryReadString(obj, "edge_source", out var src) && !string.IsNullOrEmpty(src))
+                        place.EdgeSource = src;
+                    else
+                        place.EdgeSource = "map";
+                    return;
+                }
+            }
+            foreach (var key in new[] { "edge_radius_km", "radius_km" })
+            {
+                if (TryReadDouble(obj, key, out var km) && km > 0)
+                {
+                    place.EdgeRadiusM = km * 1000.0;
                     place.EdgeSource = "map";
-                return;
-            }
-            if (TryReadDouble(obj, "radius_m", out var rm) && rm > 0)
-            {
-                place.EdgeRadiusM = rm;
-                place.EdgeSource = "map";
-                return;
-            }
-            if (TryReadDouble(obj, "urban_radius_m", out var urm) && urm > 0)
-            {
-                place.EdgeRadiusM = urm;
-                place.EdgeSource = "map";
-                return;
-            }
-            if (TryReadDouble(obj, "edge_radius_km", out var erk) && erk > 0)
-            {
-                place.EdgeRadiusM = erk * 1000.0;
-                place.EdgeSource = "map";
-                return;
-            }
-            if (TryReadDouble(obj, "radius_km", out var rkm) && rkm > 0)
-            {
-                place.EdgeRadiusM = rkm * 1000.0;
-                place.EdgeSource = "map";
-                return;
+                    return;
+                }
             }
             // Real urban-area bbox → half-extent meters
             if (TryReadDouble(obj, "west", out var west)

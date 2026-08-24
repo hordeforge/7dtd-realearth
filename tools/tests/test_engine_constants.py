@@ -60,5 +60,5 @@ def test_compress_respects_custom_max_y_for_engine_policy():
 def test_absolute_height_store_csharp_has_sparse_api():
     src = (ENGINE_DIR / "AbsoluteHeightStore.cs").read_text(encoding="utf-8")
     assert "SetSurfaceMeters" in src
-    assert "GetHotSectionRange" in src
+    assert "TryGetSurfaceMeters" in src
     assert "SectionColumn" in src

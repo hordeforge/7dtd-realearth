@@ -32,7 +32,7 @@ def test_tick_slide_gates_claim_scan_behind_recentering():
     src = _read("WorldSession.cs")
     m = re.search(
         r"public bool TickPlayerLocal\((?P<params>[^)]*)\)(?P<body>.*?)"
-        r"\n        /// <summary>\s*\n\s*/// Direct absolute update",
+        r"\n        public bool ShouldAllowOriginSlide\(\)",
         src,
         re.S,
     )

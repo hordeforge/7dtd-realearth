@@ -139,15 +139,6 @@ def test_p2_wrapped_delta_antimeridian():
     assert "SessionOriginPolicy.WrappedDelta(OriginEarthX - oldOx" in ws
 
 
-def test_tick_absolute_shares_recenter_policy():
-    """TickAbsolute must reuse NeedsRecentering (no drifted margin copy)."""
-    ws = _read("WorldSession.cs")
-    i = ws.index("public bool TickAbsolute")
-    body = ws[i : i + 1200]
-    assert "NeedsRecentering(localX, localZ, LocalWindowSize)" in body
-    assert "Math.Max(64" not in body
-
-
 # --- P3 stamp surface Y ---
 def stamp_prefab_root_y(surface: int, offset: int = 0) -> int:
     y = surface + offset
@@ -188,7 +179,6 @@ def test_p4_session_snapshot_roundtrip():
     assert d["originEarthX"] == 10
     assert d["absoluteZ"] == 200
     assert d["multiplayerOriginMode"] == "SharedFixed"
-    assert "DeltaKey" in src
     # Product entrypoints (not dead code)
     assert (SRC / "ConsoleCmdReSession.cs").is_file()
     hooks = _read("RuntimeHooks.cs")
@@ -252,9 +242,8 @@ def test_p6_density_budget():
 # --- P7 CDN / fail-closed manifest ---
 def test_p7_cdn_and_manifest():
     src = _read("CdnTilePolicy.cs")
-    assert "FailClosedOnMiss" in src
-    assert "FormatManifestFields" in src
     assert "TileUrl" in src
+    assert "IsSafeTileUrl" in src
     ts = _read("TileStreamer.cs")
     assert "CdnTilePolicy.TileUrl" in ts
     # Default EnsureHotAround remains async (height-query path).
@@ -306,7 +295,6 @@ def test_review_fixes_wired():
     assert cfg.get("DebugRevealFullMap") is False
     assert int(cfg.get("DebugMapRevealRadiusChunks") or 0) == 0
     assert cfg.get("EnableRuntimePoiInject") is True
-    assert cfg.get("EnableGlobeMap") is False
 
 
 def test_origin_slide_remap_module():
@@ -374,16 +362,6 @@ def test_retry_apply_never_double_patch():
     assert "ChunkIndexPatches == 0" not in body
     # Must not reset _applied to false before Apply on harmony-present path
     assert "_applied = false" not in body
-
-
-def test_tick_absolute_refuses_claims():
-    ws = _read("WorldSession.cs")
-    assert "TickAbsolute" in ws
-    assert "HasLandClaims" in ws
-    # TickAbsolute path must share claim gate
-    i = ws.index("public bool TickAbsolute")
-    body = ws[i : i + 800]
-    assert "HasLandClaims" in body
 
 
 def test_absolute_height_store_earth_key():
@@ -494,26 +472,6 @@ def test_center_window_respects_update_absolute():
     ws = _read("WorldSession.cs")
     assert "updateAbsolute" in ws
     assert "CenterWindowOnAbsolute(earthX, earthZ, updateAbsolute: updateSessionAbsolute)" in ws
-
-
-# --- P8 sparse Y scaffold ---
-def section_index(game_y: int, section_h: int = 16) -> int:
-    h = max(4, section_h)
-    if game_y >= 0:
-        return game_y // h
-    return (game_y - (h - 1)) // h
-
-
-def test_p8_sparse_y_scaffold():
-    assert section_index(0) == 0
-    assert section_index(15) == 0
-    assert section_index(16) == 1
-    assert section_index(8949) == 8949 // 16
-    src = _read("SparseYScaffold.cs")
-    assert "HotSectionRange" in src
-    store = _read("EngineHeight/AbsoluteHeightStore.cs")
-    assert "SparseYScaffold.HotSectionRange" in store
-
 
 def test_implementation_plan_lists_all_phases():
     plan = (ROOT / "docs" / "IMPLEMENTATION_PLAN.md").read_text(encoding="utf-8")

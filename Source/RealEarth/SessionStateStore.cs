@@ -75,10 +75,6 @@ namespace RealEarth
             }
         }
 
-        /// <summary>P4 player-build delta key for a tile (absolute Earth tile indices).</summary>
-        public static string DeltaKey(int tileX, int tileZ) =>
-            tileX.ToString(CultureInfo.InvariantCulture) + ":" + tileZ.ToString(CultureInfo.InvariantCulture);
-
         /// <summary>
         /// Hashed identity of the current world save ("" when unavailable, e.g. offline).
         /// A path hash rather than the raw path: session files may be shared, and the

@@ -64,6 +64,14 @@ namespace RealEarth
 
         static long Key(int tx, int tz) => ((long)tx << 32) ^ (uint)tz;
 
+        /// <summary>Shared miss result: ocean-flat placeholder, landcover 255 = unknown.</summary>
+        static void MissSample(out float elevM, out byte landcover, out byte population)
+        {
+            elevM = 0;
+            landcover = 255;
+            population = 0;
+        }
+
         public string TileFilePath(int tx, int tz)
         {
             return Path.Combine(_root, "tiles", tz.ToString(), tx + ".rte");
@@ -160,9 +168,6 @@ namespace RealEarth
             return _coords.ClampZ(z);
         }
 
-        /// <summary>Back-compat alias for absolute position updates.</summary>
-        public void UpdatePlayerPosition(int worldX, int worldZ) => UpdateFromAbsolute(worldX, worldZ);
-
         public void EnsureRadius(int centerTx, int centerTz, int radius)
             => EnsureRadius(centerTx, centerTz, radius, allowSyncLoad: false);
 
@@ -246,16 +251,12 @@ namespace RealEarth
                 if (_missUntilTick.TryGetValue(key, out int until)
                     && unchecked(now - until) < 0)
                 {
-                    elevM = 0;
-                    landcover = 255;
-                    population = 0;
+                    MissSample(out elevM, out landcover, out population);
                     return false;
                 }
             }
             EnsureRadius(tx, tz, 1, allowSyncLoad: false);
-            elevM = 0;
-            landcover = 255;
-            population = 0;
+            MissSample(out elevM, out landcover, out population);
             return false;
         }
 
@@ -267,9 +268,7 @@ namespace RealEarth
             var tile = TryGetTile(tx, tz);
             if (tile == null)
             {
-                elevM = 0;
-                landcover = 255;
-                population = 0;
+                MissSample(out elevM, out landcover, out population);
                 return false;
             }
             int lx = worldX - tx * _coords.TileSize;
@@ -571,7 +570,7 @@ namespace RealEarth
                 if (fromCdn)
                 {
                     ModApi.Log(
-                        $"CDN tile {tx},{tz} failed (failClosed={CdnTilePolicy.FailClosedOnMiss(_cfg.FailClosedMissingTiles)}): {ex.Message}");
+                        $"CDN tile {tx},{tz} failed (failClosed={_cfg.FailClosedMissingTiles}): {ex.Message}");
                 }
                 else
                 {
@@ -594,7 +593,6 @@ namespace RealEarth
         /// </summary>
         void EvictOutsideAllFoci(int keepRadius)
         {
-            List<(int tx, int tz)> centers;
             lock (_lock)
             {
                 if (_foci.Count == 0)
@@ -602,13 +600,10 @@ namespace RealEarth
                     _hot.Clear();
                     return;
                 }
-                centers = new List<(int, int)>(_foci.Count);
+                var centers = new List<(int tx, int tz)>(_foci.Count);
                 foreach (var kv in _foci)
                     centers.Add((kv.Value.tx, kv.Value.tz));
-            }
 
-            lock (_lock)
-            {
                 var remove = new List<long>();
                 foreach (var kv in _hot)
                 {

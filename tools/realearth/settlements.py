@@ -64,6 +64,13 @@ def urban_radius_m_from_population(population: int) -> float:
     return radius_km * 1000.0
 
 
+def meters_per_degree(lat: float) -> tuple[float, float]:
+    """Approximate (m/deg_lat, m/deg_lon) at |lat|; one copy for all edge math."""
+    m_lat = 110_540.0
+    m_lon = 111_320.0 * max(0.01, abs(math.cos(math.radians(lat))))
+    return m_lat, m_lon
+
+
 def edge_radius_m_from_bbox(
     west: float,
     south: float,
@@ -85,9 +92,7 @@ def edge_radius_m_from_bbox(
         return 0.0
     clon = center_lon if center_lon is not None else 0.5 * (west + east)
     clat = center_lat if center_lat is not None else 0.5 * (south + north)
-    # meters per degree
-    m_lat = 110_540.0
-    m_lon = 111_320.0 * max(0.01, abs(math.cos(math.radians(clat))))
+    m_lat, m_lon = meters_per_degree(clat)
     half_w = 0.5 * abs(east - west) * m_lon
     half_h = 0.5 * abs(north - south) * m_lat
     # also consider corner distance from center (skewed boxes)

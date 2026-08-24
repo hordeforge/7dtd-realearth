@@ -21,6 +21,7 @@ from realearth.elevation import grid_lonlat
 from realearth.landcover import LandCover
 from realearth.settlements import (
     Settlement,
+    meters_per_degree,
     paint_settlement_density,
     population_to_byte,
     urban_radius_m_from_population,
@@ -146,8 +147,7 @@ def meters_per_pixel(
     """Approximate (m/px_x, m/px_z) for equirectangular sample grid."""
     w = max(1, int(width))
     h = max(1, int(height))
-    m_lat = 110_540.0
-    m_lon = 111_320.0 * max(0.01, abs(math.cos(math.radians(at_lat))))
+    m_lat, m_lon = meters_per_degree(at_lat)
     mx = abs(east - west) / w * m_lon
     mz = abs(north - south) / h * m_lat
     return mx, mz

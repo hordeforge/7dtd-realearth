@@ -25,9 +25,6 @@ namespace RealEarth.EngineHeight
             _maxColumns = Math.Max(64, maxColumns);
         }
 
-        public int SectionHeight => _sectionHeight;
-        public int ColumnCount { get { lock (_lock) return _columns.Count; } }
-
         static long Key(int chunkX, int chunkZ) => ((long)chunkX << 32) ^ (uint)chunkZ;
 
         /// <summary>
@@ -92,16 +89,6 @@ namespace RealEarth.EngineHeight
             catch { /* fall through */ }
             ex = worldBlockX;
             ez = worldBlockZ;
-        }
-
-        /// <summary>Section indices that should stay hot around a surface elevation (meters as future Y).</summary>
-        public void GetHotSectionRange(float surfaceM, int digMargin, int buildMargin, out int minSection, out int maxSection)
-        {
-            // P8 scaffold: shared SparseYScaffold section math
-            int surfaceY = (int)Math.Round(surfaceM);
-            SparseYScaffold.HotSectionRange(
-                surfaceY, digMargin, buildMargin, _sectionHeight,
-                out minSection, out maxSection);
         }
 
         public void Clear()

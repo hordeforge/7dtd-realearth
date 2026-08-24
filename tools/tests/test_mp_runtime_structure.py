@@ -62,7 +62,8 @@ def test_player_tick_passes_focus_id_to_session():
 
 def test_chunk_inject_uses_ensure_hot_not_focus_update():
     src = _read("ChunkTerrainInject.cs")
-    # OnChunkGenerated must not call UpdateFromAbsolute (stomps focus 0)
+    # OnChunkGenerated samples via the shared helper; both it and the slide
+    # reinject path must sync-load hot tiles and never register focus 0.
     m = re.search(
         r"public static void OnChunkGenerated\([^)]*\)\s*\{(?P<body>.*?)"
         r"\n        (?:public |static |private |$)",
@@ -71,8 +72,18 @@ def test_chunk_inject_uses_ensure_hot_not_focus_update():
     )
     assert m, "OnChunkGenerated not found"
     body = m.group("body")
-    assert "EnsureHotAround" in body
+    assert "SampleChunkColumns" in body
     assert "UpdateFromAbsolute" not in body
+    h = re.search(
+        r"static void SampleChunkColumns\([^)]*\)\s*\{(?P<helper>.*?)\n        \}",
+        src,
+        re.S,
+    )
+    assert h, "SampleChunkColumns helper not found"
+    # Readiness race class: gen rewrite must block on tile load, not sample stale.
+    assert "EnsureHotAround" in h.group("helper")
+    assert "allowSyncLoad: true" in h.group("helper")
+    assert "UpdateFromAbsolute" not in h.group("helper")
 
 
 def test_sampler_and_engine_height_use_prefetch_sample():
@@ -118,8 +129,16 @@ def test_origin_slide_reinjects_loaded_chunks():
     reinject_core = body.split("static bool ReinjectChunkObject", 1)
     assert len(reinject_core) == 2
     core = reinject_core[1].split("static IEnumerable? FindLoadedChunkCollection")[0]
-    # Readiness race class: sync tile load before column rewrite.
-    assert "allowSyncLoad: true" in core
+    # Readiness race class: sync tile load before column rewrite. The load
+    # lives in the shared SampleChunkColumns helper (same copy as gen path).
+    assert "SampleChunkColumns" in core
+    helper = re.search(
+        r"static void SampleChunkColumns\([^)]*\)\s*\{(?P<helper>.*?)\n        \}",
+        inj,
+        re.S,
+    )
+    assert helper, "SampleChunkColumns helper not found"
+    assert "allowSyncLoad: true" in helper.group("helper")
     assert "TryApplyHeightsToChunk" in core
     # Floor division for negative locals (float-to-block truncation class).
     assert "FloorDiv" in core or "FloorDiv" in inj

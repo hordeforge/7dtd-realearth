@@ -10,7 +10,6 @@
   "LocalWindowSize": 1024,
   "MultiplayerOriginMode": "SoloSlide",
   "EnableLongitudeWrap": false,
-  "EnableGlobeMap": false,
   "DebugRevealFullMap": false,
   "EnableEngineHeightMod": true,
   "EngineHeightStockSafe": false,

@@ -136,9 +136,6 @@ namespace RealEarth
             SetOrigin(ox, oz);
         }
 
-        // Back-compat name
-        public void CenterOnEarth(int earthX, int earthZ) => CenterWindowOnAbsolute(earthX, earthZ);
-
         public void LocalToEarth(int localX, int localZ, out int earthX, out int earthZ)
         {
             ReadOrigin(out int ox, out int oz);
@@ -194,12 +191,6 @@ namespace RealEarth
         {
             LonLatToEarth(lon, lat, out int ex, out int ez);
             EarthToLocal(ex, ez, out localX, out localZ);
-        }
-
-        public void LocalToLonLat(int localX, int localZ, out double lon, out double lat)
-        {
-            LocalToEarth(localX, localZ, out int ex, out int ez);
-            EarthToLonLat(ex, ez, out lon, out lat);
         }
 
         /// <summary>
@@ -329,35 +320,6 @@ namespace RealEarth
                 $"origin=({OriginEarthX},{OriginEarthZ}) local→({newLocalX},{newLocalZ}) " +
                 $"dOrigin=({originDeltaX},{originDeltaZ}) updateAbs={updateSessionAbsolute}");
             return true;
-        }
-
-        /// <summary>
-        /// Direct absolute update (server authority path). Always streams tiles;
-        /// slides window when allowed.
-        /// </summary>
-        public bool TickAbsolute(int earthX, int earthZ, out int localX, out int localZ, int focusId = 0)
-        {
-            earthX = _coords.WrapX(earthX);
-            earthZ = _coords.ClampZ(earthZ);
-            WriteAbsolute(earthX, earthZ);
-            ModApi.Streamer?.UpdateFromAbsolute(earthX, earthZ, focusId, allowSyncLoad: true);
-
-            if (IsStreamed && ShouldAllowOriginSlide() && !OriginSlideRemap.HasLandClaims())
-            {
-                EarthToLocal(earthX, earthZ, out localX, out localZ);
-                // Shared recenter policy: same band math and degenerate-window guard
-                // as the player path (a tiny host must not slide on every call).
-                if (SessionOriginPolicy.NeedsRecentering(localX, localZ, LocalWindowSize))
-                {
-                    CenterWindowOnAbsolute(earthX, earthZ);
-                    EarthToLocal(earthX, earthZ, out localX, out localZ);
-                    return true;
-                }
-                return false;
-            }
-
-            EarthToLocal(earthX, earthZ, out localX, out localZ);
-            return false;
         }
 
         public bool ShouldAllowOriginSlide()

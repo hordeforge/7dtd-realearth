@@ -64,7 +64,7 @@ Stock terrain and world gen do not know about Earth DEM. Expand alone still yiel
 | **Session snapshot** | Absolute origin save/reload JSON | **Partial** (`SessionStateStore`; hooked to stock `SaveWorld` / `SaveWorldState`, live proof open) |
 | **Density budgets** | Cap stamps / sleeper weights | **Partial** (`DensityBudget`) |
 | **CDN tile URL + fail-closed** | Optional CDN; miss → sample policy | **Partial** (`CdnTilePolicy`) |
-| **Sparse Y scaffold** | Section index math for tall columns | **Partial** (`SparseYScaffold` + AbsoluteHeightStore) |
+| **Sparse Y scaffold** | Section index math for tall columns | **Removed** (dead scaffold; AbsoluteHeightStore keeps the sparse surface cache) |
 | **Chunk load / index hooks** | Stream tiles when chunks enter range | **Partial** (`ChunkIndexPostfix`, streamer) |
 | **World ready / player tick** | Center origin, refresh stream bubble, session | **Partial** (`WorldReadyPostfix`, `PlayerTickPostfix`) |
 | **RWG generator types** | `TerrainGeneratorWithBiomeResource` etc. still sample stock | **Needed** (retarget if missed on live DLL) |
@@ -153,7 +153,7 @@ Geography without people is empty wilderness. Separate from height.
 | Modification | Purpose | Status |
 |---|---|---|
 | **XML modlet** (biomes, spawns, rwg helpers) | Support role | **Partial** |
-| **Globe / world map UI** | Planet context | **Partial** (`GlobeMap`, viewer offline) |
+| **Globe / world map UI** | Planet context | **Viewer only** (offline web viewer; in-game scaffold removed) |
 | **Map FOW / discovery** | Explore real places | **Partial** (FOW debug + city edge discovery) |
 | **Climate / weather refinement** | Beyond landcover | **Later** |
 | **Rivers / hydrology overlays** | Recognizable waterways | **Later** |

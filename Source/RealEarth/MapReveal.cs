@@ -1,6 +1,5 @@
 using System;
 using System.Collections.Generic;
-using System.Linq;
 using System.Reflection;
 
 namespace RealEarth
@@ -486,7 +485,7 @@ namespace RealEarth
                     {
                         if (!string.Equals(asm.GetName().Name, "Assembly-CSharp", StringComparison.OrdinalIgnoreCase))
                             continue;
-                        foreach (var ty in SafeGetTypes(asm))
+                        foreach (var ty in EngineReflection.SafeGetTypes(asm))
                         {
                             f = ty.GetField("MapChunkSize", BindingFlags.Static | BindingFlags.Public | BindingFlags.NonPublic);
                             if (f != null && f.FieldType == typeof(int))
@@ -499,15 +498,6 @@ namespace RealEarth
             }
             catch { /* default */ }
             return 16;
-        }
-
-        static IEnumerable<Type> SafeGetTypes(Assembly asm)
-        {
-            try { return asm.GetTypes(); }
-            catch (ReflectionTypeLoadException ex)
-            {
-                return (ex.Types ?? Array.Empty<Type>()).Where(t => t != null)!;
-            }
         }
     }
 }
