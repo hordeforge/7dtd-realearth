@@ -135,4 +135,6 @@ def test_reinject_counters_are_reset_with_session():
         re.S,
     )
     assert reset, "ResetSessionCounters not found"
-    assert "SessionReinjectedChunks = 0" in reset.group("body")
+    # Counters are cross-thread (gen thread vs WorldReady reset), so the reset must
+    # be atomic: Interlocked.Exchange on the backing field, not a plain assignment.
+    assert "Interlocked.Exchange(ref _sessionReinjectedChunks, 0)" in reset.group("body")
