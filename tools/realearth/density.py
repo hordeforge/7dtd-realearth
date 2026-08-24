@@ -613,15 +613,38 @@ def stamp_prefabs_from_density(
 
 
 def _dedupe_stamps(stamps: list[PrefabStamp], min_dist: int = 20) -> list[PrefabStamp]:
-    out: list[PrefabStamp] = []
+    """Keep the first stamp per Chebyshev-min_dist cell neighborhood.
+
+    Spatial-hash keyed by min_dist buckets: a candidate can only collide with
+    kept stamps in its own or adjacent buckets (|dx| < min_dist implies the
+    bucket indices differ by at most 1), so the scan is O(n) instead of the
+    O(n^2) all-pairs check that stalled on dense world-size stamp plans.
+    """
+    if min_dist <= 0:
+        return list(stamps)
+    kept: list[PrefabStamp] = []
+    grid: dict[tuple[int, int], list[PrefabStamp]] = {}
     for s in stamps:
-        if any(
-            abs(s.world_x - o.world_x) < min_dist and abs(s.world_z - o.world_z) < min_dist
-            for o in out
-        ):
-            continue
-        out.append(s)
-    return out
+        bx = s.world_x // min_dist
+        bz = s.world_z // min_dist
+        dup = False
+        for dx in (-1, 0, 1):
+            for dz in (-1, 0, 1):
+                for o in grid.get((bx + dx, bz + dz), ()):
+                    if (
+                        abs(s.world_x - o.world_x) < min_dist
+                        and abs(s.world_z - o.world_z) < min_dist
+                    ):
+                        dup = True
+                        break
+                if dup:
+                    break
+            if dup:
+                break
+        if not dup:
+            kept.append(s)
+            grid.setdefault((bx, bz), []).append(s)
+    return kept
 
 
 def write_prefabs_xml(path: Path, stamps: list[PrefabStamp]) -> None:

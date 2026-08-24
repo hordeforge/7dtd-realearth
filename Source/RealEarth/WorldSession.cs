@@ -302,34 +302,34 @@ namespace RealEarth
             if (!ShouldAllowOriginSlide())
                 return false;
 
+            // Recenter when player leaves the middle band of the host (P2 policy).
+            // NeedsRecentering runs first: HasLandClaims reflects over every player's
+            // claim collections, and the old order ran that scan on every streamed tick
+            // even while the player sat mid-window.
+            if (!SessionOriginPolicy.NeedsRecentering(localX, localZ, LocalWindowSize))
+                return false;
+
             // Refuse slide when land claims exist (builds would desync from absolute Earth).
             if (OriginSlideRemap.HasLandClaims())
             {
-                if (SessionOriginPolicy.NeedsRecentering(localX, localZ, LocalWindowSize))
-                    ModApi.Log(
-                        "Origin slide refused: land claims present (SharedFixed / absolute builds).");
+                ModApi.Log(
+                    "Origin slide refused: land claims present (SharedFixed / absolute builds).");
                 return false;
             }
 
-            // Recenter when player leaves the middle band of the host (P2 policy).
-            if (SessionOriginPolicy.NeedsRecentering(localX, localZ, LocalWindowSize))
-            {
-                ReadOrigin(out int oldOx, out int oldOz);
-                CenterWindowOnAbsolute(earthX, earthZ, updateAbsolute: updateSessionAbsolute);
-                originDeltaX = OriginEarthX - oldOx;
-                originDeltaZ = OriginEarthZ - oldOz;
-                // After recenter, absolute stays put when updateSessionAbsolute; local becomes center-ish
-                EarthToLocal(earthX, earthZ, out newLocalX, out newLocalZ);
-                newLocalX = Math.Max(1, Math.Min(LocalWindowSize - 2, newLocalX));
-                newLocalZ = Math.Max(1, Math.Min(LocalWindowSize - 2, newLocalZ));
-                ModApi.Log(
-                    $"Active window slid to absolute=({earthX},{earthZ}) " +
-                    $"origin=({OriginEarthX},{OriginEarthZ}) local→({newLocalX},{newLocalZ}) " +
-                    $"dOrigin=({originDeltaX},{originDeltaZ}) updateAbs={updateSessionAbsolute}");
-                return true;
-            }
-
-            return false;
+            ReadOrigin(out int oldOx, out int oldOz);
+            CenterWindowOnAbsolute(earthX, earthZ, updateAbsolute: updateSessionAbsolute);
+            originDeltaX = OriginEarthX - oldOx;
+            originDeltaZ = OriginEarthZ - oldOz;
+            // After recenter, absolute stays put when updateSessionAbsolute; local becomes center-ish
+            EarthToLocal(earthX, earthZ, out newLocalX, out newLocalZ);
+            newLocalX = Math.Max(1, Math.Min(LocalWindowSize - 2, newLocalX));
+            newLocalZ = Math.Max(1, Math.Min(LocalWindowSize - 2, newLocalZ));
+            ModApi.Log(
+                $"Active window slid to absolute=({earthX},{earthZ}) " +
+                $"origin=({OriginEarthX},{OriginEarthZ}) local→({newLocalX},{newLocalZ}) " +
+                $"dOrigin=({originDeltaX},{originDeltaZ}) updateAbs={updateSessionAbsolute}");
+            return true;
         }
 
         /// <summary>
@@ -376,9 +376,37 @@ namespace RealEarth
 
         /// <summary>
         /// Known player count, or -1 when unknown (reflection miss). Unknown fails closed for slides.
-        /// Public for HooksImpl dedicated absolute policy. Per-frame path: member lookups memoized.
+        /// Public for HooksImpl dedicated absolute policy. Per-frame path: the result is
+        /// TTL-cached because every player tick resolves it via a four-deep reflection
+        /// chain (GameManager.Instance → World → Players → Count) twice for non-primary
+        /// entities; player count only changes at human timescales (join/disconnect).
         /// </summary>
+        public const int PlayerCountCacheMs = 500;
+        static readonly object _playerCountGate = new object();
+        static bool _playerCountCacheValid;
+        static int _playerCountCached;
+        static int _playerCountCacheExpiry;
+
         public static int EstimatePlayerCount()
+        {
+            int now = Environment.TickCount;
+            lock (_playerCountGate)
+            {
+                if (_playerCountCacheValid && unchecked(now - _playerCountCacheExpiry) < 0)
+                    return _playerCountCached;
+            }
+
+            int n = EstimatePlayerCountUncached();
+            lock (_playerCountGate)
+            {
+                _playerCountCached = n;
+                _playerCountCacheExpiry = Environment.TickCount + PlayerCountCacheMs;
+                _playerCountCacheValid = true;
+            }
+            return n;
+        }
+
+        static int EstimatePlayerCountUncached()
         {
             try
             {

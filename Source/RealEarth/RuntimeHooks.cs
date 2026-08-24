@@ -581,6 +581,8 @@ namespace RealEarth
         static int _peakLogBudget = 3;
         /// <summary>Budget for tick-path errors so persistent failures stay visible without spam.</summary>
         static int _tickErrLogBudget = 8;
+        /// <summary>Hoisted: TryGetEntityId runs every frame per player (no per-call alloc).</summary>
+        static readonly string[] EntityIdMemberNames = { "entityId", "EntityId", "EntityID" };
 
         public static void PlayerTickPostfix(object __instance)
         {
@@ -704,7 +706,7 @@ namespace RealEarth
             try
             {
                 var t = entity.GetType();
-                foreach (var name in new[] { "entityId", "EntityId", "EntityID" })
+                foreach (var name in EntityIdMemberNames)
                 {
                     if (ReflectCache.TryReadIntMember(entity, name, out int v))
                         return v;
