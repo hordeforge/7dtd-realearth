@@ -102,7 +102,10 @@ namespace RealEarth
         /// </summary>
         [DataMember] public bool EnableRuntimePoiInject { get; set; } = true;
 
-        /// <summary>Max runtime POI stamps per session (area budget).</summary>
+        /// <summary>
+        /// Max runtime POI stamps per session (area budget). Values above the hard
+        /// budget cap (DensityBudget.DefaultMaxPrefabsPerKm2 = 80) clamp to 80.
+        /// </summary>
         [DataMember] public int RuntimePoiMaxPerArea { get; set; } = 80;
 
         /// <summary>

@@ -16,6 +16,7 @@ from pathlib import Path
 
 import numpy as np
 
+from realearth import DEFAULT_SEA_LEVEL_GAME_Y
 from realearth.elevation import grid_lonlat
 from realearth.landcover import LandCover
 from realearth.settlements import (
@@ -481,7 +482,7 @@ def stamp_prefabs_from_density(
     game_y: np.ndarray,
     *,
     world_size: int,
-    sea_level: int = 32,
+    sea_level: int = DEFAULT_SEA_LEVEL_GAME_Y,
     cores: list[CityCore] | None = None,
     seed: int = 7,
     max_prefabs_per_chunk: int = 4,

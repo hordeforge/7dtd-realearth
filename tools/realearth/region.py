@@ -314,7 +314,16 @@ def world_tile_indices_for_bbox(
     north: float,
     tile_size: int = DEFAULT_TILE_SIZE,
 ) -> list[tuple[int, int]]:
-    """Absolute Earth tile indices for a bbox (for full-planet pipelines)."""
+    """Absolute Earth tile indices for a bbox (for full-planet pipelines).
+
+    Raises ValueError on non-finite or inverted bounds (east>west, north>south),
+    mirroring the `planet-tiles` CLI. An antimeridian-straddling bbox given as
+    west > east would otherwise expand to a near-full-planet span and hang.
+    """
+    if east <= west or north <= south:
+        raise ValueError(
+            f"bbox must have east>west and north>south, got {west},{south} -> {east},{north}"
+        )
     g = EarthGrid(tile_size=tile_size)
     x0, z_south = lonlat_to_block(west, south, g)
     x1, z_north = lonlat_to_block(east, north, g)

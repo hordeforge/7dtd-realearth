@@ -19,6 +19,7 @@ from xml.sax.saxutils import escape as saxutils_escape
 import numpy as np
 from PIL import Image
 
+from realearth import DEFAULT_SEA_LEVEL_GAME_Y
 from realearth.bake_world import resize_arrays, snap_world_size
 from realearth.density import (
     apply_urban_from_density,
@@ -203,7 +204,12 @@ def write_map_info(path: Path, size: int, name: str, game_version: str | None = 
     path.write_text(xml, encoding="utf-8")
 
 
-def write_spawnpoints(path: Path, size: int, game_y: np.ndarray, sea_level: int = 32) -> None:
+def write_spawnpoints(
+    path: Path,
+    size: int,
+    game_y: np.ndarray,
+    sea_level: int = DEFAULT_SEA_LEVEL_GAME_Y,
+) -> None:
     """Spawn points in world-centered coords (origin at map center)."""
     h, w = game_y.shape
     half = size // 2
@@ -319,7 +325,7 @@ def bake_generated_world(
     *,
     size: int = 4096,
     name: str = "RealEarth",
-    sea_level_y: int = 32,
+    sea_level_y: int = DEFAULT_SEA_LEVEL_GAME_Y,
     ttw_template: Path | None = None,
     game_version: str | None = None,
 ) -> dict:

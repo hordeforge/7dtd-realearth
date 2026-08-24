@@ -586,7 +586,8 @@ def window_slide_cmd(
 @click.option("--size", type=int, default=4096, show_default=True,
               help="World edge in blocks (2048–16384, snapped to mult of 2048)")
 @click.option("--name", default=None, help="World display name")
-@click.option("--sea-level", "sea_level_y", type=int, default=32, show_default=True,
+@click.option("--sea-level", "sea_level_y", type=int, default=DEFAULT_SEA_LEVEL_GAME_Y,
+              show_default=True,
               help="Sea level in game Y blocks")
 @click.option(
     "--generated/--heightmap-only",

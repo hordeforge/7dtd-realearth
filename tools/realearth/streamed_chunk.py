@@ -74,12 +74,13 @@ def sample_point(
     earth_z: int,
     *,
     grid: EarthGrid | None = None,
-    sea_level_y: int = DEFAULT_SEA_LEVEL_GAME_Y,
     cache: dict[tuple[int, int], object] | None = None,
 ) -> tuple[float, int, int]:
-    """Sample (elevation_m, landcover, population) at pack/Earth block XZ.
+    """Sample (elevation_m ASL, landcover, population) at pack/Earth block XZ.
 
-    Missing tile → elevation 0, landcover 0 (ocean), population 0.
+    Returns raw meters (no sea-level mapping); callers compress with
+    compress_elevation(sea_level_y=...). Missing tile → elevation 0,
+    landcover 0 (ocean), population 0.
     Layout: pack_dir/tiles/{tz}/{tx}.rte (same as C# TileStreamer.TileFilePath).
     """
     pack_dir = Path(pack_dir)
@@ -140,7 +141,6 @@ def fill_chunk_heights(
                 chunk_earth_origin_x + x,
                 chunk_earth_origin_z + z,
                 grid=g,
-                sea_level_y=sea_level_y,
                 cache=store,
             )
             elev[z, x] = e

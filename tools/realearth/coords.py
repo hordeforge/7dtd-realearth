@@ -6,6 +6,7 @@ for latitude. Longitude wraps; latitude clamps at the poles.
 
 from __future__ import annotations
 
+import math
 from dataclasses import dataclass
 
 from realearth import DEFAULT_TILE_SIZE, EARTH_CIRCUMFERENCE_M, EARTH_MERIDIAN_HALF_M
@@ -35,7 +36,13 @@ class EarthGrid:
 
 
 def lonlat_to_block(lon: float, lat: float, grid: EarthGrid | None = None) -> tuple[int, int]:
-    """Convert WGS84 lon/lat (degrees) to block X/Z."""
+    """Convert WGS84 lon/lat (degrees) to block X/Z.
+
+    Non-finite values raise ValueError (mirrors the CLI's usage-error guard);
+    otherwise longitude wraps past +/-180 and latitude clamps at the poles.
+    """
+    if not (math.isfinite(lon) and math.isfinite(lat)):
+        raise ValueError(f"lon/lat must be finite, got lon={lon!r} lat={lat!r}")
     g = grid or EarthGrid()
     if not -180.0 <= lon <= 180.0:
         lon = ((lon + 180.0) % 360.0) - 180.0

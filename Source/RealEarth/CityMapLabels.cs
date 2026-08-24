@@ -93,14 +93,16 @@ namespace RealEarth
 
         /// <summary>
         /// Each player tick: discover cities whose edge you entered; labels always at center.
+        /// force=true (console `recities here`) bypasses the shared tick throttle so the
+        /// command always runs a real discovery pass instead of decrementing the counter.
         /// </summary>
-        public static void TickPlayer(int playerLocalX, int playerLocalZ)
+        public static void TickPlayer(int playerLocalX, int playerLocalZ, bool force = false)
         {
             var cfg = ModApi.Config;
             if (cfg == null || !cfg.ShowCityNamesOnMap)
                 return;
 
-            if (_tickThrottle > 0)
+            if (!force && _tickThrottle > 0)
             {
                 _tickThrottle--;
                 return;

@@ -38,6 +38,12 @@ namespace RealEarth
         public static int SessionBlocksApplied { get; private set; }
         /// <summary>Loaded chunks rewritten after origin slides (SoloSlide desync closure).</summary>
         public static int SessionReinjectedChunks { get; private set; }
+        /// <summary>
+        /// Columns actually rewritten by the most recent TryApplyHeightsToChunk call
+        /// (a column counts when at least one density/block write succeeded).
+        /// Feeds SessionBlocksApplied so the counter means blocks, not chunks.
+        /// </summary>
+        public static int LastAppliedColumnCount { get; private set; }
 
         /// <summary>Reset per-world inject counters (WorldReady / reinject reset).</summary>
         public static void ResetSessionCounters()
@@ -146,7 +152,8 @@ namespace RealEarth
             if (applied)
             {
                 SessionInjectCount++;
-                SessionBlocksApplied++;
+                // Count real applied columns, not one per chunk.
+                SessionBlocksApplied += LastAppliedColumnCount;
                 if (maxH > SessionPeakHeight)
                     SessionPeakHeight = maxH;
             }
@@ -175,7 +182,9 @@ namespace RealEarth
         /// Effective max surface for full solid block+density fill via reflection.
         /// Never auto-selects Everest-scale dual fill (millions of Invoke calls hang gen).
         /// Config FullSolidBlockFillMaxSurface &gt; 0 opts into a higher dual-fill ceiling.
-        /// Tall columns above this: solid density full height + block crust (Issue 2).
+        /// Tall columns above this: bedrock plug + block crust + air clear only;
+        /// the interior below the crust is intentionally left untouched
+        /// (documented residual: docs/realearth-runtime.md "Intentional hollow").
         /// </summary>
         public static int EffectiveFullDualFillMaxSurface()
         {
@@ -195,7 +204,9 @@ namespace RealEarth
         /// <summary>
         /// Fill solid terrain for 1:1 heights.
         /// Full dual block+density through EffectiveFullDualFillMaxSurface (default 520).
-        /// Above that: solid density entire column + block crust + bedrock (not hollow).
+        /// Above that: bedrock plug + solid crust under the surface + air clear.
+        /// The interior between plug and crust is intentionally NOT written
+        /// (never full-column Reflect to Everest; see docs/realearth-runtime.md).
         /// </summary>
         public static bool TryApplyHeightsToChunk(object chunk, int[] heights, int chunkSize = 16)
             => TryApplyHeightsToChunk(chunk, heights, landcover: null, chunkSize);
@@ -203,6 +214,7 @@ namespace RealEarth
         public static bool TryApplyHeightsToChunk(
             object chunk, int[] heights, byte[]? landcover, int chunkSize = 16)
         {
+            LastAppliedColumnCount = 0;
             if (chunk == null || heights == null || heights.Length < chunkSize * chunkSize)
                 return false;
 
@@ -256,6 +268,7 @@ namespace RealEarth
             {
                 for (int x = 0; x < chunkSize; x++)
                 {
+                    bool colAny = false;
                     int surface = heights[z * chunkSize + x];
                     surface = Math.Max(1, Math.Min(columnMax - 1, surface));
                     byte lc = landcover != null && landcover.Length > z * chunkSize + x
@@ -298,6 +311,7 @@ namespace RealEarth
                                 densArgs[3] = solidCell ? solidDens : airDens;
                                 setDensity.Invoke(chunk, densArgs);
                                 any = true;
+                                colAny = true;
                             }
                             catch
                             {
@@ -314,6 +328,7 @@ namespace RealEarth
                                 blockArgs[3] = solidCell ? solid : _airBlock;
                                 setBlock.Invoke(chunk, blockArgs);
                                 any = true;
+                                colAny = true;
                             }
                             catch
                             {
@@ -342,6 +357,8 @@ namespace RealEarth
                         for (int y = surface; y <= yWriteHi; y++)
                             WriteColumnCell(y, solidCell: false);
                     }
+                    if (colAny)
+                        LastAppliedColumnCount++;
                     if (failures > 64 && !any)
                         return false;
                 }
@@ -603,7 +620,7 @@ namespace RealEarth
             return null;
         }
 
-        /// <summary>Prefer SetBlockRaw when present (fewer side effects / faster than full SetBlock).</summary>
+        /// <summary>Fallback when full SetBlock is absent (raw write skips mesh dirty flags).</summary>
         static MethodInfo? FindSetBlockRaw(Type t)
         {
             foreach (var m in t.GetMethods(BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic))
