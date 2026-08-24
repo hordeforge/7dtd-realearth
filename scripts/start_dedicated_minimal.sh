@@ -103,7 +103,9 @@ install_mod() {
   if [[ -d "$pack/tiles" ]]; then
     rm -rf "$dest/Data/tiles"
     mkdir -p "$dest/Data/tiles/tiles"
-    cp -a "$pack/tiles/." "$dest/Data/tiles/tiles/" 2>/dev/null || true
+    if ! cp -a "$pack/tiles/." "$dest/Data/tiles/tiles/" 2>/dev/null; then
+      echo "WARN: tile copy failed into $dest/Data/tiles (dedicated will sample ocean)" >&2
+    fi
     for n in earth.manifest.json height_test.json settlements.json cities.json; do
       [[ -f "$pack/$n" ]] && cp -f "$pack/$n" "$dest/Data/tiles/"
     done

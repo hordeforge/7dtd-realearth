@@ -100,9 +100,13 @@ def compress_elevation(
         out[land] = y
 
     if regional_exaggeration != 1.0 and out.size > 4 and max_y <= 255:
+        # Only the import can legitimately fail here (numpy < 1.20); shapes are
+        # always >= (5, 1) after edge padding, so a math error must surface.
         try:
             from numpy.lib.stride_tricks import sliding_window_view
-
+        except ImportError:
+            pass
+        else:
             k = 9
             pad = k // 2
             padded = np.pad(out, pad, mode="edge")
@@ -110,8 +114,6 @@ def compress_elevation(
             low = windows.mean(axis=(-1, -2))
             detail = out - low
             out = low + detail * regional_exaggeration
-        except Exception:
-            pass
 
     return np.clip(np.rint(out), min_y, max_y).astype(out_dtype)
 

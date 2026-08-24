@@ -157,7 +157,12 @@ PY
   fi
   if [[ -d "$ROOT/data/samples/demo_region" ]]; then
     mkdir -p "$dest/Data/tiles"
-    cp -a "$ROOT/data/samples/demo_region/." "$dest/Data/tiles/" || true
+    if ! cp -a "$ROOT/data/samples/demo_region/." "$dest/Data/tiles/"; then
+      echo "WARN: demo tile copy failed into $dest/Data/tiles (Streamed will sample ocean until CDN configured)" >&2
+    fi
+    if [[ ! -f "$dest/Data/tiles/earth.manifest.json" ]]; then
+      echo "WARN: no earth.manifest.json under $dest/Data/tiles — pack incomplete? Run make demo." >&2
+    fi
   fi
   echo "Installed mod → $dest (MapMode=${map_mode})"
 }

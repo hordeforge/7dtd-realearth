@@ -581,6 +581,9 @@ namespace RealEarth
         static int _peakLogBudget = 3;
         /// <summary>Budget for tick-path errors so persistent failures stay visible without spam.</summary>
         static int _tickErrLogBudget = 8;
+        /// <summary>Budget for inject-path errors: a swallowed gen/inject exception otherwise
+        /// looks like "terrain is stock RWG under RealEarth" with zero trace.</summary>
+        static int _injectErrLogBudget = 8;
         /// <summary>Hoisted: TryGetEntityId runs every frame per player (no per-call alloc).</summary>
         static readonly string[] EntityIdMemberNames = { "entityId", "EntityId", "EntityID" };
 
@@ -825,6 +828,7 @@ namespace RealEarth
                 RuntimePoiInject.Reset();
                 ChunkTerrainInject.ResetSessionCounters();
                 _tickErrLogBudget = 8;
+                _injectErrLogBudget = 8;
                 try
                 {
                     var snap = SessionStateStore.Capture(session, cfg);
@@ -959,9 +963,16 @@ namespace RealEarth
 
                 ChunkTerrainInject.OnChunkGenerated(__instance, cx, cz, chunk);
             }
-            catch
+            catch (Exception ex)
             {
-                // ignore
+                // Never break chunk gen, but do not fail silently: an aborted density
+                // rewrite leaves stock RWG terrain that looks like a streaming bug.
+                if (_injectErrLogBudget > 0)
+                {
+                    _injectErrLogBudget--;
+                    ModApi.Log(
+                        $"GenerateTerrain postfix error: {ex.GetType().Name}: {ex.Message}");
+                }
             }
         }
 
@@ -981,9 +992,15 @@ namespace RealEarth
                 ModApi.Session.LocalToEarth(blockX, blockZ, out int ex, out int ez);
                 ModApi.Streamer.EnsureHotAround(ex, ez);
             }
-            catch
+            catch (Exception ex)
             {
-                // ignore
+                // Prefetch-only path: TileStreamer logs its own load failures; this logs
+                // mapping/reflection failures so tiles missing forever stays debuggable.
+                if (_injectErrLogBudget > 0)
+                {
+                    _injectErrLogBudget--;
+                    ModApi.Log($"ChunkIndex postfix error ({__0},{__1}): {ex.Message}");
+                }
             }
         }
 
