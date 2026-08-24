@@ -48,7 +48,7 @@ make engine-expand         # YDim expand alone (client + dedicated)
 make engine-expand-dry     # preview IL patches
 make engine-restore        # restore stock Assembly-CSharp from backup
 make demo                  # synthetic demo region pack
-make viewer && make serve  # web map viewer
+make viewer && make viewer-build && make serve  # web map viewer (TS sources)
 make check
 make clean
 ```

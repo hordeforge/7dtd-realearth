@@ -106,6 +106,18 @@ offline deployment must vendor/allow that dependency.
 
 ## Development notes
 
-`js/app.js` coordinates controls and datasets, `js/map2d.js` renders the flat
-view, and `js/globe.js` renders the sphere. After editing, test both views, pack switching, settlement
+Sources are TypeScript under `src/`: `app.ts` coordinates controls and
+datasets, `pack.ts` parses pack artifacts, `map2d.ts` renders the flat view,
+and `globe.ts` renders the sphere (`types.ts`/`coerce.ts` hold the shared data
+shapes and JSON boundary coercion). esbuild compiles them to the served ES
+modules in `js/`; three.js stays external and is resolved by the importmap at
+runtime, so the CDN fetch still happens only when Globe mode is first used.
+
+```bash
+# from repo root: rebuild js/ after editing src/, then type-check + lint
+make viewer-build
+make viewer-lint   # tsc --strict (viewer/tsconfig.json) + oxlint, anti-slop + strict
+```
+
+`make serve` rebuilds before serving. After editing, test both views, pack switching, settlement
 hover, cursor probing, and a narrow/mobile viewport.

@@ -1,17 +1,19 @@
 #!/usr/bin/env bash
-# Lint the web map viewer JavaScript (viewer/js/*.js) with oxlint against the
-# anti-slop + strict rule set in .oxlintrc.jsonc (warnings fail via
-# --deny-warnings). Part of `make check` (target: viewer-lint).
+# Gate the map viewer TypeScript sources (viewer/src):
+#   1. tsc --noEmit: the type gate (tsc --strict per viewer/tsconfig.json,
+#      pinned TSC_VERSION; @types/three covers globe.ts's runtime importmap
+#      import of three).
+#   2. oxlint over the .ts sources with the anti-slop + strict rule set in
+#      .oxlintrc.jsonc (warnings fail via --deny-warnings). The config enables
+#      options.typeAware, so oxlint also runs the typescript/* type-aware
+#      rules through the oxlint-tsgolint binary.
 #
-# The @rikalabs plugin is fetched into the cache (no-op when the pinned version
-# is already present) and oxlint runs next to it because jsPlugins resolve
-# relative to the config file's directory; a copy of the config is placed there
-# each run.
-#
-# Versions live here as the single source of truth (no package.json /
-# node_modules tracked; same policy as ../zdtd-server-server/scripts/lint-webui.sh).
-# Override locally: OXLINT_VERSION=1.79.0 OXLINT_STANDARDS_VERSION=0.8.1 \
-#   bash scripts/lint-viewer.sh
+# tsc/oxlint/@types/three run through npx pinned by TSC_VERSION/OXLINT_VERSION/
+# OXLINT_TSGOLINT_VERSION/OXLINT_STANDARDS_VERSION/THREE_TYPES_VERSION. The
+# repo deliberately does not track package.json/node_modules, so the versions
+# live here as the single source of truth (same policy as lint-webmod.sh).
+# Override locally: TSC_VERSION=5.9.3 OXLINT_VERSION=1.79.0 \
+#   THREE_TYPES_VERSION=0.170.0 bash scripts/lint-viewer.sh
 #
 # Requires: node/npm (npx).
 
@@ -20,10 +22,15 @@ set -euo pipefail
 root="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 oxlint_version="${OXLINT_VERSION:-1.79.0}"
 oxlint_standards_version="${OXLINT_STANDARDS_VERSION:-0.8.1}"
+oxlint_tsgolint_version="${OXLINT_TSGOLINT_VERSION:-7.0.2001}"
 oxlint_plugins_version="${OXLINT_PLUGINS_VERSION:-1.78.0}"
 anti_slop_sha="${ANTI_SLOP_SHA:-6d538555cb151d4121ed51a27db81890eacf8ae9}"
+tsc_version="${TSC_VERSION:-5.9.3}"
+three_types_version="${THREE_TYPES_VERSION:-0.170.0}"
+# Runtime three.js version pinned by the page importmap (viewer/index.html).
+three_version="${THREE_VERSION:-0.170.0}"
 cache_dir="${XDG_CACHE_HOME:-$HOME/.cache}/realearth/oxlint-standards"
-js_dir="$root/viewer/js"
+src_dir="$root/viewer/src"
 
 # GitHub archive downloads fail intermittently; retry with deterministic
 # backoff so a transient 5xx does not turn the lint stage red.
@@ -41,6 +48,17 @@ fetch_retry() {
   return 1
 }
 
+# 1. Toolchain. The @rikalabs plugin, the vendored dmmulroy/anti-slop plugin
+#    source (pinned by ANTI_SLOP_SHA; the project is vendored source, not an
+#    npm package), oxlint-tsgolint (the type-aware backend), typescript, and
+#    @types/three (globe.ts's importmap import of three) are fetched into the
+#    cache; each step is a no-op when the pinned version is already present.
+#    All npm packages are installed in one invocation: a later separate
+#    --no-save install would prune the others (each lint script therefore
+#    installs its full set and self-heals after a sibling run).
+#    @oxlint/plugins is the plugin API the anti-slop source imports; without
+#    it the plugin cannot load. The same cache dir serves the webmod
+#    (lint-webmod.sh).
 mkdir -p "$cache_dir"
 if [ ! -d "$cache_dir/anti-slop-src" ]; then
   fetch_retry "https://github.com/dmmulroy/anti-slop/archive/$anti_slop_sha.tar.gz" \
@@ -52,11 +70,29 @@ fi
 # re-resolving against the registry on every run; cold cache fetches as usual.
 npm install --prefix "$cache_dir" --prefer-offline --no-audit --no-fund --no-save --no-package-lock \
   "@rikalabs/oxlint-standards@$oxlint_standards_version" \
-  "@oxlint/plugins@$oxlint_plugins_version" >/dev/null 2>&1 || {
-  echo "realearth: lint-viewer: could not install @rikalabs/oxlint-standards@$oxlint_standards_version + @oxlint/plugins@$oxlint_plugins_version into $cache_dir (offline?)" >&2
+  "oxlint-tsgolint@$oxlint_tsgolint_version" \
+  "@oxlint/plugins@$oxlint_plugins_version" \
+  "typescript@$tsc_version" \
+  "@types/three@$three_types_version" >/dev/null 2>&1 || {
+  echo "realearth: lint-viewer: could not install the pinned lint toolchain into $cache_dir (offline?)" >&2
   exit 1
 }
+
+# 2. Type check (tsc --strict per viewer/tsconfig.json). Module resolution
+#    walks up from viewer/src, so a symlink from viewer/node_modules to the
+#    cache's node_modules exposes @types/three without vendoring anything.
+ln -sfn "$cache_dir/node_modules" "$root/viewer/node_modules"
+npx --yes -p "typescript@$tsc_version" tsc -p "$root/viewer/tsconfig.json" --noEmit
+
 cp "$root/.oxlintrc.jsonc" "$cache_dir/oxlintrc.jsonc"
+# The @rikalabs/no-unlisted-external-imports rule reads allowed externals
+# from the package.json next to the copied config. Declare the browser
+# externals that index.html's importmap provides at runtime so the rule can
+# enforce them while the repo itself stays free of a tracked package.json.
+printf '{"type":"module","dependencies":{"three":"%s"}}\n' "$three_version" > "$cache_dir/package.json"
 cd "$cache_dir"
-npx --yes "oxlint@$oxlint_version" --config oxlintrc.jsonc --deny-warnings "$js_dir"
-echo "realearth: lint-viewer: oxlint ok"
+# tsgolint is not on the user's PATH; oxlint finds it via PATH lookup.
+PATH="$cache_dir/node_modules/.bin:$PATH" \
+  npx --yes "oxlint@$oxlint_version" --config oxlintrc.jsonc --deny-warnings "$src_dir"
+
+echo "realearth: lint-viewer: tsc type-check and oxlint ok"

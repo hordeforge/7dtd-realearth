@@ -1,9 +1,11 @@
 // Pan/zoom 2D map canvas: draws the active layer PNG, an optional tile grid,
-// and settlement markers, and reports cursor probes. Ported from the
-// standalone viewer (viewer/src/map2d.ts) with the same interaction model:
-// drag to pan, scroll wheel to zoom around the cursor, hover settlements.
+// and settlement markers, and reports cursor probes and hovered settlements.
+// Interaction model: drag to pan, scroll wheel to zoom around the cursor,
+// two-pointer pinch to zoom, arrow keys to pan, plus/minus to zoom, Home to
+// fit. Typed port of the original viewer canvas controller; the dashboard
+// variant lives in ../webmod/src/map2d.ts.
 
-import type { Bbox, ProbePoint, Settlement } from "./types";
+import type { Bbox, ProbePoint, Settlement } from "./types.js";
 
 const MAX_DEVICE_PIXEL_RATIO = 2;
 const FIT_PADDING_PX = 40;
@@ -17,6 +19,7 @@ const KEY_ZOOM_OUT_STEP = 1 / KEY_ZOOM_IN_STEP;
 const PAN_STEP_PX = 60;
 const PAN_STEP_LARGE_PX = 160;
 const SMOOTH_SCALE_MAX = 3;
+const SETTLEMENT_LABEL_MIN_SCALE = 0.6;
 const DEFAULT_TILE_SIZE = 512;
 const SETTLEMENT_HIT_RADIUS_PX = 10;
 const SETTLEMENT_DOT_MIN_RADIUS_PX = 3;
@@ -24,7 +27,6 @@ const SETTLEMENT_DOT_RADIUS_PX = 5;
 const SETTLEMENT_OUTLINE_WIDTH_PX = 1.5;
 const SETTLEMENT_LABEL_FONT_PX = 12;
 const SETTLEMENT_LABEL_OFFSET_PX = 3;
-const SETTLEMENT_LABEL_MIN_SCALE = 0.6;
 const BACKGROUND_COLOR = "#070a10";
 const SETTLEMENT_COLOR = "#f0a500";
 const SETTLEMENT_OUTLINE_COLOR = "#041012";
@@ -46,13 +48,24 @@ export type MapFlags = {
   opacity?: number;
 };
 
+type PointerTrack = { x: number; y: number };
+
 export class Map2D {
   onProbe: ((point: ProbePoint | null) => void) | null = null;
-  onHoverSettlement: ((settlement: Settlement | null, sx: number, sy: number) => void) | null =
-    null;
+  onHoverSettlement:
+    | ((settlement: Settlement | null, sx: number, sy: number) => void)
+    | null = null;
 
   private readonly canvas: HTMLCanvasElement;
   private readonly ctx: CanvasRenderingContext2D;
+  private readonly pointers = new Map<number, PointerTrack>();
+  private readonly boundResize: () => void;
+  private readonly onPointerDown: (event: PointerEvent) => void;
+  private readonly onPointerMove: (event: PointerEvent) => void;
+  private readonly onPointerUp: () => void;
+  private readonly onPointerCancel: (event: PointerEvent) => void;
+  private readonly onWheel: (event: WheelEvent) => void;
+  private readonly onKeyDown: (event: KeyboardEvent) => void;
   private image: HTMLImageElement | null = null;
   private settlements: Array<Settlement> = [];
   private bbox: Bbox = { west: -180, south: -90, east: 180, north: 90 };
@@ -65,15 +78,11 @@ export class Map2D {
   private scale = 1;
   private tx = 0;
   private ty = 0;
+  // Two active pointers at once switch the gesture from pan to pinch-zoom.
+  private pinch: { dist: number } | null = null;
   private dragging = false;
   private lastX = 0;
   private lastY = 0;
-  private readonly boundResize: () => void;
-  private readonly onPointerDown: (event: PointerEvent) => void;
-  private readonly onPointerMove: (event: PointerEvent) => void;
-  private readonly onPointerUp: () => void;
-  private readonly onWheel: (event: WheelEvent) => void;
-  private readonly onKeyDown: (event: KeyboardEvent) => void;
 
   constructor(canvas: HTMLCanvasElement) {
     this.canvas = canvas;
@@ -86,12 +95,14 @@ export class Map2D {
     this.onPointerDown = (event) => this.pointerDown(event);
     this.onPointerMove = (event) => this.pointerMove(event);
     this.onPointerUp = () => this.pointerUp();
+    this.onPointerCancel = (event) => this.endPointer(event.pointerId);
     this.onWheel = (event) => this.wheel(event);
     this.onKeyDown = (event) => this.keyDown(event);
     globalThis.addEventListener("resize", this.boundResize);
     canvas.addEventListener("pointerdown", this.onPointerDown);
     canvas.addEventListener("pointermove", this.onPointerMove);
     globalThis.addEventListener("pointerup", this.onPointerUp);
+    canvas.addEventListener("pointercancel", this.onPointerCancel);
     canvas.addEventListener("wheel", this.onWheel, { passive: false });
     canvas.addEventListener("keydown", this.onKeyDown);
   }
@@ -101,6 +112,7 @@ export class Map2D {
     this.canvas.removeEventListener("pointerdown", this.onPointerDown);
     this.canvas.removeEventListener("pointermove", this.onPointerMove);
     globalThis.removeEventListener("pointerup", this.onPointerUp);
+    this.canvas.removeEventListener("pointercancel", this.onPointerCancel);
     this.canvas.removeEventListener("wheel", this.onWheel);
     this.canvas.removeEventListener("keydown", this.onKeyDown);
   }
@@ -110,8 +122,7 @@ export class Map2D {
     if (parent === null) {
       return;
     }
-    const rawDpr = globalThis.devicePixelRatio;
-    const dpr = Math.min(rawDpr === undefined ? 1 : rawDpr, MAX_DEVICE_PIXEL_RATIO);
+    const dpr = Math.min(globalThis.devicePixelRatio, MAX_DEVICE_PIXEL_RATIO);
     const width = parent.clientWidth;
     const height = parent.clientHeight;
     this.canvas.width = Math.max(1, Math.floor(width * dpr));
@@ -130,13 +141,13 @@ export class Map2D {
     if (meta.settlements !== undefined) {
       this.settlements = meta.settlements;
     }
-    if (meta.tileSize !== undefined) {
+    if (meta.tileSize !== undefined && meta.tileSize > 0) {
       this.tileSize = meta.tileSize;
     }
-    if (meta.sampleWidth !== undefined) {
+    if (meta.sampleWidth !== undefined && meta.sampleWidth > 0) {
       this.sampleWidth = meta.sampleWidth;
     }
-    if (meta.sampleHeight !== undefined) {
+    if (meta.sampleHeight !== undefined && meta.sampleHeight > 0) {
       this.sampleHeight = meta.sampleHeight;
     }
     this.fit();
@@ -156,17 +167,14 @@ export class Map2D {
   }
 
   fit(): void {
-    if (this.image === null) {
+    const parent = this.canvas.parentElement;
+    if (this.image === null || parent === null) {
       return;
     }
     this.resize();
-    const parent = this.canvas.parentElement;
-    if (parent === null) {
-      return;
-    }
     const sx = (parent.clientWidth - FIT_PADDING_PX) / this.image.naturalWidth;
     const sy = (parent.clientHeight - FIT_PADDING_PX) / this.image.naturalHeight;
-    this.scale = Math.max(MIN_ZOOM, Math.min(sx, sy, MAX_FIT_SCALE));
+    this.scale = Math.min(sx, sy, MAX_FIT_SCALE);
     this.tx = (parent.clientWidth - this.image.naturalWidth * this.scale) / 2;
     this.ty = (parent.clientHeight - this.image.naturalHeight * this.scale) / 2;
     this.draw();
@@ -188,7 +196,7 @@ export class Map2D {
     this.ctx.imageSmoothingEnabled = this.scale < SMOOTH_SCALE_MAX;
     this.ctx.drawImage(this.image, 0, 0);
     this.ctx.globalAlpha = 1;
-    if (this.showGrid) {
+    if (this.showGrid && this.tileSize > 0) {
       this.drawGrid(this.image);
     }
     if (this.showSettlements) {
@@ -204,22 +212,22 @@ export class Map2D {
   }
 
   private drawGrid(image: HTMLImageElement): void {
-    const vw = image.naturalWidth;
-    const vh = image.naturalHeight;
-    const scaleX = vw / Math.max(1, this.sampleWidth);
-    const scaleZ = vh / Math.max(1, this.sampleHeight);
+    const viewWidth = image.naturalWidth;
+    const viewHeight = image.naturalHeight;
+    const scaleX = viewWidth / this.sampleWidth;
+    const scaleZ = viewHeight / this.sampleHeight;
     const stepX = this.tileSize * scaleX;
     const stepZ = this.tileSize * scaleZ;
     this.ctx.strokeStyle = GRID_LINE_STYLE;
     this.ctx.lineWidth = 1 / this.scale;
     this.ctx.beginPath();
-    for (let x = 0; x <= vw; x += stepX) {
+    for (let x = 0; x <= viewWidth; x += stepX) {
       this.ctx.moveTo(x, 0);
-      this.ctx.lineTo(x, vh);
+      this.ctx.lineTo(x, viewHeight);
     }
-    for (let z = 0; z <= vh; z += stepZ) {
+    for (let z = 0; z <= viewHeight; z += stepZ) {
       this.ctx.moveTo(0, z);
-      this.ctx.lineTo(vw, z);
+      this.ctx.lineTo(viewWidth, z);
     }
     this.ctx.stroke();
   }
@@ -267,21 +275,25 @@ export class Map2D {
     return { x: u * image.naturalWidth, y: v * image.naturalHeight };
   }
 
-  probeAt(ix: number, iy: number, image: HTMLImageElement): ProbePoint {
-    const { west, south, east, north } = this.bbox;
-    const u = ix / image.naturalWidth;
-    const v = iy / image.naturalHeight;
-    return {
-      lon: west + u * (east - west),
-      lat: north - v * (north - south),
-      u,
-      v,
-      ix,
-      iy,
-    };
+  private screenToImage(sx: number, sy: number): { ix: number; iy: number } {
+    return { ix: (sx - this.tx) / this.scale, iy: (sy - this.ty) / this.scale };
   }
 
   private pointerDown(event: PointerEvent): void {
+    this.pointers.set(event.pointerId, { x: event.clientX, y: event.clientY });
+    if (this.pointers.size === 2) {
+      // Second finger: switch from pan to pinch-zoom around the pair.
+      const [first, second] = Array.from(this.pointers.values());
+      if (first !== undefined && second !== undefined) {
+        this.pinch = { dist: Math.hypot(first.x - second.x, first.y - second.y) };
+        this.dragging = false;
+        this.canvas.classList.remove("dragging");
+      }
+      return;
+    }
+    if (this.pointers.size > 2) {
+      return;
+    }
     this.dragging = true;
     this.lastX = event.clientX;
     this.lastY = event.clientY;
@@ -294,10 +306,53 @@ export class Map2D {
     this.canvas.classList.remove("dragging");
   }
 
+  private endPointer(pointerId: number): void {
+    this.pointers.delete(pointerId);
+    this.pinch = null;
+    // One finger left after a pinch: resume panning from its position.
+    const [rest] = Array.from(this.pointers.values());
+    if (rest !== undefined) {
+      this.dragging = true;
+      this.lastX = rest.x;
+      this.lastY = rest.y;
+      this.canvas.classList.add("dragging");
+      return;
+    }
+    this.pointerUp();
+  }
+
+  // Pinch-zoom step: scale around the current midpoint of the two pointers.
+  private pinchMove(): void {
+    const [first, second] = Array.from(this.pointers.values());
+    if (first === undefined || second === undefined || this.pinch === null) {
+      return;
+    }
+    const dist = Math.hypot(first.x - second.x, first.y - second.y);
+    if (dist > 0 && this.pinch.dist > 0) {
+      const rect = this.canvas.getBoundingClientRect();
+      this.zoomAt(
+        (first.x + second.x) / 2 - rect.left,
+        (first.y + second.y) / 2 - rect.top,
+        dist / this.pinch.dist
+      );
+      this.draw();
+    }
+    this.pinch = { dist };
+  }
+
   private pointerMove(event: PointerEvent): void {
+    if (this.pointers.has(event.pointerId)) {
+      this.pointers.set(event.pointerId, { x: event.clientX, y: event.clientY });
+    }
+    if (this.pinch !== null && this.pointers.size >= 2) {
+      this.pinchMove();
+      return;
+    }
+
     const rect = this.canvas.getBoundingClientRect();
     const sx = event.clientX - rect.left;
     const sy = event.clientY - rect.top;
+
     if (this.dragging) {
       this.tx += event.clientX - this.lastX;
       this.ty += event.clientY - this.lastY;
@@ -320,8 +375,18 @@ export class Map2D {
     this.emitHover(this.settlementHit(ix, iy), sx, sy);
   }
 
-  private screenToImage(sx: number, sy: number): { ix: number; iy: number } {
-    return { ix: (sx - this.tx) / this.scale, iy: (sy - this.ty) / this.scale };
+  private probeAt(ix: number, iy: number, image: HTMLImageElement): ProbePoint {
+    const { west, south, east, north } = this.bbox;
+    const u = ix / image.naturalWidth;
+    const v = iy / image.naturalHeight;
+    return {
+      lon: west + u * (east - west),
+      lat: north - v * (north - south),
+      u,
+      v,
+      ix,
+      iy,
+    };
   }
 
   private settlementHit(ix: number, iy: number): Settlement | null {
@@ -338,11 +403,20 @@ export class Map2D {
     return null;
   }
 
+  private emitProbe(point: ProbePoint | null): void {
+    if (this.onProbe !== null) {
+      this.onProbe(point);
+    }
+  }
+
+  private emitHover(settlement: Settlement | null, sx: number, sy: number): void {
+    if (this.onHoverSettlement !== null) {
+      this.onHoverSettlement(settlement, sx, sy);
+    }
+  }
+
   private wheel(event: WheelEvent): void {
     event.preventDefault();
-    if (this.image === null) {
-      return;
-    }
     const rect = this.canvas.getBoundingClientRect();
     this.zoomAt(
       event.clientX - rect.left,
@@ -363,8 +437,8 @@ export class Map2D {
     this.ty = sy - iy * this.scale;
   }
 
-  // Keyboard pan/zoom for non-pointer users (the canvas is focusable and
-  // labelled by the Map page).
+  // Keyboard pan/zoom for non-pointer users (the canvas is focusable in
+  // index.html).
   private keyDown(event: KeyboardEvent): void {
     const parent = this.canvas.parentElement;
     if (this.image === null || parent === null) {
@@ -404,17 +478,5 @@ export class Map2D {
     }
     event.preventDefault();
     this.draw();
-  }
-
-  private emitProbe(point: ProbePoint | null): void {
-    if (this.onProbe !== null) {
-      this.onProbe(point);
-    }
-  }
-
-  private emitHover(settlement: Settlement | null, sx: number, sy: number): void {
-    if (this.onHoverSettlement !== null) {
-      this.onHoverSettlement(settlement, sx, sy);
-    }
   }
 }

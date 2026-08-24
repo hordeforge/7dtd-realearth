@@ -16,6 +16,10 @@ viewer/data/**
 !viewer/data/.gitkeep
 !viewer/data/catalog.json
 
+# Viewer build output (regenerate with make viewer-build) + lint toolchain link
+viewer/js/**
+viewer/node_modules
+
 # WebMod build output + exported pack data (regenerate with webmod / webmod-export)
 WebMod/**
 

@@ -1,55 +1,66 @@
 {
-  // oxlint config for the web map viewer (viewer/js/*.js, `make viewer-lint`).
+  // oxlint config for the RealEarth map viewer TypeScript sources
+  // (viewer/src, scripts/lint-viewer.sh, `make viewer-lint`).
   //
-  // Rule set: the Rika-Labs/oxlint-standards v0.8.1 anti-slop baseline plus the
-  // strict-core subset applicable to browser scripts (same provenance as
-  // ../zdtd/.oxlintrc.jsonc), extended 2026-08-22 with the unicorn rules the
-  // viewer fixes (no-array-*, prefer-*, explicit-length-check, catch-error-name,
-  // prefer-number-properties, numeric-separators-style, number-literal-case,
-  // prefer-top-level-await, prefer-global-this). Warnings and errors are both
-  // enforced because scripts/lint-viewer.sh runs with --deny-warnings.
+  // Target: viewer/src/*.ts, compiled by scripts/build-viewer.sh (esbuild)
+  // into the ES modules the static page loads from viewer/js/. Browser ESM,
+  // no node runtime, hence env browser + es2024. three.js is imported at
+  // runtime through index.html's importmap; @types/three provides the types.
   //
-  // Thresholds match the strict preset: max-lines-per-function 60,
-  // max-classes-per-file 1, max-lines 1500, max-nested-callbacks 4. The other
-  // threshold rules (max-params, max-depth, complexity, no-magic-numbers) stay
-  // off exactly as strict-core keeps them off; the viewer's canvas constants
-  // (zoom factors, region threshold, canvas sizes) are domain values, not
-  // unnamed magic numbers.
+  // Provenance: Rika-Labs/oxlint-standards v0.8.1, the strict baseline chain
+  // strict -> strict-ts -> {strict-core, anti-slop, naming-discipline,
+  // promise-safety, imports-hygiene}, restricted to a browser bundle,
+  // mirroring .oxlintrc.webmod.jsonc (same provenance and thresholds). The
+  // @rikalabs/* custom rules come from that package's plugin via jsPlugins;
+  // scripts/lint-viewer.sh installs it into a cache dir (version pinned
+  // there) and runs oxlint against a copy of this config sitting next to the
+  // plugin, because oxlint resolves jsPlugins relative to the config file's
+  // directory. Warnings and errors are both enforced (--deny-warnings).
   //
-  // Deliberate off entries:
-  //   no-underscore-dangle: Map2D/GlobeView keep bound-handler fields
-  //     (_onPointerMove, _boundResize, _onResize) with an underscore convention.
-  //   @rikalabs/no-standalone-classes: the canvas and Three.js controllers are
-  //     stateful objects with a resize/dispose lifecycle; closure rewrites
-  //     would obscure the state machine.
-  //   @rikalabs/no-trivial-runtime-guard-helpers: only the standard
-  //     Array.isArray builtin is used; the rule bans the builtin call itself,
-  //     which forces worse checks.
-  //   no-bitwise: rte.js decodes the RTE1 bit-flag header; bitwise ops are
-  //     required by the format.
-  //   import/no-namespace: three.js ships no useful default export; the
-  //     namespace import is the documented pattern.
-  //   promise/avoid-new: loadImage wraps the Image onload/onerror events, which
-  //     cannot be awaited any other way.
-  //   promise/prefer-await-to-callbacks: conflicts with
-  //     @rikalabs/no-silent-catch-fallback for error-rendering handlers; the
-  //     viewer renders failures through .catch chains, the same pattern zdtd
-  //     uses.
-  //   node/no-top-level-await: the viewer is a browser ES module, where
-  //     top-level await is correct (unicorn/prefer-top-level-await is on).
-  //   vitest/* and jsdoc/*: strict-tests rules do not apply to plain browser
-  //     scripts and are not loaded.
+  // Type-aware: options.typeAware enables the typescript/* rules that need
+  // real type info (no-floating-promises, no-misused-promises,
+  // no-unsafe-type-assertion, ...). oxlint runs those through the separate
+  // `oxlint-tsgolint` binary, which lint-viewer.sh installs alongside the
+  // plugin (version pinned there) and puts on PATH.
+  //
+  // Deliberate deviations from the webmod sibling config (kept, with reason):
+  //   * unicorn/prefer-top-level-await on + node/no-top-level-await off:
+  //     app.ts is a browser ES module where top-level await is correct (the
+  //     webmod is an esbuild IIFE and cannot use it).
+  //   * unicorn extras the viewer passes that the webmod does not enable:
+  //     prefer-dom-node-append, prefer-at, prefer-negative-index.
+  //   * import/no-namespace off: three.js ships no useful default export;
+  //     the namespace import is the documented pattern.
+  //   * promise/avoid-new off: loadImage (pack.ts) wraps the Image
+  //     onload/onerror events, which cannot be awaited any other way.
+  //   * promise/prefer-await-to-callbacks off: error rendering flows through
+  //     .catch chains (same pattern as the webmod).
+  //   * @rikalabs/no-single-use-trivial-helpers off: the named coercions
+  //     (coerce.ts) are the documented total-value pattern shared across
+  //     pack/catalog parsing; inlining them would duplicate shape guards.
+  //   * anti-slop boundary offs (see per-entry notes): pack metadata,
+  //     settlements, and catalog.json are untyped runtime JSON, so the coerce
+  //     helpers are the deliberate contract, not widening slop.
+  // Baseline entries intentionally absent (not applicable here):
+  //   * strict-runtime: node/* (browser module, no node runtime).
+  //   * strict-tests: vitest/*, jsdoc/*, @rikalabs/no-placeholder-tests,
+  //     @rikalabs/no-mock-only-tests (the viewer has no unit tests; the type
+  //     gate plus lint is its CI surface).
   "$schema": "https://raw.githubusercontent.com/oxc-project/oxc/main/npm/oxlint/configuration_schema.json",
+  "options": { "typeAware": true },
   "env": { "browser": true, "es2024": true },
-  "categories": {
-    "correctness": "error",
-    "suspicious": "error"
-  },
-  "plugins": ["unicorn"],
   "jsPlugins": [
     "@rikalabs/oxlint-standards/plugin",
     { "name": "anti-slop", "specifier": "./anti-slop-src/index.ts" }
   ],
+  // Declaring `plugins` replaces oxlint's default-on set, so list every
+  // plugin the rules below reference (same list as the baseline's
+  // strict-core preset).
+  "plugins": ["typescript", "import", "promise", "unicorn", "oxc", "eslint"],
+  "categories": {
+    "correctness": "error",
+    "suspicious": "error"
+  },
   "rules": {
     // ---- dead / debug code ----
     "no-debugger": "error",
@@ -78,26 +89,27 @@
     "no-async-promise-executor": "error",
     "no-promise-executor-return": "error",
     "no-undef": "error",
+    // ---- magic numbers: name them ----
+    "no-magic-numbers": ["error", { "ignore": [0, 1, 2], "ignoreDefaultValues": true, "ignoreArrayIndexes": true }],
     // ---- idiomatic modern JS ----
     "no-var": "error",
     "prefer-const": "error",
     "prefer-template": "error",
     "no-useless-concat": "error",
     "object-shorthand": "error",
-    "prefer-destructuring": "error",
-    "prefer-spread": "error",
-    // ---- complexity / shape caps (strict-core thresholds) ----
+    // ---- complexity (slop soup): keep functions small and flat ----
+    "complexity": ["error", { "max": 15 }],
+    "max-depth": ["error", { "max": 4 }],
+    "max-nested-callbacks": ["error", { "max": 3 }],
+    "max-params": ["error", { "max": 4 }],
     "max-lines-per-function": ["error", { "max": 60, "skipBlankLines": true, "skipComments": true }],
-    "max-classes-per-file": ["error", 1],
-    "max-lines": ["error", { "max": 1500, "skipBlankLines": true, "skipComments": true }],
-    "max-nested-callbacks": ["error", 4],
     "no-nested-ternary": "error",
     "no-lonely-if": "error",
     "no-negated-condition": "error",
     "no-else-return": "error",
     "no-useless-return": "error",
     "default-case": "error",
-    // ---- oxlint-standards strict-core native rules applicable to browser JS ----
+    // ---- oxlint-standards v0.8.1 native rules: strict-core subset ----
     "no-warning-comments": "error",
     "no-shadow": ["error", { "hoist": "functions" }],
     "no-return-assign": "error",
@@ -111,8 +123,49 @@
     "prefer-object-has-own": "error",
     "no-implied-eval": "error",
     "prefer-promise-reject-errors": "error",
+    "max-classes-per-file": ["error", 1],
+    "max-lines": ["error", { "max": 1500, "skipBlankLines": true, "skipComments": true }],
     "array-callback-return": "error",
-    // ---- unicorn rules the viewer passes (2026-08-22) ----
+    "no-use-before-define": "error",
+    "require-unicode-regexp": "error",
+    // ---- strict-core baseline offs that these categories would otherwise auto-enable ----
+    "promise/always-return": "off", // baseline: off
+    "typescript/no-unnecessary-boolean-literal-compare": "off", // baseline: off
+    "require-yield": "off", // baseline: off
+    // ---- strict-core typescript/* (type-aware entries need options.typeAware + tsgolint) ----
+    "typescript/consistent-type-imports": "error",
+    "typescript/no-misused-promises": "error",
+    "typescript/use-unknown-in-catch-callback-variable": "error",
+    "typescript/no-unsafe-type-assertion": "error",
+    "typescript/no-redundant-type-constituents": "error",
+    "typescript/no-deprecated": "error",
+    "typescript/ban-ts-comment": [
+      "error",
+      {
+        "ts-ignore": true,
+        "ts-nocheck": true,
+        "ts-expect-error": { "descriptionFormat": "^: .+" }
+      }
+    ],
+    "typescript/restrict-plus-operands": "error",
+    "typescript/no-confusing-void-expression": ["error", { "ignoreArrowShorthand": true }],
+    "typescript/no-confusing-non-null-assertion": "error",
+    "typescript/no-unnecessary-type-arguments": "error",
+    "typescript/no-unnecessary-type-constraint": "error",
+    "typescript/prefer-for-of": "error",
+    "typescript/prefer-includes": "error",
+    "typescript/consistent-type-assertions": ["error", { "assertionStyle": "as" }],
+    "typescript/no-empty-object-type": "error",
+    "typescript/no-require-imports": "error",
+    "typescript/no-namespace": "error",
+    "typescript/array-type": ["error", { "default": "generic" }],
+    "typescript/no-explicit-any": "error",
+    "typescript/no-non-null-assertion": "error",
+    "typescript/no-unnecessary-type-assertion": "error",
+    "typescript/consistent-type-definitions": ["error", "type"],
+    "unicorn/no-static-only-class": "error",
+    "unicorn/no-useless-promise-resolve-reject": "error",
+    // ---- unicorn DOM/data rules ----
     "unicorn/catch-error-name": "error",
     "unicorn/prefer-number-properties": "error",
     "unicorn/prefer-global-this": "error",
@@ -135,7 +188,32 @@
     "unicorn/no-nested-ternary": "error",
     "unicorn/numeric-separators-style": "error",
     "unicorn/number-literal-case": "error",
-    // ---- oxlint-standards custom plugin (@rikalabs/*): anti-slop heuristics ----
+    // ---- strict-core @rikalabs/* runtime/fallback heuristics ----
+    "@rikalabs/no-silent-catch-fallback": "error",
+    "@rikalabs/no-runtime-compat-fallbacks": "error",
+    "@rikalabs/no-catch-return-error-object": "error",
+    "@rikalabs/no-unlisted-external-imports": "error",
+    "@rikalabs/no-double-type-assertion": "error",
+    "@rikalabs/no-json-parse-default-fallback": "error",
+    "@rikalabs/no-json-stringify-default-fallback": "error",
+    // ---- promise-safety (promise plugin) ----
+    "typescript/no-floating-promises": "error",
+    "promise/no-nesting": "error",
+    "promise/no-new-statics": "error",
+    "promise/param-names": "error",
+    "promise/valid-params": "error",
+    "promise/catch-or-return": "error",
+    "promise/no-return-wrap": "error",
+    // ---- imports-hygiene (import plugin) ----
+    "import/first": "error",
+    "import/no-absolute-path": "error",
+    "import/no-mutable-exports": "error",
+    "import/no-commonjs": "error",
+    "import/no-dynamic-require": "error",
+    "import/max-dependencies": ["error", { "max": 35 }],
+    "import/no-anonymous-default-export": "error",
+    "@rikalabs/no-import-then-reexport": "error",
+    // ---- oxlint-standards v0.8.1 custom plugin (@rikalabs/*): anti-slop heuristics ----
     "@rikalabs/no-commented-out-code": "error",
     "@rikalabs/no-identical-branches": "error",
     "@rikalabs/no-tutorial-comments": "error",
@@ -146,52 +224,42 @@
     "@rikalabs/no-low-signal-variable-names": "error",
     "@rikalabs/no-low-signal-public-names": "error",
     "@rikalabs/no-generic-module-names": "error",
-    "@rikalabs/no-copy-paste-exports": "error",
-    "@rikalabs/no-debug-residue-filenames": "error",
-    "@rikalabs/no-as-never": "error",
     "@rikalabs/no-vague-verbs": "error",
     "@rikalabs/no-bare-wrapper-functions": "error",
-    "@rikalabs/no-silent-catch-fallback": "error",
     "@rikalabs/no-trivial-property-helpers": "error",
     "@rikalabs/no-pass-through-intermediate-vars": "error",
     "@rikalabs/no-anemic-errors": "error",
     "@rikalabs/no-duplicate-context": "error",
-    "@rikalabs/no-is-record-helpers": "error",
-    "@rikalabs/no-single-use-trivial-helpers": "error",
-    "@rikalabs/no-property-default-fallbacks": "error",
-    "@rikalabs/no-double-type-assertion": "error",
+    "@rikalabs/no-copy-paste-exports": "error",
+    "@rikalabs/no-debug-residue-filenames": "error",
     "@rikalabs/no-redundant-const-assertion": "error",
+    "@rikalabs/no-as-never": "error",
     "@rikalabs/no-hardcoded-secrets": "error",
     "@rikalabs/no-sql-string-concat": "error",
     // ---- dmmulroy/anti-slop plugin rules (vendored source at pinned SHA,
-    //      fetched by scripts/lint-viewer.sh). The type-oriented rules cannot
-    //      fire on plain JS (no annotations); no-runtime-typeof is off because
-    //      the viewer is boundary parsing by nature (RTE1 header decode, DOM
-    //      shape checks), the exact typeof-on-untrusted-input pattern the rule
-    //      targets but that this codebase does at its I/O edges ----
+    //      fetched by scripts/lint-viewer.sh) ----
     "anti-slop/no-chained-type-assertions": "error",
     "anti-slop/no-conditional-empty-object-spread": "error",
-    "anti-slop/no-known-value-widening": "error",
     "anti-slop/no-module-mocking": "error",
     "anti-slop/no-object-parameters": "error",
     "anti-slop/no-reflect-apply": "error",
     "anti-slop/no-reflect-get": "error",
-    "anti-slop/no-runtime-typeof": "off", // RTE1 header and DOM value decoding is the viewer's boundary parse (app.js, rte.js)
     "anti-slop/no-shape-in-symbol-names": "error",
-    "anti-slop/no-unknown-parameters": "error",
-    "anti-slop/no-unknown-returns": "error",
     "anti-slop/no-unknown-type-aliases": "error",
-    "anti-slop/no-unsafe-dictionary-type": "error",
     "anti-slop/no-widen-then-assert": "error",
     "anti-slop/require-safety-comment-for-type-assertion": "error",
+    "anti-slop/no-known-value-widening": "off", // LEGENDS' Record is the dynamic layer-key lookup contract; coerce asRecord is the JSON boundary
+    "anti-slop/no-runtime-typeof": "off", // typeof checks in coerce.ts/pack.ts are the untyped JSON boundary parse itself
+    "anti-slop/no-unknown-parameters": "off", // coerce/pack take unknown payload candidates by design and coerce at the edge
+    "anti-slop/no-unsafe-dictionary-type": "off", // Record<string, unknown> is the untyped JSON payload contract (coerce.ts)
     // ---- off, with reason (see header) ----
-    "no-underscore-dangle": "off",
-    "no-bitwise": "off",
-    "import/no-namespace": "off",
+    "no-void": "off", // typescript/no-floating-promises (enforced above) requires the void operator to mark fire-and-forget promises
+    "@rikalabs/no-standalone-classes": "off",
+    "@rikalabs/no-single-use-trivial-helpers": "off",
+    "@rikalabs/no-trivial-runtime-guard-helpers": "off", // pack.ts calls Array.isArray directly; the rule bans that builtin call itself, which forces worse checks
     "promise/avoid-new": "off",
     "promise/prefer-await-to-callbacks": "off",
     "node/no-top-level-await": "off",
-    "@rikalabs/no-standalone-classes": "off",
-    "@rikalabs/no-trivial-runtime-guard-helpers": "off"
+    "import/no-namespace": "off"
   }
 }

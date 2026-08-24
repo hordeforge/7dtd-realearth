@@ -1,0 +1,33 @@
+{
+  // Strict TypeScript for the RealEarth map viewer (viewer/src). Compiled by
+  // scripts/build-viewer.sh (esbuild) into the ES modules the static page
+  // loads from viewer/js/, and type-gated by scripts/lint-viewer.sh
+  // (tsc --noEmit, pinned TSC_VERSION). No package.json/node_modules tracked:
+  // tsc/esbuild/oxlint run through npx with versions pinned in the scripts
+  // (same policy as ../webmod; see scripts/lint-webmod.sh).
+  //
+  // globe.ts imports three.js, which the browser resolves through index.html's
+  // importmap (pinned CDN version). For the type gate, scripts/lint-viewer.sh
+  // installs @types/three into a shared cache dir and symlinks it to
+  // viewer/node_modules so module resolution finds it; nothing is vendored.
+  "compilerOptions": {
+    "target": "es2022",
+    "module": "esnext",
+    "moduleResolution": "bundler",
+    "lib": ["es2022", "dom", "dom.iterable"],
+    "strict": true,
+    // Beyond --strict: same set as ../webmod/tsconfig.json; a regression in
+    // any of them fails lint-viewer (CI-blocking).
+    "noUncheckedIndexedAccess": true,
+    "exactOptionalPropertyTypes": true,
+    "noImplicitOverride": true,
+    "noFallthroughCasesInSwitch": true,
+    "noUnusedLocals": true,
+    "noUnusedParameters": true,
+    "forceConsistentCasingInFileNames": true,
+    "noEmit": true,
+    "skipLibCheck": true,
+    "types": []
+  },
+  "include": ["src"]
+}

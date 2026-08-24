@@ -16,7 +16,7 @@ Maintain by re-verifying every file reference below after surface changes; delet
 | 1 | T1 | Malicious/corrupt tile → unbounded inflate/allocation inside the server process (DoS) | B1/B3 tiles → game process | `Source/RealEarth/RteTile.cs:53-79`, inflate `RteTile.cs:122-133`; CDN fetch `Source/RealEarth/TileStreamer.cs:301,420` | Magic-byte gate only (`TileStreamer.cs:302-305`); no size cap |
 | 2 | T2 | Unsigned tile CDN over plain-HTTP base URL: tampered terrain persists to disk cache, inherited by later sessions | B1 remote tiles | URL build `Source/RealEarth/CdnTilePolicy.cs:20-29`; config `RealEarthConfig.cs` (`TileCdnBaseUrl`); persist `TileStreamer.cs:332-365` | None (no signature/hash anywhere) |
 | 3 | T3 | Poisoned third-party pack shapes gameplay/POIs on community servers; distribution unsigned | B3 pack author → operator/game | decode `RteTile.cs:34-100`; settlements `tools/realearth/cli.py:107-108` | Format validation only (`RteTile.cs:39-57`) |
-| 4 | T4 | Viewer XSS: pack-controlled settlement strings rendered via innerHTML | B4 browser ↔ viewer | `viewer/js/app.js:281` (also `:90,:142`); local-JSON input `app.js:316` | None (raw innerHTML) |
+| 4 | T4 | Viewer XSS: pack-controlled settlement strings reaching an HTML sink | B4 browser ↔ viewer | `viewer/src/app.ts` (`showTip`, also `renderLegend`); local-JSON input via the `jsonFile` handler | No HTML sink today: settlement names and legend labels render through `textContent`/`replaceChildren` only |
 | 5 | T5 | Engine expand rewrites game `Assembly-CSharp.dll`; compromised build chain persists code into installs | B6 build → runtime | `tools/engine_patcher/Program.cs:109-168`; `scripts/apply_engine_expand.sh` | Backup + marker + dry-run + restore; no post-patch hash check |
 | 6 | T6 | Operator clones template and re-enables telnet on an exposed host | B7 deployment | `scripts/serverconfig_height_test.xml:41-47` (`TelnetEnabled=false`, `TelnetPassword` empty) | Template ships telnet off with empty password; re-enable comment demands a strong one |
 | 7 | T7 | `realearth serve` bound past loopback serves packs unauthenticated with listing | B4 viewer server | `tools/realearth/cli.py:617-663` | Defaults to 127.0.0.1 |
@@ -43,8 +43,8 @@ Fixes belong to sec-review passes; this file records location and impact only.
 | E5 | Web dashboard integration (stock webserver serves `WebMod/bundle.js`) | Runs inside the game webserver's authenticated admin session; calls `/api/serverstats`; loads pack URLs from admin localStorage | `webmod/src/index.ts`; `overview.ts:13`; `settings-store.ts:14,42`; `pack.ts:135,162` |
 | E6 | Pipeline CLI (`demo`,`region`,`bake-world`,`export-viewer`,`serve`) | GeoJSON files, GeoTIFFs, CLI args, remote API responses | `tools/realearth/cli.py:19` |
 | E7 | Third-party fetches in pipeline | open-meteo elevation API, AWS terrarium PNG tiles | `tools/realearth/elevation.py:43,112,175` |
-| E8 | Static viewer server + browser app | Same-origin JSON/PNG; user-supplied local JSON file | `cli.py:617-663`; `viewer/js/app.js:128,153,316,342` |
-| E9 | Install/expand scripts + IL patcher | Writes into Steam dirs; patches game DLL; lint gates fetch SHA-pinned GitHub tarballs | `scripts/install_proton.sh`, `scripts/install_height_pack.sh`; `engine_patcher/Program.cs`; `scripts/lint-webmod.sh:47`, `lint-viewer.sh:30` |
+| E8 | Static viewer server + browser app | Same-origin JSON/PNG; user-supplied local JSON file | `cli.py:617-663`; `viewer/src/pack.ts` (`fetchJson`, `loadImage`, `loadSettlements`), `viewer/src/app.ts` (`jsonFile` handler, `boot`) |
+| E9 | Install/expand scripts + IL patcher | Writes into Steam dirs; patches game DLL; lint gates fetch SHA-pinned GitHub tarballs | `scripts/install_proton.sh`, `scripts/install_height_pack.sh`; `engine_patcher/Program.cs`; `scripts/lint-webmod.sh`, `lint-viewer.sh` (pinned tarball fetches) |
 
 E5 is easy to miss: whenever an operator opens the control-panel port, our bundle is network-reachable content (auth is the game's, behavior is ours).
 
@@ -101,7 +101,7 @@ Documented-but-not-implemented check: no security doc claims validation/auth/san
 ## 7. Abuse cases
 
 - **Pack poisoning.** A publisher ships a "free full-Earth" pack with altered heights/population; operators install it; players get unfair geometry/loot. Path: E2 accepts any well-formed RTE1 (`RteTile.cs:34`), gap 2.
-- **Viewer-borne script execution.** A shared viewer pack embeds markup in a settlement name; operator previews via `realearth serve`; script runs in the viewer origin. Path: `settlements.json` → `viewer/js/app.js:281`. Recorded as scenario, not demonstrated.
+- **Viewer-borne script execution.** A shared viewer pack embeds markup in a settlement name; operator previews via `realearth serve`; script runs in the viewer origin. Path: `settlements.json` → `viewer/src/app.ts` (`showTip`). Recorded as scenario, not demonstrated; no HTML sink exists in the current render path.
 - **Authenticated-player resource churn.** Position spam creates focus churn; each new area triggers bounded CDN/disk loads (radius 2 tiles, 10 s miss cache). Path: `WorldSession.cs:268,315` → `TileStreamer.UpdateFromAbsolute` (`TileStreamer.cs:75-90`). Bandwidth amplification against the configured CDN host, capped today.
 - **Client-side enforcement:** none relied on; reveal/debug helpers are config-gated (`DebugRevealFullMap` default false, `RealEarthConfig.cs`).
 

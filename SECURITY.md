@@ -14,7 +14,7 @@ lists the known surfaces (tile decoder, CDN fetch path, viewer, install tooling)
 ## In scope
 
 - `.rte` tile decoding and the runtime CDN fetch path (`Source/RealEarth/RteTile.cs`, `Source/RealEarth/TileStreamer.cs`)
-- The web viewer and WebMod bundle (`viewer/js`, `webmod/src`)
+- The web viewer and WebMod bundle (`viewer/src`, `webmod/src`)
 - Pipeline CLI input handling (`tools/realearth`)
 - Install and engine-expand tooling (`scripts/`, `tools/engine_patcher`)
 

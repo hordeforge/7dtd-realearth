@@ -13,7 +13,7 @@ SHELL := /bin/bash
 	height-test height-map height-map-500 height-map-install height-map-500-install \
 	engine-audit engine-expand engine-expand-dry engine-restore dedicated-height-test \
 	demo bake bake-height package \
-	viewer serve viewer-lint \
+	viewer viewer-build serve viewer-lint \
 	webmod webmod-export webmod-lint \
 	info check clean clean-build
 
@@ -101,7 +101,9 @@ help:
 	@echo ""
 	@echo "  Viewer"
 	@echo "    make viewer             Export demo pack into viewer/data/demo"
+	@echo "    make viewer-build       Compile viewer/src TS into viewer/js ES modules"
 	@echo "    make serve              Serve web map viewer (port 8765)"
+	@echo "    make viewer-lint        tsc --strict + oxlint (anti-slop + strict)"
 	@echo ""
 	@echo "  WebMod (dashboard webui)"
 	@echo "    make webmod-export      Export demo pack into WebMod/data/demo"
@@ -277,8 +279,8 @@ test-fast:
 		tests/test_multiplayer.py tests/test_host_fold.py tests/test_local_window.py \
 		tests/test_mp_runtime_structure.py -q --tb=line
 
-check: setup test-fast lint-python build viewer-lint webmod-lint
-	@echo "OK check (setup + test-fast + lint-python + build + viewer-lint + webmod-lint)"
+check: setup test-fast lint-python build viewer-build viewer-lint webmod-lint
+	@echo "OK check (setup + test-fast + lint-python + build + viewer-build + viewer-lint + webmod-lint)"
 
 # ---------------------------------------------------------------------------
 # Viewer
@@ -287,10 +289,13 @@ viewer:
 	@$(REEARTH) export-viewer --pack "$(PACK_DEMO)" --out "$(ROOT)/viewer/data/demo"
 	@echo "OK viewer data → $(ROOT)/viewer/data/demo"
 
+viewer-build:
+	bash scripts/build-viewer.sh
+
 viewer-lint:
 	bash scripts/lint-viewer.sh
 
-serve:
+serve: viewer-build
 	@$(REEARTH) serve --port 8765
 
 # ---------------------------------------------------------------------------

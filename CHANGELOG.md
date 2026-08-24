@@ -11,6 +11,15 @@ tags are `v<version>`.
 
 ## [Unreleased]
 
+### Changed
+
+- The web map viewer is now written in TypeScript (`viewer/src/*.ts`) instead
+  of plain JavaScript (`viewer/js/*.js`). `make viewer-build` compiles it to
+  the served ES modules (`viewer/js/`, now generated and gitignored), and
+  `make viewer-lint` type-checks with strict tsc plus oxlint (anti-slop +
+  oxlint-standards strict, type-aware). `make serve` rebuilds automatically,
+  so serving the viewer needs no new steps.
+
 ### Removed
 
 - Config keys `MetersPerBlock` and `EngineHeightForceExpandedCompress`
