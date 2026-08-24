@@ -131,7 +131,25 @@ namespace RealEarth.EnginePatcher
                 if (args[i] == "--dll" && i + 1 < args.Length) gameDll = args[++i];
                 else if (args[i] == "--ydim" && i + 1 < args.Length)
                 {
-                    SetYDim(int.Parse(args[++i]));
+                    // Validate before use: a bad value must fail with the same clean
+                    // usage error as unknown flags, not an unhandled parse crash.
+                    string raw = args[++i];
+                    if (!int.TryParse(raw, out int ydim))
+                    {
+                        Console.Error.WriteLine("ERROR: --ydim must be an integer (got: " + raw + ")");
+                        PrintHelp();
+                        return 2;
+                    }
+                    try
+                    {
+                        SetYDim(ydim);
+                    }
+                    catch (ArgumentException ex)
+                    {
+                        Console.Error.WriteLine("ERROR: " + ex.Message);
+                        PrintHelp();
+                        return 2;
+                    }
                 }
                 else if (args[i] == "--dry-run") dryRun = true;
                 else if (args[i] == "--force") force = true;

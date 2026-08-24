@@ -664,7 +664,17 @@ namespace RealEarth
                             ChunkTerrainInject.ReinjectLoadedChunksAround(
                                 ReflectCache.GetEngineWorld(), nx, nz);
                         }
-                        catch { /* never break slide path */ }
+                        catch (Exception ex)
+                        {
+                            // Never break the slide path, but a failed reinject leaves loaded
+                            // chunks desynced (the exact symptom this call exists to close);
+                            // log so "world looks torn after slide" stays debuggable.
+                            if (ConsumeBudget(ref _tickErrLogBudget))
+                            {
+                                ModApi.Log(
+                                    $"Origin slide reinject error: {ex.GetType().Name}: {ex.Message}");
+                            }
+                        }
                     }
                     ModApi.Log(
                         $"Single-map origin slide → local ({nx},{nz}) focus={focusId} " +
