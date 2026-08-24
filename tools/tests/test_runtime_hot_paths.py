@@ -89,3 +89,41 @@ def test_fill_chunk_columns_fuses_height_and_landcover_sample():
         "\n        public static byte SampleLandcover(",
     )
     assert col.count("TrySamplePrefetch") == 1
+
+
+def test_focus_map_has_ttl_sweep():
+    """TileStreamer._foci removal relies on best-effort EntityPlayer unload
+    postfixes; if none bind after a game update, every disconnect would pin its
+    bubble tiles hot for the rest of server uptime. UpdateFromAbsolute must sweep
+    foci silent past FocusStaleMs, and the same-tile fast path must refresh the
+    heartbeat so idle-but-connected players are never swept."""
+    src = _read("TileStreamer.cs")
+    assert "FocusStaleMs" in src, "focus TTL constant missing"
+    assert "SweepStaleFociLocked" in src, "stale-focus sweep missing"
+    sig = (
+        r"public void UpdateFromAbsolute"
+        r"\(int earthX, int earthZ, int focusId, bool allowSyncLoad\)"
+    )
+    body = _method_body(
+        src,
+        sig,
+        "\n        /// <summary>\n        /// Prefetch tiles",
+    )
+    assert "SweepStaleFociLocked(" in body, "per-tick focus update must run the sweep"
+    # The same-tile early return must still write a fresh tick (heartbeat).
+    heartbeat = (
+        r"prev\.tx == tx && prev\.tz == tz.*?\n.*?"
+        r"_foci\[focusId\] = \(earthX, earthZ, tx, tz, now\);"
+    )
+    assert re.search(
+        heartbeat,
+        body,
+        re.S,
+    ), "same-tile fast path must refresh the focus heartbeat"
+    # Sweep uses wrap-safe TickCount delta like the miss cache.
+    sweep = _method_body(
+        src,
+        r"bool SweepStaleFociLocked\(int now\)",
+        "\n        /// <summary>",
+    )
+    assert "unchecked(now - kv.Value.tick)" in sweep

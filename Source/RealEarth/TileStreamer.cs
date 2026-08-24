@@ -27,12 +27,21 @@ namespace RealEarth
         readonly Dictionary<long, int> _missUntilTick = new Dictionary<long, int>();
         /// <summary>In-flight disk/CDN loads.</summary>
         readonly HashSet<long> _loadInFlight = new HashSet<long>();
-        /// <summary>focusId → last absolute Earth (x,z) and streamed tile for that player/entity.</summary>
-        readonly Dictionary<int, (int x, int z, int tx, int tz)> _foci = new Dictionary<int, (int, int, int, int)>();
+        /// <summary>focusId → last absolute Earth (x,z), streamed tile, and last-update tick.</summary>
+        readonly Dictionary<int, (int x, int z, int tx, int tz, int tick)> _foci =
+            new Dictionary<int, (int, int, int, int, int)>();
         readonly object _lock = new object();
         readonly HttpClient _http;
 
         const int MissCacheMs = 10_000;
+        /// <summary>
+        /// A focus silent this long belongs to an entity whose unload postfix never ran
+        /// (the EntityPlayer OnEntityUnload/Despawn/Kill bind is best-effort reflection;
+        /// a game update that renames those methods would otherwise pin every departed
+        /// player's bubble tiles hot forever). Live entities refresh their focus every
+        /// tick, so the TTL only ever fires on despawned/drifted ids.
+        /// </summary>
+        internal const int FocusStaleMs = 600_000;
         /// <summary>
         /// Negative-cache entries allowed before expired deadlines are swept. Without this,
         /// one entry per failed tile lives for the whole server uptime (map only grows).
@@ -105,15 +114,21 @@ namespace RealEarth
             // cannot change anything (this focus's tiles are never evicted while it is a
             // registered center), so skip both instead of re-walking every hot tile
             // under the lock the height-sample hot path shares.
+            int now = Environment.TickCount;
+            bool droppedStale;
             lock (_lock)
             {
-                if (_foci.TryGetValue(focusId, out var prev) && prev.tx == tx && prev.tz == tz)
+                droppedStale = SweepStaleFociLocked(now);
+                if (!droppedStale
+                    && _foci.TryGetValue(focusId, out var prev)
+                    && prev.tx == tx && prev.tz == tz)
                 {
-                    if (prev.x != earthX || prev.z != earthZ)
-                        _foci[focusId] = (earthX, earthZ, tx, tz);
+                    // Same-tile fast path (rationale above): still refresh the
+                    // heartbeat so an idle-but-connected player is never swept.
+                    _foci[focusId] = (earthX, earthZ, tx, tz, now);
                     return;
                 }
-                _foci[focusId] = (earthX, earthZ, tx, tz);
+                _foci[focusId] = (earthX, earthZ, tx, tz, now);
             }
 
             EnsureRadius(tx, tz, _cfg.StreamRadiusTiles, allowSyncLoad);
@@ -149,6 +164,29 @@ namespace RealEarth
                 }
             }
             EvictOutsideAllFoci(_cfg.UnloadRadiusTiles);
+        }
+
+        /// <summary>
+        /// Bound on the focus map when unload postfixes never bound. Caller holds _lock.
+        /// Returns true when any stale focus was dropped (caller must then run eviction
+        /// so that player's bubble tiles can leave the hot set).
+        /// </summary>
+        bool SweepStaleFociLocked(int now)
+        {
+            if (_foci.Count == 0)
+                return false;
+            List<int>? stale = null;
+            foreach (var kv in _foci)
+            {
+                // Same wrap-safe delta as the miss cache readers.
+                if (unchecked(now - kv.Value.tick) >= FocusStaleMs)
+                    (stale ??= new List<int>()).Add(kv.Key);
+            }
+            if (stale == null)
+                return false;
+            foreach (int id in stale)
+                _foci.Remove(id);
+            return true;
         }
 
         /// <summary>
