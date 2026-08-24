@@ -31,11 +31,6 @@ namespace RealEarth
             return SampleLandcover(ModApi.Session, ModApi.Streamer, localX, localZ);
         }
 
-        public static byte SamplePopulation(int localX, int localZ)
-        {
-            return SamplePopulation(ModApi.Session, ModApi.Streamer, localX, localZ);
-        }
-
         /// <summary>
         /// Sample game surface height at engine-local block coords using explicit deps.
         /// Missing tile → ocean default (below sea level).
@@ -152,85 +147,6 @@ namespace RealEarth
             return 0; // ocean / miss
         }
 
-        public static byte SamplePopulation(
-            WorldSession? session,
-            TileStreamer? streamer,
-            int localX,
-            int localZ)
-        {
-            if (session == null || streamer == null)
-                return 0;
-
-            session.LocalToEarth(localX, localZ, out int ex, out int ez);
-            if (streamer.TrySamplePrefetch(ex, ez, out _, out _, out byte pop))
-                return pop;
-            return 0;
-        }
-
-        /// <summary>
-        /// Sample using absolute Earth blocks (no local-window mapping).
-        /// Used when hooks pass world XZ that already match host absolute mapping.
-        /// </summary>
-        public static byte SampleGameHeightAbsolute(
-            TileStreamer? streamer,
-            RealEarthConfig? cfg,
-            int earthX,
-            int earthZ)
-        {
-            int sea = cfg?.SeaLevelGameY ?? HeightInjectMath.DefaultSeaLevelGameY;
-            if (streamer == null)
-                return HeightInjectMath.ToByteHeight(sea);
-
-            bool ok = streamer.TrySamplePrefetch(earthX, earthZ, out float elevM, out _, out _);
-            TileSamplePolicy.ResolveElev(ok, elevM, cfg, out float elevResolved, out _);
-            int h = TileSamplePolicy.ElevToGameYInt(elevResolved, cfg);
-            return HeightInjectMath.ToByteHeight(h);
-        }
-
-        public static byte SampleLandcoverAbsolute(TileStreamer? streamer, int earthX, int earthZ)
-        {
-            if (streamer == null)
-                return 255;
-            if (streamer.TrySamplePrefetch(earthX, earthZ, out _, out byte lc, out _))
-                return lc;
-            return 0;
-        }
-
-        /// <summary>
-        /// Fill a square height buffer for a chunk (chunkSize typically 16).
-        /// heights[z * chunkSize + x] = game Y surface.
-        /// </summary>
-        public static void FillChunkHeights(int chunkLocalOriginX, int chunkLocalOriginZ, int chunkSize, byte[] heights)
-        {
-            FillChunkHeights(
-                ModApi.Session, ModApi.Streamer, ModApi.Config,
-                chunkLocalOriginX, chunkLocalOriginZ, chunkSize, heights);
-        }
-
-        public static void FillChunkHeights(
-            WorldSession? session,
-            TileStreamer? streamer,
-            RealEarthConfig? cfg,
-            int chunkLocalOriginX,
-            int chunkLocalOriginZ,
-            int chunkSize,
-            byte[] heights)
-        {
-            if (heights == null || heights.Length < chunkSize * chunkSize)
-                throw new ArgumentException("heights buffer too small");
-
-            for (int z = 0; z < chunkSize; z++)
-            {
-                for (int x = 0; x < chunkSize; x++)
-                {
-                    heights[z * chunkSize + x] = SampleGameHeight(
-                        session, streamer, cfg,
-                        chunkLocalOriginX + x, chunkLocalOriginZ + z);
-                }
-            }
-        }
-
-        /// <summary>Fill landcover ids for a chunk (same layout as heights).</summary>
         public static void FillChunkLandcover(
             WorldSession? session,
             TileStreamer? streamer,
@@ -295,31 +211,6 @@ namespace RealEarth
                         session, streamer, cfg,
                         chunkLocalOriginX + x, chunkLocalOriginZ + z,
                         out landcover[i]);
-                }
-            }
-        }
-
-        /// <summary>
-        /// Absolute-Earth chunk fill: origin is earth block of chunk corner (not engine-local).
-        /// </summary>
-        public static void FillChunkHeightsAbsolute(
-            TileStreamer? streamer,
-            RealEarthConfig? cfg,
-            int chunkEarthOriginX,
-            int chunkEarthOriginZ,
-            int chunkSize,
-            byte[] heights)
-        {
-            if (heights == null || heights.Length < chunkSize * chunkSize)
-                throw new ArgumentException("heights buffer too small");
-
-            for (int z = 0; z < chunkSize; z++)
-            {
-                for (int x = 0; x < chunkSize; x++)
-                {
-                    heights[z * chunkSize + x] = SampleGameHeightAbsolute(
-                        streamer, cfg,
-                        chunkEarthOriginX + x, chunkEarthOriginZ + z);
                 }
             }
         }
