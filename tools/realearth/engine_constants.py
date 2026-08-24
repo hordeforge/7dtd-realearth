@@ -10,7 +10,8 @@ import struct
 from pathlib import Path
 from typing import Any
 
-# Known-good 3.0.1 values (also defaults if dnfile missing)
+# Known-good 3.0.1 values (also defaults when dnfile is absent; install the
+# `audit` extra for a live read)
 VANILLA_3_0_1 = {
     "ChunkBlockYDim": 256,
     "ChunkBlockYPow": 8,
@@ -89,6 +90,12 @@ def audit_engine_height(dll: Path | None = None) -> dict[str, Any]:
 
     try:
         consts = read_int32_constants(path)
+    except ImportError as ex:
+        result["notes"].append(
+            f"dnfile missing ({ex}); live audit needs: uv sync --extra audit"
+        )
+        result["constants"] = dict(VANILLA_3_0_1)
+        return result
     except Exception as ex:
         result["notes"].append(f"dnfile read failed: {ex}")
         result["constants"] = dict(VANILLA_3_0_1)
