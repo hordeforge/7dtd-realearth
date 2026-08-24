@@ -264,14 +264,8 @@ namespace RealEarth
         /// <summary>Legacy name for tests / callers; same as ResolveEdgeRadiusBlocks.</summary>
         public static int EstimateEdgeRadius(Place p) => ResolveEdgeRadiusBlocks(p);
 
-        static string BandFromPopulation(int pop)
-        {
-            if (pop >= 1_000_000) return "metro";
-            if (pop >= 100_000) return "large_city";
-            if (pop >= 10_000) return "town";
-            if (pop >= 1_000) return "village";
-            return "hamlet";
-        }
+        // Band from population lives in RuntimePoiInject.BandFromPop (single ladder;
+        // pack rows carry "band" so this class never needs its own copy).
 
         static bool EnsureMarker(
             object mgr,

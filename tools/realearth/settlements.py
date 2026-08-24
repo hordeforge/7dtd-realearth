@@ -30,6 +30,10 @@ class Settlement:
 
     @property
     def band(self) -> str:
+        # Single population→band ladder shared with the runtime fallback
+        # (Source/RealEarth/RuntimePoiInject.cs BandFromPop): a place must get the
+        # same band whether it arrives via settlements.json or via the runtime's
+        # missing-band fallback, because band selects the runtime prefab pool.
         p = self.population
         if p >= 1_000_000:
             return "metro"
@@ -39,7 +43,9 @@ class Settlement:
             return "town"
         if p >= 1_000:
             return "village"
-        return "hamlet"
+        if p >= 100:
+            return "hamlet"
+        return "rural_scatter"
 
     def effective_edge_radius_m(self) -> float:
         """Map-derived edge if present; else population paint radius (last resort)."""

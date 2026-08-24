@@ -349,7 +349,12 @@ Population bands (project convention):
 | ≥100k | large_city | dense prefabs |
 | ≥10k | town | township |
 | ≥1k | village | small cluster |
-| &lt;1k | hamlet | sparse POIs |
+| ≥100 | hamlet | sparse cabins/farms |
+| &lt;100 | rural_scatter | isolated POIs |
+
+Same ladder in `settlements.py::Settlement.band` (pack writer) and
+`RuntimePoiInject.BandFromPop` (runtime fallback); band picks the prefab pool,
+so both must agree.
 
 ### 6.4 Licensing checklist
 
