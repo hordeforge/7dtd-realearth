@@ -90,66 +90,26 @@ install_mod_to() {
       [[ -f "$pack/$n" ]] && cp -f "$pack/$n" "$dest/Data/tiles/"
     done
   fi
-  python3 - <<PY
-import json
-from pathlib import Path
-cfg_path = Path("$dest/Config/realearth.json")
-cfg_path.parent.mkdir(parents=True, exist_ok=True)
-root = Path("$ROOT")
-# Prefer multiplayer template (SharedFixed + stream bubbles), fall back to default
-src_mp = root / "Config" / "realearth.mp.json"
-src = root / "Config" / "realearth.json"
-if src_mp.is_file():
-    cfg = json.loads(src_mp.read_text(encoding="utf-8"))
-elif src.is_file():
-    cfg = json.loads(src.read_text(encoding="utf-8"))
-else:
-    cfg = {}
-cfg.update({
-    "MapMode": "Streamed",
-    "SingleWorldSession": True,
-    "EnableEngineHeightMod": True,
-    "EngineMaxGameY": 11000,
-    "EngineHeightOneToOne": True,
-    "EngineHeightPreferVanillaCeiling": False,
-    "TilePackPath": "Data/tiles",
-    "WorldWidth": 512,
-    "WorldHeight": 512,
-    "TileSize": 512,
-    "LocalWindowSize": 512,
-    "EnableLongitudeWrap": False,
-    "DebugRevealFullMap": False,
-    "MultiplayerOriginMode": "SharedFixed",
-    "StreamRadiusTiles": int(cfg.get("StreamRadiusTiles") or 3),
-    "UnloadRadiusTiles": int(cfg.get("UnloadRadiusTiles") or 5),
-})
-man = Path("$dest/Data/tiles/earth.manifest.json")
-if man.is_file():
-    m = json.loads(man.read_text(encoding="utf-8"))
-    cfg["WorldWidth"] = int(m.get("world_width") or 512)
-    cfg["WorldHeight"] = int(m.get("world_height") or 512)
-    cfg["TileSize"] = int(m.get("tile_size") or 512)
-    cfg["LocalWindowSize"] = min(cfg["WorldWidth"], cfg["WorldHeight"])
-    bbox = m.get("bbox") or {}
-    if bbox:
-        cfg["BboxWest"] = float(bbox["west"])
-        cfg["BboxSouth"] = float(bbox["south"])
-        cfg["BboxEast"] = float(bbox["east"])
-        cfg["BboxNorth"] = float(bbox["north"])
-ht = Path("$dest/Data/tiles/height_test.json")
-if ht.is_file():
-    meta = json.loads(ht.read_text(encoding="utf-8"))
-    if meta.get("summit_lon") is not None:
-        cfg["SpawnLongitude"] = float(meta["summit_lon"])
-        cfg["SpawnLatitude"] = float(meta["summit_lat"])
-        cfg["DefaultSpawnLon"] = cfg["SpawnLongitude"]
-        cfg["DefaultSpawnLat"] = cfg["SpawnLatitude"]
-    # staged maps may set engine_max_game_y; Everest-scale still allows 11000 ceiling
-    if int(meta.get("engine_max_game_y") or 0) > 500:
-        cfg["EngineMaxGameY"] = int(meta["engine_max_game_y"])
-cfg_path.write_text(json.dumps(cfg, indent=2) + "\n", encoding="utf-8")
-print(f"Installed mod → $dest  EngineMaxGameY={cfg['EngineMaxGameY']}")
-PY
+  # Prefer multiplayer template (SharedFixed + stream bubbles), fall back to default;
+  # StreamRadiusTiles?=/UnloadRadiusTiles?= keep template values when present.
+  python3 "$ROOT/scripts/mod_config.py" write "$dest" "$ROOT" \
+    --sync-manifest --sync-bbox --height-test-meta \
+    MapMode=Streamed \
+    SingleWorldSession=true \
+    EnableEngineHeightMod=true \
+    EngineMaxGameY=11000 \
+    EngineHeightOneToOne=true \
+    "EngineHeightPreferVanillaCeiling=false" \
+    TilePackPath=Data/tiles \
+    WorldWidth=512 \
+    WorldHeight=512 \
+    TileSize=512 \
+    LocalWindowSize=512 \
+    EnableLongitudeWrap=false \
+    DebugRevealFullMap=false \
+    MultiplayerOriginMode=SharedFixed \
+    "StreamRadiusTiles?=3" \
+    "UnloadRadiusTiles?=5"
 }
 
 install_mod_to "$GAME_DIR"

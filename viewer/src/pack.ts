@@ -13,14 +13,23 @@ export const DEFAULT_ELEV_SCALE_M = 4500;
 // Pack paths are joined into fetch URLs (the ?pack= query param, catalog
 // entries, the dataset dropdown). A path must stay inside the served export
 // tree: no absolute paths, no scheme (cross-origin pack injection), no
-// backslashes, no dot-dot traversal.
+// backslashes, no dot-dot traversal. Checks run against the decoded form so
+// %2e%2e cannot smuggle a traversal segment past a literal ".." test; a
+// malformed escape fails closed. Same guard as ../webmod/src/pack.ts.
 export function isSafePackPath(path: string): boolean {
+  let decoded: string;
+  try {
+    decoded = decodeURIComponent(path);
+    // oxlint-disable-next-line @rikalabs/no-silent-catch-fallback -- deliberate: a malformed escape is unparseable input, so validation fails closed
+  } catch {
+    return false;
+  }
   return (
-    path !== "" &&
-    !path.startsWith("/") &&
-    !path.includes("\\") &&
-    !/^[a-z][a-z0-9+.-]*:/iu.test(path) &&
-    !path.split("/").includes("..")
+    decoded !== "" &&
+    !decoded.startsWith("/") &&
+    !decoded.includes("\\") &&
+    !/^[a-z][a-z0-9+.-]*:/iu.test(decoded) &&
+    !decoded.split("/").includes("..")
   );
 }
 
@@ -171,12 +180,14 @@ async function loadLayerImages(
 }
 
 async function loadSettlements(url: string): Promise<Array<Settlement>> {
-  // Optional sibling artifact; absence is not a pack failure.
+  // Optional artifact: transport failure or an unparsable body degrades to
+  // "no settlements" exactly like a non-2xx status, instead of failing the
+  // whole pack whose layers already loaded. Same as ../webmod/src/pack.ts.
   const response = await fetch(url).catch(() => null);
   if (response === null || !response.ok) {
     return [];
   }
-  return settlementListFrom(await response.json());
+  return response.json().then(settlementListFrom).catch(() => []);
 }
 
 async function loadElevRaw(base: string, elevMeta: ElevRawMeta | null): Promise<ElevRawCanvas | null> {

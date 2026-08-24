@@ -177,22 +177,15 @@ namespace RealEarth
             ReadOrigin(out int ox, out int oz);
             if (_cfg.EnableLongitudeWrap || ShouldFoldHostIntoPack())
             {
-                int dx = earthX - ox;
-                int w = Math.Max(1, _coords.WorldWidth);
-                dx = ((dx % w) + w + w / 2) % w - w / 2;
-                localX = dx;
+                // Same shortest-delta fold as seam-crossing slides; one copy of the formula.
+                localX = SessionOriginPolicy.WrappedDelta(earthX - ox, _coords.WorldWidth);
             }
             else
             {
                 localX = earthX - ox;
             }
             if (ShouldFoldHostIntoPack() && !_cfg.EnableLongitudeWrap)
-            {
-                int dz = earthZ - oz;
-                int h = Math.Max(1, _coords.WorldHeight);
-                dz = ((dz % h) + h + h / 2) % h - h / 2;
-                localZ = dz;
-            }
+                localZ = SessionOriginPolicy.WrappedDelta(earthZ - oz, _coords.WorldHeight);
             else
                 localZ = earthZ - oz;
         }
@@ -319,7 +312,13 @@ namespace RealEarth
 
             ReadOrigin(out int oldOx, out int oldOz);
             CenterWindowOnAbsolute(earthX, earthZ, updateAbsolute: updateSessionAbsolute);
-            originDeltaX = OriginEarthX - oldOx;
+            // Wrap mode: SetOrigin folds the origin into [0,W), so a seam-crossing
+            // slide needs the shortest wrapped delta (raw subtraction would report
+            // ~-40M and teleport every remapped entity across the planet).
+            originDeltaX = _cfg.EnableLongitudeWrap
+                ? SessionOriginPolicy.WrappedDelta(OriginEarthX - oldOx, _coords.WorldWidth)
+                : OriginEarthX - oldOx;
+            // Z clamps, never wraps: raw delta is always the true shift.
             originDeltaZ = OriginEarthZ - oldOz;
             // After recenter, absolute stays put when updateSessionAbsolute; local becomes center-ish
             EarthToLocal(earthX, earthZ, out newLocalX, out newLocalZ);
@@ -346,11 +345,9 @@ namespace RealEarth
             if (IsStreamed && ShouldAllowOriginSlide() && !OriginSlideRemap.HasLandClaims())
             {
                 EarthToLocal(earthX, earthZ, out localX, out localZ);
-                int margin = Math.Max(64, LocalWindowSize / 6);
-                if (localX < margin || localX > LocalWindowSize - margin
-                    || localZ < margin || localZ > LocalWindowSize - margin
-                    || localX < 0 || localZ < 0
-                    || localX >= LocalWindowSize || localZ >= LocalWindowSize)
+                // Shared recenter policy: same band math and degenerate-window guard
+                // as the player path (a tiny host must not slide on every call).
+                if (SessionOriginPolicy.NeedsRecentering(localX, localZ, LocalWindowSize))
                 {
                     CenterWindowOnAbsolute(earthX, earthZ);
                     EarthToLocal(earthX, earthZ, out localX, out localZ);

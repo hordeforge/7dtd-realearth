@@ -26,6 +26,17 @@ def fold_z(z: int, height: int) -> int:
     return r if r >= 0 else r + h
 
 
+def wrapped_delta(delta: int, width: int) -> int:
+    """Shortest signed origin delta on the wrapping X axis.
+
+    Mirrors SessionOriginPolicy.WrappedDelta / WorldSession.EarthToLocal: a slide
+    across the antimeridian is a few hundred blocks forward, never minus-width.
+    Entity remap and session-rollback consumers apply this delta raw.
+    """
+    w = max(1, width)
+    return ((delta % w) + w + w // 2) % w - w // 2
+
+
 @dataclass
 class LocalWindow:
     """Finite engine canvas that slides over the virtual Earth grid."""
@@ -109,17 +120,11 @@ class LocalWindow:
 
     def earth_to_local(self, earth_x: int, earth_z: int) -> tuple[int, int]:
         if self.enable_longitude_wrap or self.should_fold():
-            dx = earth_x - self.origin_x
-            w = max(1, self.grid.width)
-            dx = ((dx % w) + w + w // 2) % w - w // 2
-            local_x = dx
+            local_x = wrapped_delta(earth_x - self.origin_x, self.grid.width)
         else:
             local_x = earth_x - self.origin_x
         if self.should_fold() and not self.enable_longitude_wrap:
-            dz = earth_z - self.origin_z
-            h = max(1, self.grid.height)
-            dz = ((dz % h) + h + h // 2) % h - h // 2
-            local_z = dz
+            local_z = wrapped_delta(earth_z - self.origin_z, self.grid.height)
         else:
             local_z = earth_z - self.origin_z
         return local_x, local_z
@@ -192,9 +197,7 @@ def stream_tile_bubble(
                 continue
             if tiles_x is not None:
                 if wrap_x:
-                    x = x % tiles_x
-                    if x < 0:
-                        x += tiles_x
+                    x = fold_x(x, tiles_x)
                 elif x < 0 or x >= tiles_x:
                     continue
             out.add((x, z))

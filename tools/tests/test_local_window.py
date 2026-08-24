@@ -75,3 +75,18 @@ def test_wrap_x_full_earth_identity():
     lon, lat = block_to_lonlat(x, z, g)
     assert abs(lon - 179.9) < 0.05
     assert abs(lat) < 0.05
+
+
+def test_wrapped_delta_antimeridian_slide():
+    """Origin slide across the seam reports a short forward delta (entity remap contract)."""
+    from realearth.local_window import wrapped_delta
+
+    g = EarthGrid()
+    # Slide from origin 40,074,000 to 200: absolute moved +1217 through the seam,
+    # not -40,073,800. Entity remap shifts locals by exactly this delta.
+    assert wrapped_delta(200 - 40_074_000, g.width) == 1_217
+    # Small non-seam deltas pass through unchanged.
+    assert wrapped_delta(512, g.width) == 512
+    assert wrapped_delta(-512, g.width) == -512
+    # Degenerate extent stays safe.
+    assert wrapped_delta(-7, 0) == 0

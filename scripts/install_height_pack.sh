@@ -65,48 +65,28 @@ install_one() {
   for n in earth.manifest.json height_test.json settlements.json cities.json preview_elev_m.png; do
     [[ -f "$PACK/$n" ]] && cp -f "$PACK/$n" "$dest/Data/tiles/"
   done
-  python3 - <<PY
-import json
-from pathlib import Path
-dest = Path("$dest")
-cfg = {
-    "MapMode": "Streamed",
-    "SingleWorldSession": True,
-    "EnableEngineHeightMod": True,
-    # Still StockSafe=true so stock DLL stays playable; expand auto-enables 1:1
-    "EngineHeightStockSafe": True,
-    "EngineMaxGameY": int("$ENGINE_MAX"),
-    "EngineHeightOneToOne": True,
-    "EngineHeightPreferVanillaCeiling": False,
-    "TilePackPath": "Data/tiles",
-    "WorldWidth": 512,
-    "WorldHeight": 512,
-    "TileSize": 512,
-    "LocalWindowSize": 512,
-    "EnableLongitudeWrap": False,
-    "DebugRevealFullMap": False,
-    "MultiplayerOriginMode": "SharedFixed",
-    "SpawnLongitude": float("$SPAWN_LON"),
-    "SpawnLatitude": float("$SPAWN_LAT"),
-    "DefaultSpawnLon": float("$SPAWN_LON"),
-    "DefaultSpawnLat": float("$SPAWN_LAT"),
-}
-man = dest / "Data" / "tiles" / "earth.manifest.json"
-if man.is_file():
-    m = json.loads(man.read_text(encoding="utf-8"))
-    cfg["WorldWidth"] = int(m.get("world_width") or 512)
-    cfg["WorldHeight"] = int(m.get("world_height") or 512)
-    cfg["TileSize"] = int(m.get("tile_size") or 512)
-    cfg["LocalWindowSize"] = min(cfg["WorldWidth"], cfg["WorldHeight"])
-    bbox = m.get("bbox") or {}
-    if bbox:
-        cfg["BboxWest"] = float(bbox["west"])
-        cfg["BboxSouth"] = float(bbox["south"])
-        cfg["BboxEast"] = float(bbox["east"])
-        cfg["BboxNorth"] = float(bbox["north"])
-(dest / "Config" / "realearth.json").write_text(json.dumps(cfg, indent=2) + "\n")
-print(f"Installed pack → {dest} EngineMaxGameY={cfg['EngineMaxGameY']}")
-PY
+  # Fresh config (no repo template): this pack defines its own standalone setup.
+  python3 "$ROOT/scripts/mod_config.py" write "$dest" "$ROOT" \
+    --fresh --sync-manifest --sync-bbox \
+    MapMode=Streamed \
+    SingleWorldSession=true \
+    EnableEngineHeightMod=true \
+    "EngineHeightStockSafe=true" \
+    EngineMaxGameY="$ENGINE_MAX" \
+    EngineHeightOneToOne=true \
+    "EngineHeightPreferVanillaCeiling=false" \
+    TilePackPath=Data/tiles \
+    WorldWidth=512 \
+    WorldHeight=512 \
+    TileSize=512 \
+    LocalWindowSize=512 \
+    EnableLongitudeWrap=false \
+    DebugRevealFullMap=false \
+    MultiplayerOriginMode=SharedFixed \
+    SpawnLongitude="$SPAWN_LON" \
+    SpawnLatitude="$SPAWN_LAT" \
+    DefaultSpawnLon="$SPAWN_LON" \
+    DefaultSpawnLat="$SPAWN_LAT"
 }
 
 install_one "$GAME_DIR"

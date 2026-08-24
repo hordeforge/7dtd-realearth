@@ -110,43 +110,19 @@ install_mod() {
       [[ -f "$pack/$n" ]] && cp -f "$pack/$n" "$dest/Data/tiles/"
     done
   fi
-  python3 - <<PY
-import json
-from pathlib import Path
-cfg_path = Path("$dest/Config/realearth.json")
-root = Path("$ROOT")
-src_mp = root / "Config" / "realearth.mp.json"
-src = root / "Config" / "realearth.json"
-if src_mp.is_file():
-    cfg = json.loads(src_mp.read_text(encoding="utf-8"))
-elif src.is_file():
-    cfg = json.loads(src.read_text(encoding="utf-8"))
-else:
-    cfg = {}
-cfg.update({
-    "MapMode": "Streamed",
-    "SingleWorldSession": True,
-    "EnableEngineHeightMod": True,
-    "EngineMaxGameY": 11000,
-    "MultiplayerOriginMode": "SharedFixed",
-    "TilePackPath": "Data/tiles",
-    "WorldWidth": 512,
-    "WorldHeight": 512,
-    "TileSize": 512,
-    "LocalWindowSize": 512,
-    "EnableLongitudeWrap": False,
-})
-man = Path("$dest/Data/tiles/earth.manifest.json")
-if man.is_file():
-    m = json.loads(man.read_text(encoding="utf-8"))
-    cfg["WorldWidth"] = int(m.get("world_width") or 512)
-    cfg["WorldHeight"] = int(m.get("world_height") or 512)
-    cfg["TileSize"] = int(m.get("tile_size") or 512)
-    cfg["LocalWindowSize"] = min(cfg["WorldWidth"], cfg["WorldHeight"])
-cfg_path.parent.mkdir(parents=True, exist_ok=True)
-cfg_path.write_text(json.dumps(cfg, indent=2) + "\n", encoding="utf-8")
-print(f"mod → $dest")
-PY
+  python3 "$ROOT/scripts/mod_config.py" write "$dest" "$ROOT" --sync-manifest \
+    MapMode=Streamed \
+    SingleWorldSession=true \
+    EnableEngineHeightMod=true \
+    EngineMaxGameY=11000 \
+    MultiplayerOriginMode=SharedFixed \
+    TilePackPath=Data/tiles \
+    WorldWidth=512 \
+    WorldHeight=512 \
+    TileSize=512 \
+    LocalWindowSize=512 \
+    EnableLongitudeWrap=false
+  echo "mod → $dest"
 }
 install_mod "$GAME_DIR"
 install_mod "$DS_DIR"

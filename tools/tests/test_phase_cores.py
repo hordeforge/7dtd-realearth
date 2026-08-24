@@ -92,6 +92,12 @@ def needs_recentering(lx: int, lz: int, window: int) -> bool:
     return lx < margin or lx > window - margin or lz < margin or lz > window - margin
 
 
+def wrapped_delta(delta: int, extent: int) -> int:
+    """Mirror SessionOriginPolicy.WrappedDelta (shortest signed wrapped distance)."""
+    e = max(1, extent)
+    return ((delta % e) + e + e // 2) % e - e // 2
+
+
 def test_p2_fold_and_shared_fixed():
     assert fold_coord(32768, 512) == 0
     assert fold_coord(-1, 512) == 511
@@ -117,6 +123,29 @@ def test_p2_fold_and_shared_fixed():
     assert "SessionOriginPolicy.AllowOriginSlide" in ws
     assert "SessionOriginPolicy.NeedsRecentering" in ws
     assert "RestoreSnapshot" in ws
+
+
+def test_p2_wrapped_delta_antimeridian():
+    """Seam-crossing slide delta is short and forward, never minus-planet-width."""
+    w = 40_075_017
+    assert wrapped_delta(200 - 40_074_000, w) == 1_217
+    assert wrapped_delta(-300, w) == -300
+    assert wrapped_delta(175_000, w) == 175_000
+    assert wrapped_delta(-175_000, w) == -175_000
+    # Non-wrapped callers keep raw subtraction; policy helper only folds when asked.
+    src = _read("SessionOriginPolicy.cs")
+    assert "public static int WrappedDelta" in src
+    ws = _read("WorldSession.cs")
+    assert "SessionOriginPolicy.WrappedDelta(OriginEarthX - oldOx" in ws
+
+
+def test_tick_absolute_shares_recenter_policy():
+    """TickAbsolute must reuse NeedsRecentering (no drifted margin copy)."""
+    ws = _read("WorldSession.cs")
+    i = ws.index("public bool TickAbsolute")
+    body = ws[i : i + 1200]
+    assert "NeedsRecentering(localX, localZ, LocalWindowSize)" in body
+    assert "Math.Max(64" not in body
 
 
 # --- P3 stamp surface Y ---

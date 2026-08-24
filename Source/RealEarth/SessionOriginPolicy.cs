@@ -27,6 +27,19 @@ namespace RealEarth
         }
 
         /// <summary>
+        /// Shortest signed origin delta on a wrapping axis, using the exact fold
+        /// from WorldSession.EarthToLocal. A slide across the antimeridian is a few
+        /// hundred blocks forward, never minus-planet-width; OriginSlideRemap entity
+        /// shifts and the PlayerTickPostfix rollback consume this delta raw.
+        /// Non-wrapping callers keep plain subtraction (fold mode origins are clamped).
+        /// </summary>
+        public static int WrappedDelta(int delta, int extent)
+        {
+            int e = Math.Max(1, extent);
+            return ((delta % e) + e + e / 2) % e - e / 2;
+        }
+
+        /// <summary>
         /// SharedFixed never slides.
         /// SoloSlide / SharedSlide only when player count is known and ≤ 1.
         /// Unknown count (&lt; 0) fails closed (no slide) so MP cannot desync on bad reflection.
