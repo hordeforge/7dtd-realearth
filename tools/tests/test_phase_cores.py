@@ -539,3 +539,33 @@ def test_cdn_publish_cleans_temp_on_failed_write():
     publish = ts[ts.index("static void PublishTileBytes") : ts.index("void QueueLoad")]
     assert "File.WriteAllBytes(tmp, bytes)" in publish
     assert "File.Delete(tmp)" in publish
+
+
+# --- concurrency gates (concurrency audit) ---
+def test_try_set_pos_struct_write_back():
+    """Direct struct position writes must store the mutated box back to the entity.
+
+    FieldInfo.GetValue boxes a struct: mutating components on the box never
+    reaches the entity, so the old code returned true while nothing moved
+    (origin-slide rollback never triggered)."""
+    src = _read("EngineReflection.cs")
+    i = src.index("static bool TrySetPos")
+    body = src[i:]
+    assert "IsValueType" in body
+    # The mutated box is stored back through the same FieldInfo.
+    assert "SetValue(entity, pos)" in body
+
+
+def test_hooks_log_budgets_are_interlocked():
+    """Gen thread consumes inject budget while WorldReady (main) resets it.
+
+    Plain read-modify-write on the shared budgets loses updates across the
+    gen/main boundary; every cross-thread budget must go through Interlocked."""
+    hooks = _read("RuntimeHooks.cs")
+    for field in ("_peakLogBudget", "_tickErrLogBudget", "_injectErrLogBudget"):
+        assert f"--{field}" not in hooks, f"{field} decremented without Interlocked"
+        assert f"{field} > 0" not in hooks, f"{field} check-then-act outside Interlocked"
+    assert "ConsumeBudget(ref _injectErrLogBudget)" in hooks
+    assert "ResetBudget(ref _injectErrLogBudget" in hooks
+    assert "Interlocked.Decrement(ref budget)" in hooks
+    assert "Interlocked.Exchange(ref budget, value)" in hooks

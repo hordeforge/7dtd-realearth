@@ -146,13 +146,31 @@ namespace RealEarth
                     return true;
                 }
                 // Direct position field write
-                object? pos = ReflectCache.Field(t, "position")?.GetValue(entity);
+                var posField = ReflectCache.Field(t, "position");
+                object? pos = posField?.GetValue(entity);
                 if (pos != null)
                 {
+                    if (!pos.GetType().IsValueType)
+                    {
+                        // Reference position: member writes mutate the live object.
+                        ReflectCache.WriteComp(pos, "x", x);
+                        ReflectCache.WriteComp(pos, "y", y);
+                        ReflectCache.WriteComp(pos, "z", z);
+                        return true;
+                    }
+                    // Struct position: GetValue boxes a copy, so component writes on
+                    // that box never reach the entity. Mutate the box and store it
+                    // back; without this the method reported success while nothing
+                    // moved (origin-slide rollback never triggered).
                     ReflectCache.WriteComp(pos, "x", x);
                     ReflectCache.WriteComp(pos, "y", y);
                     ReflectCache.WriteComp(pos, "z", z);
-                    return true;
+                    try
+                    {
+                        posField!.SetValue(entity, pos);
+                        return true;
+                    }
+                    catch { /* fall through: report failure */ }
                 }
             }
             catch { /* ignore */ }

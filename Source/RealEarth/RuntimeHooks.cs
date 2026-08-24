@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Reflection;
+using System.Threading;
 namespace RealEarth
 {
     /// <summary>
@@ -568,6 +569,9 @@ namespace RealEarth
 
     public static class HooksImpl
     {
+        // Log budgets are cross-thread: _injectErrLogBudget is consumed by the
+        // chunk-generation thread (GenerateTerrain/ChunkIndex postfixes) while
+        // WorldReadyPostfix resets it on the main thread; plain RMW would race.
         static int _peakLogBudget = 3;
         /// <summary>Budget for tick-path errors so persistent failures stay visible without spam.</summary>
         static int _tickErrLogBudget = 8;
@@ -576,6 +580,14 @@ namespace RealEarth
         static int _injectErrLogBudget = 8;
         /// <summary>Hoisted: TryGetEntityId runs every frame per player (no per-call alloc).</summary>
         static readonly string[] EntityIdMemberNames = { "entityId", "EntityId", "EntityID" };
+
+        /// <summary>
+        /// Consume one budget slot atomically (gen thread + main thread share them).
+        /// </summary>
+        static bool ConsumeBudget(ref int budget) => Interlocked.Decrement(ref budget) >= 0;
+
+        static void ResetBudget(ref int budget, int value)
+            => Interlocked.Exchange(ref budget, value);
 
         public static void PlayerTickPostfix(object __instance)
         {
@@ -667,9 +679,8 @@ namespace RealEarth
                 {
                     RuntimePoiInject.TickPlayer(x, z);
                 }
-                if (_peakLogBudget > 0 && ChunkTerrainInject.SessionInjectCount > 0)
+                if (ChunkTerrainInject.SessionInjectCount > 0 && ConsumeBudget(ref _peakLogBudget))
                 {
-                    _peakLogBudget--;
                     ModApi.Log(
                         $"Height inject stats: count={ChunkTerrainInject.SessionInjectCount} " +
                         $"blocksOk={ChunkTerrainInject.SessionBlocksApplied} " +
@@ -682,9 +693,8 @@ namespace RealEarth
             {
                 // Never break the gameplay loop, but do not fail silently either:
                 // a stuck tick path otherwise looks like "tiles never stream" with zero trace.
-                if (_tickErrLogBudget > 0)
+                if (ConsumeBudget(ref _tickErrLogBudget))
                 {
-                    _tickErrLogBudget--;
                     ModApi.Log($"PlayerTick postfix error: {ex.GetType().Name}: {ex.Message}");
                 }
             }
@@ -817,8 +827,8 @@ namespace RealEarth
                 CityMapLabels.Reset();
                 RuntimePoiInject.Reset();
                 ChunkTerrainInject.ResetSessionCounters();
-                _tickErrLogBudget = 8;
-                _injectErrLogBudget = 8;
+                ResetBudget(ref _tickErrLogBudget, 8);
+                ResetBudget(ref _injectErrLogBudget, 8);
                 try
                 {
                     var snap = SessionStateStore.Capture(session, cfg);
@@ -957,9 +967,8 @@ namespace RealEarth
             {
                 // Never break chunk gen, but do not fail silently: an aborted density
                 // rewrite leaves stock RWG terrain that looks like a streaming bug.
-                if (_injectErrLogBudget > 0)
+                if (ConsumeBudget(ref _injectErrLogBudget))
                 {
-                    _injectErrLogBudget--;
                     ModApi.Log(
                         $"GenerateTerrain postfix error: {ex.GetType().Name}: {ex.Message}");
                 }
@@ -986,9 +995,8 @@ namespace RealEarth
             {
                 // Prefetch-only path: TileStreamer logs its own load failures; this logs
                 // mapping/reflection failures so tiles missing forever stays debuggable.
-                if (_injectErrLogBudget > 0)
+                if (ConsumeBudget(ref _injectErrLogBudget))
                 {
-                    _injectErrLogBudget--;
                     ModApi.Log($"ChunkIndex postfix error ({__0},{__1}): {ex.Message}");
                 }
             }
