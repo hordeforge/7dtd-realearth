@@ -12,13 +12,22 @@ const DEFAULT_ELEV_SCALE_M = 4500;
 // Pack paths are joined onto MOD_BASE_URL for every fetch. A path from the
 // ?pack= query param (or the pack input) must stay inside the mod's served
 // tree: no absolute paths, no scheme, no backslashes, no dot-dot traversal.
+// Checks run against the decoded form so %2e%2e cannot smuggle a traversal
+// segment past a literal ".." test; a malformed escape fails closed.
 export function isSafePackPath(path: string): boolean {
+  let decoded: string;
+  try {
+    decoded = decodeURIComponent(path);
+    // oxlint-disable-next-line @rikalabs/no-silent-catch-fallback -- deliberate: a malformed escape is unparseable input, so validation fails closed
+  } catch {
+    return false;
+  }
   return (
-    path !== "" &&
-    !path.startsWith("/") &&
-    !path.includes("\\") &&
-    !/^[a-z][a-z0-9+.-]*:/iu.test(path) &&
-    !path.split("/").includes("..")
+    decoded !== "" &&
+    !decoded.startsWith("/") &&
+    !decoded.includes("\\") &&
+    !/^[a-z][a-z0-9+.-]*:/iu.test(decoded) &&
+    !decoded.split("/").includes("..")
   );
 }
 
@@ -59,10 +68,13 @@ function elevRawFrom(candidate: unknown): ElevRawMeta | null {
   if (file === "") {
     return null;
   }
+  const scaleM = asNumberOr(record.scale_m, DEFAULT_ELEV_SCALE_M);
   return {
     file,
     offset_m: asNumber(record.offset_m),
-    scale_m: asNumberOr(record.scale_m, DEFAULT_ELEV_SCALE_M),
+    // An explicit 0 (finite, so asNumberOr keeps it) would flatten every
+    // probe to the constant offset; fall back like the standalone viewer.
+    scale_m: scaleM > 0 ? scaleM : DEFAULT_ELEV_SCALE_M,
   };
 }
 
@@ -172,11 +184,14 @@ async function loadLayers(baseUrl: string, layers: Array<LayerInfo>): Promise<Ar
 }
 
 async function loadSettlements(url: string): Promise<Array<Settlement>> {
-  const response = await fetch(url);
-  if (!response.ok) {
+  // Optional artifact: transport failure or an unparsable body degrades to
+  // "no settlements" exactly like a non-2xx status, instead of failing the
+  // whole pack whose layers already loaded.
+  const response = await fetch(url).catch(() => null);
+  if (response === null || !response.ok) {
     return [];
   }
-  return settlementListFrom(await response.json());
+  return response.json().then(settlementListFrom).catch(() => []);
 }
 
 async function loadElevRaw(

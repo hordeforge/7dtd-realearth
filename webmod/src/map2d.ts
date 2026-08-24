@@ -72,6 +72,7 @@ export class Map2D {
   private readonly onPointerDown: (event: PointerEvent) => void;
   private readonly onPointerMove: (event: PointerEvent) => void;
   private readonly onPointerUp: () => void;
+  private readonly onPointerCancel: () => void;
   private readonly onWheel: (event: WheelEvent) => void;
   private readonly onKeyDown: (event: KeyboardEvent) => void;
 
@@ -86,12 +87,17 @@ export class Map2D {
     this.onPointerDown = (event) => this.pointerDown(event);
     this.onPointerMove = (event) => this.pointerMove(event);
     this.onPointerUp = () => this.pointerUp();
+    // pointercancel (touch gesture intercepted by the browser) never fires
+    // pointerup; without this the drag latch sticks and later mouse hovers
+    // pan the map.
+    this.onPointerCancel = () => this.pointerUp();
     this.onWheel = (event) => this.wheel(event);
     this.onKeyDown = (event) => this.keyDown(event);
     globalThis.addEventListener("resize", this.boundResize);
     canvas.addEventListener("pointerdown", this.onPointerDown);
     canvas.addEventListener("pointermove", this.onPointerMove);
     globalThis.addEventListener("pointerup", this.onPointerUp);
+    canvas.addEventListener("pointercancel", this.onPointerCancel);
     canvas.addEventListener("wheel", this.onWheel, { passive: false });
     canvas.addEventListener("keydown", this.onKeyDown);
   }
@@ -101,6 +107,7 @@ export class Map2D {
     this.canvas.removeEventListener("pointerdown", this.onPointerDown);
     this.canvas.removeEventListener("pointermove", this.onPointerMove);
     globalThis.removeEventListener("pointerup", this.onPointerUp);
+    this.canvas.removeEventListener("pointercancel", this.onPointerCancel);
     this.canvas.removeEventListener("wheel", this.onWheel);
     this.canvas.removeEventListener("keydown", this.onKeyDown);
   }
@@ -130,7 +137,7 @@ export class Map2D {
     if (meta.settlements !== undefined) {
       this.settlements = meta.settlements;
     }
-    if (meta.tileSize !== undefined) {
+    if (meta.tileSize !== undefined && meta.tileSize > 0) {
       this.tileSize = meta.tileSize;
     }
     if (meta.sampleWidth !== undefined) {
@@ -188,7 +195,7 @@ export class Map2D {
     this.ctx.imageSmoothingEnabled = this.scale < SMOOTH_SCALE_MAX;
     this.ctx.drawImage(this.image, 0, 0);
     this.ctx.globalAlpha = 1;
-    if (this.showGrid) {
+    if (this.showGrid && this.tileSize > 0) {
       this.drawGrid(this.image);
     }
     if (this.showSettlements) {
@@ -210,6 +217,10 @@ export class Map2D {
     const scaleZ = vh / Math.max(1, this.sampleHeight);
     const stepX = this.tileSize * scaleX;
     const stepZ = this.tileSize * scaleZ;
+    // A non-positive step would never advance the loop and hang the tab.
+    if (stepX <= 0 || stepZ <= 0) {
+      return;
+    }
     this.ctx.strokeStyle = GRID_LINE_STYLE;
     this.ctx.lineWidth = 1 / this.scale;
     this.ctx.beginPath();

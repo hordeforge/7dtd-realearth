@@ -5,11 +5,22 @@
 import type { WebModComponentProps } from "./types";
 import { makeElement } from "./types";
 import { getDefaultPackPath, setDefaultPackPath } from "./settings-store";
+import type { DefaultPackSave } from "./settings-store";
 
 function setText(element: HTMLElement | null, text: string): void {
   if (element !== null) {
     element.textContent = text;
   }
+}
+
+function savedMessage(outcome: DefaultPackSave, path: string): string {
+  if (outcome === "persisted") {
+    return `Saved: ${path}`;
+  }
+  if (outcome === "session-only") {
+    return "Could not persist to localStorage; keeping it for this session.";
+  }
+  return "Path must not be empty.";
 }
 
 export function RealEarthSettings(props: WebModComponentProps): unknown {
@@ -32,11 +43,7 @@ export function RealEarthSettings(props: WebModComponentProps): unknown {
         setText(savedRef.current, "Path must not be empty.");
         return;
       }
-      const stored = setDefaultPackPath(path);
-      setText(
-        savedRef.current,
-        stored ? `Saved: ${path}` : "Could not persist to localStorage; keeping it for this session."
-      );
+      setText(savedRef.current, savedMessage(setDefaultPackPath(path), path));
     }
 
     if (input !== null) {

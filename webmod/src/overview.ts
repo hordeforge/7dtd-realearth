@@ -179,7 +179,14 @@ export function OverviewPage(props: WebModComponentProps): unknown {
   const [stats, setStats] = React.useState<Array<KeyValueEntry> | null>(null);
   const [statsError, setStatsError] = React.useState("");
 
-  React.useEffect(() => packStore.subscribe(() => setPack(packStore.get())), []);
+  React.useEffect(() => {
+    // Subscribe before pulling: a load resolving between this render and the
+    // effect would otherwise notify zero subscribers and leave the stale
+    // "No pack loaded" snapshot on screen.
+    const unsubscribe = packStore.subscribe(() => setPack(packStore.get()));
+    setPack(packStore.get());
+    return unsubscribe;
+  }, []);
 
   React.useEffect(() => {
     let cancelled = false;

@@ -29,21 +29,25 @@ export function getDefaultPackPath(): string {
   return next;
 }
 
-export function setDefaultPackPath(path: string): boolean {
+// Outcome of a save, so the UI can tell "kept forever" from "kept only for
+// this session"; reporting a session-only choice as plain Saved would lie.
+export type DefaultPackSave = "rejected" | "persisted" | "session-only";
+
+export function setDefaultPackPath(path: string): DefaultPackSave {
   const trimmed = path.trim();
   if (trimmed === "") {
-    return false;
+    return "rejected";
   }
   rememberedPath = trimmed;
   if (!storageAvailable) {
-    return true;
+    return "session-only";
   }
   try {
     globalThis.localStorage.setItem(STORAGE_KEY, trimmed);
-    return true;
+    return "persisted";
     // oxlint-disable-next-line @rikalabs/no-silent-catch-fallback -- deliberate: writes can fail when storage is full or blocked; the session keeps the in-memory value
   } catch {
     storageAvailable = false;
-    return false;
+    return "session-only";
   }
 }

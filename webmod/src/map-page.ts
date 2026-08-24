@@ -397,17 +397,28 @@ export function MapPage(props: WebModComponentProps): unknown {
   const refs = makeRefs(React);
   const [pack, setPack] = React.useState<LoadedPack | null>(null);
   const [loadError, setLoadError] = React.useState("");
+  // Monotonic token: when two loads overlap (auto-load plus a manual Load),
+  // only the most recently requested one may publish; otherwise a slow older
+  // fetch would silently revert the UI to the previous pack.
+  const loadGeneration = React.useRef(0);
 
   const startLoad = (path: string): void => {
+    const generation = ++loadGeneration.current;
     setLoadError("");
     setStatusText(refs.status, "Loading...");
     void loadPack(MOD_BASE_URL, path)
       .then((loaded) => {
+        if (generation !== loadGeneration.current) {
+          return;
+        }
         packStore.set(loaded, path);
         setPack(loaded);
         setStatusText(refs.status, `Loaded ${path}`);
       })
       .catch((error: unknown) => {
+        if (generation !== loadGeneration.current) {
+          return;
+        }
         setLoadError(errorMessage(error));
         setStatusText(refs.status, "");
       });
