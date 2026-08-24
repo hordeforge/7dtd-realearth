@@ -257,5 +257,5 @@ release backlog.
 
 ## License
 
-Code in this repository: choose/add a license before publishing. 
+Code in this repository is licensed under the MIT License ([`LICENSE`](LICENSE)).
 Third-party geodata: see ATTRIBUTION.md; you are responsible for compliance.

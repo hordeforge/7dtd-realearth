@@ -124,6 +124,7 @@ Never mark Done without live measure (GAP evidence checklist).
 | [DATA_SOURCES](DATA_SOURCES.md) | DEM/pop/landcover sources |
 | [REALISM_AND_GOOGLE_EARTH](REALISM_AND_GOOGLE_EARTH.md) | Legal data policy |
 | [MODDING_REFERENCES](MODDING_REFERENCES.md) | External sites |
+| [HostWorld](HostWorld.md) | Streamed host window + install steps |
 | [RESEARCH_NOTES](RESEARCH_NOTES.md) | Living research notes |
 | [RESEARCH_LOG](RESEARCH_LOG.md) | Chronological sessions |
 | [realearth-runtime](realearth-runtime.md) | Streamed architecture lessons |
