@@ -41,7 +41,10 @@ target-version = "py311"
 # E501 enforces the 100-column cap; B is bug-prone patterns (zip strict,
 # loop-variable closures); I/SIM/C4/UP keep style mechanical and current.
 # All groups proven clean over realearth/ + tests/ before enabling.
+# PLE/PLW are the pylint error/warning subsets (defect classes); SLF bans
+# touching other modules' privates; PGH bans blanket `# noqa` / `# type:
+# ignore` without a rule code; T10 catches debugger/breakpoint imports.
 # RUF100 fails any noqa whose rule is not enabled or not triggered, so a
 # suppression cannot silently outlive its finding.
 select = ["E", "F", "W", "I", "B", "UP", "C4", "SIM"]
-extend-select = ["RUF100"]
+extend-select = ["RUF100", "PLE", "PLW", "SLF", "PGH", "T10"]

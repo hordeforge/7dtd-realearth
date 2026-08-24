@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Concurrent;
+using System.Linq;
 using System.Reflection;
 
 namespace RealEarth
@@ -62,6 +63,22 @@ namespace RealEarth
 
         /// <summary>Floor division; negative block coords must not truncate toward zero.</summary>
         internal static int FloorDiv(int a, int b) => a >= 0 ? a / b : (a - (b - 1)) / b;
+
+        /// <summary>
+        /// Assembly types with the partial-load fallback: ReflectionTypeLoadException
+        /// still yields the types that did load.
+        /// </summary>
+        internal static Type[] SafeGetTypes(Assembly asm)
+        {
+            try
+            {
+                return asm.GetTypes();
+            }
+            catch (ReflectionTypeLoadException ex)
+            {
+                return (ex.Types ?? Array.Empty<Type>()).Where(t => t != null).Cast<Type>().ToArray();
+            }
+        }
 
         /// <summary>Entity world position via common position members. False when absent.</summary>
         internal static bool TryGetPos(object entity, out int x, out int y, out int z)

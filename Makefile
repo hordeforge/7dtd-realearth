@@ -57,7 +57,7 @@ WEBMOD_EXPORT_NAME ?= demo
 UV            := uv
 REEARTH       := cd $(TOOLS) && $(UV) run python -m realearth.cli
 PYTEST        := cd $(TOOLS) && $(UV) run --extra dev python -m pytest
-RUFF          := cd $(TOOLS) && $(UV) run --extra dev ruff check realearth tests
+RUFF          := cd $(TOOLS) && $(UV) run --extra dev ruff check realearth tests ../scripts/coverage_badge.py
 
 # ---------------------------------------------------------------------------
 # Help

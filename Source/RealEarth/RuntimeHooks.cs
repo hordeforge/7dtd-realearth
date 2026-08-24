@@ -166,18 +166,8 @@ namespace RealEarth
 
         static IEnumerable<Type> TerrainRelatedTypes(Assembly game)
         {
-            Type[] types;
-            try
-            {
-                types = game.GetTypes();
-            }
-            catch (ReflectionTypeLoadException ex)
-            {
-                types = (ex.Types ?? Array.Empty<Type>()).Where(t => t != null).Cast<Type>().ToArray();
-            }
-
             // Concrete preferred first (RWG host = TerrainGeneratorWithBiomeResource)
-            return types
+            return EngineReflection.SafeGetTypes(game)
                 .Where(t => t != null && HeightQueryPatcher.IsTerrainRelatedTypeName(t.Name))
                 .OrderByDescending(HeightQueryPatcher.TypePatchPriority)
                 .Cast<Type>();

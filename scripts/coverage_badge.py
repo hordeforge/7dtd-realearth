@@ -40,14 +40,25 @@ def colour(pct: int) -> str:
 
 def badge(pct: int, fill: str) -> str:
     label_w, value_w = 64, 36
-    return f"""<svg xmlns="http://www.w3.org/2000/svg" width="{label_w + value_w}" height="20" role="img" aria-label="coverage: {pct}%">
-<title>coverage: {pct}%</title>
-<linearGradient id="s" x2="0" y2="100%"><stop offset="0" stop-color="#bbb" stop-opacity=".1"/><stop offset="1" stop-opacity=".1"/></linearGradient>
-<clipPath id="r"><rect width="{label_w + value_w}" height="20" rx="3" fill="#fff"/></clipPath>
-<g clip-path="url(#r)"><rect width="{label_w}" height="20" fill="#555"/><rect x="{label_w}" width="{value_w}" height="20" fill="{fill}"/><rect width="{label_w + value_w}" height="20" fill="url(#s)"/></g>
-<g fill="#fff" text-anchor="middle" font-family="Verdana,Geneva,DejaVu Sans,sans-serif" font-size="11"><text x="{label_w / 2}" y="14">coverage</text><text x="{label_w + value_w / 2}" y="14">{pct}%</text></g>
-</svg>
-"""
+    return (
+        f'<svg xmlns="http://www.w3.org/2000/svg" width="{label_w + value_w}" '
+        f'height="20" role="img" aria-label="coverage: {pct}%">\n'
+        f"<title>coverage: {pct}%</title>\n"
+        '<linearGradient id="s" x2="0" y2="100%">'
+        '<stop offset="0" stop-color="#bbb" stop-opacity=".1"/>'
+        '<stop offset="1" stop-opacity=".1"/></linearGradient>\n'
+        f'<clipPath id="r"><rect width="{label_w + value_w}" height="20" '
+        'rx="3" fill="#fff"/></clipPath>\n'
+        "<g clip-path=\"url(#r)\">"
+        f'<rect width="{label_w}" height="20" fill="#555"/>'
+        f'<rect x="{label_w}" width="{value_w}" height="20" fill="{fill}"/>'
+        f'<rect width="{label_w + value_w}" height="20" fill="url(#s)"/></g>\n'
+        '<g fill="#fff" text-anchor="middle" '
+        'font-family="Verdana,Geneva,DejaVu Sans,sans-serif" font-size="11">'
+        f'<text x="{label_w / 2}" y="14">coverage</text>'
+        f'<text x="{label_w + value_w / 2}" y="14">{pct}%</text></g>\n'
+        "</svg>\n"
+    )
 
 
 def main(argv: list[str]) -> int:

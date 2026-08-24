@@ -24,7 +24,7 @@ help:
 	@echo "  make bake               Bake worlds/RealEarth from demo pack"
 	@echo "  make sample-chunk       Sample Streamed chunk (demo pack)"
 	@echo "  make serve              Web viewer on :8765"
-	@echo "  make lint               ruff check (if installed)"
+	@echo "  make lint               ruff check (realearth, tests, scripts)"
 	@echo "  make info               realearth info"
 	@echo "  make clean              pycache / pytest cache"
 	@echo ""
@@ -67,7 +67,7 @@ serve:
 	$(REEARTH) serve --port 8765 --root $(ROOT)/viewer
 
 lint:
-	$(UV) run --extra dev ruff check realearth tests
+	$(UV) run --extra dev ruff check realearth tests ../scripts/coverage_badge.py
 
 info:
 	$(REEARTH) info

@@ -103,15 +103,21 @@ namespace RealEarth
         static string Escape(string s) =>
             (s ?? "").Replace("\\", "\\\\").Replace("\"", "\\\"");
 
+        /// <summary>Index just past the colon of `"key":`, or -1 when absent.</summary>
+        static int KeyColonIndex(string json, string key)
+        {
+            string pat = "\"" + key + "\"";
+            int k = json.IndexOf(pat, StringComparison.OrdinalIgnoreCase);
+            if (k < 0) return -1;
+            int colon = json.IndexOf(':', k + pat.Length);
+            return colon < 0 ? -1 : colon + 1;
+        }
+
         static bool TryReadInt(string json, string key, out int value)
         {
             value = 0;
-            string pat = "\"" + key + "\"";
-            int k = json.IndexOf(pat, StringComparison.OrdinalIgnoreCase);
-            if (k < 0) return false;
-            int colon = json.IndexOf(':', k + pat.Length);
-            if (colon < 0) return false;
-            int j = colon + 1;
+            int j = KeyColonIndex(json, key);
+            if (j < 0) return false;
             while (j < json.Length && (json[j] == ' ' || json[j] == '\t')) j++;
             int e = j;
             while (e < json.Length && (char.IsDigit(json[e]) || json[e] == '-')) e++;
@@ -121,12 +127,8 @@ namespace RealEarth
         static bool TryReadDouble(string json, string key, out double value)
         {
             value = 0;
-            string pat = "\"" + key + "\"";
-            int k = json.IndexOf(pat, StringComparison.OrdinalIgnoreCase);
-            if (k < 0) return false;
-            int colon = json.IndexOf(':', k + pat.Length);
-            if (colon < 0) return false;
-            int j = colon + 1;
+            int j = KeyColonIndex(json, key);
+            if (j < 0) return false;
             while (j < json.Length && (json[j] == ' ' || json[j] == '\t')) j++;
             int e = j;
             while (e < json.Length && (char.IsDigit(json[e]) || json[e] == '-' || json[e] == '+' || json[e] == '.' || json[e] == 'e' || json[e] == 'E'))
@@ -137,12 +139,9 @@ namespace RealEarth
         static bool TryReadString(string json, string key, out string value)
         {
             value = "";
-            string pat = "\"" + key + "\"";
-            int k = json.IndexOf(pat, StringComparison.OrdinalIgnoreCase);
-            if (k < 0) return false;
-            int colon = json.IndexOf(':', k + pat.Length);
-            if (colon < 0) return false;
-            int q1 = json.IndexOf('"', colon + 1);
+            int j = KeyColonIndex(json, key);
+            if (j < 0) return false;
+            int q1 = json.IndexOf('"', j);
             if (q1 < 0) return false;
             int q2 = json.IndexOf('"', q1 + 1);
             if (q2 < 0) return false;
@@ -200,6 +199,27 @@ namespace RealEarth
             return true;
         }
 
+        /// <summary>
+        /// Paths to try in order: explicit operator override, else stock save dir
+        /// primary + mod Config fallback (deduped case-insensitively).
+        /// </summary>
+        static List<string> SessionCandidatePaths(string? path)
+        {
+            var paths = new List<string>();
+            if (!string.IsNullOrEmpty(path))
+            {
+                paths.Add(path!);
+            }
+            else
+            {
+                paths.Add(PreferredSessionPath());
+                string fallback = DefaultSessionPath();
+                if (!string.Equals(paths[0], fallback, StringComparison.OrdinalIgnoreCase))
+                    paths.Add(fallback);
+            }
+            return paths;
+        }
+
         public static bool TrySave(WorldSession session, RealEarthConfig? cfg, string? path = null)
         {
             try
@@ -207,18 +227,8 @@ namespace RealEarth
                 var snap = Capture(session, cfg);
                 string json = snap.ToJson() + "\n";
                 // Dual-write: stock world save dir (primary) + mod Config fallback.
-                var paths = new List<string>();
-                if (!string.IsNullOrEmpty(path))
-                    paths.Add(path!);
-                else
-                {
-                    paths.Add(PreferredSessionPath());
-                    string fallback = DefaultSessionPath();
-                    if (!string.Equals(paths[0], fallback, StringComparison.OrdinalIgnoreCase))
-                        paths.Add(fallback);
-                }
                 bool any = false;
-                foreach (var p in paths)
+                foreach (var p in SessionCandidatePaths(path))
                 {
                     try
                     {
@@ -249,18 +259,7 @@ namespace RealEarth
                 // Explicit path is an operator override: no scope gate.
                 bool explicitPath = !string.IsNullOrEmpty(path);
                 string currentScope = explicitPath ? "" : SessionSnapshot.ScopeForCurrentWorld();
-                var paths = new List<string>();
-                if (!string.IsNullOrEmpty(path))
-                    paths.Add(path!);
-                else
-                {
-                    // Prefer world save, then mod Config.
-                    paths.Add(PreferredSessionPath());
-                    string fallback = DefaultSessionPath();
-                    if (!string.Equals(paths[0], fallback, StringComparison.OrdinalIgnoreCase))
-                        paths.Add(fallback);
-                }
-                foreach (var p in paths)
+                foreach (var p in SessionCandidatePaths(path))
                 {
                     if (!File.Exists(p)) continue;
                     string json = File.ReadAllText(p);

@@ -640,66 +640,41 @@ namespace RealEarth
             }
         }
 
-        static MethodInfo? FindSetDensity(Type t)
+        /// <summary>
+        /// Instance method by name whose first `leadingInts` parameters are ints
+        /// (the X/Z/Y prefix every engine block-write API shares).
+        /// </summary>
+        static MethodInfo? FindSetterByIntParams(
+            Type t, string name, int paramCount, int leadingInts,
+            Func<ParameterInfo[], bool>? extra = null)
         {
             foreach (var m in t.GetMethods(BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic))
             {
-                if (m.Name != "SetDensity") continue;
+                if (m.Name != name) continue;
                 var ps = m.GetParameters();
-                if (ps.Length == 4
-                    && ps[0].ParameterType == typeof(int)
-                    && ps[1].ParameterType == typeof(int)
-                    && ps[2].ParameterType == typeof(int))
-                    return m;
+                if (ps.Length != paramCount) continue;
+                bool intsMatch = true;
+                for (int i = 0; i < leadingInts; i++)
+                {
+                    if (ps[i].ParameterType != typeof(int)) { intsMatch = false; break; }
+                }
+                if (!intsMatch) continue;
+                if (extra != null && !extra(ps)) continue;
+                return m;
             }
             return null;
         }
 
-        static MethodInfo? FindSetBlock(Type t)
-        {
-            foreach (var m in t.GetMethods(BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic))
-            {
-                if (m.Name != "SetBlock") continue;
-                var ps = m.GetParameters();
-                if (ps.Length == 4
-                    && ps[0].ParameterType == typeof(int)
-                    && ps[1].ParameterType == typeof(int)
-                    && ps[2].ParameterType == typeof(int)
-                    && ps[3].ParameterType.Name.IndexOf("BlockValue", StringComparison.OrdinalIgnoreCase) >= 0)
-                    return m;
-            }
-            return null;
-        }
+        static MethodInfo? FindSetDensity(Type t) => FindSetterByIntParams(t, "SetDensity", 4, 3);
+
+        static MethodInfo? FindSetBlock(Type t) =>
+            FindSetterByIntParams(t, "SetBlock", 4, 3,
+                ps => ps[3].ParameterType.Name.IndexOf("BlockValue", StringComparison.OrdinalIgnoreCase) >= 0);
 
         /// <summary>Fallback when full SetBlock is absent (raw write skips mesh dirty flags).</summary>
-        static MethodInfo? FindSetBlockRaw(Type t)
-        {
-            foreach (var m in t.GetMethods(BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic))
-            {
-                if (m.Name != "SetBlockRaw") continue;
-                var ps = m.GetParameters();
-                if (ps.Length == 4
-                    && ps[0].ParameterType == typeof(int)
-                    && ps[1].ParameterType == typeof(int)
-                    && ps[2].ParameterType == typeof(int))
-                    return m;
-            }
-            return null;
-        }
+        static MethodInfo? FindSetBlockRaw(Type t) => FindSetterByIntParams(t, "SetBlockRaw", 4, 3);
 
-        static MethodInfo? FindSetHeight(Type t)
-        {
-            foreach (var m in t.GetMethods(BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic))
-            {
-                if (m.Name != "SetHeight") continue;
-                var ps = m.GetParameters();
-                if (ps.Length == 3
-                    && ps[0].ParameterType == typeof(int)
-                    && ps[1].ParameterType == typeof(int))
-                    return m;
-            }
-            return null;
-        }
+        static MethodInfo? FindSetHeight(Type t) => FindSetterByIntParams(t, "SetHeight", 3, 2);
 
         /// <summary>Caller holds _initLock. Resolve terrain BlockValues once per process.</summary>
         static void ResolveTerrainBlocksLocked()

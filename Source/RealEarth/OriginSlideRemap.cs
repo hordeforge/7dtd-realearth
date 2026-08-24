@@ -65,11 +65,7 @@ namespace RealEarth
                 inspected = true; // list exists (may be empty = no claims)
                 // Global LP map on list if present
                 n += CountCollectionField(ppl, "m_lpBlockMap", "lpBlockMap", "LPBlocks", "LandProtectionBlocks");
-                object? players = ppl.GetType().GetProperty("Players")?.GetValue(ppl)
-                    ?? ppl.GetType().GetField("Players", BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic)?.GetValue(ppl)
-                    ?? ppl.GetType().GetProperty("Dict")?.GetValue(ppl)
-                    ?? ppl;
-                foreach (var pd in EnumeratePlayerData(players))
+                foreach (var pd in EnumeratePlayerData(PlayerDataList(ppl)))
                     n += CountClaimBlocksOnPlayer(pd);
             }
             catch
@@ -125,6 +121,13 @@ namespace RealEarth
                 return null;
             }
         }
+
+        /// <summary>Player collection off a PersistentPlayerList, falling back to the list itself.</summary>
+        static object? PlayerDataList(object ppl) =>
+            ppl.GetType().GetProperty("Players")?.GetValue(ppl)
+            ?? ppl.GetType().GetField("Players", BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic)?.GetValue(ppl)
+            ?? ppl.GetType().GetProperty("Dict")?.GetValue(ppl)
+            ?? ppl;
 
         static IEnumerable EnumeratePlayerData(object? players)
         {
@@ -288,11 +291,7 @@ namespace RealEarth
             {
                 object? ppl = GetPersistentPlayerList();
                 if (ppl == null) return 0;
-                object? players = ppl.GetType().GetProperty("Players")?.GetValue(ppl)
-                    ?? ppl.GetType().GetField("Players", BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic)?.GetValue(ppl)
-                    ?? ppl.GetType().GetProperty("Dict")?.GetValue(ppl)
-                    ?? ppl;
-                foreach (var pd in EnumeratePlayerData(players))
+                foreach (var pd in EnumeratePlayerData(PlayerDataList(ppl)))
                     n += RemapClaimData(pd, dOx, dOz);
             }
             catch (Exception ex)

@@ -98,17 +98,7 @@ namespace RealEarth
             var list = new List<MethodInfo>();
             if (game == null) return list;
 
-            Type[] types;
-            try
-            {
-                types = game.GetTypes();
-            }
-            catch (ReflectionTypeLoadException ex)
-            {
-                types = (ex.Types ?? Array.Empty<Type>()).Where(t => t != null).Cast<Type>().ToArray();
-            }
-
-            foreach (var t in types)
+            foreach (var t in EngineReflection.SafeGetTypes(game))
             {
                 if (t == null || !IsTerrainRelatedTypeName(t.Name))
                     continue;
