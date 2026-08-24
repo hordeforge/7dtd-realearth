@@ -134,6 +134,16 @@ def test_decode_rejects_hostile_dims():
         pass
 
 
+def test_decode_rejects_future_version():
+    # A v2 layout change must fail closed, never decode as v1 garbage.
+    header = HEADER_STRUCT.pack(b"RTE1", 0, 0, 2, 0, 2, 2, 0)
+    try:
+        decode_tile(header)
+        raise AssertionError("expected ValueError for future tile version")
+    except ValueError:
+        pass
+
+
 def test_decode_rejects_decompression_bomb():
     # A tiny compressed section that would inflate to gigabytes must be refused.
     bomb = zlib.compress(b"\x00" * (MAX_TILE_SAMPLES * 8), level=6)

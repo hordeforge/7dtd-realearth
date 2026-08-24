@@ -20,6 +20,12 @@ namespace RealEarth
         public string MultiplayerOriginMode = "SoloSlide";
         public double SpawnLon;
         public double SpawnLat;
+        /// <summary>
+        /// Hashed world-save identity ("" = unknown / legacy snapshot). Restore skips
+        /// snapshots from a different scope so a new world never inherits another
+        /// world's absolute position through the global mod Config fallback file.
+        /// </summary>
+        public string Scope = "";
 
         public string ToJson()
         {
@@ -33,7 +39,8 @@ namespace RealEarth
             sb.Append("\"mapMode\":\"").Append(Escape(MapMode)).Append("\",");
             sb.Append("\"multiplayerOriginMode\":\"").Append(Escape(MultiplayerOriginMode)).Append("\",");
             sb.Append("\"spawnLon\":").Append(SpawnLon.ToString(CultureInfo.InvariantCulture)).Append(',');
-            sb.Append("\"spawnLat\":").Append(SpawnLat.ToString(CultureInfo.InvariantCulture));
+            sb.Append("\"spawnLat\":").Append(SpawnLat.ToString(CultureInfo.InvariantCulture)).Append(',');
+            sb.Append("\"scope\":\"").Append(Escape(Scope)).Append('"');
             sb.Append('}');
             return sb.ToString();
         }
@@ -53,6 +60,9 @@ namespace RealEarth
                     snap.MapMode = mm;
                 if (TryReadString(json, "multiplayerOriginMode", out var mom) && !string.IsNullOrEmpty(mom))
                     snap.MultiplayerOriginMode = mom;
+                // Optional scope (legacy snapshots have none = apply anywhere).
+                if (TryReadString(json, "scope", out var sc))
+                    snap.Scope = sc ?? "";
                 if (TryReadDouble(json, "spawnLon", out var slon))
                     snap.SpawnLon = slon;
                 if (TryReadDouble(json, "spawnLat", out var slat))
@@ -68,6 +78,27 @@ namespace RealEarth
         /// <summary>P4 player-build delta key for a tile (absolute Earth tile indices).</summary>
         public static string DeltaKey(int tileX, int tileZ) =>
             tileX.ToString(CultureInfo.InvariantCulture) + ":" + tileZ.ToString(CultureInfo.InvariantCulture);
+
+        /// <summary>
+        /// Hashed identity of the current world save ("" when unavailable, e.g. offline).
+        /// A path hash rather than the raw path: session files may be shared, and the
+        /// comparison only needs equality.
+        /// </summary>
+        public static string ScopeForCurrentWorld()
+        {
+            string? id = WorldSavePath.SessionScopeId();
+            if (string.IsNullOrEmpty(id)) return "";
+            unchecked
+            {
+                ulong h = 14695981039346656037UL;
+                foreach (char c in id!)
+                {
+                    h ^= c;
+                    h *= 1099511628211UL;
+                }
+                return h.ToString("x16", CultureInfo.InvariantCulture);
+            }
+        }
 
         static string Escape(string s) =>
             (s ?? "").Replace("\\", "\\\\").Replace("\"", "\\\"");
@@ -153,6 +184,7 @@ namespace RealEarth
                 MultiplayerOriginMode = cfg?.MultiplayerOriginMode ?? "SoloSlide",
                 SpawnLon = lon,
                 SpawnLat = lat,
+                Scope = SessionSnapshot.ScopeForCurrentWorld(),
             };
         }
 
@@ -214,6 +246,9 @@ namespace RealEarth
         {
             try
             {
+                // Explicit path is an operator override: no scope gate.
+                bool explicitPath = !string.IsNullOrEmpty(path);
+                string currentScope = explicitPath ? "" : SessionSnapshot.ScopeForCurrentWorld();
                 var paths = new List<string>();
                 if (!string.IsNullOrEmpty(path))
                     paths.Add(path!);
@@ -230,6 +265,16 @@ namespace RealEarth
                     if (!File.Exists(p)) continue;
                     string json = File.ReadAllText(p);
                     if (!SessionSnapshot.TryParse(json, out var snap)) continue;
+                    // The mod Config fallback is global across worlds; without this gate a
+                    // new world would restore the previous world's absolute position
+                    // (spawn far from the intended config spawn). Unknown scopes on either
+                    // side apply as before (legacy snapshots, offline contexts).
+                    if (snap.Scope.Length > 0 && currentScope.Length > 0
+                        && !string.Equals(snap.Scope, currentScope, StringComparison.Ordinal))
+                    {
+                        ModApi.Log("SessionStateStore skip " + p + " (different world scope)");
+                        continue;
+                    }
                     if (TryApply(session, snap))
                     {
                         ModApi.Log("SessionStateStore loaded from " + p);

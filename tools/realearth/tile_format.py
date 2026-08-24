@@ -140,6 +140,10 @@ def decode_tile(data: bytes) -> EarthTile:
     magic, tx, tz, ver, flags, w, h, _ = HEADER_STRUCT.unpack_from(data, 0)
     if magic != MAGIC:
         raise ValueError(f"bad magic: {magic!r}")
+    if ver > FORMAT_VERSION:
+        # Fail closed on future formats: a v2 layout change must never be
+        # silently misdecoded as v1 (garbage columns read as valid terrain).
+        raise ValueError(f"unsupported tile version: {ver} (max {FORMAT_VERSION})")
     if w <= 0 or h <= 0 or w * h > MAX_TILE_SAMPLES:
         raise ValueError(f"tile dims out of range: {w}x{h}")
     samples = w * h

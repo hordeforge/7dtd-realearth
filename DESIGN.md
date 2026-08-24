@@ -287,7 +287,9 @@ population: zlib uint8[N]     # log-scaled density
 optional: poi blob             # water/road masks are future work (see §6.3)
 ```
 
-Each channel is a u32 length prefix followed by its zlib blob.
+Each channel is a u32 length prefix followed by its zlib blob. Decoders
+(`tile_format.py` / `RteTile.cs`) reject `version > 1` so a future layout change
+fails closed instead of misdecoding as v1 terrain.
 
 On disk:
 

@@ -34,6 +34,19 @@ namespace RealEarth
         /// <summary>Mod Config fallback path (always available).</summary>
         public static string ModFallbackSessionPath() => SessionStateStore.DefaultSessionPath();
 
+        /// <summary>
+        /// Stable identity of the current world save (save dir path, else world name).
+        /// Null when unavailable (offline / unit contexts). Session snapshots carry a
+        /// hash of this so one world's position can never restore into another via the
+        /// global mod Config fallback file.
+        /// </summary>
+        public static string? SessionScopeId()
+        {
+            string? dir = TryGetSaveGameDir();
+            if (!string.IsNullOrEmpty(dir)) return dir;
+            return TryWorldName();
+        }
+
         public static string? TryGetSaveGameDir()
         {
             try

@@ -25,6 +25,9 @@ namespace RealEarth
         const ushort FlagLc = 1 << 1;
         const ushort FlagPoi = 1 << 2;
 
+        /// <summary>Wire format version this decoder understands (see tile_format.py).</summary>
+        internal const ushort FormatVersion = 1;
+
         /// <summary>RTE1 magic check for an in-memory tile header.</summary>
         public static bool HasMagic(byte[] head)
             => head.Length >= 4 && head[0] == (byte)'R' && head[1] == (byte)'T'
@@ -55,6 +58,10 @@ namespace RealEarth
             int tx = br.ReadInt32();
             int tz = br.ReadInt32();
             ushort ver = br.ReadUInt16();
+            if (ver > FormatVersion)
+                // Fail closed on future formats: a v2 layout change must never be
+                // silently misdecoded as v1 (garbage columns read as valid terrain).
+                throw new InvalidDataException($"unsupported tile version: {ver}");
             ushort flags = br.ReadUInt16();
             int w = br.ReadInt32();
             int h = br.ReadInt32();
