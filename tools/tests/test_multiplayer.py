@@ -147,6 +147,27 @@ def test_full_window_never_slides():
     assert slid is False
 
 
+def test_tiny_window_never_slides_every_tick():
+    """Degenerate LocalWindowSize < 128: the recenter band covers the whole window,
+    so any position would read as outside and the origin would slide on every tick
+    (entity remap + cache invalidate + chunk reinject churn in the product path).
+    The policy must refuse to slide instead of thrashing."""
+    g = EarthGrid()
+    win = LocalWindow(
+        grid=g,
+        size=64,
+        enable_longitude_wrap=True,
+        multiplayer_origin_mode="SoloSlide",
+    )
+    win.center_on_absolute(1_000_000, 2_000_000)
+    origin = (win.origin_x, win.origin_z)
+    slid1, nx, nz, _, _ = win.tick_player_local(5, 5)
+    slid2, nx2, nz2, _, _ = win.tick_player_local(nx, nz)
+    slid3, *_ = win.tick_player_local(nx2, nz2)
+    assert slid1 is False and slid2 is False and slid3 is False
+    assert (win.origin_x, win.origin_z) == origin
+
+
 def test_multi_player_union_keeps_far_bubbles():
     """Far-apart players: hot set is union; single-center would drop one bubble."""
     foci = [(1000, 2000), (5_000_000, 8_000_000)]

@@ -143,6 +143,11 @@ class LocalWindow:
 
         half = self.size // 2
         margin = max(64, self.size // 6)
+        # Degenerate tiny window: the band covers the whole host, so every
+        # position reads as outside and the origin would slide on every tick
+        # (mirrors SessionOriginPolicy.NeedsRecentering degenerate-window guard).
+        if margin >= half:
+            return False, local_x, local_z, earth_x, earth_z
         center = half
         drift_x = abs(local_x - center)
         drift_z = abs(local_z - center)

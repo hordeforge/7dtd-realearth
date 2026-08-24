@@ -205,6 +205,13 @@ namespace RealEarth
                 LocalWindowSize = Math.Min(WorldWidth, WorldHeight);
                 warnings.Add($"LocalWindowSize <= 0; reset to {LocalWindowSize}.");
             }
+            else if (LocalWindowSize < 256)
+            {
+                warnings.Add(
+                    $"LocalWindowSize ({LocalWindowSize}) < 256: the recenter band cannot form " +
+                    "(margin would cover the whole window), so origin slides stay off. " +
+                    "Raise LocalWindowSize (512-1024 recommended).");
+            }
             if (SeaLevelGameY <= 0)
             {
                 SeaLevelGameY = 100;

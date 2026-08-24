@@ -59,6 +59,12 @@ namespace RealEarth
         {
             int half = localWindowSize / 2;
             int margin = Math.Max(64, localWindowSize / 6);
+            // Degenerate tiny window: the band covers the whole host, so every
+            // position reads as "outside" and the origin would slide on every
+            // tick (entity remap + hot-cache invalidate + chunk reinject churn).
+            // No meaningful center band exists → never demand a slide.
+            if (margin >= half)
+                return false;
             int maxDrift = half - margin;
             int driftX = Math.Abs(localX - half);
             int driftZ = Math.Abs(localZ - half);

@@ -83,6 +83,9 @@ def allow_origin_slide(mode: str, window: int, ww: int, wh: int, players: int) -
 def needs_recentering(lx: int, lz: int, window: int) -> bool:
     half = window // 2
     margin = max(64, window // 6)
+    if margin >= half:
+        # Tiny window: band covers the whole host; slides would run every tick.
+        return False
     max_drift = half - margin
     if abs(lx - half) > max_drift or abs(lz - half) > max_drift:
         return True
@@ -99,10 +102,17 @@ def test_p2_fold_and_shared_fixed():
     assert allow_origin_slide("SharedSlide", 1024, 40_000_000, 20_000_000, -1) is False
     assert needs_recentering(10, 512, 1024) is True
     assert needs_recentering(512, 512, 1024) is False
+    # Degenerate tiny windows: band covers the whole window, so no position may
+    # demand a recenter (a per-tick slide loop would thrash remap/reinject).
+    for tiny in (64, 100, 128):
+        for lx, lz in ((0, 0), (tiny // 2, tiny // 2), (tiny - 1, tiny - 1)):
+            assert needs_recentering(lx, lz, tiny) is False, (lx, lz, tiny)
     src = _read("SessionOriginPolicy.cs")
     assert "AllowOriginSlide" in src
     assert "SharedFixed" in src
     assert "RemapLocalAfterOriginDelta" in src
+    # Degenerate-window guard shipped with the product policy, not only the mirror.
+    assert "margin >= half" in src
     ws = _read("WorldSession.cs")
     assert "SessionOriginPolicy.AllowOriginSlide" in ws
     assert "SessionOriginPolicy.NeedsRecentering" in ws
