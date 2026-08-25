@@ -71,7 +71,7 @@ install_one() {
     MapMode=Streamed \
     SingleWorldSession=true \
     EnableEngineHeightMod=true \
-    "EngineHeightStockSafe=true" \
+    "EngineHeightStockSafe=false" \
     EngineMaxGameY="$ENGINE_MAX" \
     EngineHeightOneToOne=true \
     "EngineHeightPreferVanillaCeiling=false" \

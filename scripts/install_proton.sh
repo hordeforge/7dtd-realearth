@@ -122,9 +122,9 @@ cfg["EngineHeightOneToOne"] = bool(cfg.get("EngineHeightOneToOne", True))
 cfg["EngineHeightPreferVanillaCeiling"] = bool(
     cfg.get("EngineHeightPreferVanillaCeiling", False)
 )
-# Streamed: keep wrap on for full-planet; regional demo pack manifest overrides at runtime
+# Streamed: wrap follows the final canvas width (full planet only), matching
+# ModApi.TryApplyPackManifest and docs/MODLET.md ("full-planet canvases only").
 if map_mode.lower() == "streamed":
-    cfg["EnableLongitudeWrap"] = True
     cfg["LocalWindowSize"] = int(cfg.get("LocalWindowSize") or 1024)
     # Prefer demo pack dimensions when present so Streamed samples resolve
     man = demo / "earth.manifest.json"
@@ -135,9 +135,6 @@ if map_mode.lower() == "streamed":
             cfg["WorldHeight"] = int(m["world_height"])
             cfg["TileSize"] = int(m.get("tile_size") or 512)
             cfg["LocalWindowSize"] = min(cfg["LocalWindowSize"], cfg["WorldWidth"], cfg["WorldHeight"])
-            # regional demo: no antimeridian wrap on small canvas
-            if cfg["WorldWidth"] < 10_000_000:
-                cfg["EnableLongitudeWrap"] = False
             bbox = m.get("bbox") or {}
             if bbox:
                 cfg["BboxWest"] = float(bbox["west"])
@@ -146,6 +143,8 @@ if map_mode.lower() == "streamed":
                 cfg["BboxNorth"] = float(bbox["north"])
                 cfg["DefaultSpawnLon"] = (cfg["BboxWest"] + cfg["BboxEast"]) * 0.5
                 cfg["DefaultSpawnLat"] = (cfg["BboxSouth"] + cfg["BboxNorth"]) * 0.5
+    # Antimeridian wrap only on full-planet canvases; regional packs must not wrap.
+    cfg["EnableLongitudeWrap"] = int(cfg.get("WorldWidth") or 0) >= 10_000_000
 else:
     cfg["EnableLongitudeWrap"] = False
     cfg["LocalWindowSize"] = int(cfg.get("LocalWindowSize") or 1024)

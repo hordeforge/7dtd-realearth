@@ -48,6 +48,20 @@ def test_packaged_config_ships_debug_fow_off():
     assert 'cfg.setdefault("DebugMapRevealRadiusChunks", 0)' in body
 
 
+def test_height_pack_install_ships_stocksafe_off():
+    """install_height_pack.sh must not opt installs into StockSafe compress
+    (HEIGHT_LIMITS.md: operator opt-in only; silent 0-250 squash otherwise)."""
+    src = _read("scripts/install_height_pack.sh")
+    assert '"EngineHeightStockSafe=false"' in src, (
+        "install_height_pack.sh must write EngineHeightStockSafe=false "
+        "(unexpanded engines must hit the loud ExpandProductGuard, not compress)"
+    )
+    for path in sorted((ROOT / "scripts").glob("*.sh")):
+        assert "EngineHeightStockSafe=true" not in path.read_text(encoding="utf-8"), (
+            f"{path.name} forces EngineHeightStockSafe=true (not product)"
+        )
+
+
 def test_install_script_validates_map_mode():
     """MAP_MODE other than Streamed|Baked must fail the install, not become Baked."""
     src = _read("scripts/install_proton.sh")
