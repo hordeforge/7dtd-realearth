@@ -2,6 +2,8 @@ using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
+using System.Security.Cryptography;
+using System.Text;
 using Mono.Cecil;
 using Mono.Cecil.Cil;
 
@@ -124,6 +126,7 @@ namespace RealEarth.EnginePatcher
             string? gameDll = null;
             bool dryRun = false;
             bool force = false;
+            bool verify = false;
             for (int i = 0; i < args.Length; i++)
             {
                 // Unknown flags must hard-fail: a typo'd --dryrun would otherwise
@@ -153,6 +156,7 @@ namespace RealEarth.EnginePatcher
                 }
                 else if (args[i] == "--dry-run") dryRun = true;
                 else if (args[i] == "--force") force = true;
+                else if (args[i] == "--verify") verify = true;
                 else if (args[i] == "--help" || args[i] == "-h")
                 {
                     PrintHelp();
@@ -162,7 +166,7 @@ namespace RealEarth.EnginePatcher
                 {
                     Console.Error.WriteLine(
                         "ERROR: unknown argument: " + args[i] +
-                        " (valid: --dll <path> --ydim <n> --dry-run --force)");
+                        " (valid: --dll <path> --ydim <n> --dry-run --force --verify)");
                     PrintHelp();
                     return 2;
                 }
@@ -186,13 +190,24 @@ namespace RealEarth.EnginePatcher
                 return 2;
             }
 
+            string marked = gameDll + ".re_height_expanded";
+
+            // Verify mode never analyzes or writes the DLL: it compares the current
+            // bytes against the sha256 recorded in the marker at expand time, so
+            // post-expand drift (Steam verify, a second mod overwriting the DLL,
+            // manual tampering) is detected instead of silently running patched-off.
+            if (verify)
+            {
+                Console.WriteLine("RealEarth Engine Height Patcher (safe Y-only): verify mode");
+                return VerifyAgainstMarker(gameDll, marked);
+            }
+
             Console.WriteLine("RealEarth Engine Height Patcher (safe Y-only)");
             Console.WriteLine("  target YDim = {0} (2^{1}), layers = {2} x {3}", TargetYDim, TargetYPow, TargetLayers, LayerHeight);
             Console.WriteLine("  dll = {0}", gameDll);
             Console.WriteLine("  dryRun = {0}", dryRun);
 
             string bak = gameDll + ".re_stock_bak";
-            string marked = gameDll + ".re_height_expanded";
 
             if (File.Exists(marked) && !force && !dryRun)
             {
@@ -241,7 +256,7 @@ namespace RealEarth.EnginePatcher
                         Console.WriteLine("Already at target expand (no further rewrites).");
                         if (!dryRun && !File.Exists(marked))
                         {
-                            WriteMarker(marked);
+                            WriteMarker(marked, gameDll);
                             Console.WriteLine("Marker restored: " + marked);
                         }
                         return 0;
@@ -260,7 +275,7 @@ namespace RealEarth.EnginePatcher
                         Console.WriteLine("Backup written: " + bak);
                     }
                     module.Write();
-                    WriteMarker(marked);
+                    WriteMarker(marked, gameDll);
                     Console.WriteLine("Patched OK. Marker: " + marked);
                     Console.WriteLine("If the game fails to boot, restore:");
                     Console.WriteLine("  cp -a \"" + bak + "\" \"" + gameDll + "\"");
@@ -275,7 +290,12 @@ namespace RealEarth.EnginePatcher
             return 0;
         }
 
-        static void WriteMarker(string marked)
+        /// <summary>
+        /// Record the expand facts plus the sha256 of the DLL as written, so
+        /// <see cref="VerifyAgainstMarker"/> can detect post-expand drift of the
+        /// patched game DLL (T5 residual in docs/THREAT_MODEL.md).
+        /// </summary>
+        static void WriteMarker(string marked, string gameDll)
         {
             File.WriteAllText(
                 marked,
@@ -284,16 +304,71 @@ namespace RealEarth.EnginePatcher
                 "YPow=" + TargetYPow + "\n" +
                 "Layers=" + TargetLayers + "\n" +
                 "rules=no-xz-maps,no-ypow-shift,layer-storage,y-bound-methods\n" +
+                "sha256=" + Sha256Hex(File.ReadAllBytes(gameDll)) + "\n" +
                 "utc=" + DateTime.UtcNow.ToString("o") + "\n");
+        }
+
+        static string Sha256Hex(byte[] data)
+        {
+            var sb = new StringBuilder(64);
+            using (SHA256 sha = SHA256.Create())
+            {
+                foreach (byte b in sha.ComputeHash(data))
+                    sb.Append(b.ToString("x2", System.Globalization.CultureInfo.InvariantCulture));
+            }
+            return sb.ToString();
+        }
+
+        /// <summary>
+        /// Exit 0 when the DLL bytes match the expand-time hash; 1 on mismatch;
+        /// 3 when there is no marker or the marker predates hash recording.
+        /// </summary>
+        static int VerifyAgainstMarker(string dllPath, string markedPath)
+        {
+            if (!File.Exists(markedPath))
+            {
+                Console.Error.WriteLine(
+                    "ERROR: no expand marker to verify against: " + markedPath +
+                    " (run make engine-expand first)");
+                return 3;
+            }
+            string? expected = null;
+            foreach (string line in File.ReadLines(markedPath))
+            {
+                if (line.StartsWith("sha256=", StringComparison.Ordinal))
+                    expected = line.Substring("sha256=".Length).Trim();
+            }
+            if (string.IsNullOrEmpty(expected))
+            {
+                Console.Error.WriteLine(
+                    "ERROR: marker has no sha256 record (expand ran with an older patcher); " +
+                    "re-run make engine-expand to add one");
+                return 3;
+            }
+            string actual = Sha256Hex(File.ReadAllBytes(dllPath));
+            if (!string.Equals(actual, expected, StringComparison.OrdinalIgnoreCase))
+            {
+                Console.Error.WriteLine(
+                    "VERIFY FAILED: Assembly-CSharp.dll does not match the expand-time hash." + Environment.NewLine +
+                    "  expected: " + expected + Environment.NewLine +
+                    "  actual:   " + actual + Environment.NewLine +
+                    "The DLL changed after the YDim expand (Steam verify, another mod, or tampering)." + Environment.NewLine +
+                    "Re-run make engine-expand to re-establish a known state.");
+                return 1;
+            }
+            Console.WriteLine(
+                "Verify OK: DLL matches the expand-time sha256 recorded in the marker (" + actual + ")");
+            return 0;
         }
 
         static void PrintHelp()
         {
             Console.WriteLine(
-                "Usage: EngineHeightPatcher [--dll PATH] [--ydim N] [--dry-run] [--force]\n" +
+                "Usage: EngineHeightPatcher [--dll PATH] [--ydim N] [--dry-run] [--force] [--verify]\n" +
                 "\n" +
                 "Safe Y-only expand: layer arrays + vertical bounds. Does NOT expand XZ maps.\n" +
-                "--ydim: power of two (default 16384 Everest-scale; try 512/1024 for lighter tests).\n");
+                "--ydim: power of two (default 16384 Everest-scale; try 512/1024 for lighter tests).\n" +
+                "--verify: compare the DLL against the sha256 recorded at expand time; exit 1 on drift.\n");
         }
 
         static int PatchConstantMetadata(ModuleDefinition module, ref int atTarget)

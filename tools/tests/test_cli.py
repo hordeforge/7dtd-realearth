@@ -6,13 +6,32 @@ from pathlib import Path
 import pytest
 from click.testing import CliRunner
 
-from realearth.cli import _safe_name_component, main
+from realearth.cli import _display_text, _safe_name_component, main
 
 
 def test_version_exits_zero() -> None:
     result = CliRunner().invoke(main, ["--version"])
     assert result.exit_code == 0
     assert "version" in result.stdout
+
+
+@pytest.mark.parametrize(
+    "hostile",
+    [
+        "\x1b]52;c;EVIL\x07",  # OSC 52 clipboard capture
+        "\x1b[31mred\x1b[0m",  # ANSI color escape
+        "bad\rOVERWRITE",  # carriage-return line rewrite
+        "line1\nline2",  # newline injection
+    ],
+)
+def test_display_text_strips_control_chars(hostile: str) -> None:
+    safe = _display_text(hostile)
+    assert all(ch.isprintable() for ch in safe)
+
+
+def test_display_text_keeps_plain_names() -> None:
+    assert _display_text("São Paulo") == "São Paulo"
+    assert _display_text(42) == "42"
 
 
 def test_safe_name_component_accepts_plain_names() -> None:

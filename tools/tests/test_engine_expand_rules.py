@@ -87,9 +87,23 @@ def test_rerun_never_labels_expanded_dll_as_stock():
 
 def test_marker_healed_after_crash_between_write_and_marker():
     """Crash between module.Write() and marker creation leaves a patched DLL without
-    a marker; a plain re-run must recognize it (constants at target) and restore the
-    marker instead of failing with exit 3."""
+    a marker; a plain re-run must recognize it (constants at target) and restore
+    the marker instead of failing with exit 3."""
     src = _src()
     assert "atTarget" in src
     assert "atTarget++" in src
     assert "Marker restored" in src
+
+
+def test_marker_records_dll_sha256_and_verify_mode_detects_drift():
+    """Post-expand drift detection (docs/THREAT_MODEL.md T5 residual): every marker
+    records the sha256 of the DLL as expanded, and --verify compares current bytes
+    against it without analyzing or writing the DLL."""
+    src = _src()
+    marker_body = src[src.index("static void WriteMarker") :]
+    assert "Sha256Hex(File.ReadAllBytes(gameDll))" in marker_body
+    assert 'line.StartsWith("sha256="' in src
+    assert "VerifyAgainstMarker" in src
+    # Verify must run before any write path and never reach ModuleDefinition.ReadModule.
+    assert src.index("if (verify)") < src.index("ModuleDefinition.ReadModule")
+    assert '"--verify"' in src

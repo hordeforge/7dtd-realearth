@@ -28,6 +28,16 @@ def _require_finite(name: str, value: float) -> None:
         raise click.BadParameter(f"must be a finite number, got {value}", param_hint=name)
 
 
+def _display_text(value: object) -> str:
+    """Make an untrusted pack string safe to echo to the terminal.
+
+    Pack strings (POI names, bands) can carry ANSI escapes or CR/LF; printing
+    them verbatim lets a hostile pack rewrite terminal output (same class of
+    log injection the viewer server sanitizes). Drop non-printables.
+    """
+    return "".join(ch for ch in str(value) if ch.isprintable())
+
+
 def _safe_name_component(meta: dict[str, object], key: str, default: str) -> str:
     """Read a single path component from pack metadata; never trust it verbatim.
 
@@ -235,8 +245,8 @@ def inspect_tile_cmd(pack_dir: str, tx: int, tz: int) -> None:
         click.echo(f"pois: {len(pois)}")
         for p in pois:
             click.echo(
-                f"  - {p.get('name')} ({p.get('band')}) "
-                f"@ {p.get('local_x')},{p.get('local_z')}"
+                f"  - {_display_text(p.get('name'))} ({_display_text(p.get('band'))}) "
+                f"@ {_display_text(p.get('local_x'))},{_display_text(p.get('local_z'))}"
             )
 
 

@@ -65,7 +65,9 @@ function bboxFrom(candidate: unknown): Bbox {
 function elevRawFrom(candidate: unknown): ElevRawMeta | null {
   const record = asRecord(candidate);
   const file = asString(record.file);
-  if (file === "") {
+  // File fields are joined onto the pack base URL like the pack path itself;
+  // a hostile viewer.json must not steer image loads out of the mod tree.
+  if (file === "" || !isSafePackPath(file)) {
     return null;
   }
   const scaleM = asNumberOr(record.scale_m, DEFAULT_ELEV_SCALE_M);
@@ -100,8 +102,11 @@ function layerListFrom(candidate: unknown): Array<LayerInfo> {
   for (const entry of candidate) {
     const record = asRecord(entry);
     const id = asString(record.id);
-    if (id !== "") {
-      layers.push({ id, file: asString(record.file), label: asString(record.label) });
+    const file = asString(record.file);
+    // Same path rules as the pack path: layer files are joined onto
+    // `${base}` for every fetch (see isSafePackPath above).
+    if (id !== "" && isSafePackPath(file)) {
+      layers.push({ id, file, label: asString(record.label) });
     }
   }
   return layers;

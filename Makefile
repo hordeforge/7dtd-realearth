@@ -11,7 +11,7 @@ SHELL := /bin/bash
 	build build-mod dll \
 	install install-full install-baked install-streamed install-height install-height-500 \
 	height-test height-map height-map-500 height-map-install height-map-500-install \
-	engine-audit engine-expand engine-expand-dry engine-restore dedicated-height-test \
+	engine-audit engine-expand engine-expand-dry engine-verify engine-restore dedicated-height-test \
 	demo bake bake-height package \
 	viewer viewer-build serve viewer-lint \
 	webmod webmod-export webmod-lint \
@@ -89,6 +89,7 @@ help:
 	@echo "    make engine-audit       Print Assembly-CSharp YDim / cMaxHeight"
 	@echo "    make engine-expand      RealEarth YDim expand (part of this mod)"
 	@echo "    make engine-expand-dry  Preview IL patches without writing"
+	@echo "    make engine-verify      Check the DLL against the expand-time sha256"
 	@echo "    make engine-restore     Restore stock Assembly-CSharp from backup"
 	@echo ""
 	@echo "  Data / worlds"
@@ -217,6 +218,13 @@ engine-expand:
 engine-expand-dry:
 	@chmod +x "$(SCRIPTS)/patch_engine_height.sh"
 	@"$(SCRIPTS)/patch_engine_height.sh" --dry-run
+
+# Detect post-expand drift of the patched DLL (Steam verify, a second mod
+# overwriting Assembly-CSharp.dll, tampering): compares current bytes against
+# the sha256 recorded in the marker at expand time. Exit 1 = mismatch.
+engine-verify:
+	@chmod +x "$(SCRIPTS)/patch_engine_height.sh"
+	@"$(SCRIPTS)/patch_engine_height.sh" --verify
 
 engine-restore:
 	@set -e; \
