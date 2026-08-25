@@ -1,6 +1,6 @@
 # Python
 tools/.venv/
-tools/**/__pycache__/
+__pycache__/
 tools/**/*.egg-info/
 tools/.pytest_cache/
 tools/dist/

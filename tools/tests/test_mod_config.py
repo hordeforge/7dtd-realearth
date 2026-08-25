@@ -1,18 +1,13 @@
-"""Tests for scripts/mod_config.py (shared config writer for install scripts)."""
+"""Tests for realearth.mod_config (shared config writer for install scripts)."""
 
 from __future__ import annotations
 
-import importlib.util
 import json
 from pathlib import Path
 
-ROOT = Path(__file__).resolve().parents[2]
-_HELPER_PATH = ROOT / "scripts" / "mod_config.py"
+from realearth import mod_config
 
-_spec = importlib.util.spec_from_file_location("mod_config", _HELPER_PATH)
-assert _spec is not None and _spec.loader is not None
-mod_config = importlib.util.module_from_spec(_spec)
-_spec.loader.exec_module(mod_config)
+ROOT = Path(__file__).resolve().parents[2]
 
 
 def write_config(tmp_path: Path, argv: list[str]) -> dict:
