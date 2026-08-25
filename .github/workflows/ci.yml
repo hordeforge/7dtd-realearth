@@ -45,6 +45,9 @@ jobs:
       - run: shellcheck scripts/*.sh
       - run: make test-fast
       - run: make -C tools lint
+      # The lint scripts run oxlint, tsc and vnu through bunx at pinned
+      # versions; the runner preinstalls node, but not bun.
+      - uses: oven-sh/setup-bun@0c5077e51419868618aeaa5fe8019c62421857d6 # v2.2.0
       - run: bash scripts/lint-viewer.sh
       - run: bash scripts/lint-webmod.sh
 
