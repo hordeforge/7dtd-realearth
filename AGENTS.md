@@ -7,7 +7,7 @@ globe-style map, and optional **YDim expand**.
 Not a general optimizer. Not an APM suite. Not the load generator (that moved to
 sibling `7dtd-loadgen`).
 
-Workspace root guide: [`../MODDING_BEST_PRACTICES.md`](../MODDING_BEST_PRACTICES.md)
+Workspace root guide: [`hordeforge/.github` MODDING_BEST_PRACTICES.md](https://github.com/hordeforge/.github/blob/main/MODDING_BEST_PRACTICES.md)
 
 ## Scope
 
