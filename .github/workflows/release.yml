@@ -1,0 +1,45 @@
+name: release
+
+# Tag-driven releases (hordeforge/.github REPOSITORY_STANDARDS.md, §8): a
+# vX.Y.Z tag must agree with the version this repository actually ships, so a
+# mistyped or forgotten bump is rejected instead of becoming a release nobody
+# can reproduce.
+#
+# The mod archive is deliberately NOT built here. `make package` compiles
+# against the dedicated server's own assemblies, which a hosted runner does
+# not have; a maintainer with a game install runs `make package` and attaches
+# the zip. Gating the tag is the half that can be proven automatically, and
+# asserting the other half here would be a claim, not evidence.
+
+on:
+  push:
+    tags: ["v*"]
+
+permissions:
+  contents: read
+
+jobs:
+  verify-tag:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      # Actions pinned by full commit SHA (tag in comment) so a moved tag or a
+      # compromised major-version release cannot inject code into the pipeline.
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
+      - name: Check the tag matches ModInfo.xml
+        shell: bash
+        run: |
+          set -euo pipefail
+          TAG="${GITHUB_REF_NAME}"
+          MANIFEST="ModInfo.xml"
+          case "$TAG" in v*) ;; *) echo "ERROR: tag '$TAG' does not start with 'v'" >&2; exit 1;; esac
+          SHIPPED="$(sed -n 's/.*<Version[^>]*value="\([^"]*\)".*/\1/p' "$MANIFEST" | head -1)"
+          if [ -z "$SHIPPED" ]; then
+            echo "ERROR: no <Version value=\"...\"> found in $MANIFEST" >&2
+            exit 1
+          fi
+          if [ "$SHIPPED" != "${TAG#v}" ]; then
+            echo "ERROR: tag $TAG but $MANIFEST ships $SHIPPED; make them match before tagging" >&2
+            exit 1
+          fi
+          echo "ok: tag $TAG matches $MANIFEST ($SHIPPED)"
