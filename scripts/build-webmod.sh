@@ -10,9 +10,9 @@
 # collide with it on case-insensitive filesystems (macOS, Windows). The
 # packaged mod folder keeps the game-required WebMod name (see package_mod.sh).
 #
-# esbuild runs through npx pinned by ESBUILD_VERSION (same convention as
+# esbuild runs through bunx pinned by ESBUILD_VERSION (same convention as
 # scripts/lint-webmod.sh; the repo does not track package.json/node_modules).
-# After bundling, a node smoke test asserts the published object shape so a
+# After bundling, a bun smoke test asserts the published object shape so a
 # broken entry (missing route/settings keys) fails the build.
 #
 # Override locally: ESBUILD_VERSION=0.28.2 bash scripts/build-webmod.sh
@@ -25,7 +25,7 @@ out_dir="$root/webmod/build"
 
 mkdir -p "$out_dir"
 
-npx --yes "esbuild@$esbuild_version" "$root/webmod/src/index.ts" \
+bunx "esbuild@$esbuild_version" "$root/webmod/src/index.ts" \
   --bundle \
   --format=iife \
   --target=es2022 \
@@ -37,9 +37,9 @@ npx --yes "esbuild@$esbuild_version" "$root/webmod/src/index.ts" \
 cp "$root/webmod/styling.css" "$out_dir/styling.css"
 
 # The single quotes are deliberate: this is a JS program passed verbatim to
-# node; letting the shell expand $-expressions here would corrupt it.
+# bun; letting the shell expand $-expressions here would corrupt it.
 # shellcheck disable=SC2016
-node -e '
+bun -e '
 globalThis.window = globalThis;
 require(process.argv[1]);
 const webMod = globalThis.RealEarth;

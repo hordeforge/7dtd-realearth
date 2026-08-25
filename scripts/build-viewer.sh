@@ -10,7 +10,7 @@
 # through index.html's importmap. That keeps the lazy first-use CDN fetch of
 # three.js intact instead of vendoring it into the build.
 #
-# esbuild runs through npx pinned by ESBUILD_VERSION (same convention as
+# esbuild runs through bunx pinned by ESBUILD_VERSION (same convention as
 # scripts/build-webmod.sh). Outputs are generated artifacts (gitignored);
 # regenerate after editing sources: make viewer-build.
 #
@@ -25,7 +25,7 @@ out_dir="$root/viewer/js"
 
 mkdir -p "$out_dir"
 
-npx --yes "esbuild@$esbuild_version" \
+bunx "esbuild@$esbuild_version" \
   "$src_dir/app.ts" \
   "$src_dir/pack.ts" \
   "$src_dir/coerce.ts" \

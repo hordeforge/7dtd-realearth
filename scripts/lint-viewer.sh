@@ -8,14 +8,14 @@
 #      options.typeAware, so oxlint also runs the typescript/* type-aware
 #      rules through the oxlint-tsgolint binary.
 #
-# tsc/oxlint/@types/three run through npx pinned by TSC_VERSION/OXLINT_VERSION/
+# tsc/oxlint/@types/three run through bunx pinned by TSC_VERSION/OXLINT_VERSION/
 # OXLINT_TSGOLINT_VERSION/OXLINT_STANDARDS_VERSION/THREE_TYPES_VERSION. The
 # repo deliberately does not track package.json/node_modules, so the versions
 # live here as the single source of truth (same policy as lint-webmod.sh).
 # Override locally: TSC_VERSION=5.9.3 OXLINT_VERSION=1.79.0 \
 #   THREE_TYPES_VERSION=0.170.0 bash scripts/lint-viewer.sh
 #
-# Requires: node/npm (npx).
+# Requires: bun (bunx).
 
 set -euo pipefail
 
@@ -50,12 +50,13 @@ fetch_retry() {
 
 # 1. Toolchain. The @rikalabs plugin, the vendored dmmulroy/anti-slop plugin
 #    source (pinned by ANTI_SLOP_SHA; the project is vendored source, not an
-#    npm package), oxlint-tsgolint (the type-aware backend), typescript, and
-#    @types/three (globe.ts's importmap import of three) are fetched into the
-#    cache; each step is a no-op when the pinned version is already present.
-#    All npm packages are installed in one invocation: a later separate
-#    --no-save install would prune the others (each lint script therefore
-#    installs its full set and self-heals after a sibling run).
+#    npm package), oxlint-tsgolint (the type-aware backend), typescript,
+#    @types/three (globe.ts's importmap import of three), and three itself
+#    are installed into the cache; each step is a no-op when the pinned
+#    version is already present. The pinned packages go in with one additive
+#    `bun add` invocation: it merges pins into the cache manifest and never
+#    prunes what a sibling script installed (each lint script therefore adds
+#    its full set and self-heals after a sibling run).
 #    @oxlint/plugins is the plugin API the anti-slop source imports; without
 #    it the plugin cannot load. The same cache dir serves the webmod
 #    (lint-webmod.sh).
@@ -66,14 +67,21 @@ if [ ! -d "$cache_dir/anti-slop-src" ]; then
   mkdir -p "$cache_dir/anti-slop-src"
   tar xzf "$cache_dir/anti-slop.tar.gz" -C "$cache_dir/anti-slop-src" --strip-components=2 "anti-slop-$anti_slop_sha/src"
 fi
-# prefer-offline: reuse the npm cache when warm (CI cache hit) instead of
-# re-resolving against the registry on every run; cold cache fetches as usual.
-npm install --prefix "$cache_dir" --prefer-offline --no-audit --no-fund --no-save --no-package-lock \
-  "@rikalabs/oxlint-standards@$oxlint_standards_version" \
-  "oxlint-tsgolint@$oxlint_tsgolint_version" \
-  "@oxlint/plugins@$oxlint_plugins_version" \
-  "typescript@$tsc_version" \
-  "@types/three@$three_types_version" >/dev/null 2>&1 || {
+# bun add resolves from its cache when warm (CI cache hit) instead of
+# re-fetching on every run; cold cache fetches as usual. three is installed
+# (not merely declared) so the @rikalabs/no-unlisted-external-imports rule
+# sees it in the manifest dependencies while the repo itself stays free of a
+# tracked package.json.
+# type module: the vendored anti-slop plugin source is ESM; without the field
+# node reparses it with a MODULE_TYPELESS_PACKAGE_JSON warning.
+[ -f "$cache_dir/package.json" ] || printf '{"type":"module"}\n' > "$cache_dir/package.json"
+( cd "$cache_dir" && bun add --silent \
+    "@rikalabs/oxlint-standards@$oxlint_standards_version" \
+    "oxlint-tsgolint@$oxlint_tsgolint_version" \
+    "@oxlint/plugins@$oxlint_plugins_version" \
+    "typescript@$tsc_version" \
+    "@types/three@$three_types_version" \
+    "three@$three_version" ) >/dev/null 2>&1 || {
   echo "realearth: lint-viewer: could not install the pinned lint toolchain into $cache_dir (offline?)" >&2
   exit 1
 }
@@ -82,17 +90,12 @@ npm install --prefix "$cache_dir" --prefer-offline --no-audit --no-fund --no-sav
 #    walks up from viewer/src, so a symlink from viewer/node_modules to the
 #    cache's node_modules exposes @types/three without vendoring anything.
 ln -sfn "$cache_dir/node_modules" "$root/viewer/node_modules"
-npx --yes -p "typescript@$tsc_version" tsc -p "$root/viewer/tsconfig.json" --noEmit
+bunx -p "typescript@$tsc_version" tsc -p "$root/viewer/tsconfig.json" --noEmit
 
 cp "$root/.oxlintrc.jsonc" "$cache_dir/oxlintrc.jsonc"
-# The @rikalabs/no-unlisted-external-imports rule reads allowed externals
-# from the package.json next to the copied config. Declare the browser
-# externals that index.html's importmap provides at runtime so the rule can
-# enforce them while the repo itself stays free of a tracked package.json.
-printf '{"type":"module","dependencies":{"three":"%s"}}\n' "$three_version" > "$cache_dir/package.json"
 cd "$cache_dir"
 # tsgolint is not on the user's PATH; oxlint finds it via PATH lookup.
 PATH="$cache_dir/node_modules/.bin:$PATH" \
-  npx --yes "oxlint@$oxlint_version" --config oxlintrc.jsonc --deny-warnings "$src_dir"
+  bunx "oxlint@$oxlint_version" --config oxlintrc.jsonc --deny-warnings "$src_dir"
 
 echo "realearth: lint-viewer: tsc type-check and oxlint ok"
