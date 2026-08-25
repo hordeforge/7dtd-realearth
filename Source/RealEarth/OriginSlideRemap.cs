@@ -399,23 +399,71 @@ namespace RealEarth
                     if (items.Count == 0) return 0;
                     clear.Invoke(coll, null);
                     int n = 0;
+                    List<object>? lost = null;
                     foreach (var it in items)
                     {
-                        if (!TryReadXz(it, out int x, out int y, out int z))
+                        object target = it;
+                        bool moved = false;
+                        if (TryReadXz(it, out int x, out int y, out int z))
                         {
-                            add.Invoke(coll, new[] { it });
+                            SessionOriginPolicy.RemapLocalAfterOriginDelta(x, z, dOx, dOz, out int nx, out int nz);
+                            moved = nx != x || nz != z;
+                            if (moved)
+                                target = WriteXz(it, nx, y, nz) ?? it;
+                        }
+                        // Per-item guard: the set is already cleared here, so one rejected
+                        // Add must not abort the loop (the outer catch would silently drop
+                        // every remaining claim). Fall back to the untouched original so the
+                        // entry survives at its old position; only entries rejected in both
+                        // forms are actual loss, and those are logged.
+                        if (!TryAddWithFallback(add, coll, target, it))
+                        {
+                            (lost ??= new List<object>()).Add(it);
                             continue;
                         }
-                        SessionOriginPolicy.RemapLocalAfterOriginDelta(x, z, dOx, dOz, out int nx, out int nz);
-                        var rewritten = WriteXz(it, nx, y, nz) ?? it;
-                        add.Invoke(coll, new[] { rewritten });
-                        if (nx != x || nz != z) n++;
+                        if (moved && !ReferenceEquals(target, it))
+                            n++;
+                    }
+                    if (lost != null && _logBudget > 0)
+                    {
+                        _logBudget--;
+                        ModApi.Log(
+                            $"OriginSlideRemap: {lost.Count}/{items.Count} land-claim entries " +
+                            "could not be re-added after remap (collection rejected new and old keys)");
                     }
                     return n;
                 }
             }
             catch { /* ignore */ }
             return 0;
+        }
+
+        /// <summary>
+        /// Add `preferred`, falling back to `fallback` when the collection rejects it
+        /// (e.g. two claims collapsing onto the same coords). False only when both
+        /// forms fail: the entry is genuinely unrestorable.
+        /// </summary>
+        static bool TryAddWithFallback(MethodInfo add, object coll, object preferred, object fallback)
+        {
+            try
+            {
+                add.Invoke(coll, new[] { preferred });
+                return true;
+            }
+            catch
+            {
+                if (ReferenceEquals(preferred, fallback))
+                    return false;
+                try
+                {
+                    add.Invoke(coll, new[] { fallback });
+                    return true;
+                }
+                catch
+                {
+                    return false;
+                }
+            }
         }
 
         static bool TryReadXz(object vec, out int x, out int y, out int z)

@@ -134,7 +134,11 @@ namespace RealEarth
                     {
                         var p = world.GetType().GetProperty(pn);
                         var s = p?.GetValue(world)?.ToString();
-                        if (!string.IsNullOrEmpty(s) && s!.Length < 128 && s.IndexOf('/') < 0)
+                        // Reject both separators: this name is joined into save-dir
+                        // probes and becomes a cross-platform session scope id, and
+                        // '\' is a live separator on Windows game hosts.
+                        if (!string.IsNullOrEmpty(s) && s!.Length < 128
+                            && s.IndexOf('/') < 0 && s.IndexOf('\\') < 0)
                             return s;
                     }
                 }

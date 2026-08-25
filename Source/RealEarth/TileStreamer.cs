@@ -35,6 +35,11 @@ namespace RealEarth
 
         const int MissCacheMs = 10_000;
         /// <summary>
+        /// Deadline for the streamed CDN body copy (matches the HttpClient header
+        /// timeout; see FetchTileBytesAsync for why the body needs its own bound).
+        /// </summary>
+        static readonly TimeSpan BodyReadTimeout = TimeSpan.FromSeconds(12);
+        /// <summary>
         /// A focus silent this long belongs to an entity whose unload postfix never ran
         /// (the EntityPlayer OnEntityUnload/Despawn/Kill bind is best-effort reflection;
         /// a game update that renames those methods would otherwise pin every departed
@@ -445,6 +450,10 @@ namespace RealEarth
         /// <summary>
         /// GET a tile with a hard size cap (headers first, then streamed read) so a
         /// hostile CDN cannot buffer an unbounded response before validation.
+        /// The streamed copy carries its own deadline: HttpClient.Timeout stops at
+        /// the response headers under ResponseHeadersRead (net48), so without this a
+        /// CDN that accepts the request and then stalls would block the sync gen
+        /// path indefinitely.
         /// </summary>
         async Task<byte[]> FetchTileBytesAsync(string url)
         {
@@ -461,10 +470,11 @@ namespace RealEarth
             var output = new MemoryStream();
             var buffer = new byte[81920];
             using (Stream stream = await resp.Content.ReadAsStreamAsync().ConfigureAwait(false))
+            using (var readCts = new System.Threading.CancellationTokenSource(BodyReadTimeout))
             {
                 while (true)
                 {
-                    int n = await stream.ReadAsync(buffer, 0, buffer.Length).ConfigureAwait(false);
+                    int n = await stream.ReadAsync(buffer, 0, buffer.Length, readCts.Token).ConfigureAwait(false);
                     if (n <= 0) break;
                     if (output.Length + n > MaxCdnTileBytes)
                         throw new InvalidDataException("tile payload exceeds size cap");
