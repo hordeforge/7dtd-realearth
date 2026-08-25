@@ -287,7 +287,7 @@ def test_review_fixes_wired():
     ts = _read("TileStreamer.cs")
     assert "allowSyncLoad" in ts
     assert "LoadTileFireAndForget" in ts
-    assert ".tmp" in ts  # atomic CDN write
+    assert ".tmp" in _read("AtomicPublish.cs")  # atomic CDN write (shared publish helper)
     poi = _read("RuntimePoiInject.cs")
     assert "MaxPlaceFails" in poi or "_failCount" in poi
     assert "return placed" in poi
@@ -494,9 +494,30 @@ def test_tile_miss_cache_is_bounded():
 def test_cdn_publish_cleans_temp_on_failed_write():
     """A failed temp write must delete the .tmp file, not orphan it on disk."""
     ts = _read("TileStreamer.cs")
-    publish = ts[ts.index("static void PublishTileBytes") : ts.index("void QueueLoad")]
-    assert "File.WriteAllBytes(tmp, bytes)" in publish
-    assert "File.Delete(tmp)" in publish
+    assert "PublishTileBytes" in ts
+    ap = _read("AtomicPublish.cs")
+    assert "File.WriteAllBytes(tmp, bytes)" in ap
+    assert "TryDeleteQuiet(tmp)" in ap
+
+
+def test_atomic_publish_never_drops_live_file_before_swap():
+    """The Replace fallback must preserve the old copy until the new one lands.
+
+    Earlier fallbacks deleted the destination and then moved the temp in: a
+    failed Move destroyed the only good copy (session snapshot or cached tile).
+    The shared helper moves the live file to a backup first and restores it
+    when the swap fails."""
+    ts = _read("TileStreamer.cs")
+    ss = _read("SessionStateStore.cs")
+    assert "AtomicPublish.WriteAllBytes(path, bytes)" in ts
+    assert "AtomicPublish.WriteAllText(path, contents)" in ss
+    ap = _read("AtomicPublish.cs")
+    publish = ap[ap.index("static void SwapIntoPlace") :]
+    assert ".re_bak" in publish
+    # Restore path: a failed temp move puts the original content back.
+    assert "File.Move(backup, path)" in publish
+    # The live destination is never deleted directly.
+    assert "File.Delete(path)" not in ap
 
 
 # --- concurrency gates (concurrency audit) ---

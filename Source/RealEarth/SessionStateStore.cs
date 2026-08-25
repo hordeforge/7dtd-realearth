@@ -286,39 +286,11 @@ namespace RealEarth
         }
 
         /// <summary>
-        /// Atomic-ish write: unique temp + Replace so a crash mid-save can never leave a
-        /// truncated session file (which would silently reset spawn to config defaults).
+        /// Durable write via shared AtomicPublish (unique temp + Replace,
+        /// backup-move fallback that never drops the live file before its
+        /// replacement is secured).
         /// </summary>
         static void WriteTextAtomic(string path, string contents)
-        {
-            string tmp = path + "." + Guid.NewGuid().ToString("N") + ".tmp";
-            try
-            {
-                File.WriteAllText(tmp, contents);
-            }
-            catch
-            {
-                TryDeleteQuiet(tmp);
-                throw;
-            }
-            try
-            {
-                if (File.Exists(path))
-                    File.Replace(tmp, path, null);
-                else
-                    File.Move(tmp, path);
-            }
-            catch
-            {
-                TryDeleteQuiet(tmp);
-                throw;
-            }
-        }
-
-        static void TryDeleteQuiet(string path)
-        {
-            try { if (File.Exists(path)) File.Delete(path); }
-            catch { /* best effort */ }
-        }
+            => AtomicPublish.WriteAllText(path, contents);
     }
 }

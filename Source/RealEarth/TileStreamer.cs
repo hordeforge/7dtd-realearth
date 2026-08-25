@@ -434,50 +434,13 @@ namespace RealEarth
             }
         }
 
-        /// <summary>Atomic-ish publish: unique temp + Replace so Exists never sees a delete gap.</summary>
+        /// <summary>
+        /// Durable publish via shared AtomicPublish (unique temp + Replace,
+        /// backup-move fallback that never drops the live file before its
+        /// replacement is secured).
+        /// </summary>
         static void PublishTileBytes(string path, byte[] bytes)
-        {
-            var dir = Path.GetDirectoryName(path);
-            if (!string.IsNullOrEmpty(dir))
-                Directory.CreateDirectory(dir);
-            string tmp = path + "." + Guid.NewGuid().ToString("N") + ".tmp";
-            try
-            {
-                File.WriteAllBytes(tmp, bytes);
-            }
-            catch
-            {
-                // Do not orphan the temp file on a failed write (disk full, IO error).
-                try { if (File.Exists(tmp)) File.Delete(tmp); } catch { /* ignore */ }
-                throw;
-            }
-            try
-            {
-                if (File.Exists(path))
-                {
-                    // Replace is atomic on most platforms when destination exists.
-                    File.Replace(tmp, path, null);
-                }
-                else
-                {
-                    File.Move(tmp, path);
-                }
-            }
-            catch
-            {
-                try
-                {
-                    if (File.Exists(path))
-                        File.Delete(path);
-                    File.Move(tmp, path);
-                }
-                catch
-                {
-                    try { if (File.Exists(tmp)) File.Delete(tmp); } catch { /* ignore */ }
-                    throw;
-                }
-            }
-        }
+            => AtomicPublish.WriteAllBytes(path, bytes);
 
         /// <summary>
         /// GET a tile with a hard size cap (headers first, then streamed read) so a
