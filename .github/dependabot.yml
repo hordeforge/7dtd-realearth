@@ -1,0 +1,14 @@
+# The mod and the GIS tools reference NuGet packages; the SHA-pinned CI
+# actions are the other dependency surface.
+version: 2
+updates:
+  - package-ecosystem: nuget
+    directories:
+      - /Source/RealEarth
+      - /tools/network_protocol_inspector
+    schedule:
+      interval: weekly
+  - package-ecosystem: github-actions
+    directory: /
+    schedule:
+      interval: weekly
