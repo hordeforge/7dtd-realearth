@@ -73,7 +73,7 @@ fi
 # sees it in the manifest dependencies while the repo itself stays free of a
 # tracked package.json.
 # type module: the vendored anti-slop plugin source is ESM; without the field
-# node reparses it with a MODULE_TYPELESS_PACKAGE_JSON warning.
+# the runtime reparses it with a MODULE_TYPELESS_PACKAGE_JSON warning.
 [ -f "$cache_dir/package.json" ] || printf '{"type":"module"}\n' > "$cache_dir/package.json"
 ( cd "$cache_dir" && bun add --silent \
     "@rikalabs/oxlint-standards@$oxlint_standards_version" \

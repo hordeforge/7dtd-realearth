@@ -68,7 +68,7 @@ fi
 # bun add resolves from its cache when warm instead of re-fetching on every
 # run; cold cache fetches as usual.
 # type module: the vendored anti-slop plugin source is ESM; without the field
-# node reparses it with a MODULE_TYPELESS_PACKAGE_JSON warning.
+# the runtime reparses it with a MODULE_TYPELESS_PACKAGE_JSON warning.
 [ -f "$cache_dir/package.json" ] || printf '{"type":"module"}\n' > "$cache_dir/package.json"
 ( cd "$cache_dir" && bun add --silent \
     "@rikalabs/oxlint-standards@$oxlint_standards_version" \

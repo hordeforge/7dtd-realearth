@@ -51,7 +51,7 @@ name (see `scripts/package_mod.sh`).
 ## Build / lint / export
 
 No `package.json`/`node_modules` are tracked; tsc/esbuild/oxlint run through
-`npx` with versions pinned inside the scripts (same policy as
+`bunx` with versions pinned inside the scripts (same policy as
 `../zdtd-server-server/scripts/lint-webui.sh`).
 
 ```bash
