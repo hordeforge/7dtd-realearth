@@ -24,6 +24,17 @@ namespace RealEarth
         static Type? _navMgrType;
         static MethodInfo? _navRegMethod;
 
+        /// <summary>
+        /// Gates all mutable label state above. TickPlayer runs on the main thread
+        /// (player tick postfix) while console commands (`recities` over telnet)
+        /// execute off-thread; unsynchronized HashSet/Dictionary mutation corrupts
+        /// buckets, and a Reset clearing _catalog/_discovered mid-tick throws inside
+        /// the discovery loops. Mirrors RuntimePoiInject._stampGate. Lock bodies stay
+        /// free of other mod locks except the streamer/store locks taken by SampleY
+        /// (ordering _cityGate → streamer/store; no reverse edge exists).
+        /// </summary>
+        static readonly object _cityGate = new object();
+
         public sealed class Place
         {
             public string Name = "";
@@ -46,17 +57,27 @@ namespace RealEarth
             public int CachedLocalZ;
         }
 
-        public static int DiscoveredCount => _discovered.Count;
-        public static int CatalogCount => _catalog?.Count ?? 0;
+        public static int DiscoveredCount
+        {
+            get { lock (_cityGate) return _discovered.Count; }
+        }
+
+        public static int CatalogCount
+        {
+            get { lock (_cityGate) return _catalog?.Count ?? 0; }
+        }
 
         public static void Reset()
         {
-            UnregisterAll();
-            _discovered.Clear();
-            _catalog = null;
-            _catalogByName = null;
-            _tickThrottle = 0;
-            _catalogRetry = 30;
+            lock (_cityGate)
+            {
+                UnregisterAll();
+                _discovered.Clear();
+                _catalog = null;
+                _catalogByName = null;
+                _tickThrottle = 0;
+                _catalogRetry = 30;
+            }
         }
 
         /// <summary>
@@ -77,7 +98,7 @@ namespace RealEarth
             p.LocalValid = true;
         }
 
-        /// <summary>Drop memoized local coords after an origin change.</summary>
+        /// <summary>Drop memoized local coords after an origin change. Caller holds _cityGate.</summary>
         public static void InvalidateLocalCache()
         {
             if (_catalog == null) return;
@@ -88,7 +109,8 @@ namespace RealEarth
         /// <summary>Legacy entry: no player pos (only loads catalog / retries manager).</summary>
         public static void TryPlaceIfConfigured()
         {
-            EnsureCatalog();
+            lock (_cityGate)
+                EnsureCatalog();
         }
 
         /// <summary>
@@ -102,77 +124,80 @@ namespace RealEarth
             if (cfg == null || !cfg.ShowCityNamesOnMap)
                 return;
 
-            if (!force && _tickThrottle > 0)
-            {
-                _tickThrottle--;
-                return;
-            }
-            _tickThrottle = 15; // ~0.25s at 60fps-ish ticks; cheap distance checks
-
             try
             {
-                if (!EnsureCatalog())
-                    return;
-                if (_catalog == null || _catalog.Count == 0)
-                    return;
-
-                object? mgr = GetNavObjectManager();
-                if (mgr == null)
-                    return;
-                MethodInfo? reg = ResolveRegister(mgr.GetType());
-                if (reg == null)
-                    return;
-
-                var session = ModApi.Session;
-                if (session == null)
-                    return;
-
-                // P6 budget: honor config but hard-cap (never ClampPrefabsInArea(cfg,cfg) identity).
-                const int hardMaxLabels = 500;
-                int maxLabels = Math.Min(Math.Max(1, cfg.CityMapMaxLabels), hardMaxLabels);
-                int minPop = Math.Max(0, cfg.CityMapMinPopulation);
-                float scale = cfg.CityMapDiscoverRadiusScale > 0.05f
-                    ? cfg.CityMapDiscoverRadiusScale
-                    : 1f;
-
-                // Re-place discovered pins if handles were dropped (e.g. origin slide).
-                // Marker position is always the city center, never the player.
-                foreach (var name in _discovered)
+                lock (_cityGate)
                 {
-                    Place? p = FindByName(name);
-                    if (p == null) continue;
-                    if (!_navByName.ContainsKey(p.Name))
-                        EnsureMarker(mgr, reg, session, p);
-                }
-
-                if (_discovered.Count >= maxLabels)
-                    return;
-
-                foreach (var p in _catalog)
-                {
-                    if (_discovered.Count >= maxLabels)
-                        break;
-                    if (p.Population < minPop && minPop > 0)
-                        continue;
-                    if (_discovered.Contains(p.Name))
-                        continue;
-
-                    LonLatToLocalCached(session, p, out int cx, out int cz);
-                    long dx = (long)playerLocalX - cx;
-                    long dz = (long)playerLocalZ - cz;
-                    long distSq = dx * dx + dz * dz;
-                    long edge = Math.Max(32, (int)(p.EdgeRadiusBlocks * scale));
-
-                    // Reaching the edge is enough to discover; pin at center.
-                    // Squared compare avoids a sqrt per place per window.
-                    if (distSq <= edge * edge)
+                    if (!force && _tickThrottle > 0)
                     {
-                        if (EnsureMarker(mgr, reg, session, p))
+                        _tickThrottle--;
+                        return;
+                    }
+                    _tickThrottle = 15; // ~0.25s at 60fps-ish ticks; cheap distance checks
+
+                    if (!EnsureCatalog())
+                        return;
+                    if (_catalog == null || _catalog.Count == 0)
+                        return;
+
+                    object? mgr = GetNavObjectManager();
+                    if (mgr == null)
+                        return;
+                    MethodInfo? reg = ResolveRegister(mgr.GetType());
+                    if (reg == null)
+                        return;
+
+                    var session = ModApi.Session;
+                    if (session == null)
+                        return;
+
+                    // P6 budget: honor config but hard-cap (never ClampPrefabsInArea(cfg,cfg) identity).
+                    const int hardMaxLabels = 500;
+                    int maxLabels = Math.Min(Math.Max(1, cfg.CityMapMaxLabels), hardMaxLabels);
+                    int minPop = Math.Max(0, cfg.CityMapMinPopulation);
+                    float scale = cfg.CityMapDiscoverRadiusScale > 0.05f
+                        ? cfg.CityMapDiscoverRadiusScale
+                        : 1f;
+
+                    // Re-place discovered pins if handles were dropped (e.g. origin slide).
+                    // Marker position is always the city center, never the player.
+                    foreach (var name in _discovered)
+                    {
+                        Place? p = FindByName(name);
+                        if (p == null) continue;
+                        if (!_navByName.ContainsKey(p.Name))
+                            EnsureMarker(mgr, reg, session, p);
+                    }
+
+                    if (_discovered.Count >= maxLabels)
+                        return;
+
+                    foreach (var p in _catalog)
+                    {
+                        if (_discovered.Count >= maxLabels)
+                            break;
+                        if (p.Population < minPop && minPop > 0)
+                            continue;
+                        if (_discovered.Contains(p.Name))
+                            continue;
+
+                        LonLatToLocalCached(session, p, out int cx, out int cz);
+                        long dx = (long)playerLocalX - cx;
+                        long dz = (long)playerLocalZ - cz;
+                        long distSq = dx * dx + dz * dz;
+                        long edge = Math.Max(32, (int)(p.EdgeRadiusBlocks * scale));
+
+                        // Reaching the edge is enough to discover; pin at center.
+                        // Squared compare avoids a sqrt per place per window.
+                        if (distSq <= edge * edge)
                         {
-                            _discovered.Add(p.Name);
-                            ModApi.Log(
-                                $"CityMapLabels: discovered '{p.Name}' " +
-                                $"(dist={(int)Math.Sqrt(distSq):0} edge={edge} center=({cx},{cz})).");
+                            if (EnsureMarker(mgr, reg, session, p))
+                            {
+                                _discovered.Add(p.Name);
+                                ModApi.Log(
+                                    $"CityMapLabels: discovered '{p.Name}' " +
+                                    $"(dist={(int)Math.Sqrt(distSq):0} edge={edge} center=({cx},{cz})).");
+                            }
                         }
                     }
                 }
@@ -188,14 +213,17 @@ namespace RealEarth
         {
             if (ModApi.Config == null || !ModApi.Config.ShowCityNamesOnMap)
                 return;
-            // Drop nav handles (positions invalid); rediscover set is kept.
-            UnregisterAllNavOnly();
-            InvalidateLocalCache();
-            _tickThrottle = 0;
-            // Next TickPlayer will re-place discovered at new local coords
+            lock (_cityGate)
+            {
+                // Drop nav handles (positions invalid); rediscover set is kept.
+                UnregisterAllNavOnly();
+                InvalidateLocalCache();
+                _tickThrottle = 0;
+                // Next TickPlayer will re-place discovered at new local coords
+            }
         }
 
-        static Place? FindByName(string name)
+        static Place? FindByName(string name) // caller holds _cityGate
         {
             if (_catalogByName != null)
                 return _catalogByName.TryGetValue(name, out var hit) ? hit : null;
@@ -206,7 +234,7 @@ namespace RealEarth
             return null;
         }
 
-        static bool EnsureCatalog()
+        static bool EnsureCatalog() // caller holds _cityGate
         {
             if (_catalog != null)
                 return true;
@@ -340,13 +368,13 @@ namespace RealEarth
                 active.SetValue(nav, true);
         }
 
-        static void UnregisterAll()
+        static void UnregisterAll() // caller holds _cityGate
         {
             UnregisterAllNavOnly();
             _discovered.Clear();
         }
 
-        static void UnregisterAllNavOnly()
+        static void UnregisterAllNavOnly() // caller holds _cityGate
         {
             try
             {
