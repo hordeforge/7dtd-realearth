@@ -26,7 +26,10 @@ lists the known surfaces (tile decoder, CDN fetch path, viewer, install tooling)
 
 ## Supported versions
 
-Only the current `main` branch receives fixes. There are no tagged release branches.
+Fixes land on the current `main` branch and ship as `vX.Y.Z` tags
+(`.github/workflows/release.yml` rejects a tag that disagrees with the version in
+`ModInfo.xml`). There are no long-lived maintenance branches, so older tags get
+no backports: run the latest tagged release.
 
 ## Known gaps
 
