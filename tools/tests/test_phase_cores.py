@@ -55,6 +55,15 @@ def test_p1_height_inject_math_everest():
     # mirrors HeightInjectMath.MetersToGameYOneToOne
     sea, elev = 100, 8849
     assert round(sea + elev) == 8949
+    # The shipped method must delegate to the shared one-to-one compress;
+    # a private reimplementation could silently diverge from HeightCompress.
+    src = _read("HeightInjectMath.cs")
+    m = re.search(
+        r"MetersToGameYOneToOne\([^)]*\)\s*=>\s*HeightCompress\.MetersToGameY\("
+        r"[^)]*oneToOne:\s*true\)",
+        src,
+    )
+    assert m, "MetersToGameYOneToOne must delegate to HeightCompress.MetersToGameY(oneToOne: true)"
 
 
 # --- P2 session fold / slide ---

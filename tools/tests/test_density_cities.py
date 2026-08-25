@@ -130,7 +130,7 @@ def test_stamp_prefabs_preserves_h500_and_everest_surface_y():
         dens, gy500, world_size=1024, sea_level=100, seed=1, max_prefabs_per_chunk=8
     )
     assert len(stamps) >= 1
-    assert all(s.y == 500 for s in stamps), {(s.y for s in stamps)}
+    assert all(s.y == 500 for s in stamps), {s.y for s in stamps}
     # uint8 wrap would have produced 244 — prove we did not
     assert all(s.y != 244 for s in stamps)
 
@@ -202,15 +202,7 @@ def test_bake_world_prefab_stamps(tmp_path: Path):
         also_export_7dtd=False,
     )
     ttw = tmp_path / "main.ttw"
-    sample = Path.home() / ".local/share/7DaysToDie/GeneratedWorlds"
-    wrote = False
-    if sample.is_dir():
-        for p in sample.glob("*/main.ttw"):
-            ttw.write_bytes(p.read_bytes())
-            wrote = True
-            break
-    if not wrote:
-        ttw.write_bytes(b"ttw\x00" + b"\x00" * 100)
+    ttw.write_bytes(b"ttw\x00" + b"\x00" * 100)
 
     out = tmp_path / "world"
     meta = bake_generated_world(pack, out, size=2048, name="CityBake", ttw_template=ttw)

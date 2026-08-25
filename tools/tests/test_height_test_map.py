@@ -15,6 +15,7 @@ from realearth.height_test_map import (
     landcover_from_elev,
     staged_peak_elevation,
 )
+from realearth.landcover import LandCover
 from realearth.tile_format import read_tile, tile_path
 
 
@@ -64,9 +65,14 @@ def test_build_pack_with_mocked_real_dem(tmp_path: Path):
 
 
 def test_landcover_high_is_ice_or_snow():
-    elev = np.array([[100.0, 4000.0, 7000.0]], dtype=np.float32)
+    # Band ladder is relative to the field peak (t1..t4 = .25/.5/.75/.9):
+    # 100→forest, 4000→barren, 6000→snow, 7000→ice for a peak of 7000.
+    elev = np.array([[100.0, 4000.0, 6000.0, 7000.0]], dtype=np.float32)
     lc = landcover_from_elev(elev)
-    assert int(lc[0, 0]) != int(lc[0, 2])
+    assert int(lc[0, 0]) == int(LandCover.FOREST)
+    assert int(lc[0, 1]) == int(LandCover.BARREN)
+    assert int(lc[0, 2]) == int(LandCover.SNOW)
+    assert int(lc[0, 3]) == int(LandCover.ICE)
 
 
 def test_staged_peak_elevation_maps_to_game_y_500():

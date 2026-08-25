@@ -38,17 +38,11 @@ def test_bake_generated_world_files_and_dtm_size(tmp_path: Path):
         max_dim=128,
         also_export_7dtd=False,
     )
-    # Need a main.ttw template — copy minimal from sample if present
-    sample_ttw = Path.home() / ".local/share/7DaysToDie/GeneratedWorlds"
-    ttw = None
-    if sample_ttw.is_dir():
-        for p in sample_ttw.glob("*/main.ttw"):
-            ttw = p
-            break
-    if ttw is None:
-        # create tiny dummy so bake can proceed in CI without game data
-        ttw = tmp_path / "main.ttw"
-        ttw.write_bytes(b"ttw\x00" + b"\x00" * 100)
+    # Deterministic tiny template: write_main_ttw only byte-copies the template
+    # (or splices a version string into ttw-magic data), so a fixed synthetic
+    # blob keeps CI identical to dev machines with a 7DTD install.
+    ttw = tmp_path / "main.ttw"
+    ttw.write_bytes(b"ttw\x00" + b"\x00" * 100)
 
     out = tmp_path / "RealEarthTest"
     size = 2048

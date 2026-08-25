@@ -6,6 +6,7 @@ Drives HeightQueryPatcher rules (mirrored for discovery) and asserts RuntimeHook
 from __future__ import annotations
 
 import re
+import shutil
 import subprocess
 from pathlib import Path
 
@@ -66,6 +67,8 @@ def _monodis_height_methods() -> list[tuple[str, str]]:
     """Return (declaring_type, method_name) for GetTerrainHeight* on this install."""
     if not GAME_DLL.is_file():
         pytest.skip("Assembly-CSharp.dll not installed")
+    if shutil.which("monodis") is None:
+        pytest.skip("monodis not available")
     types_out = subprocess.check_output(
         ["monodis", "--typedef", str(GAME_DLL)], text=True, errors="replace"
     )

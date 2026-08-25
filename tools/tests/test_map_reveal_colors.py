@@ -37,3 +37,9 @@ def test_rgb565_pack_matches_c_sharp_formula():
     assert pack(0, 0, 255) == 0x001F
     # water-ish blue should not be black (0)
     assert pack(20, 40, 120) != 0
+    # The shipped C# must keep the identical 5/6/5 bit layout, or the mirror
+    # above proves nothing about the product.
+    src = MAP_REVEAL.read_text(encoding="utf-8")
+    assert "(r & 0xF8) << 8" in src
+    assert "(g & 0xFC) << 3" in src
+    assert "b >> 3" in src
