@@ -510,7 +510,8 @@ def test_atomic_publish_never_drops_live_file_before_swap():
     ts = _read("TileStreamer.cs")
     ss = _read("SessionStateStore.cs")
     assert "AtomicPublish.WriteAllBytes(path, bytes)" in ts
-    assert "AtomicPublish.WriteAllText(path, contents)" in ss
+    # SessionStateStore calls the shared publisher directly at its save site.
+    assert "AtomicPublish.WriteAllText(" in ss
     ap = _read("AtomicPublish.cs")
     publish = ap[ap.index("static void SwapIntoPlace") :]
     assert ".re_bak" in publish

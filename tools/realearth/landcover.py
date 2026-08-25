@@ -44,23 +44,6 @@ BIOME_RGB: dict[LandCover, tuple[int, int, int]] = {
     LandCover.UNKNOWN: (0, 128, 0),
 }
 
-# Preferred vanilla biome name for each land cover (for docs / spawn rules).
-BIOME_NAME: dict[LandCover, str] = {
-    LandCover.OCEAN: "water",
-    LandCover.INLAND_WATER: "water",
-    LandCover.ICE: "snow",
-    LandCover.BARREN: "wasteland",
-    LandCover.GRASS: "pine_forest",
-    LandCover.SHRUB: "desert",
-    LandCover.FOREST: "pine_forest",
-    LandCover.WETLAND: "pine_forest",
-    LandCover.CROPLAND: "pine_forest",
-    LandCover.URBAN: "pine_forest",
-    LandCover.SNOW: "snow",
-    LandCover.DESERT: "desert",
-    LandCover.UNKNOWN: "pine_forest",
-}
-
 
 def landcover_to_biome_rgb(lc: np.ndarray) -> np.ndarray:
     """Convert landcover uint8 array → RGB uint8 (H, W, 3)."""

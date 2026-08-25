@@ -296,11 +296,14 @@ def synthetic_elevation(
     # Carve a simple coastline on the west edge
     xs = np.linspace(0, 1, width)
     coast = sea_fraction + 0.05 * np.sin(xs * 12)
-    for col, c in enumerate(coast):
-        cut = int(c * width)
-        # actually use x from west
-        if col < cut:
-            elev[:, col] = -20.0 - 5 * rng.random(height)
+    cuts = (coast * width).astype(np.int64)
+    below = np.arange(width) < cuts
+    if below.any():
+        # One draw of (width, height) in C order yields each column's `height`
+        # values in ascending-column order: identical sequence to the former
+        # per-column rng.random(height) loop, without `width` strided writes.
+        noise = rng.random((width, height))
+        elev[:, below] = (-20.0 - 5.0 * noise[below]).T
 
     # Central ridge
     cy, cx = height // 2, int(width * 0.55)

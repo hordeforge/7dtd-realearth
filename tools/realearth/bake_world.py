@@ -18,11 +18,9 @@ from realearth.height import compress_elevation
 from realearth.tile_format import Manifest, write_manifest
 from realearth.viewer_export import mosaic_pack
 
-# 7DTD world sizes must be multiples of 2048 up to 16384 for many tools/RWG.
-VALID_SIZES = tuple(range(2048, 16384 + 1, 2048))
-
 
 def snap_world_size(size: int) -> int:
+    """Clamp/round to a valid world size: multiple of 2048, 2048..16384."""
     size = int(size)
     if size < 2048:
         return 2048

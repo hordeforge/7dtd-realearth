@@ -226,28 +226,36 @@ namespace RealEarth
 
         static void FillMapPiece(ushort[] piece, int mapSize, int chunkX, int chunkZ)
         {
+            var session = ModApi.Session;
+            var streamer = ModApi.Streamer;
+            var cfg = ModApi.Config;
             int blockOriginX = chunkX * 16;
             int blockOriginZ = chunkZ * 16;
-            byte h = ChunkTerrainSampler.SampleGameHeight(blockOriginX + 8, blockOriginZ + 8);
-            byte lc = ChunkTerrainSampler.SampleLandcover(blockOriginX + 8, blockOriginZ + 8);
-            ushort color = LandcoverToMapColor(lc, h);
-            for (int i = 0; i < piece.Length; i++)
-                piece[i] = color;
 
             if (mapSize >= 4)
             {
+                // piece.Length == mapSize*mapSize, so this loop paints every cell;
+                // the fused sample keeps one locked lookup per pixel instead of two.
                 for (int z = 0; z < mapSize; z++)
                 {
                     for (int x = 0; x < mapSize; x++)
                     {
                         int wx = blockOriginX + x * 16 / mapSize;
                         int wz = blockOriginZ + z * 16 / mapSize;
-                        byte hh = ChunkTerrainSampler.SampleGameHeight(wx, wz);
-                        byte llc = ChunkTerrainSampler.SampleLandcover(wx, wz);
+                        byte hh = ChunkTerrainSampler.SampleColumnByte(
+                            session, streamer, cfg, wx, wz, out byte llc);
                         piece[z * mapSize + x] = LandcoverToMapColor(llc, hh);
                     }
                 }
+                return;
             }
+
+            // Coarser than the pixel grid: flat center-sample color everywhere.
+            byte h = ChunkTerrainSampler.SampleColumnByte(
+                session, streamer, cfg, blockOriginX + 8, blockOriginZ + 8, out byte lc);
+            ushort color = LandcoverToMapColor(lc, h);
+            for (int i = 0; i < piece.Length; i++)
+                piece[i] = color;
         }
 
         public static ushort PackRgb565(int r, int g, int b)

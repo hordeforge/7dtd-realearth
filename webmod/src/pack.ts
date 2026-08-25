@@ -31,7 +31,7 @@ export function isSafePackPath(path: string): boolean {
   );
 }
 
-export type LoadedLayer = {
+type LoadedLayer = {
   id: string;
   image: HTMLImageElement;
 };

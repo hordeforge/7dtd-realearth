@@ -215,6 +215,41 @@ namespace RealEarth
             }
         }
 
+        /// <summary>
+        /// One streamer sample returns game-Y byte AND landcover.
+        /// Map paint / debug reveal used to call SampleGameHeight +
+        /// SampleLandcover separately: two locked samples and coordinate maps
+        /// per cell. Fused here so a full-map reveal halves its lock traffic;
+        /// results match calling the two methods individually.
+        /// </summary>
+        public static byte SampleColumnByte(
+            WorldSession? session,
+            TileStreamer? streamer,
+            RealEarthConfig? cfg,
+            int localX,
+            int localZ,
+            out byte landcover)
+        {
+            landcover = 255;
+            int sea = cfg?.SeaLevelGameY ?? HeightInjectMath.DefaultSeaLevelGameY;
+            if (session == null || streamer == null)
+                return HeightInjectMath.ToByteHeight(sea);
+
+            if (EngineHeight.EngineHeightMod.Active)
+            {
+                // Expanded path: heights flow through the engine-height store/policy
+                // (its own sample); landcover still comes from the streamer once.
+                landcover = SampleLandcover(session, streamer, localX, localZ);
+                return EngineHeight.EngineHeightMod.SampleGameHeight(localX, localZ);
+            }
+
+            session.LocalToEarth(localX, localZ, out int ex, out int ez);
+            bool ok = streamer.TrySamplePrefetch(ex, ez, out float elevM, out byte lc, out _);
+            landcover = ok ? lc : (byte)0;
+            TileSamplePolicy.ResolveElev(ok, elevM, cfg, out float elevResolved, out _);
+            return HeightInjectMath.ToByteHeight(TileSamplePolicy.ElevToGameYInt(elevResolved, cfg));
+        }
+
         /// <summary>Map internal landcover code to a coarse biome id string for logging / XML bridge.</summary>
         public static string LandcoverToBiomeName(byte lc)
         {

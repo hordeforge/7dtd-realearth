@@ -22,7 +22,7 @@ const COORD_PRECISION = 2;
 const BYTE_MAX = 255;
 const DASH = "-";
 
-export type MapPageRefs = {
+type MapPageRefs = {
   map: { current: Map2D | null };
   canvas: { current: HTMLCanvasElement | null };
   packInput: { current: HTMLInputElement | null };

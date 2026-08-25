@@ -231,7 +231,7 @@ namespace RealEarth
                         string? dir = Path.GetDirectoryName(p);
                         if (!string.IsNullOrEmpty(dir))
                             Directory.CreateDirectory(dir!);
-                        WriteTextAtomic(p, json);
+                        AtomicPublish.WriteAllText(p, json);
                         any = true;
                     }
                     catch (Exception ex)
@@ -285,12 +285,5 @@ namespace RealEarth
             }
         }
 
-        /// <summary>
-        /// Durable write via shared AtomicPublish (unique temp + Replace,
-        /// backup-move fallback that never drops the live file before its
-        /// replacement is secured).
-        /// </summary>
-        static void WriteTextAtomic(string path, string contents)
-            => AtomicPublish.WriteAllText(path, contents);
     }
 }
