@@ -141,7 +141,7 @@ if [[ "$WORLD_NAME" != "$GENERATED_NAME" && ! -d "$ROOT/worlds/$WORLD_NAME" ]]; 
 fi
 if [[ ! -d "$ROOT/worlds/$WORLD_NAME" ]]; then
   echo "Generating $WORLD_NAME..."
-  (cd "$ROOT/tools" && uv run python -m realearth.cli height-test-map --repo "$ROOT" --peak-game-y 500 --pack-size 512 --size 2048)
+  (cd "$ROOT/tools" && uv run --locked python -m realearth.cli height-test-map --repo "$ROOT" --peak-game-y 500 --pack-size 512 --size 2048)
 fi
 
 # Install world into dedicated userdata GeneratedWorlds

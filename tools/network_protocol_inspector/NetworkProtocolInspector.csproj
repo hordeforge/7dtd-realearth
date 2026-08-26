@@ -10,6 +10,13 @@
     <AnalysisMode>Recommended</AnalysisMode>
     <TreatWarningsAsErrors>true</TreatWarningsAsErrors>
     <AssemblyName>7dtd-network-protocol-inspector</AssemblyName>
+    <!-- Pin the restore graph to packages.lock.json (content hashes for every
+         package): restores resolve exactly what is committed instead of
+         floating Mono.Cecil with whatever nuget.org serves that day. CI sets
+         CI=true, so a missing or stale lock file fails the build rather than
+         silently re-resolving; update deliberately via dotnet restore. -->
+    <RestorePackagesWithLockFile>true</RestorePackagesWithLockFile>
+    <RestoreLockedMode Condition="'$(CI)' == 'true'">true</RestoreLockedMode>
   </PropertyGroup>
   <ItemGroup>
     <PackageReference Include="Mono.Cecil" Version="0.11.6" />

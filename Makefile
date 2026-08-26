@@ -57,15 +57,18 @@ WEBMOD_EXPORT_NAME ?= demo
 
 # uv-run tools CLI from tools/ (--extra dev keeps test deps on uv.lock;
 # a bare --with pytest would resolve the latest pytest outside the lock).
+# --locked fails every target when pyproject.toml drifts from uv.lock, so a
+# dependency change needs an explicit `uv lock` review instead of any make
+# invocation silently re-resolving and rewriting the lockfile.
 UV            := uv
-REEARTH       := cd $(TOOLS) && $(UV) run python -m realearth.cli
-PYTEST        := cd $(TOOLS) && $(UV) run --extra dev python -m pytest
+REEARTH       := cd $(TOOLS) && $(UV) run --locked python -m realearth.cli
+PYTEST        := cd $(TOOLS) && $(UV) run --locked --extra dev python -m pytest
 # Python gate: ruff (lint), black (format), mypy (types). scripts/ holds the
 # standalone helpers CI also runs.
 PY_SOURCES    := realearth tests ../scripts
-RUFF          := cd $(TOOLS) && $(UV) run --extra dev ruff check $(PY_SOURCES)
-BLACK         := cd $(TOOLS) && $(UV) run --extra dev black --check $(PY_SOURCES)
-MYPY          := cd $(TOOLS) && $(UV) run --extra dev mypy realearth
+RUFF          := cd $(TOOLS) && $(UV) run --locked --extra dev ruff check $(PY_SOURCES)
+BLACK         := cd $(TOOLS) && $(UV) run --locked --extra dev black --check $(PY_SOURCES)
+MYPY          := cd $(TOOLS) && $(UV) run --locked --extra dev mypy realearth
 
 # ---------------------------------------------------------------------------
 # Help
@@ -142,7 +145,7 @@ setup: tools-sync
 	@echo "OK tools ready"
 
 tools-sync:
-	@cd $(TOOLS) && $(UV) sync --extra dev
+	@cd $(TOOLS) && $(UV) sync --locked --extra dev
 	@echo "OK uv sync (tools/)"
 
 # ---------------------------------------------------------------------------
@@ -301,7 +304,7 @@ test-fast:
 # Line coverage of the realearth package under the same fast pytest list
 # test-fast runs. Writes tools/.coverage; CI renders it into the README
 # badge with scripts/coverage_badge.py.
-COV := $(UV) run --extra dev python -m coverage
+COV := $(UV) run --locked --extra dev python -m coverage
 
 coverage:
 	rm -f $(TOOLS)/.coverage $(TOOLS)/.coverage.*

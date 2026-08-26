@@ -6,14 +6,17 @@
 
 ROOT   := $(abspath $(dir $(lastword $(MAKEFILE_LIST)))/..)
 UV     := uv
-REEARTH := $(UV) run python -m realearth.cli
+# --locked fails every target when pyproject.toml drifts from uv.lock, so a
+# dependency change needs an explicit `uv lock` review instead of any make
+# invocation silently re-resolving and rewriting the lockfile.
+REEARTH := $(UV) run --locked python -m realearth.cli
 # --extra dev keeps pytest on uv.lock (a bare --with pytest would float).
-PYTEST := $(UV) run --extra dev python -m pytest
+PYTEST := $(UV) run --locked --extra dev python -m pytest
 
 help:
 	@echo "RealEarth tools/: Python pipeline"
 	@echo ""
-	@echo "  make setup | sync       uv sync --extra dev"
+	@echo "  make setup | sync       uv sync --locked --extra dev"
 	@echo "  make test               Full pytest suite"
 	@echo "  make test-height        Height mod + map tests"
 	@echo "  make height-test        CLI height-mod smoke case"
@@ -31,7 +34,7 @@ help:
 	@echo "Repo root also has: make -C .. help"
 
 setup sync:
-	$(UV) sync --extra dev
+	$(UV) sync --locked --extra dev
 
 test:
 	$(PYTEST) -q --tb=short
