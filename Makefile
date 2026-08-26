@@ -139,7 +139,7 @@ help:
 	@echo ""
 	@echo "  Misc"
 	@echo "    make info               Paths + tool versions"
-	@echo "    make check              setup + test-fast + build"
+	@echo "    make check              setup + test-fast + lint-python + build + viewer/webmod/html lint"
 	@echo "    make clean              Remove Python caches / build artifacts"
 	@echo ""
 	@echo "Overrides: GAME_DIR=... MAP_MODE=Baked|Streamed WORLD_SIZE=2048 DOTNET_ROOT=..."
