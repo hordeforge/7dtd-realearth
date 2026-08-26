@@ -24,10 +24,7 @@ def test_normalize_place_name_folds_nfd_to_nfc():
 def test_normalize_place_name_strips_control_chars():
     """Names are echoed into the dedicated server log at runtime; a hostile
     pack must not carry CR/LF/TAB (or any C0/C1 char) through ingestion."""
-    assert (
-        normalize_place_name("Foo\r\n[INFO] admin logged in")
-        == "Foo[INFO] admin logged in"
-    )
+    assert normalize_place_name("Foo\r\n[INFO] admin logged in") == "Foo[INFO] admin logged in"
     assert normalize_place_name("a\tb\x00c\x1bd\x7fe\x9ff") == "abcdef"
     # Printable text, including astral chars, passes untouched.
     assert normalize_place_name("A\U0001f600B") == "A\U0001f600B"
@@ -127,10 +124,7 @@ def test_seed_places_derive_band_from_the_ladder():
     this pin keeps the derivation structural.
     """
     src = (
-        Path(__file__).resolve().parents[2]
-        / "Source"
-        / "RealEarth"
-        / "CityMapLabels.cs"
+        Path(__file__).resolve().parents[2] / "Source" / "RealEarth" / "CityMapLabels.cs"
     ).read_text(encoding="utf-8")
     start = src.index("static void AddSeedPlacesInPack")
     body = src[start : src.index("static object? GetNavObjectManager", start)]
