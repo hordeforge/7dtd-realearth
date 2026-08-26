@@ -73,7 +73,7 @@ namespace RealEarth.EngineHeight
                     cfg.EngineHeightStockSafe,
                     cfg.EngineHeightOneToOne,
                     Probe?.ChunkBlockYDim ?? 256);
-                ModApi.Log(
+                ModApi.LogWarning(
                     $"EngineHeightMod: stock YDim={Probe?.ChunkBlockYDim ?? 256}, real-height mode - " +
                     "apply RealEarth YDim expand (Tools/apply_engine_expand.sh or make engine-expand) " +
                     "before playable tall columns. " +

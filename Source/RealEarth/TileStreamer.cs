@@ -339,7 +339,17 @@ namespace RealEarth
             var path = TileFilePath(tx, tz);
             bool exists;
             try { exists = File.Exists(path); }
-            catch { exists = false; }
+            catch (Exception ex)
+            {
+                // A throwing File.Exists means the tile root is unreadable (permissions,
+                // unmounted volume): every tile would silently miss into ocean with zero
+                // trace. Count + one budgeted warning keeps the failure visible.
+                TileLoadStats.AddExistsError();
+                if (TileLoadStats.ExistsErrors <= 3)
+                    ModApi.LogWarning(
+                        $"Tile root probe failed path={path}: {ex.GetType().Name}: {ex.Message}");
+                exists = false;
+            }
 
             if (!exists)
             {
@@ -414,7 +424,9 @@ namespace RealEarth
                 var bytes = FetchTileBytesAsync(url).ConfigureAwait(false).GetAwaiter().GetResult();
                 if (bytes == null || bytes.Length < 8 || !RteTile.HasMagic(bytes))
                 {
-                    ModApi.Log($"CDN sync tile {tx},{tz}: bad payload");
+                    TileLoadStats.AddBadPayload();
+                    TileLoadStats.AddCdnFail();
+                    ModApi.LogWarning($"CDN sync tile {tx},{tz}: bad payload");
                     MarkMiss(key);
                     lock (_lock) { _loadInFlight.Remove(key); }
                     return;
@@ -430,10 +442,13 @@ namespace RealEarth
                     _missUntilTick.Remove(key);
                     _loadInFlight.Remove(key);
                 }
+                TileLoadStats.AddCdnOk();
             }
             catch (Exception ex)
             {
-                ModApi.Log($"CDN sync tile {tx},{tz}: {ex.Message}");
+                TileLoadStats.AddCdnFail();
+                ModApi.LogWarning(
+                    $"CDN sync tile {tx},{tz} failed: {ex.GetType().Name}: {ex.Message}");
                 MarkMiss(key);
                 lock (_lock) { _loadInFlight.Remove(key); }
             }
@@ -507,10 +522,13 @@ namespace RealEarth
                     _missUntilTick.Remove(key);
                     _loadInFlight.Remove(key);
                 }
+                TileLoadStats.AddDiskOk();
             }
             catch (Exception ex)
             {
-                ModApi.Log($"Load tile {tx},{tz}: {ex.Message}");
+                TileLoadStats.AddDiskFail();
+                ModApi.LogWarning(
+                    $"Load tile {tx},{tz} failed: {ex.GetType().Name}: {ex.Message}");
                 MarkMiss(key);
                 lock (_lock) { _loadInFlight.Remove(key); }
             }
@@ -557,7 +575,9 @@ namespace RealEarth
                     bytes = await FetchTileBytesAsync(url).ConfigureAwait(false);
                     if (bytes == null || bytes.Length < 8 || !RteTile.HasMagic(bytes))
                     {
-                        ModApi.Log($"CDN tile {tx},{tz}: bad payload (not RTE1)");
+                        TileLoadStats.AddBadPayload();
+                        TileLoadStats.AddCdnFail();
+                        ModApi.LogWarning($"CDN tile {tx},{tz}: bad payload (not RTE1)");
                         MarkMiss(key);
                         return;
                     }
@@ -575,17 +595,25 @@ namespace RealEarth
                     _hot[key] = tile;
                     _missUntilTick.Remove(key);
                 }
+                if (fromCdn)
+                    TileLoadStats.AddCdnOk();
+                else
+                    TileLoadStats.AddDiskOk();
             }
             catch (Exception ex)
             {
                 if (fromCdn)
                 {
-                    ModApi.Log(
-                        $"CDN tile {tx},{tz} failed (failClosed={_cfg.FailClosedMissingTiles}): {ex.Message}");
+                    TileLoadStats.AddCdnFail();
+                    ModApi.LogWarning(
+                        $"CDN tile {tx},{tz} failed (failClosed={_cfg.FailClosedMissingTiles}): " +
+                        $"{ex.GetType().Name}: {ex.Message}");
                 }
                 else
                 {
-                    ModApi.Log($"Async load tile {tx},{tz}: {ex.Message}");
+                    TileLoadStats.AddDiskFail();
+                    ModApi.LogWarning(
+                        $"Async load tile {tx},{tz} failed: {ex.GetType().Name}: {ex.Message}");
                 }
                 MarkMiss(key);
             }

@@ -57,7 +57,7 @@ namespace RealEarth
             }
             catch (Exception ex)
             {
-                ModApi.Log($"MapReveal failed: {ex.Message}");
+                ModApi.LogWarning($"MapReveal failed: {ex.GetType().Name}: {ex.Message}");
                 _fullDone = true;
             }
         }

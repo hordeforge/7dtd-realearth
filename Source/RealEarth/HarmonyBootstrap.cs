@@ -27,7 +27,7 @@ namespace RealEarth
             }
             catch (Exception ex)
             {
-                ModApi.Log($"HarmonyBootstrap: {ex.Message}");
+                ModApi.LogWarning($"HarmonyBootstrap: {ex.GetType().Name}: {ex.Message}");
             }
         }
     }

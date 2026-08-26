@@ -41,7 +41,7 @@ namespace RealEarth
 
                 Config = RealEarthConfig.Load(Path.Combine(ModPath, "Config", "realearth.json"));
                 foreach (var warning in Config.Validate())
-                    Log($"config: {warning}");
+                    LogWarning($"config: {warning}");
 
                 var tileRoot = Path.IsPathRooted(Config.TilePackPath)
                     ? Config.TilePackPath
@@ -86,7 +86,7 @@ namespace RealEarth
                         Config.EngineHeightOneToOne,
                         yDim))
                 {
-                    Log(
+                    LogError(
                         "P0 ExpandProductGuard: real-height product path needs YDim expand " +
                         $"(YDim={yDim}, StockSafe=false). Run make engine-expand.");
                 }
@@ -110,7 +110,7 @@ namespace RealEarth
                 }
                 catch (Exception hex)
                 {
-                    Log($"Harmony bootstrap skipped: {hex.Message}");
+                    LogWarning($"Harmony bootstrap skipped: {hex.GetType().Name}: {hex.Message}");
                 }
 
                 try
@@ -119,12 +119,12 @@ namespace RealEarth
                 }
                 catch (Exception rex)
                 {
-                    Log($"RuntimeHooks skipped: {rex.Message}");
+                    LogWarning($"RuntimeHooks skipped: {rex.GetType().Name}: {rex.Message}");
                 }
             }
             catch (Exception ex)
             {
-                Log($"RealEarth failed to init: {ex}");
+                LogError($"RealEarth failed to init: {ex}");
             }
         }
 
@@ -132,7 +132,20 @@ namespace RealEarth
         // async tile-load workers concurrently, and a stale flag could pair with a
         // null delegate and permanently fall back to Console output.
         static volatile MethodInfo? _logOut;
+        static volatile MethodInfo? _logWarn;
+        static volatile MethodInfo? _logError;
         static volatile bool _logOutResolved;
+
+        static void ResolveLogMethods()
+        {
+            var t = Type.GetType("Log, Assembly-CSharp");
+            _logOut = t?.GetMethod("Out", new[] { typeof(string) });
+            // Game logger levels: operators (and log scrapers) key off ERROR/WARNING
+            // lines; without these every RealEarth failure looks like chatter.
+            _logWarn = t?.GetMethod("Warning", new[] { typeof(string) });
+            _logError = t?.GetMethod("Error", new[] { typeof(string) });
+            _logOutResolved = true;
+        }
 
         public static void Log(string msg)
         {
@@ -141,10 +154,7 @@ namespace RealEarth
                 // Prefer game logger when present (MethodInfo resolved once; hot-path callers
                 // log from budgeted per-chunk/per-tick paths).
                 if (!_logOutResolved)
-                {
-                    _logOut = Type.GetType("Log, Assembly-CSharp")?.GetMethod("Out", new[] { typeof(string) });
-                    _logOutResolved = true;
-                }
+                    ResolveLogMethods();
                 if (_logOut != null)
                 {
                     _logOut.Invoke(null, new object[] { $"[RealEarth] {msg}" });
@@ -159,6 +169,57 @@ namespace RealEarth
             try
             {
                 Console.WriteLine($"[RealEarth] {msg}");
+            }
+            catch
+            {
+                // ignore
+            }
+        }
+
+        /// <summary>
+        /// Recoverable degradation (transient tile/CDN failures, config warnings,
+        /// unbound patches with retry pending). Uses the game Warning level so it stays
+        /// distinct from routine info; falls back to a tagged Out line when the host
+        /// logger lacks the method.
+        /// </summary>
+        public static void LogWarning(string msg) => LogLeveled("Warning", "WARN", msg);
+
+        /// <summary>
+        /// Operator-visible failure on the inject/stream path (init failed, inject gate
+        /// closed, tick/gen errors). Uses the game Error level.
+        /// </summary>
+        public static void LogError(string msg) => LogLeveled("Error", "ERROR", msg);
+
+        static void LogLeveled(string levelMethod, string tag, string msg)
+        {
+            try
+            {
+                // Resolve first so the level lookup below cannot pair with an
+                // unresolved (null) delegate on the very first call.
+                if (!_logOutResolved)
+                    ResolveLogMethods();
+                var mi = levelMethod == "Error" ? _logError : _logWarn;
+                if (mi != null)
+                {
+                    mi.Invoke(null, new object[] { $"[RealEarth] {msg}" });
+                    return;
+                }
+                if (_logOut != null)
+                {
+                    // Keep one channel: tag preserves the level when the host logger
+                    // has no Warning/Error overload to invoke.
+                    _logOut.Invoke(null, new object[] { $"[RealEarth][{tag}] {msg}" });
+                    return;
+                }
+            }
+            catch
+            {
+                // fall through
+            }
+
+            try
+            {
+                Console.WriteLine($"[RealEarth][{tag}] {msg}");
             }
             catch
             {
@@ -216,7 +277,7 @@ namespace RealEarth
             }
             catch (Exception ex)
             {
-                Log($"Pack manifest skip: {ex.Message}");
+                LogWarning($"Pack manifest skip: {ex.GetType().Name}: {ex.Message}");
             }
         }
 

@@ -84,7 +84,7 @@ namespace RealEarth
             }
             catch (Exception ex)
             {
-                ModApi.Log($"RuntimeHooks failed: {ex.Message}");
+                ModApi.LogError($"RuntimeHooks failed: {ex.GetType().Name}: {ex.Message}");
                 // Recompute gate from actual binds (do not leave InjectBlocked stuck true with healthy patches).
                 _applied = HasUsefulBinding;
                 EnforceInjectGate();
@@ -139,7 +139,7 @@ namespace RealEarth
             }
             catch (Exception ex)
             {
-                ModApi.Log("RuntimeHooks retry: " + ex.Message);
+                ModApi.LogWarning("RuntimeHooks retry: " + ex.GetType().Name + ": " + ex.Message);
             }
             EnforceInjectGate();
         }
@@ -332,7 +332,8 @@ namespace RealEarth
                 $"Height-query inject: patched={patched} failed={failed} discovered={methods.Count} " +
                 $"(concrete first; includes TerrainGeneratorWithBiomeResource when present)");
             if (patched == 0)
-                ModApi.Log("Height-query inject not bound for this build (will try GenerateTerrain rewrite).");
+                ModApi.LogWarning(
+                    "Height-query inject not bound for this build (will try GenerateTerrain rewrite).");
             return patched > 0 ? 1 : 0;
         }
 
@@ -450,7 +451,7 @@ namespace RealEarth
             int patched = genPatched + idxPatched;
             if (patched == 0)
             {
-                ModApi.Log(
+                ModApi.LogWarning(
                     "Terrain inject not bound for this build. " +
                     "Use MapMode=Baked + realearth bake-world for full terrain on one map, " +
                     "or retarget Harmony after inspecting Assembly-CSharp.");
@@ -484,14 +485,14 @@ namespace RealEarth
             ChunkTerrainInject.InjectBlocked = true;
             if (InjectPatchStats.HasMinimalInjectBinding)
             {
-                ModApi.Log(
+                ModApi.LogError(
                     "INJECT GATE: Streamed+expanded needs GenerateTerrain bind for solid columns " +
                     $"(heightQ={InjectPatchStats.HeightQueryPatches} gen={InjectPatchStats.GenerateTerrainPatches}). " +
                     "Height inject DISABLED until gen rewrite binds (reinject / retry).");
             }
             else
             {
-                ModApi.Log(
+                ModApi.LogError(
                     "INJECT GATE: Streamed mode has no height/GenerateTerrain Harmony binds. " +
                     "Height inject DISABLED to avoid silent stock RWG under RealEarth. " +
                     "Check 0_TFP_Harmony + Assembly-CSharp method names (reinject).");
@@ -564,7 +565,7 @@ namespace RealEarth
                 // Interfaces/abstracts expected to fail, so keep log quiet unless concrete.
                 var dt = target.DeclaringType;
                 if (dt != null && !dt.IsInterface && !dt.IsAbstract)
-                    ModApi.Log($"Patch failed {dt.Name}.{target.Name}: {ex.Message}");
+                    ModApi.LogWarning($"Patch failed {dt.Name}.{target.Name}: {ex.GetType().Name}: {ex.Message}");
                 return false;
             }
         }
@@ -581,6 +582,11 @@ namespace RealEarth
         /// <summary>Budget for inject-path errors: a swallowed gen/inject exception otherwise
         /// looks like "terrain is stock RWG under RealEarth" with zero trace.</summary>
         static int _injectErrLogBudget = 8;
+        /// <summary>
+        /// Budget for player-unload errors: a persistently throwing unload postfix pins
+        /// departed players' bubble tiles hot until the stale-focus TTL fires.
+        /// </summary>
+        static int _unloadErrLogBudget = 4;
         /// <summary>Hoisted: TryGetEntityId runs every frame per player (no per-call alloc).</summary>
         static readonly string[] EntityIdMemberNames = { "entityId", "EntityId", "EntityID" };
 
@@ -641,7 +647,7 @@ namespace RealEarth
                             ModApi.Session.SetOrigin(
                                 ModApi.Session.OriginEarthX - dOx,
                                 ModApi.Session.OriginEarthZ - dOz);
-                            ModApi.Log(
+                            ModApi.LogError(
                                 $"Origin slide rolled back (SetPos failed) dOrigin=({dOx},{dOz})");
                         }
                         return;
@@ -671,7 +677,7 @@ namespace RealEarth
                             // log so "world looks torn after slide" stays debuggable.
                             if (ConsumeBudget(ref _tickErrLogBudget))
                             {
-                                ModApi.Log(
+                                ModApi.LogWarning(
                                     $"Origin slide reinject error: {ex.GetType().Name}: {ex.Message}");
                             }
                         }
@@ -708,7 +714,7 @@ namespace RealEarth
                 // a stuck tick path otherwise looks like "tiles never stream" with zero trace.
                 if (ConsumeBudget(ref _tickErrLogBudget))
                 {
-                    ModApi.Log($"PlayerTick postfix error: {ex.GetType().Name}: {ex.Message}");
+                    ModApi.LogError($"PlayerTick postfix error: {ex.GetType().Name}: {ex.Message}");
                 }
             }
         }
@@ -768,9 +774,15 @@ namespace RealEarth
                     return;
                 ModApi.Streamer?.RemoveFocus(focusId);
             }
-            catch
+            catch (Exception ex)
             {
-                // never break unload path
+                // never break unload path, but a repeated failure here pins departed
+                // players' tiles hot (bubble leak) and must not be invisible.
+                if (ConsumeBudget(ref _unloadErrLogBudget))
+                {
+                    ModApi.LogWarning(
+                        $"PlayerUnload postfix error: {ex.GetType().Name}: {ex.Message}");
+                }
             }
         }
 
@@ -833,6 +845,7 @@ namespace RealEarth
                 ChunkTerrainInject.ResetSessionCounters();
                 ResetBudget(ref _tickErrLogBudget, 8);
                 ResetBudget(ref _injectErrLogBudget, 8);
+                ResetBudget(ref _unloadErrLogBudget, 4);
                 try
                 {
                     var snap = SessionStateStore.Capture(session, cfg);
@@ -843,7 +856,7 @@ namespace RealEarth
                 }
                 catch (Exception sex)
                 {
-                    ModApi.Log("Session snapshot skip: " + sex.Message);
+                    ModApi.LogWarning("Session snapshot skip: " + sex.GetType().Name + ": " + sex.Message);
                 }
 
                 ModApi.Log(
@@ -853,7 +866,7 @@ namespace RealEarth
 
                 if (EngineHeight.EngineHeightMod.ProductHeightBlocked)
                 {
-                    ModApi.Log(
+                    ModApi.LogWarning(
                         "PRODUCT HEIGHT CAPPED: YDim expand required for true real-height columns. " +
                         $"Heights clamp to allocY={EngineHeight.EngineHeightMod.AllocatableColumnMaxY} " +
                         "(inject still samples RealEarth, not stock RWG). " +
@@ -862,7 +875,7 @@ namespace RealEarth
             }
             catch (Exception ex)
             {
-                ModApi.Log($"WorldReady: {ex.Message}");
+                ModApi.LogError($"WorldReady failed: {ex.GetType().Name}: {ex.Message}");
             }
         }
 
@@ -973,7 +986,7 @@ namespace RealEarth
                 // rewrite leaves stock RWG terrain that looks like a streaming bug.
                 if (ConsumeBudget(ref _injectErrLogBudget))
                 {
-                    ModApi.Log(
+                    ModApi.LogError(
                         $"GenerateTerrain postfix error: {ex.GetType().Name}: {ex.Message}");
                 }
             }
@@ -1001,7 +1014,8 @@ namespace RealEarth
                 // mapping/reflection failures so tiles missing forever stays debuggable.
                 if (ConsumeBudget(ref _injectErrLogBudget))
                 {
-                    ModApi.Log($"ChunkIndex postfix error ({__0},{__1}): {ex.Message}");
+                    ModApi.LogWarning(
+                        $"ChunkIndex postfix error ({__0},{__1}): {ex.GetType().Name}: {ex.Message}");
                 }
             }
         }

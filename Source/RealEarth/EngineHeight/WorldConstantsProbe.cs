@@ -44,7 +44,7 @@ namespace RealEarth.EngineHeight
             }
             catch (Exception ex)
             {
-                ModApi.Log($"WorldConstantsProbe: {ex.Message}");
+                ModApi.LogWarning($"WorldConstantsProbe: {ex.GetType().Name}: {ex.Message}");
             }
             return p;
         }

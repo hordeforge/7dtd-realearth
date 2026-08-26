@@ -71,6 +71,7 @@ namespace RealEarth
             $"chunkIdx={ChunkIndexPatches} playerTick={PlayerTickPatches} worldReady={WorldReadyPatches} " +
             $"injectOk={HasMinimalInjectBinding} productOk={HasProductInjectBinding} " +
             $"missTiles={TileSamplePolicy.MissingTileHits} presentTiles={TileSamplePolicy.PresentTileHits} " +
+            TileLoadStats.FormatSummary() + " " +
             $"sessionInject={ChunkTerrainInject.SessionInjectCount} peakY={ChunkTerrainInject.SessionPeakHeight}";
     }
 }

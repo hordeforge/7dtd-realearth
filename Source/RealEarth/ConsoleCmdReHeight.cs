@@ -108,7 +108,7 @@ namespace RealEarth
             }
             catch (Exception ex)
             {
-                Out($"[RealEarth] reheight error: {ex.Message}");
+                Out($"[RealEarth] reheight error: {ex.GetType().Name}: {ex.Message}");
             }
         }
 

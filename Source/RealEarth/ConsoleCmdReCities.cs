@@ -51,7 +51,7 @@ namespace RealEarth
                 }
                 catch (System.Exception ex)
                 {
-                    Out("[RealEarth] recities here failed: " + ex.Message);
+                    Out("[RealEarth] recities here failed: " + ex.GetType().Name + ": " + ex.Message);
                 }
                 return;
             }
