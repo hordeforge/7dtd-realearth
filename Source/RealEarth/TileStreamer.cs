@@ -521,7 +521,18 @@ namespace RealEarth
             lock (_lock)
             {
                 if (_missUntilTick.Count >= MissCachePruneThreshold)
+                {
                     PruneExpiredMissesLocked();
+                    // A storm can exceed the threshold with nothing expired yet (more
+                    // distinct failing tiles inside one MissCacheMs window than the
+                    // bound); drop insertion-order heads so the map stays bounded.
+                    while (_missUntilTick.Count >= MissCachePruneThreshold)
+                    {
+                        long head = 0;
+                        foreach (var kv in _missUntilTick) { head = kv.Key; break; }
+                        _missUntilTick.Remove(head);
+                    }
+                }
                 _missUntilTick[key] = Environment.TickCount + MissCacheMs;
             }
         }

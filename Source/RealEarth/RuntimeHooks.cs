@@ -789,6 +789,13 @@ namespace RealEarth
                 // Prefer durable session restore; else config spawn lon/lat.
                 // Both paths prefetch the spawn area hot (restore inline, spawn via
                 // SpawnAtLonLat); player tick registers real entity focus ids later.
+                // Fresh world in a long-lived process: drop hot tiles / miss deadlines
+                // (and resolved surface elevations) from any previous world first;
+                // unload postfixes are best-effort, so old foci could otherwise keep
+                // their bubbles pinned until FocusStaleMs and the store would resample
+                // from them. Spawn prefetch below reloads synchronously.
+                ModApi.Streamer?.InvalidateHotCache();
+                EngineHeight.EngineHeightMod.Store.Clear();
                 bool restored = SessionStateStore.TryLoad(session);
                 if (restored)
                 {
