@@ -10,6 +10,8 @@ import struct
 from pathlib import Path
 from typing import Any
 
+from realearth.proton_paths import client_game_dir
+
 # Known-good 3.0.1 values (also defaults when dnfile is absent; install the
 # `audit` extra for a live read)
 VANILLA_3_0_1 = {
@@ -23,11 +25,7 @@ VANILLA_3_0_1 = {
 
 
 def default_game_dll() -> Path:
-    return (
-        Path.home()
-        / ".local/share/Steam/steamapps/common/7 Days To Die"
-        / "7DaysToDie_Data/Managed/Assembly-CSharp.dll"
-    )
+    return client_game_dir() / "7DaysToDie_Data/Managed/Assembly-CSharp.dll"
 
 
 def read_int32_constants(dll: Path) -> dict[str, int]:

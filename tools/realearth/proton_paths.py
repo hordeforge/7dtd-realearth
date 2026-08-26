@@ -16,6 +16,24 @@ from pathlib import Path
 
 STEAM_APPID = "251570"
 
+DEFAULT_CLIENT_GAME_DIR = (
+    Path.home() / ".local/share/Steam/steamapps/common/7 Days To Die"
+)
+
+
+def client_game_dir() -> Path:
+    """Client game install directory for this machine.
+
+    SEVENDTD_GAME_DIR is the project-wide override knob (Makefile, shell
+    scripts, csproj all read it); a Steam library outside the default
+    ~/.local/share layout must resolve identically here or installs land in
+    the wrong tree. Falls back to the default Steam common path.
+    """
+    env = os.environ.get("SEVENDTD_GAME_DIR")
+    if env:
+        return Path(env)
+    return DEFAULT_CLIENT_GAME_DIR
+
 
 def steam_roots() -> list[Path]:
     home = Path.home()

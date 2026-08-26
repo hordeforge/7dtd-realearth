@@ -1,12 +1,33 @@
 """Drive shipped proton_paths resolution against real Steam layout when present."""
 
+from pathlib import Path
+
 from realearth.proton_paths import (
+    DEFAULT_CLIENT_GAME_DIR,
     STEAM_APPID,
+    client_game_dir,
     client_generated_worlds_targets,
     native_linux_userdata,
     primary_client_userdata,
     proton_userdata,
 )
+
+
+def test_client_game_dir_honors_sevendtd_game_dir(monkeypatch) -> None:
+    """SEVENDTD_GAME_DIR is the project-wide override (Makefile, scripts, csproj)."""
+    monkeypatch.delenv("SEVENDTD_GAME_DIR", raising=False)
+    assert client_game_dir() == DEFAULT_CLIENT_GAME_DIR
+    monkeypatch.setenv("SEVENDTD_GAME_DIR", "/somewhere/else/7 Days To Die")
+    assert client_game_dir() == Path("/somewhere/else/7 Days To Die")
+
+
+def test_default_game_dll_follows_sevendtd_game_dir(monkeypatch) -> None:
+    from realearth.engine_constants import default_game_dll
+
+    monkeypatch.setenv("SEVENDTD_GAME_DIR", "/opt/game")
+    dll = default_game_dll()
+    assert "7DaysToDie_Data" in dll.parts
+    assert dll.name == "Assembly-CSharp.dll"
 
 
 def test_native_linux_userdata_is_under_home():

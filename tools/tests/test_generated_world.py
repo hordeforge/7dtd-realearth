@@ -7,13 +7,16 @@ import xml.etree.ElementTree as ET
 from pathlib import Path
 
 import numpy as np
+import pytest
 
 from realearth import DEFAULT_SEA_LEVEL_GAME_Y
 from realearth.generated_world import (
     bake_generated_world,
+    detect_client_versions,
     game_y_to_dtm_u16,
     write_map_info,
 )
+from realearth.proton_paths import STEAM_APPID
 from realearth.region import build_region
 
 
@@ -26,6 +29,26 @@ def test_game_y_to_dtm_u16_scale():
     assert int(u[0, 1]) == 61 * 256
     assert int(u[1, 0]) == 1 * 256
     assert int(u[1, 1]) == 250 * 256
+
+
+def test_detect_client_versions_follows_steam_dir_root(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """Proton log discovery follows every Steam root, not only the default one."""
+    logs = (
+        tmp_path
+        / "steamapps"
+        / f"compatdata/{STEAM_APPID}"
+        / "pfx/drive_c/users/steamuser/AppData/Roaming/7DaysToDie/logs"
+    )
+    logs.mkdir(parents=True)
+    (logs / "output_log_client__x.txt").write_text(
+        "Version: V 3.1.0 (b7) Compatibility Version: V 3.1.0\n",
+        encoding="utf-8",
+    )
+    monkeypatch.setattr("realearth.proton_paths.steam_roots", lambda: [tmp_path])
+    monkeypatch.setattr(Path, "home", lambda: tmp_path / "home")
+    assert detect_client_versions() == ("V.3.1.0", "V 3.1.0 (b7)")
 
 
 def test_bake_generated_world_files_and_dtm_size(tmp_path: Path):

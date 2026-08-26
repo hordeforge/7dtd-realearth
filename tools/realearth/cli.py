@@ -403,7 +403,10 @@ def _install_height_test(
     """Install height-test world + Streamed tile pack for Proton client."""
     import shutil
 
-    from realearth.proton_paths import client_generated_worlds_targets
+    from realearth.proton_paths import (
+        client_game_dir,
+        client_generated_worlds_targets,
+    )
 
     # Prefer meta from pack if present
     ht = pack_dir / "height_test.json"
@@ -415,7 +418,7 @@ def _install_height_test(
         summit_lon = float(meta.get("summit_lon") or summit_lon)
         summit_lat = float(meta.get("summit_lat") or summit_lat)
 
-    game = Path.home() / ".local/share/Steam/steamapps/common/7 Days To Die"
+    game = client_game_dir()
     mod = game / "Mods" / "RealEarth"
     if mod.is_dir():
         dest_tiles = mod / "Data" / "tiles"

@@ -131,12 +131,18 @@ def detect_client_versions() -> tuple[str, str]:
       Version: V 3.0.1 (b4) Compatibility Version: V 3.0.1
     map_info uses dotted form V.3.0.1 (no space); main.ttw uses the full Version string.
     """
-    log_roots = [
-        Path.home()
-        / ".local/share/Steam/steamapps/compatdata/251570/pfx/drive_c/users/steamuser"
-        / "AppData/Roaming/7DaysToDie/logs",
-        Path.home() / ".local/share/7DaysToDie",
-    ]
+    # Proton log roots follow every known Steam root (STEAM_DIR, .steam/steam,
+    # ...), not just the default ~/.local/share/Steam library; native Linux
+    # userdata stays the second candidate.
+    from realearth.proton_paths import STEAM_APPID, steam_roots
+
+    proton_log_dir = (
+        Path("steamapps")
+        / f"compatdata/{STEAM_APPID}"
+        / "pfx/drive_c/users/steamuser/AppData/Roaming/7DaysToDie/logs"
+    )
+    log_roots = [root / proton_log_dir for root in steam_roots()]
+    log_roots.append(Path.home() / ".local/share/7DaysToDie")
     logs: list[Path] = []
     for root in log_roots:
         if root.is_dir():

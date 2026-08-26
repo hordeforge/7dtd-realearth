@@ -63,6 +63,37 @@ def test_install_height_test_rejects_hostile_pack_name(tmp_path: Path) -> None:
     assert (victim / "keep.txt").is_file()
 
 
+def test_install_height_test_honors_sevendtd_game_dir(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """The mod install target follows SEVENDTD_GAME_DIR like every script."""
+    game = tmp_path / "game"
+    mod = game / "Mods" / "RealEarth"
+    (mod / "Config").mkdir(parents=True)
+    (mod / "Config" / "realearth.json").write_text("{}", encoding="utf-8")
+    monkeypatch.setenv("SEVENDTD_GAME_DIR", str(game))
+    monkeypatch.setattr(
+        "realearth.proton_paths.client_generated_worlds_targets",
+        lambda **_kw: [tmp_path / "GeneratedWorlds"],
+    )
+    pack = tmp_path / "pack"
+    (pack / "tiles").mkdir(parents=True)
+    (pack / "tiles" / "tile.rte").write_bytes(b"RTE1")
+    (pack / "earth.manifest.json").write_text(
+        json.dumps({"world_width": 512, "world_height": 512, "tile_size": 512}),
+        encoding="utf-8",
+    )
+    world = tmp_path / "world"
+    world.mkdir()
+    from realearth.cli import _install_height_test
+
+    _install_height_test(tmp_path, pack, world)
+    assert (mod / "Data" / "tiles" / "tiles" / "tile.rte").is_file()
+    cfg = json.loads((mod / "Config" / "realearth.json").read_text(encoding="utf-8"))
+    assert cfg["MapMode"] == "Streamed"
+    assert (tmp_path / "GeneratedWorlds" / "RealEarth_HeightTest").is_dir()
+
+
 def test_unknown_command_is_usage_error() -> None:
     result = CliRunner().invoke(main, ["bogus"])
     assert result.exit_code == 2
