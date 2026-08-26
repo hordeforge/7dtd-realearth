@@ -179,7 +179,7 @@ namespace RealEarth
 
         /// <summary>
         /// Patch EntityPlayer (dedicated + remote MP) AND EntityPlayerLocal (solo/host client).
-        /// Must not return after the first success — that left dedicated with only Local patched
+        /// Must not return after the first success: that left dedicated with only Local patched
         /// and remote players never registered stream foci.
         /// </summary>
         static int TryPatchPlayerTick()
@@ -199,7 +199,7 @@ namespace RealEarth
                     if (typeDone) break;
                     var m = FindMethod(t, mn);
                     if (m == null) continue;
-                    // Same MethodBase when Local inherits base Update — patch once only.
+                    // Same MethodBase when Local inherits base Update, so patch once only.
                     if (!seen.Add(m)) continue;
                     if (PatchPostfix(m, typeof(HooksImpl).GetMethod(nameof(HooksImpl.PlayerTickPostfix))!))
                     {
@@ -269,7 +269,7 @@ namespace RealEarth
                     }
                 }
             }
-            // World.SaveWorldState also writes to GetSaveGameDir — hook as secondary.
+            // World.SaveWorldState also writes to GetSaveGameDir, so hook as secondary.
             var wt = EngineReflection.FindType("World");
             if (wt != null)
             {
@@ -287,7 +287,7 @@ namespace RealEarth
         /// <summary>
         /// Primary Streamed inject: override EVERY concrete GetTerrainHeight* so RWG host
         /// (TerrainGeneratorWithBiomeResource) and FromRaw/DTM all sample RealEarth Y.
-        /// No patch-count cap — 3.0.1 has 8+ height methods across generators.
+        /// No patch-count cap: 3.0.1 has 8+ height methods across generators.
         /// </summary>
         static int TryPatchTerrainHeightQueries()
         {
@@ -409,7 +409,7 @@ namespace RealEarth
                 }
             }
 
-            // Chunk-index hooks (stream tiles) — skip interfaces only
+            // Chunk-index hooks (stream tiles), skip interfaces only
             foreach (var t in TerrainRelatedTypes(game))
             {
                 if (t.IsInterface)
@@ -561,7 +561,7 @@ namespace RealEarth
             {
                 // Roll back reservation so a later retry can try again after type load settles.
                 _patchedMethods.Remove(target);
-                // Interfaces/abstracts expected to fail — keep log quiet unless concrete.
+                // Interfaces/abstracts expected to fail, so keep log quiet unless concrete.
                 var dt = target.DeclaringType;
                 if (dt != null && !dt.IsInterface && !dt.IsAbstract)
                     ModApi.Log($"Patch failed {dt.Name}.{target.Name}: {ex.Message}");
@@ -908,7 +908,7 @@ namespace RealEarth
             }
         }
 
-        /// <summary>World.GetHeightAt(float,float) and similar — full 1:1 meters/blocks.</summary>
+        /// <summary>World.GetHeightAt(float,float) and similar: full 1:1 meters/blocks.</summary>
         public static void HeightFloatFromFloatArgsPostfix(float __0, float __1, ref float __result)
         {
             try

@@ -6,7 +6,7 @@ namespace RealEarth.EngineHeight
     /// <summary>
     /// Sparse absolute elevation authority for the engine-height path.
     /// Stores real meters ASL (from .rte) in Y-sections so future tall columns do not need a
-    /// full static 0..Max slab in RAM — only sections that contain surface/build data.
+    /// full static 0..Max slab in RAM, only sections that contain surface/build data.
     ///
     /// Cap + LRU eviction keeps long MP sessions bounded.
     /// </summary>

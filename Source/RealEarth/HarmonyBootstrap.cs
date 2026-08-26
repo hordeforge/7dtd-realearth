@@ -23,7 +23,7 @@ namespace RealEarth
                 }
 
                 ModApi.Log(
-                    "HarmonyBootstrap: Harmony present — RuntimeHooks.Apply attaches single-map patches.");
+                    "HarmonyBootstrap: Harmony present, RuntimeHooks.Apply attaches single-map patches.");
             }
             catch (Exception ex)
             {

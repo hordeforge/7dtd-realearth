@@ -56,6 +56,10 @@ Thumbs.db
 
 # scratch
 .scratch/
+# Dependency lockfiles are tracked (tools/uv.lock); only stray *.lock guard
+# files from editors and half-finished tool runs are ignored.
 *.lock
+!tools/uv.lock
+!bun.lock
 .coverage
 .coverage.*

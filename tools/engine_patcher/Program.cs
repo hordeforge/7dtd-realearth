@@ -261,7 +261,7 @@ namespace RealEarth.EnginePatcher
                         }
                         return 0;
                     }
-                    Console.Error.WriteLine("No patches applied — types/constants not found?");
+                    Console.Error.WriteLine("No patches applied: types/constants not found?");
                     return 3;
                 }
 
@@ -385,7 +385,7 @@ namespace RealEarth.EnginePatcher
                 ["ChunkDensityYPow"] = TargetYPow,
                 ["ChunkDensityYMask"] = TargetYDimM1,
                 ["cMaxHeight"] = TargetYDimM1,
-                // ChunkAreaDim stays 256 (16×16) — do not touch
+                // ChunkAreaDim stays 256 (16×16), do not touch
             };
 
             foreach (var type in module.Types)
@@ -517,7 +517,7 @@ namespace RealEarth.EnginePatcher
 
         /// <summary>
         /// 64 is layer count when used as array length or loop bound over layers.
-        /// ChunkBlockChannel..ctor does: ldc 64; ldfld bytesPerVal; mul; newarr — look ahead.
+        /// ChunkBlockChannel..ctor does: ldc 64; ldfld bytesPerVal; mul; newarr, so look ahead.
         /// </summary>
         static bool IsLayerArraySite(Mono.Collections.Generic.Collection<Instruction> il, int index)
         {
@@ -575,7 +575,7 @@ namespace RealEarth.EnginePatcher
             if (IsXzMapSizeSite(il, index))
                 return false;
 
-            // Hard deny: index packing (x + z*16 + y*256) — 256 is XZ plane, not YDim
+            // Hard deny: index packing (x + z*16 + y*256), where 256 is XZ plane, not YDim
             if (IsXzPlaneStrideSite(il, index))
                 return false;
 
@@ -586,7 +586,7 @@ namespace RealEarth.EnginePatcher
             if (IsBranchCompare(next) && IsYBoundMethod(method))
                 return true;
 
-            // Vector3i(yMax, ...) density checks — first arg 256 as Y
+            // Vector3i(yMax, ...) density checks, first arg 256 as Y
             if (IsYBoundMethod(method) && next.OpCode == OpCodes.Ldc_I4_S)
                 return true; // often Vector3i(256, 16, ...) pattern continues
 
@@ -617,7 +617,7 @@ namespace RealEarth.EnginePatcher
             Mono.Collections.Generic.Collection<Instruction> il,
             int index)
         {
-            // Biome sentinel / texture packing / face paint — leave alone
+            // Biome sentinel / texture packing / face paint, leave alone
             string m = method.Name;
             if (m.IndexOf("FaceTexture", StringComparison.OrdinalIgnoreCase) >= 0)
                 return false;
@@ -638,7 +638,7 @@ namespace RealEarth.EnginePatcher
                 }
             }
 
-            // Heightmap is still byte[] — SetHeight stores a byte, keep 255 clamp for that path
+            // Heightmap is still byte[]: SetHeight stores a byte, keep 255 clamp for that path
             if (m.Equals("SetHeight", StringComparison.Ordinal)
                 || m.Equals("GetHeight", StringComparison.Ordinal)
                 || m.Equals("GetMaxHeight", StringComparison.Ordinal)
@@ -725,7 +725,7 @@ namespace RealEarth.EnginePatcher
                         }
                     }
                 }
-                // newarr Byte without stfld yet — conservative: treat as XZ in Chunk
+                // newarr Byte without stfld yet, conservative: treat as XZ in Chunk
                 var et = next.Operand as TypeReference;
                 if (et != null && (et.Name == "Byte" || et.FullName == "System.Byte"))
                     return true;
@@ -744,7 +744,7 @@ namespace RealEarth.EnginePatcher
         }
 
         /// <summary>
-        /// Packing: idx % 256, idx / 256, y * 256 — XZ plane stride, must stay 256.
+        /// Packing: idx % 256, idx / 256, y * 256: XZ plane stride, must stay 256.
         /// </summary>
         static bool IsXzPlaneStrideSite(Mono.Collections.Generic.Collection<Instruction> il, int index)
         {
@@ -757,12 +757,12 @@ namespace RealEarth.EnginePatcher
             // y * 256 for linear index within chunk (XZ area stride)
             if (next.OpCode == OpCodes.Mul)
             {
-                // AABB world size uses mul too — CalculateAABB needs YDim not XZ.
+                // AABB world size uses mul too, but CalculateAABB needs YDim not XZ.
                 // Disambiguate: if followed by add of x/z style, packing; if conv.r4 world AABB, Y.
                 for (int k = index + 2; k < Math.Min(index + 5, il.Count); k++)
                 {
                     if (il[k].OpCode == OpCodes.Conv_R4)
-                        return false; // world AABB — allow Y rewrite via other rules
+                        return false; // world AABB, allow Y rewrite via other rules
                 }
                 return true; // default: packing stride
             }

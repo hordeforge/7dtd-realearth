@@ -11,7 +11,7 @@ namespace RealEarth
     /// RealEarth only: map engine (x,z) → absolute Earth for .rte sampling.
     ///
     /// LocalWindowSize + origin slide is a bound on engine coords if the world must
-    /// grow past a fixed host size — NOT a separate multiplayer/chunk combat system.
+    /// grow past a fixed host size, NOT a separate multiplayer/chunk combat system.
     /// </summary>
     public sealed class WorldSession
     {

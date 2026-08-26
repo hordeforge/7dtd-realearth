@@ -105,7 +105,7 @@ namespace RealEarth
 
         /// <summary>
         /// Byte API: only used by legacy signatures. When engine is expanded we still
-        /// cannot fit 8949 in a byte — inject owns the real column. Return min(255,h).
+        /// cannot fit 8949 in a byte, so inject owns the real column. Return min(255,h).
         /// </summary>
         public static bool TryOverrideHeightByte(int worldX, int worldZ, out byte height)
         {
@@ -749,7 +749,7 @@ namespace RealEarth
                 ModApi.Log(
                     _solidBlock != null && _airBlock != null
                         ? "Height inject: solid+air BlockValue ready (landcover-aware columns)."
-                        : "Height inject: BlockValue partial — density-only columns.");
+                        : "Height inject: BlockValue partial, density-only columns.");
             }
             catch (Exception ex)
             {

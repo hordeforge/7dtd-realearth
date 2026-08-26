@@ -5,7 +5,7 @@ using System.Reflection;
 namespace RealEarth
 {
     /// <summary>
-    /// F1 console: <c>reheight</c> — print engine Y (what the game map shows) vs
+    /// F1 console: <c>reheight</c> prints engine Y (what the game map shows) vs
     /// height-mod true meters / int gameY (Everest-scale path).
     ///
     /// Stock columns top out ~250–255 blocks (= meters on the HUD). That is expected

@@ -311,7 +311,7 @@ namespace RealEarth
             int n = 0;
             try
             {
-                // LandProtectionBlocks / LPBlocks / m_lpBlockMap — HashSet or Dictionary of Vector3i
+                // LandProtectionBlocks / LPBlocks / m_lpBlockMap: HashSet or Dictionary of Vector3i
                 foreach (var fname in new[]
                 {
                     "LandProtectionBlocks", "LPBlocks", "landProtectionBlocks",
