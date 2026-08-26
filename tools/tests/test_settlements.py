@@ -102,3 +102,27 @@ def test_population_band_ladder_matches_runtime_fallback():
         assert f"pop >= {pop:_d}" in body, f"runtime ladder missing {pop:_d}"
         assert f'return "{band}"' in body, f"runtime ladder missing {band}"
     assert 'return "rural_scatter"' in body
+
+
+def test_seed_places_derive_band_from_the_ladder():
+    """C# seed places must not carry hardcoded band strings.
+
+    AddSeedPlacesInPack used to list a "band" column as literals, and two
+    drifted off the shared ladder (Kathmandu 1.4M stamped large_city instead
+    of metro, Base Camp 50 stamped hamlet instead of rural_scatter), so the
+    same named place picked a different prefab pool than the Python pipeline
+    emits for it. Bands are now derived in place via RuntimePoiInject.BandFromPop;
+    this pin keeps the derivation structural.
+    """
+    src = (
+        Path(__file__).resolve().parents[2]
+        / "Source"
+        / "RealEarth"
+        / "CityMapLabels.cs"
+    ).read_text(encoding="utf-8")
+    start = src.index("static void AddSeedPlacesInPack")
+    body = src[start : src.index("static object? GetNavObjectManager", start)]
+    assert "Band = RuntimePoiInject.BandFromPop(s.pop)" in body
+    # The seed tuple must carry no band column and no band literals.
+    for band in ("metro", "large_city", "town", "village", "hamlet", "rural_scatter"):
+        assert f'"{band}"' not in body, f"seed table hardcodes band {band}"

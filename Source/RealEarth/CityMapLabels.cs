@@ -746,25 +746,28 @@ namespace RealEarth
         static void AddSeedPlacesInPack(List<Place> into)
         {
             // edge_m ≈ real urban continuum half-width (map extent order-of-magnitude).
-            var seeds = new (string n, double lon, double lat, int pop, string band, double edgeM)[]
+            // Band is not listed: it is derived from population via the single ladder
+            // (RuntimePoiInject.BandFromPop), matching Python Settlement.band, so a
+            // seed can never drift onto the wrong prefab pool.
+            var seeds = new (string n, double lon, double lat, int pop, double edgeM)[]
             {
-                ("New York", -74.006, 40.7128, 8_300_000, "metro", 35_000),
-                ("Los Angeles", -118.2437, 34.0522, 3_900_000, "metro", 45_000),
-                ("Chicago", -87.6298, 41.8781, 2_700_000, "metro", 28_000),
-                ("Denver", -104.9903, 39.7392, 715_000, "large_city", 22_000),
-                ("London", -0.1276, 51.5074, 9_000_000, "metro", 28_000),
-                ("Paris", 2.3522, 48.8566, 2_100_000, "metro", 18_000),
-                ("Berlin", 13.4050, 52.5200, 3_700_000, "metro", 16_000),
-                ("Tokyo", 139.6917, 35.6895, 14_000_000, "metro", 40_000),
-                ("Sydney", 151.2093, -33.8688, 5_300_000, "metro", 22_000),
-                ("São Paulo", -46.6333, -23.5505, 12_500_000, "metro", 30_000),
-                ("Cairo", 31.2357, 30.0444, 10_000_000, "metro", 22_000),
-                ("Mumbai", 72.8777, 19.0760, 12_500_000, "metro", 25_000),
-                ("Kathmandu", 85.3240, 27.7172, 1_400_000, "large_city", 10_000),
-                ("Namche Bazaar", 86.7140, 27.8069, 1_600, "village", 800),
-                ("Lukla", 86.7314, 27.6866, 1_500, "village", 600),
-                ("Dingboche", 86.8360, 27.8920, 200, "hamlet", 400),
-                ("Base Camp", 86.8525, 28.0026, 50, "hamlet", 300),
+                ("New York", -74.006, 40.7128, 8_300_000, 35_000),
+                ("Los Angeles", -118.2437, 34.0522, 3_900_000, 45_000),
+                ("Chicago", -87.6298, 41.8781, 2_700_000, 28_000),
+                ("Denver", -104.9903, 39.7392, 715_000, 22_000),
+                ("London", -0.1276, 51.5074, 9_000_000, 28_000),
+                ("Paris", 2.3522, 48.8566, 2_100_000, 18_000),
+                ("Berlin", 13.4050, 52.5200, 3_700_000, 16_000),
+                ("Tokyo", 139.6917, 35.6895, 14_000_000, 40_000),
+                ("Sydney", 151.2093, -33.8688, 5_300_000, 22_000),
+                ("São Paulo", -46.6333, -23.5505, 12_500_000, 30_000),
+                ("Cairo", 31.2357, 30.0444, 10_000_000, 22_000),
+                ("Mumbai", 72.8777, 19.0760, 12_500_000, 25_000),
+                ("Kathmandu", 85.3240, 27.7172, 1_400_000, 10_000),
+                ("Namche Bazaar", 86.7140, 27.8069, 1_600, 800),
+                ("Lukla", 86.7314, 27.6866, 1_500, 600),
+                ("Dingboche", 86.8360, 27.8920, 200, 400),
+                ("Base Camp", 86.8525, 28.0026, 50, 300),
             };
 
             var cfg = ModApi.Config;
@@ -782,7 +785,7 @@ namespace RealEarth
                     Lon = s.lon,
                     Lat = s.lat,
                     Population = s.pop,
-                    Band = s.band,
+                    Band = RuntimePoiInject.BandFromPop(s.pop),
                     EdgeRadiusM = s.edgeM,
                     EdgeSource = "seed",
                 });

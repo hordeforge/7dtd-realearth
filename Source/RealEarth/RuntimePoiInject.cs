@@ -249,7 +249,13 @@ namespace RealEarth
             return placed;
         }
 
-        static string BandFromPop(int pop)
+        /// <summary>
+        /// The one population→band ladder. CityMapLabels seed places and pack rows
+        /// without a band both resolve here, and tools/realearth settlements.py
+        /// Settlement.band mirrors these thresholds so a place stamps from the
+        /// same prefab pool whichever side assigned its band.
+        /// </summary>
+        public static string BandFromPop(int pop)
         {
             if (pop >= 1_000_000) return "metro";
             if (pop >= 100_000) return "large_city";
