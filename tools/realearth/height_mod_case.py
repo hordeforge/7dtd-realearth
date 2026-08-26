@@ -152,8 +152,10 @@ def format_report(results: list[CaseResult] | None = None) -> str:
     results = results if results is not None else run_height_mod_case()
     lines = [
         "RealEarth height-mod test case",
-        f"  ceiling={ENGINE_TARGET_MAX_Y}  everest={EVEREST_METERS_ASL} m  "
-        f"fly_headroom={FLY_OVER_HEADROOM_M} m  sea_y={DEFAULT_SEA_LEVEL_GAME_Y}",
+        (
+            f"  ceiling={ENGINE_TARGET_MAX_Y}  everest={EVEREST_METERS_ASL} m  "
+            f"fly_headroom={FLY_OVER_HEADROOM_M} m  sea_y={DEFAULT_SEA_LEVEL_GAME_Y}"
+        ),
         "",
     ]
     passed = 0

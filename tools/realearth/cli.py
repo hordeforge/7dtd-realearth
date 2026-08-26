@@ -753,6 +753,8 @@ def bake_world_cmd(
             ttw_template=Path(ttw_template) if ttw_template else None,
         )
         click.echo(f"GeneratedWorld → {out_dir}")
+        if meta.get("pre_bake_snapshot"):
+            click.echo(f"  previous output moved aside → {meta['pre_bake_snapshot']}")
         click.echo(f"  size: {meta['size']} x {meta['size']}  dtm_bytes={meta['dtm_bytes']}")
         click.echo("  files: dtm.raw dtm_processed.raw biomes.png map_info.xml spawnpoints.xml …")
         click.echo(
@@ -769,6 +771,8 @@ def bake_world_cmd(
             sea_level_y=sea_level_y,
         )
         click.echo(f"Heightmap export → {result['out_dir']}")
+        if result.get("pre_bake_snapshot"):
+            click.echo(f"  previous output moved aside → {result['pre_bake_snapshot']}")
         click.echo(f"  heightmap: {result['heightmap']}")
     click.echo(f"  tip: full Earth in {size} blocks ≈ {planet_scale_for_size(size):.0f} m/block")
 

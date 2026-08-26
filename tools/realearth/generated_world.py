@@ -20,7 +20,7 @@ import numpy as np
 from PIL import Image
 
 from realearth import DEFAULT_SEA_LEVEL_GAME_Y, JsonDict
-from realearth.bake_world import resize_arrays, snap_world_size
+from realearth.bake_world import resize_arrays, snap_world_size, snapshot_existing_output
 from realearth.density import (
     apply_urban_from_density,
     detect_city_cores,
@@ -344,6 +344,7 @@ def bake_generated_world(
     size = snap_world_size(size)
     pack_dir = Path(pack_dir)
     out_dir = Path(out_dir)
+    pre_bake_snapshot = snapshot_existing_output(out_dir)
     out_dir.mkdir(parents=True, exist_ok=True)
 
     data = mosaic_pack(pack_dir)
@@ -473,6 +474,7 @@ def bake_generated_world(
         "city_cores": len(cores),
         "prefab_stamps": len(stamps),
         "files": required + ["cities.json", "population.png"],
+        "pre_bake_snapshot": str(pre_bake_snapshot) if pre_bake_snapshot else None,
     }
     world_json = out_dir / "realearth_world.json"
     world_json.write_text(json.dumps(meta, indent=2, ensure_ascii=False) + "\n", encoding="utf-8")

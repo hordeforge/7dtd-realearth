@@ -33,7 +33,7 @@ disappears. Without it, rebuilds depend on a third party staying alive.
 |---|---|---|
 | Repo disk dies | Total loss of all worlds and packs; RPO infinite | RPO = last archive copied off-host; RTO = minutes (`artifacts-restore`) |
 | AWS Terrarium dataset vanishes | Packs unreproducible; every future rebuild silently degrades to synthetic fallback | No impact while `data/cache/terrarium` is present (and archived) |
-| Bad bake overwrites a good world | Gone; `worlds/` has no history | Restore last archive, or re-bake offline from pack + cache |
+| Bad bake overwrites a good world | Gone; `worlds/` has no history | Bakes never overwrite in place: the previous tree is renamed `<world>.pre-bake-<UTC stamp>` next to it (delete it once happy). Fallback: last archive or re-bake offline from pack + cache |
 | Engine expand corrupts the game DLL | Game will not start | `make engine-restore` (or Steam Verify); RTO = minutes |
 | Harness run pointed at real userdata deletes saves | Permanent loss | `Saves_trash/<timestamp>` window, 7 days default (`RE_SAVE_TRASH_DAYS`) |
 
@@ -88,10 +88,14 @@ time). See [HEIGHT_LIMITS](HEIGHT_LIMITS.md) and [THREAT_MODEL](THREAT_MODEL.md)
    `make artifacts-backup`, then copy the archive off-host. Same-disk archives
    do not survive instance loss.
 2. Include `data/cache/` in whatever off-host copy you make: it is the only
-   hedge against losing the upstream tile dataset.
+   hedge against losing the upstream tile dataset. If you relocate it via
+   `RE_TERRARIUM_CACHE`, `artifacts-backup` warns that the archive no longer
+   contains it; copy the relocated cache into your off-host set yourself.
 3. Restores are destructive-by-default-proof: they refuse to clobber; use
    `RE_FORCE_RESTORE=1` when you mean it (current dirs are moved aside, not
-   deleted).
+   deleted). Bakes get the same treatment automatically: rebaking onto an
+   existing output moves that output to `<name>.pre-bake-<stamp>` instead of
+   overwriting it.
 
 ## Open questions (evidence outside this repo)
 

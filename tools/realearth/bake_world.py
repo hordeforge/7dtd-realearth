@@ -7,6 +7,7 @@ or GeneratedWorlds-style folders. This is MapMode=Baked: fully usable as one lar
 from __future__ import annotations
 
 import json
+from datetime import UTC, datetime
 from pathlib import Path
 
 import numpy as np
@@ -61,6 +62,25 @@ def resize_arrays(
     return elev_r, lc_r, pop_r
 
 
+def snapshot_existing_output(out_dir: Path) -> Path | None:
+    """Move an existing non-empty output dir aside before a bake overwrites it.
+
+    A bad bake (wrong pack, size, or flags) must not be able to destroy the
+    last good world in place: `worlds/` has no history and the runbook lists
+    this as the local data-loss disaster. Mirrors the restore guardrail in
+    scripts/backup_artifacts.sh: the previous tree is renamed with a UTC
+    stamp, never deleted, so recovery needs no prior archive.
+    """
+    out_dir = Path(out_dir)
+    if not out_dir.is_dir() or not any(out_dir.iterdir()):
+        return None
+    aside = out_dir.with_name(f"{out_dir.name}.pre-bake-{datetime.now(UTC):%Y%m%dT%H%M%S}")
+    while aside.exists():
+        aside = aside.with_name(f"{aside.name}x")
+    out_dir.rename(aside)
+    return aside
+
+
 def bake_world_from_pack(
     pack_dir: Path,
     out_dir: Path,
@@ -73,6 +93,7 @@ def bake_world_from_pack(
     size = snap_world_size(size)
     pack_dir = Path(pack_dir)
     out_dir = Path(out_dir)
+    pre_bake_snapshot = snapshot_existing_output(out_dir)
     out_dir.mkdir(parents=True, exist_ok=True)
 
     data = mosaic_pack(pack_dir)
@@ -225,6 +246,7 @@ def bake_world_from_pack(
         "heightmap": str(out_dir / "heightmap.png"),
         "biomes": str(out_dir / "biomes.png"),
         "settlements": len(settlements),
+        "pre_bake_snapshot": str(pre_bake_snapshot) if pre_bake_snapshot else None,
     }
 
 

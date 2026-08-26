@@ -81,6 +81,14 @@ cmd_backup() {
     echo "WARNING: archive lives on the same disk as the data it protects." >&2
     echo "Copy it off-host (RE_BACKUP_DIR=/mnt/external ...) or instance loss still loses everything." >&2
   fi
+
+  # The terrarium cache is the only local copy of source tiles; if it was
+  # relocated via RE_TERRARIUM_CACHE this archive does not contain it.
+  local tcache="${RE_TERRARIUM_CACHE:-}"
+  if [[ -n "$tcache" && -d "$tcache" && "$tcache" != "$ROOT"/data/cache/* ]]; then
+    echo "WARNING: RE_TERRARIUM_CACHE=$tcache is outside data/cache;" >&2
+    echo "the source-tile cache is NOT in this archive. Copy it into your off-host set manually." >&2
+  fi
 }
 
 cmd_list() {

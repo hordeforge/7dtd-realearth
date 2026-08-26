@@ -36,7 +36,9 @@ head -c 512 /dev/urandom >"$SANDBOX/viewer/data/export.json"
 )
 
 # --- backup: must produce a verified archive covering all four dirs ---
-RE_ROOT="$SANDBOX" "$HERE/backup_artifacts.sh" backup >/dev/null ||
+# The sandbox carries its own cache; an exported RE_TERRARIUM_CACHE pointing
+# at the real repo would only trip the outside-data/cache warning.
+RE_ROOT="$SANDBOX" RE_TERRARIUM_CACHE= "$HERE/backup_artifacts.sh" backup >/dev/null ||
   fail "backup step exited nonzero"
 archive="$(find "$SANDBOX/backups" -name 'realearth-artifacts-*.tar.gz' | head -n1)"
 [[ -n "$archive" ]] || fail "no realearth-artifacts-*.tar.gz written"

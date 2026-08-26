@@ -16,6 +16,8 @@ data/cache/**
 
 # Timestamped artifact backups (make artifacts-backup; move off-host)
 backups/**
+# Pre-run snapshots a bake moves aside before overwriting its output
+*.pre-bake-*/
 
 # Viewer exports (regenerate with export-viewer)
 viewer/data/**
