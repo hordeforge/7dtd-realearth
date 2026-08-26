@@ -9,6 +9,7 @@
 from __future__ import annotations
 
 import math
+import os
 import time
 from pathlib import Path
 
@@ -152,6 +153,49 @@ TERRARIUM_URL = (
 )
 
 
+def terrarium_cache_dir() -> Path | None:
+    """Cache root from RE_TERRARIUM_CACHE; unset or empty disables caching."""
+    v = os.environ.get("RE_TERRARIUM_CACHE", "").strip()
+    return Path(v) if v else None
+
+
+def _cached_tile(cache_dir: Path, zoom: int, tx: int, ty: int) -> bytes | None:
+    path = cache_dir / str(zoom) / str(tx) / f"{ty}.png"
+    try:
+        return path.read_bytes()
+    except OSError:
+        return None
+
+
+def _store_tile(cache_dir: Path, zoom: int, tx: int, ty: int, data: bytes) -> None:
+    """Publish a fetched tile into the cache atomically (best effort).
+
+    The cache is the only local copy of source tiles: if the remote dataset
+    disappears, packs can only be rebuilt from what was persisted here.
+    """
+    directory = cache_dir / str(zoom) / str(tx)
+    try:
+        directory.mkdir(parents=True, exist_ok=True)
+        tmp = directory / f".{ty}.{os.getpid()}.tmp"
+        tmp.write_bytes(data)
+        os.replace(tmp, directory / f"{ty}.png")
+    except OSError:
+        pass
+
+
+def _decode_tile_png(data: bytes) -> np.ndarray | None:
+    """Decode PNG bytes to terrarium meters; None if unreadable (corrupt cache)."""
+    from io import BytesIO
+
+    from PIL import Image
+
+    try:
+        img = Image.open(BytesIO(data)).convert("RGB")
+    except Exception:
+        return None
+    return decode_terrarium_png(np.asarray(img)).astype(np.float32)
+
+
 def _lonlat_to_tile(lon: float, lat: float, z: int) -> tuple[int, int]:
     """Web Mercator tile indices for lon/lat at zoom z."""
     lat = max(min(lat, 85.05112878), -85.05112878)
@@ -175,17 +219,24 @@ def fetch_region_terrarium(
     zoom: int = 10,
     timeout: float = 60.0,
     max_workers: int = 8,
+    cache_dir: Path | str | None = None,
 ) -> np.ndarray:
     """Fetch real elevation via open AWS Terrarium tiles, resample to width×height.
 
     Free open terrain tiles (not Google). Suitable for regional realism.
     Higher zoom = more detail (and more HTTP requests). Tile downloads run on a
     small thread pool; each tile decodes into a disjoint mosaic window.
+
+    cache_dir: optional local tile cache. When set, tiles are served from disk
+    when present and every fetched tile is stored there, so packs stay
+    rebuildable offline if the remote dataset changes or disappears. Defaults
+    to RE_TERRARIUM_CACHE (unset = no caching).
     """
     from concurrent.futures import ThreadPoolExecutor
-    from io import BytesIO
 
-    from PIL import Image
+    if cache_dir is None:
+        cache_dir = terrarium_cache_dir()
+    cache = Path(cache_dir) if cache_dir is not None else None
 
     zoom = max(0, min(15, int(zoom)))
     n = 2**zoom
@@ -205,10 +256,19 @@ def fetch_region_terrarium(
     mosaic = np.full((mosaic_h, mosaic_w), np.nan, dtype=np.float32)
 
     def fetch_tile(ty: int, tx: int) -> tuple[int, int, np.ndarray]:
+        if cache is not None:
+            data = _cached_tile(cache, zoom, tx, ty)
+            if data is not None:
+                elev = _decode_tile_png(data)
+                if elev is not None:
+                    return ty, tx, elev
         url = TERRARIUM_URL.format(z=zoom, x=tx, y=ty)
         r = _get_with_retry(client, url)
-        img = Image.open(BytesIO(r.content)).convert("RGB")
-        elev = decode_terrarium_png(np.asarray(img)).astype(np.float32)
+        if cache is not None:
+            _store_tile(cache, zoom, tx, ty, r.content)
+        elev = _decode_tile_png(r.content)
+        if elev is None:
+            raise ValueError(f"undecodable tile PNG from {url}")
         return ty, tx, elev
 
     with httpx.Client(timeout=timeout, follow_redirects=True) as client:

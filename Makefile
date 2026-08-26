@@ -14,6 +14,7 @@ SHELL := /bin/bash
 	height-test height-map height-map-500 height-map-install height-map-500-install \
 	engine-audit engine-expand engine-expand-dry engine-verify engine-restore dedicated-height-test \
 	demo bake bake-height package \
+	artifacts-backup artifacts-restore \
 	viewer viewer-build serve viewer-lint \
 	webmod webmod-export webmod-lint html-lint \
 	info check clean clean-build
@@ -51,6 +52,12 @@ WORLD_SIZE    ?= 2048
 PACK_DEMO     := $(ROOT)/data/samples/demo_region
 PACK_HEIGHT   := $(ROOT)/data/samples/height_test
 WORLD_HEIGHT  := $(ROOT)/worlds/RealEarth_HeightTest
+
+# Local Terrarium source-tile cache. Every fetched DEM tile is persisted here,
+# so packs and worlds stay rebuildable offline if the remote AWS dataset
+# changes or disappears. Include it in artifact backups (docs/BACKUP_RESTORE.md).
+RE_TERRARIUM_CACHE ?= $(ROOT)/data/cache/terrarium
+export RE_TERRARIUM_CACHE
 
 # WebMod (stock dashboard webui) build knobs. Build output goes under
 # webmod/build (inside the tracked source tree, git-ignored): a sibling
@@ -109,6 +116,8 @@ help:
 	@echo "    make demo               Synthetic demo region pack"
 	@echo "    make bake               Bake GeneratedWorld from demo pack"
 	@echo "    make bake-height        Bake RealEarth_HeightTest only"
+	@echo "    make artifacts-backup   Verified archive of worlds/packs/cache (docs/BACKUP_RESTORE.md)"
+	@echo "    make artifacts-restore ARCHIVE=path.tar.gz   Restore artifact archive"
 	@echo ""
 	@echo "  Tests"
 	@echo "    make test               Full Python test suite"
@@ -278,6 +287,18 @@ bake:
 	@echo "OK world → $(ROOT)/worlds/RealEarth"
 
 bake-height: height-map
+
+# Durability net for git-ignored generated state (worlds/, packs, tile cache,
+# viewer data). Archives are checksum-verified on write; restore refuses to
+# clobber without RE_FORCE_RESTORE=1. See docs/BACKUP_RESTORE.md.
+artifacts-backup:
+	@chmod +x "$(SCRIPTS)/backup_artifacts.sh"
+	@"$(SCRIPTS)/backup_artifacts.sh" backup
+
+artifacts-restore:
+	@test -n "$(ARCHIVE)" || { echo "ERROR: pass ARCHIVE=path/to/realearth-artifacts-*.tar.gz" >&2; exit 1; }
+	@chmod +x "$(SCRIPTS)/backup_artifacts.sh"
+	@"$(SCRIPTS)/backup_artifacts.sh" restore "$(ARCHIVE)"
 
 # ---------------------------------------------------------------------------
 # Tests

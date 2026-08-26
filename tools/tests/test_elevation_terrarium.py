@@ -1,4 +1,4 @@
-"""Unit tests for Terrarium decode, tile math, and HTTP retry (no network)."""
+"""Unit tests for Terrarium decode, tile math, HTTP retry, tile cache (no network)."""
 
 import httpx
 import numpy as np
@@ -8,6 +8,7 @@ from realearth.elevation import (
     _get_with_retry,
     _lonlat_to_tile,
     decode_terrarium_png,
+    fetch_region_terrarium,
 )
 
 
@@ -113,3 +114,98 @@ def test_get_with_retry_backoff_is_deterministic(monkeypatch):
         _get_with_retry(client, "http://unit.test/tile")
     assert client.calls == 3
     assert sleeps == [0.5, 1.0]
+
+
+class _FakeTileResponse:
+    def __init__(self, content: bytes):
+        self.status_code = 200
+        self.content = content
+        self.request = httpx.Request("GET", "http://unit.test/tile")
+
+    def raise_for_status(self) -> None:
+        pass
+
+
+class _FakeTileClient:
+    """Context-manager client serving one canned tile PNG; counts HTTP calls."""
+
+    def __init__(self, png: bytes):
+        self.png = png
+        self.calls = 0
+
+    def get(self, url: str, params: dict | None = None) -> _FakeTileResponse:
+        self.calls += 1
+        return _FakeTileResponse(self.png)
+
+    def __enter__(self) -> "_FakeTileClient":
+        return self
+
+    def __exit__(self, *exc: object) -> bool:
+        return False
+
+
+def _tile_png() -> bytes:
+    import io
+
+    from PIL import Image
+
+    rgb = np.zeros((256, 256, 3), dtype=np.uint8)
+    rgb[:, :, 0] = 128  # 128*256 - 32768 = 0 m
+    rgb[:, :, 1] = 100  # +100 m
+    buf = io.BytesIO()
+    Image.fromarray(rgb, mode="RGB").save(buf, format="PNG")
+    return buf.getvalue()
+
+
+_BBOX = (-0.001, -0.001, 0.001, 0.001)
+
+
+def test_terrarium_cache_serves_second_run_without_http(monkeypatch, tmp_path):
+    """A cached region must rebuild offline: zero HTTP on the second run."""
+    png = _tile_png()
+    client = _FakeTileClient(png)
+    monkeypatch.setattr(httpx, "Client", lambda **kw: client)
+
+    a = fetch_region_terrarium(*_BBOX, 8, 8, zoom=1, cache_dir=tmp_path)
+    first_run_calls = client.calls
+    assert first_run_calls >= 1
+    b = fetch_region_terrarium(*_BBOX, 8, 8, zoom=1, cache_dir=tmp_path)
+    assert client.calls == first_run_calls  # second run made no new requests
+    assert np.array_equal(a, b)
+
+
+def test_terrarium_cache_env_default(monkeypatch, tmp_path):
+    """RE_TERRARIUM_CACHE enables the cache without an explicit argument."""
+    import realearth.elevation as el
+
+    png = _tile_png()
+    client = _FakeTileClient(png)
+    monkeypatch.setattr(httpx, "Client", lambda **kw: client)
+    monkeypatch.setenv("RE_TERRARIUM_CACHE", str(tmp_path / "tiles"))
+
+    fetch_region_terrarium(*_BBOX, 8, 8, zoom=1)
+    stored = list((tmp_path / "tiles").rglob("*.png"))
+    assert stored, "fetched tiles must be persisted to the env-configured cache"
+    assert el.terrarium_cache_dir() == tmp_path / "tiles"
+
+
+def test_terrarium_cache_corrupt_entry_is_refetched(monkeypatch, tmp_path):
+    """A corrupt cached PNG must never poison a rebuild: refetch overwrites it."""
+    png = _tile_png()
+    client = _FakeTileClient(png)
+    monkeypatch.setattr(httpx, "Client", lambda **kw: client)
+
+    # Poison every tile slot this bbox touches.
+    west, south, east, north = _BBOX
+    x0, y0 = _lonlat_to_tile(west, north, 1)
+    x1, y1 = _lonlat_to_tile(east, south, 1)
+    poisoned = 0
+    for tx in range(min(x0, x1), max(x0, x1) + 1):
+        for ty in range(min(y0, y1), max(y0, y1) + 1):
+            d = tmp_path / "1" / str(tx)
+            d.mkdir(parents=True, exist_ok=True)
+            (d / f"{ty}.png").write_bytes(b"not a png")
+            poisoned += 1
+
+    fetch_region_terrarium(*_BBOX, 8, 8, zoom=1, cache_dir=tmp_path)
+    assert client.calls == poisoned

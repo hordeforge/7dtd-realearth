@@ -53,6 +53,7 @@ flowchart TB
 | Density → stamps | [`CITIES_AND_DENSITY.md`](CITIES_AND_DENSITY.md) | CITY_MAP (labels only) |
 | Map name discovery | [`CITY_MAP_LABELS.md`](CITY_MAP_LABELS.md) | MODLET (config keys only) |
 | Open data pointers | [`DATA_SOURCES.md`](DATA_SOURCES.md) | REALISM (policy) |
+| Artifact backup / restore / durability posture (RPO/RTO) | [`BACKUP_RESTORE.md`](BACKUP_RESTORE.md) | DATA_SOURCES (source policy) |
 | Why not Google bulk | [`REALISM_AND_GOOGLE_EARTH.md`](REALISM_AND_GOOGLE_EARTH.md) | DATA_SOURCES |
 | Execution checklist | [`../TODO.md`](../TODO.md) | DESIGN phases |
 | **Generic engine RE hub** | [`../../7dtd-engine-research/docs/INDEX.md`](../../7dtd-engine-research/docs/INDEX.md) | product status / RealEarth lessons |
@@ -122,6 +123,7 @@ Never mark Done without live measure (GAP evidence checklist).
 | [CITIES_AND_DENSITY](CITIES_AND_DENSITY.md) | Density stamps |
 | [CITY_MAP_LABELS](CITY_MAP_LABELS.md) | Discover-on-approach names |
 | [DATA_SOURCES](DATA_SOURCES.md) | DEM/pop/landcover sources |
+| [BACKUP_RESTORE](BACKUP_RESTORE.md) | State inventory, backups, restore drills, RPO/RTO |
 | [REALISM_AND_GOOGLE_EARTH](REALISM_AND_GOOGLE_EARTH.md) | Legal data policy |
 | [MODDING_REFERENCES](MODDING_REFERENCES.md) | External sites |
 | [HostWorld](HostWorld.md) | Streamed host window + install steps |
@@ -150,6 +152,7 @@ Generic engine machines (gmUpdate, AI LOD, path, chunk flags, net bands): [resea
 
 ## Changelog
 
+- **2026-08-26:** BACKUP_RESTORE registered (durability posture: state inventory, artifact archives, RPO/RTO).
 - **2026-08-23:** THREAT_MODEL + SECURITY registered (threat model owns attack-surface documentation).
 - **2026-07-19:** ENGINE_LIMITATIONS §7b + link generic research engine-limitations map.
 - **2026-07-19:** Ownership/related docs across product tree; thin GAME_VERSION/PROTON expanded; DYNAMIC_CHUNK phase table product-aligned.

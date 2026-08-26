@@ -157,8 +157,20 @@ if [[ -d "$HOME/.local/share/7DaysToDie/GeneratedWorlds" ]]; then
   cp -a "$ROOT/worlds/$WORLD_NAME" "$HOME/.local/share/7DaysToDie/GeneratedWorlds/$WORLD_NAME"
 fi
 
-# Fresh save for clean load
-rm -rf "$USERDATA/Saves/HeightTest500" "$USERDATA/Saves/$WORLD_NAME" 2>/dev/null || true
+# Fresh save for clean load: move old saves into a trash window instead of
+# deleting outright so a pointed-at-real-userdata run cannot destroy play
+# progress irrecoverably. Trash older than RE_SAVE_TRASH_DAYS (default 7) is
+# pruned on each run.
+SAVE_TRASH_DAYS="${RE_SAVE_TRASH_DAYS:-7}"
+TRASH="$USERDATA/Saves_trash"
+mkdir -p "$TRASH"
+STAMP="$(date +%Y-%m-%d__%H-%M-%S)"
+for sv in "$USERDATA/Saves/HeightTest500" "$USERDATA/Saves/$WORLD_NAME"; do
+  if [[ -d "$sv" ]]; then
+    mv "$sv" "$TRASH/${STAMP}__$(basename "$sv")"
+  fi
+done
+find "$TRASH" -mindepth 1 -maxdepth 1 -mtime "+$SAVE_TRASH_DAYS" -exec rm -rf {} + 2>/dev/null || true
 
 # Point serverconfig GameWorld + raise max players for 1000+ simulated-client load
 MAX_PLAYERS="${RE_SERVER_MAX_PLAYERS:-1024}"

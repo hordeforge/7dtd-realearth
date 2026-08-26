@@ -149,6 +149,20 @@ def fetch_everest_elevation(
             elev = np.where(np.isfinite(elev), elev, fill).astype(np.float32)
         return elev, sources
     except Exception as ex:
+        # Loud, not silent: a network outage must never quietly substitute a
+        # synthetic cone for the real DEM the operator asked for. The manifest
+        # records the fallback, but stderr is what a human actually sees.
+        import sys
+
+        print(
+            f"WARNING: DEM fetch failed ({source}): {ex}",
+            file=sys.stderr,
+        )
+        print(
+            "WARNING: falling back to SYNTHETIC Everest cone; the pack will not "
+            "contain real geography. Re-run with working network or --source geotiff.",
+            file=sys.stderr,
+        )
         sources = [
             f"DEM fetch failed ({source}): {ex}",
             "fallback: synthetic Everest cone",

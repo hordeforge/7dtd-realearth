@@ -11,6 +11,12 @@ tools/build/
 data/samples/**
 !data/samples/.gitkeep
 
+# Terrarium source-tile cache (pack rebuild inputs; back up with artifacts)
+data/cache/**
+
+# Timestamped artifact backups (make artifacts-backup; move off-host)
+backups/**
+
 # Viewer exports (regenerate with export-viewer)
 viewer/data/**
 !viewer/data/.gitkeep
