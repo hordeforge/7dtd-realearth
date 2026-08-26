@@ -207,7 +207,6 @@ def tile_path(root: Path, tx: int, tz: int) -> Path:
 # Elevation packed as little-endian uint16: value = meters_asl + 11000
 # (covers trenches to Everest+; byte order must match the C# runtime decoder).
 _ELEV_OFFSET_M = 11_000
-_ELEV_SCALE = 1  # meters
 
 
 def _elevation_to_u16(elev: np.ndarray) -> np.ndarray:

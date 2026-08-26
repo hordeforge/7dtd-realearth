@@ -210,7 +210,6 @@ The files under `Config/` are examples for different operating modes:
 | `realearth.json` | Default runtime configuration |
 | `realearth.mp.json` | Shared-fixed multiplayer streaming profile |
 | `realearth.advanced_height.json` | Expanded-height experiments |
-| `biomes.xml` / `rwgmixer.xml` | Game-side biome and RWG integration |
 
 Keep the exact installed configuration with test notes. In multiplayer, every
 participant must agree on the world/session coordinate model and required data;
