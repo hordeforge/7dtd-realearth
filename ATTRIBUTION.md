@@ -30,6 +30,22 @@ See `docs/REALISM_AND_GOOGLE_EARTH.md`.
 - Procedural synthetic elevation (no third-party DEM)
 - Approximate seed city coordinates/populations for testing POI density only
 
+## Shipped code dependencies
+
+Third-party code that travels inside release artifacts or is fetched by shipped
+components. Machine-readable inventory: `dist/realearth-deps.spdx.json`
+(`make sbom`, regenerated per `make package`).
+
+| Component | Where it ships | License | Upstream |
+|---|---|---|---|
+| Mono.Cecil | `Tools/Mono.Cecil.dll` (YDim expand helper) | MIT | github.com/jbevain/cecil |
+| three.js r0.170.0 | Not bundled: fetched from cdn.jsdelivr.net at runtime by the optional web map viewer (`viewer/index.html` importmap) | MIT | threejs.org |
+
+The mod DLL itself links only game-shipped assemblies (Assembly-CSharp,
+UnityEngine, 0-Harmony); those remain governed by The Fun Pimps' terms above.
+Python pipeline dependencies (offline tooling, not shipped in the mod zip) are
+locked with hashes in `tools/uv.lock` and inventoried in the same SBOM.
+
 ## Game
 
 7 Days to Die is © The Fun Pimps. This project is an unofficial fan mod and is not affiliated with TFP.

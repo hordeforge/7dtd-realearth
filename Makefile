@@ -13,7 +13,7 @@ SHELL := /bin/bash
 	install-height-pack-everest \
 	height-test height-map height-map-500 height-map-install height-map-500-install \
 	engine-audit engine-expand engine-expand-dry engine-verify engine-restore dedicated-height-test \
-	demo bake bake-height package \
+	demo bake bake-height package sbom \
 	artifacts-backup artifacts-restore \
 	viewer viewer-build serve viewer-lint \
 	webmod webmod-export webmod-lint html-lint \
@@ -120,6 +120,7 @@ help:
 	@echo "    make demo               Synthetic demo region pack"
 	@echo "    make bake               Bake GeneratedWorld from demo pack"
 	@echo "    make bake-height        Bake RealEarth_HeightTest only"
+	@echo "    make sbom               SPDX dependency inventory → dist/"
 	@echo "    make artifacts-backup   Verified archive of worlds/packs/cache (docs/BACKUP_RESTORE.md)"
 	@echo "    make artifacts-restore ARCHIVE=path.tar.gz   Restore artifact archive"
 	@echo "    make artifacts-drill    Prove backup/restore roundtrip in a sandbox"
@@ -195,10 +196,17 @@ install-streamed:
 
 install-height: height-map-install
 
-package: build webmod
+package: build webmod sbom
 	@chmod +x "$(SCRIPTS)/apply_engine_expand.sh" 2>/dev/null || true
 	@GAME_DIR="$(GAME_DIR)" "$(SCRIPTS)/package_mod.sh" "$(ROOT)/dist/RealEarth"
-	@echo "OK package → $(ROOT)/dist/RealEarth (includes Tools/ YDim expand + WebMod webui)"
+	@echo "OK package → $(ROOT)/dist/RealEarth (+ dist/realearth-deps.spdx.json) (includes Tools/ YDim expand + WebMod webui)"
+
+# SPDX 2.3 dependency inventory from the committed lock/pin files
+# (uv.lock, packages.lock.json, toolchain-versions.env). Written beside the
+# packaged mod so every release carries a machine-readable dependency list.
+sbom:
+	@mkdir -p "$(ROOT)/dist"
+	@cd $(TOOLS) && $(UV) run --locked python ../scripts/sbom.py "$(ROOT)/dist/realearth-deps.spdx.json"
 
 # ---------------------------------------------------------------------------
 # Height mod
