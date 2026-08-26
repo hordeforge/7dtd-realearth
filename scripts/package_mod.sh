@@ -56,6 +56,9 @@ mkdir -p "$OUT/Config" "$OUT/Data" "$OUT"
 cp "$ROOT/ModInfo.xml" "$OUT/"
 cp "$ROOT/Config/realearth.json" "$OUT/Config/"
 [[ -f "$ROOT/Config/nav_objects.xml" ]] && cp -f "$ROOT/Config/nav_objects.xml" "$OUT/Config/"
+# The mod folder is redistributed standalone (mod sites, server packs); MIT
+# requires the license text to travel with it.
+cp "$ROOT/LICENSE" "$OUT/" 2>/dev/null || true
 cp "$ROOT/ATTRIBUTION.md" "$OUT/" 2>/dev/null || true
 cp "$ROOT/CHANGELOG.md" "$OUT/" 2>/dev/null || true
 # Ensure single-world defaults are present in packaged config
@@ -103,10 +106,6 @@ fi
 if [[ -f "$ROOT/docs/GAP_HARMONY_MODLETS.md" ]]; then
   mkdir -p "$OUT/Docs"
   cp "$ROOT/docs/GAP_HARMONY_MODLETS.md" "$OUT/Docs/"
-fi
-if [[ -f "$ROOT/docs/INDEX.md" ]]; then
-  mkdir -p "$OUT/Docs"
-  cp "$ROOT/docs/INDEX.md" "$OUT/Docs/"
 fi
 if [[ -f "$ROOT/docs/MULTIPLAYER_STREAMING.md" ]]; then
   mkdir -p "$OUT/Docs"
