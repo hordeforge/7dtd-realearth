@@ -19,7 +19,9 @@
   --re-text-bright: #e7eefc;
   --re-text-muted: #8fa0b5;
   --re-btn-bg: #c0392b;
-  --re-btn-bg-hover: #d6493a;
+  /* Darker, not lighter, on hover: white 13px button text must stay above
+   * 4.5:1 against both states. */
+  --re-btn-bg-hover: #a93226;
   --re-danger-border: rgba(192, 57, 43, 0.6);
   --re-danger-bg: rgba(192, 57, 43, 0.18);
   --re-danger-text: #ffb4a8;

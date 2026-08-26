@@ -57,6 +57,7 @@ const PIN_BASE_TUBE = 0.0035;
 const FLY_DURATION_MS = 1200;
 const FLY_PARALLEL_EPSILON = 1e-6;
 const SPIN_IDLE_DELAY_MS = 2000;
+const KEY_ZOOM_IN_STEP = 1.25;
 const EASE_CUBIC_IN_FACTOR = 4;
 const DOT_RANGE_MIN = -1;
 // Full-earth composite resolution; 4k keeps exported regions readable while
@@ -79,6 +80,13 @@ const FRAME_MAX_DISTANCE = 3.5;
 const HALF_CIRCLE_DEGREES = 180;
 const QUARTER_CIRCLE_DEGREES = 90;
 const FULL_CIRCLE_DEGREES = 360;
+// Keyboard orbit step for the focusable globe host (5 degrees per press).
+const KEY_ORBIT_STEP_DEGREES = 5;
+const KEY_ORBIT_STEP_RADIANS = (KEY_ORBIT_STEP_DEGREES * Math.PI) / HALF_CIRCLE_DEGREES;
+// Keep the orbit clamped off the exact poles so phi stays well-behaved.
+const POLAR_MARGIN_DEGREES = 3;
+const PHI_CLAMP_MIN = (POLAR_MARGIN_DEGREES * Math.PI) / HALF_CIRCLE_DEGREES;
+const PHI_CLAMP_MAX = Math.PI - PHI_CLAMP_MIN;
 
 type MarkerMesh = THREE.Mesh<THREE.SphereGeometry, THREE.MeshBasicMaterial>;
 
@@ -214,6 +222,10 @@ export class GlobeView {
   // Auto-rotation pauses for users who ask the OS to reduce motion.
   private readonly reduceMotion = globalThis.matchMedia("(prefers-reduced-motion: reduce)");
   private readonly onResize = () => this.resize();
+  // Keyboard pan/zoom for the focusable host element (the page gives it
+  // tabindex and an application role): arrows orbit, plus/minus dollies,
+  // Home reframes the region.
+  private readonly onKeyDown = (event: KeyboardEvent): void => this.keyDown(event);
   private readonly onControlsStart = () => {
     this.interacting = true;
     this.lastInteractionAt = performance.now();
@@ -232,6 +244,8 @@ export class GlobeView {
   private interacting = false;
   private lastInteractionAt = 0;
   private fly: FlyAnimation | null = null;
+  // Last region passed to frameRegion(); Home re-frames it.
+  private framedBbox: Bbox | null = null;
   private raf = 0;
 
   constructor(host: HTMLElement) {
@@ -248,6 +262,7 @@ export class GlobeView {
     this.controls.enablePan = false;
     this.controls.addEventListener("start", this.onControlsStart);
     this.controls.addEventListener("end", this.onControlsEnd);
+    host.addEventListener("keydown", this.onKeyDown);
 
     this.addLights();
     this.addStarfield();
@@ -262,6 +277,7 @@ export class GlobeView {
   dispose(): void {
     cancelAnimationFrame(this.raf);
     globalThis.removeEventListener("resize", this.onResize);
+    this.host.removeEventListener("keydown", this.onKeyDown);
     this.controls.removeEventListener("start", this.onControlsStart);
     this.controls.removeEventListener("end", this.onControlsEnd);
     this.controls.dispose();
@@ -300,8 +316,67 @@ export class GlobeView {
     this.camera.position.copy(this.controls.target).add(offset.setLength(nextLength));
   }
 
+  // Keyboard control for non-pointer users: arrows orbit the globe, plus or
+  // minus dollies, Home reframes the last framed region (or resets the view).
+  private keyDown(event: KeyboardEvent): void {
+    let handled = true;
+    switch (event.key) {
+      case "ArrowLeft":
+      case "ArrowRight":
+      case "ArrowUp":
+      case "ArrowDown":
+        this.orbit(event.key);
+        break;
+      case "+":
+      case "=":
+        this.zoomBy(KEY_ZOOM_IN_STEP);
+        break;
+      case "-":
+      case "_":
+        this.zoomBy(1 / KEY_ZOOM_IN_STEP);
+        break;
+      case "Home":
+      case "0":
+        if (this.framedBbox === null) {
+          this.placeCameraAt({ lon: 0, lat: 0 }, CAMERA_DISTANCE);
+        } else {
+          this.frameRegion(this.framedBbox);
+        }
+        break;
+      default:
+        handled = false;
+    }
+    if (handled) {
+      event.preventDefault();
+      this.lastInteractionAt = performance.now();
+    }
+  }
+
+  // Rotate the camera around the target by one key step on the given arrow.
+  private orbit(key: string): void {
+    const offset = this.camera.position.clone().sub(this.controls.target);
+    const spherical = new THREE.Spherical().setFromVector3(offset);
+    if (key === "ArrowLeft") {
+      spherical.theta -= KEY_ORBIT_STEP_RADIANS;
+    } else if (key === "ArrowRight") {
+      spherical.theta += KEY_ORBIT_STEP_RADIANS;
+    } else if (key === "ArrowUp") {
+      spherical.phi -= KEY_ORBIT_STEP_RADIANS;
+    } else {
+      spherical.phi += KEY_ORBIT_STEP_RADIANS;
+    }
+    spherical.phi = THREE.MathUtils.clamp(spherical.phi, PHI_CLAMP_MIN, PHI_CLAMP_MAX);
+    spherical.makeSafe();
+    this.camera.position
+      .copy(this.controls.target)
+      .add(new THREE.Vector3().setFromSpherical(spherical));
+    this.camera.lookAt(this.controls.target);
+  }
+
   // Fly the camera to a lon/lat along an eased great-circle hop, keeping (or
-  // setting) the viewing distance. Cancels any in-flight animation.
+  // setting) the viewing distance. Cancels any in-flight animation. Under
+  // prefers-reduced-motion the hop is skipped and the camera jumps straight
+  // to the destination.
   flyTo(target: LonLatPoint, distance: number | null = null): void {
     const offset = this.camera.position.clone().sub(this.controls.target);
     const currentDistance = offset.length();
@@ -309,6 +384,12 @@ export class GlobeView {
       distance === null
         ? THREE.MathUtils.clamp(currentDistance, CONTROLS_MIN_DISTANCE, CONTROLS_MAX_DISTANCE)
         : THREE.MathUtils.clamp(distance, CONTROLS_MIN_DISTANCE, CONTROLS_MAX_DISTANCE);
+    if (this.reduceMotion.matches) {
+      // Cancel any in-flight hop first so it cannot keep steering the camera.
+      this.fly = null;
+      this.placeCameraAt(target, toDistance);
+      return;
+    }
     this.fly = {
       fromDirection: offset.normalize(),
       toDirection: lonLatToVec3(target.lon, target.lat, 1),
@@ -319,9 +400,18 @@ export class GlobeView {
     this.lastInteractionAt = performance.now();
   }
 
+  // Snap the camera to look at a lon/lat from a given distance; no animation.
+  private placeCameraAt(target: LonLatPoint, distance: number): void {
+    this.camera.position
+      .copy(this.controls.target)
+      .add(lonLatToVec3(target.lon, target.lat, 1).multiplyScalar(distance));
+    this.camera.lookAt(this.controls.target);
+  }
+
   // Fly to a comfortable framing of a region bbox: centered on it, closer
   // for tighter regions. Used when the globe first shows a pack.
   frameRegion(bbox: Bbox): void {
+    this.framedBbox = bbox;
     const span = Math.max(bbox.east - bbox.west, bbox.north - bbox.south);
     this.flyTo(
       { lon: (bbox.west + bbox.east) / 2, lat: (bbox.south + bbox.north) / 2 },

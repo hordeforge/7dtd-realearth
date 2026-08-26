@@ -421,9 +421,22 @@ function applyLayer(): void {
 }
 
 function setMode(mode: ViewerMode): void {
+  // Hiding the focused canvas would drop focus to <body>; carry keyboard
+  // focus across to the view that is becoming visible instead.
+  const active = document.activeElement;
+  const stageHadFocus =
+    active === els.mapCanvas || (active instanceof Node && els.globeHost.contains(active));
   state.mode = mode;
   setModeButtons(mode);
   applyLayer();
+  if (!stageHadFocus) {
+    return;
+  }
+  if (mode === "flat") {
+    els.mapCanvas.focus();
+  } else {
+    els.globeHost.focus();
+  }
 }
 
 // Fly the globe camera to a lon/lat (Google-Earth-style hop).
@@ -658,6 +671,12 @@ globalThis.addEventListener("keydown", (event: KeyboardEvent) => {
 
 // optional live position feed; polled so an external writer (game mod,
 // script) can move the marker without reloading
+// The globe never auto-spins under prefers-reduced-motion; keep the toggle's
+// pressed state honest about that instead of advertising a spin that cannot
+// happen.
+if (globalThis.matchMedia("(prefers-reduced-motion: reduce)").matches) {
+  setSpinToggle(false);
+}
 refreshPlayer();
 setInterval(refreshPlayer, PLAYER_POLL_MS);
 

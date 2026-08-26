@@ -58,7 +58,9 @@
         <div class="field">
           <span>Jump to lat, lon</span>
           <div class="jump-row">
+            <label class="sr-only" for="jumpLat">Latitude (-90 to 90)</label>
             <input type="text" id="jumpLat" inputmode="decimal" placeholder="lat" autocomplete="off">
+            <label class="sr-only" for="jumpLon">Longitude (-180 to 180)</label>
             <input type="text" id="jumpLon" inputmode="decimal" placeholder="lon" autocomplete="off">
             <button type="button" class="btn" id="btnJumpCoords">Go</button>
           </div>
@@ -108,7 +110,13 @@
         role="application"
         aria-label="Interactive map. Focus it and use arrow keys to pan, plus or minus to zoom, Home to fit the view. Mouse users can drag to pan and scroll to zoom."
       ></canvas>
-      <div id="globeHost" hidden></div>
+      <div
+        id="globeHost"
+        tabindex="0"
+        role="application"
+        aria-label="Interactive globe. Focus it and use arrow keys to orbit, plus or minus to zoom, Home to reframe the region. Mouse users can drag to orbit and scroll to zoom."
+        hidden
+      ></div>
       <div id="hud">
         <div id="titleHud">RealEarth</div>
         <div class="hud-right">
