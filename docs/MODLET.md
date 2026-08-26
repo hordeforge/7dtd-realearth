@@ -89,6 +89,9 @@ All optional; defaults shown. Scripts fail fast when numeric values are invalid.
 | `RE_SERVER_WAIT` / `RE_SERVER_SOAK` | `180` / `35` seconds | `run_dedicated_height_test.sh` |
 | `RE_SCRATCH` / `RE_LOADTEST_ROOT` | unset / `../7dtd-loadgen` | load-test wiring |
 | `RE_YDIM` | `16384` | `apply_engine_expand.sh` |
+| `HARMONY_DIR` | `<GAME_DIR>/Mods/0_TFP_Harmony` | `apply_engine_expand.sh` Harmony ref dir |
+| `RE_TERRARIUM_CACHE` | unset (no caching) / `<repo>/data/cache/terrarium` via make | offline tile cache for the Python pipeline (`tools`) |
+| `RE_SAVE_TRASH_DAYS` | `7` | `run_dedicated_height_test.sh` save-trash window |
 | `STEAM_DIR` | auto-detect | `tools/` Proton path resolution |
 
 ### Main keys

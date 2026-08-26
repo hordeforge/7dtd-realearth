@@ -3,7 +3,9 @@
 set -euo pipefail
 ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 OUT="${1:-$ROOT/dist/RealEarth}"
-GAME_DIR="${SEVENDTD_GAME_DIR:-${GameDir:-}}"
+# Same precedence as every install/expand script: SEVENDTD_GAME_DIR wins,
+# then the GAME_DIR knob the Makefile exports for this script.
+GAME_DIR="${SEVENDTD_GAME_DIR:-${GAME_DIR:-}}"
 # docs/MODLET.md: install/package scripts reject MAP_MODE values other than
 # Streamed|Baked; the chosen mode is baked into the packaged config.
 MAP_MODE="${MAP_MODE:-Streamed}"

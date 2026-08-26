@@ -127,3 +127,33 @@ def test_shipped_config_keys_exist_in_csharp_loader():
         cfg = json.loads(_read(f"Config/{name}"))
         unknown = sorted(k for k in cfg if not k.startswith("_") and k not in members)
         assert not unknown, f"{name} has keys the mod loader ignores: {unknown}"
+
+
+def test_script_window_default_matches_tools_constant():
+    """Shell LOCAL_WINDOW_SIZE defaults must mirror realearth.DEFAULT_LOCAL_WINDOW_SIZE.
+
+    The scripts cannot import the tools package (stdlib-only install path), so the
+    1024 default is duplicated as a literal; this pins the copies so they cannot
+    drift from the Python constant that names it.
+    """
+    from realearth import DEFAULT_LOCAL_WINDOW_SIZE
+
+    for rel in ("scripts/install_proton.sh", "scripts/package_mod.sh"):
+        src = _read(rel)
+        match = re.search(r"^LOCAL_WINDOW_SIZE=(\d+)$", src, re.MULTILINE)
+        assert match, f"{rel} lost its LOCAL_WINDOW_SIZE default"
+        assert int(match.group(1)) == DEFAULT_LOCAL_WINDOW_SIZE, (
+            f"{rel}: LOCAL_WINDOW_SIZE={match.group(1)} != "
+            f"realearth.DEFAULT_LOCAL_WINDOW_SIZE={DEFAULT_LOCAL_WINDOW_SIZE}"
+        )
+
+
+def test_package_script_reads_documented_game_dir_knob():
+    """package_mod.sh must read SEVENDTD_GAME_DIR then GAME_DIR.
+
+    The Makefile exports GAME_DIR for this script and every other install/expand
+    script reads SEVENDTD_GAME_DIR first; any other fallback spelling silently
+    drops the DLL from the package.
+    """
+    src = _read("scripts/package_mod.sh")
+    assert 'GAME_DIR="${SEVENDTD_GAME_DIR:-${GAME_DIR:-}}"' in src
