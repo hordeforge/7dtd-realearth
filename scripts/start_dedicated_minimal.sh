@@ -110,7 +110,7 @@ install_mod() {
       [[ -f "$pack/$n" ]] && cp -f "$pack/$n" "$dest/Data/tiles/"
     done
   fi
-  python3 "$ROOT/scripts/mod_config.py" write "$dest" "$ROOT" --sync-manifest \
+  PYTHONPATH="$ROOT/tools" python3 -m realearth.mod_config write "$dest" "$ROOT" --sync-manifest \
     MapMode=Streamed \
     SingleWorldSession=true \
     EnableEngineHeightMod=true \
@@ -138,95 +138,23 @@ fi
 
 # Write live serverconfig (minimal network surface + UserDataFolder + max players)
 TMPCFG="$USERDATA/serverconfig_height_test.xml"
-python3 - <<PY
-from pathlib import Path
-import re
-src = Path("$CONFIG_SRC").read_text(encoding="utf-8")
-ud = str(Path("$USERDATA").resolve())
-if 'name="UserDataFolder"' not in src:
-    src = src.replace(
-        "<ServerSettings>",
-        f'<ServerSettings>\n\t<property name="UserDataFolder" value="{ud}"/>',
-    )
-else:
-    src = re.sub(
-        r'name="UserDataFolder"\s*value="[^"]*"',
-        f'name="UserDataFolder" value="{ud}"',
-        src,
-    )
-src = re.sub(
-    r'name="GameWorld"\s*value="[^"]*"',
-    f'name="GameWorld" value="$WORLD_NAME"',
-    src,
-)
-src = re.sub(
-    r'name="ServerMaxPlayerCount"\s*value="[^"]*"',
-    f'name="ServerMaxPlayerCount" value="$MAX_PLAYERS"',
-    src,
-)
-# Force minimal network surface even if template drifts
-src = re.sub(
-    r'name="EACEnabled"\s*value="[^"]*"',
-    'name="EACEnabled" value="false"',
-    src,
-)
-src = re.sub(
-    r'name="ServerAllowCrossplay"\s*value="[^"]*"',
-    'name="ServerAllowCrossplay" value="false"',
-    src,
-)
-src = re.sub(
-    r'name="ServerDisabledNetworkProtocols"\s*value="[^"]*"',
-    'name="ServerDisabledNetworkProtocols" value="SteamNetworking"',
-    src,
-)
-src = re.sub(
-    r'name="ServerVisibility"\s*value="[^"]*"',
-    'name="ServerVisibility" value="0"',
-    src,
-)
-src = re.sub(
-    r'name="TwitchServerPermission"\s*value="[^"]*"',
-    'name="TwitchServerPermission" value="1000"',
-    src,
-)
-src = re.sub(
-    r'name="TwitchBloodMoonAllowed"\s*value="[^"]*"',
-    'name="TwitchBloodMoonAllowed" value="false"',
-    src,
-)
-src = re.sub(
-    r'name="WebDashboardEnabled"\s*value="[^"]*"',
-    'name="WebDashboardEnabled" value="false"',
-    src,
-)
-src = re.sub(
-    r'name="IgnoreEOSSanctions"\s*value="[^"]*"',
-    'name="IgnoreEOSSanctions" value="true"',
-    src,
-)
-# Bots need world threats: zombies must spawn and move during day.
-src = re.sub(
-    r'name="EnemySpawnMode"\s*value="[^"]*"',
-    'name="EnemySpawnMode" value="true"',
-    src,
-)
-src = re.sub(
-    r'name="ZombieMove"\s*value="[^"]*"',
-    'name="ZombieMove" value="2"',
-    src,
-)
-Path("$TMPCFG").write_text(src, encoding="utf-8")
-print(f"Config → $TMPCFG")
-# print key network settings
-for line in src.splitlines():
-    if any(k in line for k in (
-        "EACEnabled", "Crossplay", "DisabledNetwork", "Visibility",
-        "Twitch", "WebDashboard", "IgnoreEOS", "MaxPlayer",
-        "EnemySpawnMode", "ZombieMove",
-    )):
-        print(" ", line.strip())
-PY
+# Minimal network surface forced even if the template drifts (server_config
+# inserts a property the template lost instead of skipping it). Bots need world
+# threats, so zombies spawn and move during the day.
+PYTHONPATH="$ROOT/tools" python3 -m realearth.server_config \
+  "$CONFIG_SRC" "$TMPCFG" --userdata "$USERDATA" \
+  "GameWorld=$WORLD_NAME" \
+  "ServerMaxPlayerCount=$MAX_PLAYERS" \
+  EACEnabled=false \
+  ServerAllowCrossplay=false \
+  ServerDisabledNetworkProtocols=SteamNetworking \
+  ServerVisibility=0 \
+  TwitchServerPermission=1000 \
+  TwitchBloodMoonAllowed=false \
+  WebDashboardEnabled=false \
+  IgnoreEOSSanctions=true \
+  EnemySpawnMode=true \
+  ZombieMove=2
 
 # Discord: not a serverconfig property. Write a local UserOptions override if present.
 OPTS="$USERDATA/UserOptions.ini"

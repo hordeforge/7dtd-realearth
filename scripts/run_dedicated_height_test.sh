@@ -44,7 +44,7 @@ echo "=== RealEarth dedicated height test ==="
 echo "Server:   $DS_DIR"
 echo "UserData: $USERDATA"
 echo "World:    $WORLD_NAME"
-echo "Wait:     ${WAIT_SEC}s (no pause when empty — dedicated always simulates)"
+echo "Wait:     ${WAIT_SEC}s (no pause when empty, dedicated always simulates)"
 
 # Kill previous test instance by /proc exe path (pgrep -x truncates long names).
 # Match only servers under THIS install dir so unrelated 7DTD servers on a
@@ -83,7 +83,7 @@ install_mod_to() {
   if [[ -d "$pack/tiles" ]]; then
     rm -rf "$dest/Data/tiles"
     mkdir -p "$dest/Data/tiles"
-    # pack layout is pack/tiles/*.rte — TilePackPath=Data/tiles resolves Data/tiles/tiles/
+    # pack layout is pack/tiles/*.rte, so TilePackPath=Data/tiles resolves Data/tiles/tiles/
     mkdir -p "$dest/Data/tiles/tiles"
     cp -a "$pack/tiles/." "$dest/Data/tiles/tiles/"
     for n in earth.manifest.json height_test.json preview_elev_m.png; do
@@ -92,7 +92,7 @@ install_mod_to() {
   fi
   # Prefer multiplayer template (SharedFixed + stream bubbles), fall back to default;
   # StreamRadiusTiles?=/UnloadRadiusTiles?= keep template values when present.
-  python3 "$ROOT/scripts/mod_config.py" write "$dest" "$ROOT" \
+  PYTHONPATH="$ROOT/tools" python3 -m realearth.mod_config write "$dest" "$ROOT" \
     --sync-manifest --sync-bbox --height-test-meta \
     MapMode=Streamed \
     SingleWorldSession=true \
@@ -123,7 +123,7 @@ fi
 
 # Generate H500 world if missing.
 # Generation always emits worlds/RealEarth_H500 (height-test-map --peak-game-y 500);
-# a RE_WORLD_NAME other than that can never be produced here — fail fast instead of
+# a RE_WORLD_NAME other than that can never be produced here, so fail fast instead of
 # booting into a guaranteed GameWorld-not-found crash after the full WAIT window.
 GENERATED_NAME="RealEarth_H500"
 if [[ "$WORLD_NAME" != "$GENERATED_NAME" && ! -d "$ROOT/worlds/$WORLD_NAME" ]]; then
@@ -161,46 +161,14 @@ case "$MAX_PLAYERS" in
     ;;
 esac
 TMPCFG="$USERDATA/serverconfig_height_test.xml"
-python3 - <<PY
-from pathlib import Path
-import re
-src = Path("$CONFIG").read_text(encoding="utf-8")
-# inject UserDataFolder
-if "UserDataFolder" not in src or "absolute_path" in src:
-    src = src.replace(
-        '<!-- <property name="UserDataFolder" value="absolute_path"/> -->',
-        f'<property name="UserDataFolder" value="{Path("$USERDATA").resolve()}"/>',
-    )
-    if 'name="UserDataFolder"' not in src:
-        src = src.replace(
-            "<ServerSettings>",
-            f'<ServerSettings>\n\t<property name="UserDataFolder" value="{Path("$USERDATA").resolve()}"/>',
-        )
-src = re.sub(
-    r'name="GameWorld"\s*value="[^"]*"',
-    f'name="GameWorld" value="$WORLD_NAME"',
-    src,
-)
-# Always apply max-player override (default 1024 for 1000+ simulated clients)
-src = re.sub(
-    r'name="ServerMaxPlayerCount"\s*value="[^"]*"',
-    f'name="ServerMaxPlayerCount" value="$MAX_PLAYERS"',
-    src,
-)
-# Free all slots for load probes (no reserved/admin holds)
-src = re.sub(
-    r'name="ServerReservedSlots"\s*value="[^"]*"',
-    'name="ServerReservedSlots" value="0"',
-    src,
-)
-src = re.sub(
-    r'name="ServerAdminSlots"\s*value="[^"]*"',
-    'name="ServerAdminSlots" value="0"',
-    src,
-)
-Path("$TMPCFG").write_text(src, encoding="utf-8")
-print(f"Config → $TMPCFG  ServerMaxPlayerCount=$MAX_PLAYERS")
-PY
+# Free all slots for load probes (no reserved/admin holds); max players default
+# 1024 for 1000+ simulated clients.
+PYTHONPATH="$ROOT/tools" python3 -m realearth.server_config \
+  "$CONFIG" "$TMPCFG" --userdata "$USERDATA" \
+  "GameWorld=$WORLD_NAME" \
+  "ServerMaxPlayerCount=$MAX_PLAYERS" \
+  ServerReservedSlots=0 \
+  ServerAdminSlots=0
 
 LOG="$USERDATA/server_test_$(date +%Y-%m-%d__%H-%M-%S).txt"
 mkdir -p "$USERDATA"
@@ -250,7 +218,7 @@ while (( SECONDS < deadline )); do
         if (( ok == 0 )); then
           ok=1
           loaded_at=$SECONDS
-          echo "OK: world loaded with expanded YDim — soaking ${SOAK_SEC}s for late crashes..."
+          echo "OK: world loaded with expanded YDim, soaking ${SOAK_SEC}s for late crashes..."
           # Optional: capacity bots live in sibling 7dtd-loadgen (not this tree)
           if [[ "${LOADGEN_RUN_CLIENTS:-0}" == "1" ]]; then
             LT="${RE_LOADTEST_ROOT:-$ROOT/../7dtd-loadgen}"

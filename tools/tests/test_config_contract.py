@@ -18,34 +18,34 @@ def _read(rel: str) -> str:
     return (ROOT / rel).read_text(encoding="utf-8")
 
 
-def _script_body(rel: str) -> str:
-    """All Python heredoc bodies inside a shell script, concatenated."""
-    src = _read(rel)
-    bodies = re.findall(r"<<'PY'[^\n]*\n(?P<body>.*?)\nPY\n", src, re.S)
-    assert bodies, f"python heredoc not found in {rel}"
-    return "\n".join(bodies)
-
-
 def test_install_script_defaults_stocksafe_off():
     """install_proton.sh must fall back to EngineHeightStockSafe=false (product rule)."""
-    body = _script_body("scripts/install_proton.sh")
-    m = re.search(
-        r'cfg\["EngineHeightStockSafe"\]\s*=\s*bool\(cfg\.get\('
-        r'"EngineHeightStockSafe",\s*(?P<dflt>\w+)\)\)',
-        body,
-    )
-    assert m, "EngineHeightStockSafe fallback missing from install_proton.sh"
-    assert m.group("dflt") == "False", (
-        "install_proton.sh must default EngineHeightStockSafe to False "
-        "(real meters are the product path; True silently compresses heights)"
+    src = _read("scripts/install_proton.sh")
+    assert '"EngineHeightStockSafe?=false"' in src, (
+        "install_proton.sh must default EngineHeightStockSafe to false "
+        "(real meters are the product path; true silently compresses heights)"
     )
 
 
 def test_packaged_config_ships_debug_fow_off():
     """package_mod.sh must ship with debug FOW keys off."""
-    body = _script_body("scripts/package_mod.sh")
-    assert 'cfg.setdefault("DebugRevealFullMap", False)' in body
-    assert 'cfg.setdefault("DebugMapRevealRadiusChunks", 0)' in body
+    src = _read("scripts/package_mod.sh")
+    assert '"DebugRevealFullMap?=false"' in src
+    assert '"DebugMapRevealRadiusChunks?=0"' in src
+
+
+def test_no_shell_script_embeds_python():
+    """Config writing lives in realearth.mod_config / realearth.server_config.
+
+    A heredoc splices shell values into a Python source body, so a world name or
+    path holding a quote becomes executable code; it also puts the logic beyond
+    the reach of these tests.
+    """
+    for path in sorted((ROOT / "scripts").glob("*.sh")):
+        src = path.read_text(encoding="utf-8")
+        assert not re.search(
+            r"python3?\s+(-c|-\s*<<)", src
+        ), f"{path.name} embeds python; call a realearth module instead"
 
 
 def test_height_pack_install_ships_stocksafe_off():
@@ -57,9 +57,9 @@ def test_height_pack_install_ships_stocksafe_off():
         "(unexpanded engines must hit the loud ExpandProductGuard, not compress)"
     )
     for path in sorted((ROOT / "scripts").glob("*.sh")):
-        assert "EngineHeightStockSafe=true" not in path.read_text(encoding="utf-8"), (
-            f"{path.name} forces EngineHeightStockSafe=true (not product)"
-        )
+        assert "EngineHeightStockSafe=true" not in path.read_text(
+            encoding="utf-8"
+        ), f"{path.name} forces EngineHeightStockSafe=true (not product)"
 
 
 def test_install_script_validates_map_mode():
@@ -74,7 +74,11 @@ def test_shipped_configs_match_product_defaults():
     for name in ("realearth.json", "realearth.mp.json"):
         cfg = json.loads(_read(f"Config/{name}"))
         assert cfg["MapMode"] in ("Streamed", "Baked"), name
-        assert cfg["MultiplayerOriginMode"] in ("SoloSlide", "SharedFixed", "SharedSlide"), name
+        assert cfg["MultiplayerOriginMode"] in (
+            "SoloSlide",
+            "SharedFixed",
+            "SharedSlide",
+        ), name
         assert cfg["EnableEngineHeightMod"] is True, name
         assert cfg["EngineHeightStockSafe"] is False, name
         assert cfg["DebugRevealFullMap"] is False, name

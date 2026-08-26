@@ -74,7 +74,9 @@ def test_height_matches_one_to_one_on_sampled_elev(demo_pack: Path):
         profile="one_to_one",
         regional_exaggeration=1.0,
     )
-    got = fill_chunk_heights(demo_pack, ox, oz, chunk_size=16, sea_level_y=DEFAULT_SEA_LEVEL_GAME_Y)
+    got = fill_chunk_heights(
+        demo_pack, ox, oz, chunk_size=16, sea_level_y=DEFAULT_SEA_LEVEL_GAME_Y
+    )
     np.testing.assert_array_equal(got, expected)
 
 
@@ -82,7 +84,9 @@ def test_local_window_chunk_fill(demo_pack: Path):
     g = load_pack_grid(demo_pack)
     man = load_pack_manifest(demo_pack)
     assert man is not None
-    win = LocalWindow(grid=g, size=min(512, g.width, g.height), enable_longitude_wrap=False)
+    win = LocalWindow(
+        grid=g, size=min(512, g.width, g.height), enable_longitude_wrap=False
+    )
     win.center_on_absolute(200, 200)
     heights, lc = fill_chunk_from_local_window(demo_pack, win, 0, 0, chunk_size=16)
     assert heights.shape == (16, 16)

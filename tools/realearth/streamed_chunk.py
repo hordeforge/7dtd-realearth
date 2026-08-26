@@ -13,11 +13,27 @@ from pathlib import Path
 
 import numpy as np
 
-from realearth import DEFAULT_SEA_LEVEL_GAME_Y, ENGINE_TARGET_MAX_Y
+from realearth import (
+    DEFAULT_LOCAL_WINDOW_SIZE,
+    DEFAULT_SEA_LEVEL_GAME_Y,
+    ENGINE_TARGET_MAX_Y,
+    PLANET_CANVAS_MIN_WIDTH,
+    JsonDict,
+)
 from realearth.coords import EarthGrid, block_to_tile, lonlat_to_block
 from realearth.height import compress_elevation
 from realearth.local_window import LocalWindow
-from realearth.tile_format import Manifest, read_manifest, read_tile, tile_path
+from realearth.tile_format import (
+    EarthTile,
+    Manifest,
+    read_manifest,
+    read_tile,
+    tile_path,
+)
+
+# Tiles are read once per (tx, tz) and reused across samples in a chunk; a miss
+# caches None so a hole is not re-read per column.
+TileCache = dict[tuple[int, int], EarthTile | None]
 
 VANILLA_CHUNK_SIZE = 16
 
@@ -32,7 +48,9 @@ def load_pack_manifest(pack_dir: Path) -> Manifest | None:
 def load_pack_grid(pack_dir: Path) -> EarthGrid:
     m = load_pack_manifest(pack_dir)
     if m is not None:
-        return EarthGrid(width=m.world_width, height=m.world_height, tile_size=m.tile_size)
+        return EarthGrid(
+            width=m.world_width, height=m.world_height, tile_size=m.tile_size
+        )
     return EarthGrid()
 
 
@@ -62,7 +80,7 @@ def lonlat_to_pack_block(lon: float, lat: float, manifest: Manifest) -> tuple[in
     z = int(fz * (manifest.world_height - 1))
     x = (
         g.wrap_x(x)
-        if manifest.world_width > 10_000_000
+        if manifest.world_width >= PLANET_CANVAS_MIN_WIDTH
         else max(0, min(manifest.world_width - 1, x))
     )
     return x, g.clamp_z(z)
@@ -74,7 +92,7 @@ def sample_point(
     earth_z: int,
     *,
     grid: EarthGrid | None = None,
-    cache: dict[tuple[int, int], object] | None = None,
+    cache: TileCache | None = None,
 ) -> tuple[float, int, int]:
     """Sample (elevation_m ASL, landcover, population) at pack/Earth block XZ.
 
@@ -88,7 +106,7 @@ def sample_point(
     # Regional packs are small; full Earth wraps X
     earth_x = (
         g.wrap_x(earth_x)
-        if g.width > 10_000_000
+        if g.width >= PLANET_CANVAS_MIN_WIDTH
         else max(0, min(g.width - 1, earth_x))
     )
     earth_z = g.clamp_z(earth_z)
@@ -121,7 +139,7 @@ def fill_chunk_heights(
     chunk_size: int = VANILLA_CHUNK_SIZE,
     sea_level_y: int = DEFAULT_SEA_LEVEL_GAME_Y,
     grid: EarthGrid | None = None,
-    cache: dict[tuple[int, int], object] | None = None,
+    cache: TileCache | None = None,
 ) -> np.ndarray:
     """Fill chunk_size² game heights from .rte samples (pack/Earth origin).
 
@@ -161,7 +179,7 @@ def fill_chunk_landcover(
     *,
     chunk_size: int = VANILLA_CHUNK_SIZE,
     grid: EarthGrid | None = None,
-    cache: dict[tuple[int, int], object] | None = None,
+    cache: TileCache | None = None,
 ) -> np.ndarray:
     pack_dir = Path(pack_dir)
     g = grid or load_pack_grid(pack_dir)
@@ -193,7 +211,7 @@ def fill_chunk_from_local_window(
     ex, ez = window.local_to_earth(chunk_local_origin_x, chunk_local_origin_z)
     # One decode cache for both channels: a 16x16 chunk spans up to 2x2 tiles and
     # each would otherwise be read + inflated twice.
-    tile_cache: dict[tuple[int, int], object] = {}
+    tile_cache: TileCache = {}
     heights = fill_chunk_heights(
         pack_dir,
         ex,
@@ -216,19 +234,21 @@ def demo_pack_chunk_at_lonlat(
     *,
     chunk_size: int = VANILLA_CHUNK_SIZE,
     sea_level_y: int = DEFAULT_SEA_LEVEL_GAME_Y,
-) -> dict:
+) -> JsonDict:
     """Center a local window on lon/lat (pack bbox mapping) and fill one center chunk."""
     pack_dir = Path(pack_dir)
     man = load_pack_manifest(pack_dir)
     if man is None:
         raise FileNotFoundError(f"no earth.manifest.json in {pack_dir}")
-    g = EarthGrid(width=man.world_width, height=man.world_height, tile_size=man.tile_size)
+    g = EarthGrid(
+        width=man.world_width, height=man.world_height, tile_size=man.tile_size
+    )
     sea = man.sea_level_game_y if man.sea_level_game_y else sea_level_y
     ex, ez = lonlat_to_pack_block(lon, lat, man)
     # Window cannot exceed pack; clamp size
-    win_size = min(1024, man.world_width, man.world_height)
+    win_size = min(DEFAULT_LOCAL_WINDOW_SIZE, man.world_width, man.world_height)
     # Regional packs: no longitude wrap (small canvas)
-    wrap = man.world_width > 10_000_000
+    wrap = man.world_width >= PLANET_CANVAS_MIN_WIDTH
     win = LocalWindow(grid=g, size=win_size, enable_longitude_wrap=wrap)
     win.center_on_absolute(ex, ez)
     half = win.size // 2

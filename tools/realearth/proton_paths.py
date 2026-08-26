@@ -91,3 +91,19 @@ def primary_client_userdata() -> Path:
     if p is not None:
         return p
     return native_linux_userdata()
+
+
+def main() -> int:
+    """Print the install targets install_proton.sh needs, one per line.
+
+    PRIMARY/PROTON/TARGET prefixes so the caller can split without parsing paths.
+    """
+    print("PRIMARY", primary_client_userdata())
+    print("PROTON", proton_userdata() or "")
+    for target in client_generated_worlds_targets(prefer_proton=True, also_native=True):
+        print("TARGET", target)
+    return 0
+
+
+if __name__ == "__main__":
+    raise SystemExit(main())

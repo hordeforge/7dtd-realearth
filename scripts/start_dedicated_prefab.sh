@@ -112,50 +112,28 @@ fi
 
 mkdir -p "$USERDATA/Saves" "$USERDATA/Logs" "$USERDATA/GeneratedWorlds"
 TMPCFG="$USERDATA/serverconfig_prefab.xml"
-python3 - <<PY
-from pathlib import Path
-import re
-src = Path("$CONFIG_SRC").read_text(encoding="utf-8")
-ud = str(Path("$USERDATA").resolve())
-if 'name="UserDataFolder"' not in src:
-    src = src.replace(
-        "<ServerSettings>",
-        f'<ServerSettings>\n\t<property name="UserDataFolder" value="{ud}"/>',
-    )
-else:
-    src = re.sub(r'name="UserDataFolder"\s*value="[^"]*"', f'name="UserDataFolder" value="{ud}"', src)
-repls = {
-    "GameWorld": "$WORLD_NAME",
-    "GameName": "$GAME_NAME",
-    "WorldGenSeed": "$WORLD_GEN_SEED",
-    "WorldGenSize": "$WORLD_GEN_SIZE",
-    "ServerMaxPlayerCount": "$MAX_PLAYERS",
-    "EACEnabled": "false",
-    "ServerAllowCrossplay": "false",
-    "ServerDisabledNetworkProtocols": "SteamNetworking",
-    "ServerVisibility": "0",
-    "WebDashboardEnabled": "false",
-    "IgnoreEOSSanctions": "true",
-    "EnemySpawnMode": "true",
-    "ZombieMove": "2",
-    "ZombieMoveNight": "3",
-    "MaxSpawnedZombies": "64",
-    "EnemyDifficulty": "1",
-    "DayNightLength": "40",
-    "DayLightLength": "12",
-    "BuildCreate": "false",
-}
-for k, v in repls.items():
-    src = re.sub(rf'name="{k}"\s*value="[^"]*"', f'name="{k}" value="{v}"', src)
-Path("$TMPCFG").write_text(src, encoding="utf-8")
-print(f"Config → $TMPCFG")
-for line in src.splitlines():
-    if any(x in line for x in (
-        "GameWorld", "GameName", "WorldGen", "EnemySpawn", "ZombieMove",
-        "MaxSpawnedZombies", "MaxPlayer",
-    )):
-        print(" ", line.strip())
-PY
+# Prefab/POI soak profile: minimal network surface plus dense, moving zombies.
+PYTHONPATH="$ROOT/tools" python3 -m realearth.server_config \
+  "$CONFIG_SRC" "$TMPCFG" --userdata "$USERDATA" \
+  "GameWorld=$WORLD_NAME" \
+  "GameName=$GAME_NAME" \
+  "WorldGenSeed=$WORLD_GEN_SEED" \
+  "WorldGenSize=$WORLD_GEN_SIZE" \
+  "ServerMaxPlayerCount=$MAX_PLAYERS" \
+  EACEnabled=false \
+  ServerAllowCrossplay=false \
+  ServerDisabledNetworkProtocols=SteamNetworking \
+  ServerVisibility=0 \
+  WebDashboardEnabled=false \
+  IgnoreEOSSanctions=true \
+  EnemySpawnMode=true \
+  ZombieMove=2 \
+  ZombieMoveNight=3 \
+  MaxSpawnedZombies=64 \
+  EnemyDifficulty=1 \
+  DayNightLength=40 \
+  DayLightLength=12 \
+  BuildCreate=false
 
 LOG="$USERDATA/server_prefab_${WORLD_NAME}_${WORLD_GEN_SIZE}_$(date +%Y-%m-%d__%H-%M-%S).txt"
 echo "$LOG" >"$USERDATA/dedicated.logpath"

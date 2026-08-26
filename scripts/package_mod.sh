@@ -7,6 +7,8 @@ GAME_DIR="${SEVENDTD_GAME_DIR:-${GameDir:-}}"
 # docs/MODLET.md: install/package scripts reject MAP_MODE values other than
 # Streamed|Baked; the chosen mode is baked into the packaged config.
 MAP_MODE="${MAP_MODE:-Streamed}"
+# Streamer window the client keeps resident; mirrors realearth.DEFAULT_LOCAL_WINDOW_SIZE.
+LOCAL_WINDOW_SIZE=1024
 case "$MAP_MODE" in
   Streamed|Baked) ;;
   *)
@@ -50,30 +52,23 @@ cp "$ROOT/ATTRIBUTION.md" "$OUT/" 2>/dev/null || true
 cp "$ROOT/CHANGELOG.md" "$OUT/" 2>/dev/null || true
 # Ensure single-world defaults are present in packaged config
 if command -v python3 >/dev/null; then
-  python3 - <<'PY' "$OUT/Config/realearth.json" "$MAP_MODE"
-import json, sys
-path = sys.argv[1]
-with open(path, encoding="utf-8") as f:
-    cfg = json.load(f)
-cfg["MapMode"] = sys.argv[2] if len(sys.argv) > 2 else cfg.get("MapMode", "Streamed")
-cfg.setdefault("SingleWorldSession", True)
-cfg.setdefault("LocalWindowSize", 1024)
-cfg.setdefault("MultiplayerOriginMode", "SoloSlide")
-cfg.setdefault("StreamRadiusTiles", 2)
-cfg.setdefault("UnloadRadiusTiles", 4)
-# Real-height product default (HEIGHT_LIMITS.md): expand required, no compression.
-cfg["EngineHeightStockSafe"] = False
-# Debug FOW keys stay OFF in shipped packages (dev values: reveal=true, radius=128).
-cfg.setdefault("DebugRevealFullMap", False)
-cfg.setdefault("ShowCityNamesOnMap", True)
-cfg.setdefault("CityMapDiscoverRadiusScale", 1.0)
-cfg.setdefault("DebugMapRevealRadiusChunks", 0)
-cfg.setdefault("EnableEngineHeightMod", True)
-with open(path, "w", encoding="utf-8") as f:
-    json.dump(cfg, f, indent=2)
-    f.write("\n")
-print("packaged config (real-height product defaults, debug FOW off)")
-PY
+  # Real-height product default (docs/HEIGHT_LIMITS.md): expand required, no
+  # compression. Debug FOW keys stay OFF in shipped packages (dev values:
+  # reveal=true, radius=128).
+  PYTHONPATH="$ROOT/tools" python3 -m realearth.mod_config write "$OUT" "$ROOT" \
+    --template "$ROOT/Config/realearth.json" \
+    "MapMode=$MAP_MODE" \
+    EngineHeightStockSafe=false \
+    "SingleWorldSession?=true" \
+    "LocalWindowSize?=$LOCAL_WINDOW_SIZE" \
+    "MultiplayerOriginMode?=SoloSlide" \
+    "StreamRadiusTiles?=2" \
+    "UnloadRadiusTiles?=4" \
+    "DebugRevealFullMap?=false" \
+    "ShowCityNamesOnMap?=true" \
+    "CityMapDiscoverRadiusScale?=1.0" \
+    "DebugMapRevealRadiusChunks?=0" \
+    "EnableEngineHeightMod?=true"
 fi
 if [[ -f "$ROOT/Config/realearth.advanced_height.json" ]]; then
   cp "$ROOT/Config/realearth.advanced_height.json" "$OUT/Config/"
@@ -115,23 +110,14 @@ fi
 if [[ -d "$ROOT/data/samples/demo_region" ]]; then
   mkdir -p "$OUT/Data/tiles"
   cp -a "$ROOT/data/samples/demo_region/." "$OUT/Data/tiles/"
-  # Point config at packaged tiles
+  # Point config at the packaged tiles and take the canvas from their manifest:
+  # the demo pack is a local-indexed region, far below a planet canvas, so it
+  # must not wrap at the antimeridian.
   if command -v python3 >/dev/null; then
-    python3 - <<'PY' "$OUT/Config/realearth.json"
-import json, sys
-path = sys.argv[1]
-with open(path, encoding="utf-8") as f:
-    cfg = json.load(f)
-cfg["TilePackPath"] = "Data/tiles"
-# Demo pack is local-indexed region, not full Earth dimensions
-cfg["WorldWidth"] = 1024
-cfg["WorldHeight"] = 1024
-cfg["EnableLongitudeWrap"] = False
-with open(path, "w", encoding="utf-8") as f:
-    json.dump(cfg, f, indent=2)
-    f.write("\n")
-print("updated", path)
-PY
+    PYTHONPATH="$ROOT/tools" python3 -m realearth.mod_config write "$OUT" "$ROOT" \
+      --template "$OUT/Config/realearth.json" \
+      --sync-manifest --max-window "$LOCAL_WINDOW_SIZE" \
+      TilePackPath=Data/tiles
   fi
 fi
 
@@ -163,7 +149,7 @@ if [[ -d "$ROOT/webmod/build" ]]; then
   cp -a "$ROOT/webmod/build/." "$OUT/WebMod/"
   echo "Packaged WebMod/ (stock dashboard webui)"
 else
-  echo "NOTE: no webmod/build output — run make webmod-export + make webmod to include the dashboard webui."
+  echo "NOTE: no webmod/build output, run make webmod-export + make webmod to include the dashboard webui."
 fi
 
 # RealEarth YDim expand tools (part of this mod)
@@ -199,7 +185,7 @@ Restore: make engine-restore from the RealEarth repo, or Steam Verify.
 EOF
   echo "Packaged RealEarth Tools/ (YDim expand)"
 else
-  echo "NOTE: EngineHeightPatcher not built — run make engine-expand from the repo after install."
+  echo "NOTE: EngineHeightPatcher not built, run make engine-expand from the repo after install."
 fi
 
 echo "Packaged → $OUT"

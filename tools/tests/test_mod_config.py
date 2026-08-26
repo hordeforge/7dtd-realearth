@@ -31,7 +31,12 @@ def test_parse_scalar_types():
 def test_override_set_and_setdefault(tmp_path: Path):
     cfg = write_config(
         tmp_path,
-        ["--fresh", "MapMode=Streamed", "EngineMaxGameY=11000", "LocalWindowSize?=1024"],
+        [
+            "--fresh",
+            "MapMode=Streamed",
+            "EngineMaxGameY=11000",
+            "LocalWindowSize?=1024",
+        ],
     )
     assert cfg["MapMode"] == "Streamed"
     assert cfg["EngineMaxGameY"] == 11000
@@ -40,7 +45,9 @@ def test_override_set_and_setdefault(tmp_path: Path):
 
 
 def test_setdefault_keeps_explicit_value(tmp_path: Path):
-    cfg = write_config(tmp_path, ["--fresh", "StreamRadiusTiles=4", "StreamRadiusTiles?=3"])
+    cfg = write_config(
+        tmp_path, ["--fresh", "StreamRadiusTiles=4", "StreamRadiusTiles?=3"]
+    )
     # Explicit set wins over a later ?= default.
     assert cfg["StreamRadiusTiles"] == 4
 
@@ -61,7 +68,12 @@ def test_sync_manifest_dimensions_and_bbox(tmp_path: Path):
         encoding="utf-8",
     )
     cfg: dict = {}
-    for pair in ("WorldWidth=512", "WorldHeight=512", "TileSize=512", "LocalWindowSize=512"):
+    for pair in (
+        "WorldWidth=512",
+        "WorldHeight=512",
+        "TileSize=512",
+        "LocalWindowSize=512",
+    ):
         mod_config.apply_override(cfg, pair)
     assert mod_config.sync_manifest_dimensions(dest, cfg, include_bbox=True)
     assert cfg["WorldWidth"] == 2048
@@ -77,7 +89,9 @@ def test_height_test_meta_spawn_and_ceiling(tmp_path: Path):
     tiles = dest / "Data" / "tiles"
     tiles.mkdir(parents=True)
     (tiles / "height_test.json").write_text(
-        json.dumps({"summit_lon": -121.7, "summit_lat": 46.85, "engine_max_game_y": 8849}),
+        json.dumps(
+            {"summit_lon": -121.7, "summit_lat": 46.85, "engine_max_game_y": 8849}
+        ),
         encoding="utf-8",
     )
     cfg: dict = {"EngineMaxGameY": 11000}

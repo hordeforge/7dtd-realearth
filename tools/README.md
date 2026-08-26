@@ -31,11 +31,21 @@ Assembly-CSharp.dll; without it the audit uses documented 3.0.1 defaults):
 uv sync --extra audit --extra dev
 ```
 
-Tests:
+Tests and gates:
 
 ```bash
 uv run --extra dev python -m pytest
-# or: make -C .. test
+make lint      # ruff check + black --check + mypy (strict)
+# or from the repo root: make -C .. test && make -C .. lint
+```
+
+Two modules here are also called directly by the shell install scripts, so they
+stay stdlib-only and run without uv:
+
+```bash
+PYTHONPATH=. python3 -m realearth.mod_config write DEST ROOT [KEY=VALUE ...]
+PYTHONPATH=. python3 -m realearth.server_config SRC DEST [--userdata P] [NAME=VALUE ...]
+PYTHONPATH=. python3 -m realearth.proton_paths
 ```
 
 ## What the package does

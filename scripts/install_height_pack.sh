@@ -35,12 +35,12 @@ case "$KIND" in
 esac
 
 if [[ ! -d "$PACK" ]]; then
-  echo "Pack missing: $PACK — generate first (make height-map-500 / height-map)" >&2
+  echo "Pack missing: $PACK, generate first (make height-map-500 / height-map)" >&2
   exit 1
 fi
 
 if [[ ! -d "$GAME_DIR/Mods/0_TFP_Harmony" ]]; then
-  echo "ERROR: $GAME_DIR/Mods/0_TFP_Harmony missing — RealEarth.dll cannot load without it. Verify Steam files." >&2
+  echo "ERROR: $GAME_DIR/Mods/0_TFP_Harmony missing: RealEarth.dll cannot load without it. Verify Steam files." >&2
   exit 1
 fi
 
@@ -66,7 +66,7 @@ install_one() {
     [[ -f "$PACK/$n" ]] && cp -f "$PACK/$n" "$dest/Data/tiles/"
   done
   # Fresh config (no repo template): this pack defines its own standalone setup.
-  python3 "$ROOT/scripts/mod_config.py" write "$dest" "$ROOT" \
+  PYTHONPATH="$ROOT/tools" python3 -m realearth.mod_config write "$dest" "$ROOT" \
     --fresh --sync-manifest --sync-bbox \
     MapMode=Streamed \
     SingleWorldSession=true \
@@ -109,7 +109,7 @@ do
 done
 
 if [[ ! -d "$WORLD" ]]; then
-  echo "WARN: baked world missing: $WORLD — run make height-map / height-map-500 first" >&2
+  echo "WARN: baked world missing: $WORLD, run make height-map / height-map-500 first" >&2
 elif (( INSTALLED_WORLDS == 0 )); then
   echo "WARN: world $WORLD_NAME not installed to any GeneratedWorlds target (all missing)" >&2
 fi

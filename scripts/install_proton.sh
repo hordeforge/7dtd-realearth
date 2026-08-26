@@ -26,13 +26,15 @@ if [[ ! -d "$GAME_DIR/7DaysToDie_Data/Managed" ]]; then
   exit 1
 fi
 if [[ ! -d "$GAME_DIR/Mods/0_TFP_Harmony" ]]; then
-  echo "ERROR: Mods/0_TFP_Harmony missing — do not delete it. Verify Steam files." >&2
+  echo "ERROR: Mods/0_TFP_Harmony missing, do not delete it. Verify Steam files." >&2
   exit 1
 fi
 
 # Validate MAP_MODE before touching anything: a bad value must not destroy the
 # previous install (validation used to run after rm -rf inside install_mod).
 MAP_MODE="${MAP_MODE:-Streamed}"
+# Streamer window the client keeps resident; mirrors realearth.DEFAULT_LOCAL_WINDOW_SIZE.
+LOCAL_WINDOW_SIZE=1024
 case "$MAP_MODE" in
   Streamed|Baked) ;;
   *)
@@ -48,17 +50,7 @@ resolve_world_targets() {
     # shellcheck disable=SC1091
     source "$tools_py/.venv/bin/activate"
   fi
-  PYTHONPATH="$tools_py${PYTHONPATH:+:$PYTHONPATH}" python3 - <<'PY'
-from realearth.proton_paths import (
-    client_generated_worlds_targets,
-    primary_client_userdata,
-    proton_userdata,
-)
-print("PRIMARY", primary_client_userdata())
-print("PROTON", proton_userdata() or "")
-for t in client_generated_worlds_targets(prefer_proton=True, also_native=True):
-    print("TARGET", t)
-PY
+  PYTHONPATH="$tools_py${PYTHONPATH:+:$PYTHONPATH}" python3 -m realearth.proton_paths
 }
 
 echo "Building RealEarth against: $GAME_DIR"
@@ -92,76 +84,43 @@ install_mod() {
   [[ -f "$ROOT/Config/realearth.advanced_height.json" ]] && \
     cp -f "$ROOT/Config/realearth.advanced_height.json" "$dest/Config/"
 
-# MAP_MODE validated up front (see top of script); Streamed is the 1:1 inject default
-local map_mode="$MAP_MODE"
-  if command -v python3 >/dev/null; then
-    python3 - <<'PY' "$dest/Config/realearth.json" "$map_mode" "$ROOT/data/samples/demo_region"
-import json, sys
-from pathlib import Path
-p = Path(sys.argv[1])
-map_mode = sys.argv[2]
-demo = Path(sys.argv[3])
-with open(p, encoding="utf-8") as f:
-    cfg = json.load(f)
-cfg["MapMode"] = map_mode
-cfg["SingleWorldSession"] = True
-cfg["MultiplayerOriginMode"] = "SoloSlide"
-cfg["StreamRadiusTiles"] = int(cfg.get("StreamRadiusTiles") or 2)
-cfg["UnloadRadiusTiles"] = int(cfg.get("UnloadRadiusTiles") or 4)
-cfg["TilePackPath"] = "Data/tiles"
-# Debug: full in-game map uncovered (not only visited places)
-cfg["DebugRevealFullMap"] = bool(cfg.get("DebugRevealFullMap", False))
-# Height: RealEarth YDim expand is part of this mod (Tools/). StockSafe = fallback only.
-cfg["EnableEngineHeightMod"] = bool(cfg.get("EnableEngineHeightMod", True))
-# Product rule: real meters (1 m = 1 block). StockSafe must default off (HEIGHT_LIMITS.md).
-if "EngineHeightStockSafe" not in cfg:
-    print("WARN: EngineHeightStockSafe missing from source config; defaulting to false")
-cfg["EngineHeightStockSafe"] = bool(cfg.get("EngineHeightStockSafe", False))
-cfg["EngineMaxGameY"] = int(cfg.get("EngineMaxGameY") or 11000)
-cfg["EngineHeightOneToOne"] = bool(cfg.get("EngineHeightOneToOne", True))
-cfg["EngineHeightPreferVanillaCeiling"] = bool(
-    cfg.get("EngineHeightPreferVanillaCeiling", False)
-)
-# Streamed: wrap follows the final canvas width (full planet only), matching
-# ModApi.TryApplyPackManifest and docs/MODLET.md ("full-planet canvases only").
-if map_mode.lower() == "streamed":
-    cfg["LocalWindowSize"] = int(cfg.get("LocalWindowSize") or 1024)
-    # Prefer demo pack dimensions when present so Streamed samples resolve
-    man = demo / "earth.manifest.json"
-    if man.is_file():
-        m = json.loads(man.read_text(encoding="utf-8"))
-        if int(m.get("world_width") or 0) > 0:
-            cfg["WorldWidth"] = int(m["world_width"])
-            cfg["WorldHeight"] = int(m["world_height"])
-            cfg["TileSize"] = int(m.get("tile_size") or 512)
-            cfg["LocalWindowSize"] = min(cfg["LocalWindowSize"], cfg["WorldWidth"], cfg["WorldHeight"])
-            bbox = m.get("bbox") or {}
-            if bbox:
-                cfg["BboxWest"] = float(bbox["west"])
-                cfg["BboxSouth"] = float(bbox["south"])
-                cfg["BboxEast"] = float(bbox["east"])
-                cfg["BboxNorth"] = float(bbox["north"])
-                cfg["DefaultSpawnLon"] = (cfg["BboxWest"] + cfg["BboxEast"]) * 0.5
-                cfg["DefaultSpawnLat"] = (cfg["BboxSouth"] + cfg["BboxNorth"]) * 0.5
-    # Antimeridian wrap only on full-planet canvases; regional packs must not wrap.
-    cfg["EnableLongitudeWrap"] = int(cfg.get("WorldWidth") or 0) >= 10_000_000
-else:
-    cfg["EnableLongitudeWrap"] = False
-    cfg["LocalWindowSize"] = int(cfg.get("LocalWindowSize") or 1024)
-with open(p, "w", encoding="utf-8") as f:
-    json.dump(cfg, f, indent=2)
-    f.write("\n")
-print(f"Config MapMode={map_mode}")
-PY
-  fi
+  # MAP_MODE validated up front (see top of script); Streamed is the 1:1 inject default
+  local map_mode="$MAP_MODE"
   if [[ -d "$ROOT/data/samples/demo_region" ]]; then
     mkdir -p "$dest/Data/tiles"
     if ! cp -a "$ROOT/data/samples/demo_region/." "$dest/Data/tiles/"; then
       echo "WARN: demo tile copy failed into $dest/Data/tiles (Streamed will sample ocean until CDN configured)" >&2
     fi
     if [[ ! -f "$dest/Data/tiles/earth.manifest.json" ]]; then
-      echo "WARN: no earth.manifest.json under $dest/Data/tiles — pack incomplete? Run make demo." >&2
+      echo "WARN: no earth.manifest.json under $dest/Data/tiles, pack incomplete? Run make demo." >&2
     fi
+  fi
+  if command -v python3 >/dev/null; then
+    # Streamed takes world size, bbox and antimeridian wrap from the pack that
+    # just landed in Data/tiles (docs/MODLET.md: wrap on full-planet canvases
+    # only). Baked keeps the template canvas and never wraps.
+    local canvas=(EnableLongitudeWrap=false)
+    if [[ "${map_mode,,}" == "streamed" ]]; then
+      canvas=(--sync-manifest --sync-bbox --spawn-from-bbox --max-window "$LOCAL_WINDOW_SIZE")
+    fi
+    # Height: RealEarth YDim expand is part of this mod (Tools/). StockSafe is a
+    # fallback only, never the product path (docs/HEIGHT_LIMITS.md).
+    PYTHONPATH="$ROOT/tools" python3 -m realearth.mod_config write "$dest" "$ROOT" \
+      --template "$ROOT/Config/realearth.json" \
+      "${canvas[@]}" \
+      "MapMode=$map_mode" \
+      SingleWorldSession=true \
+      MultiplayerOriginMode=SoloSlide \
+      "StreamRadiusTiles?=2" \
+      "UnloadRadiusTiles?=4" \
+      TilePackPath=Data/tiles \
+      "DebugRevealFullMap?=false" \
+      "EnableEngineHeightMod?=true" \
+      "EngineHeightStockSafe?=false" \
+      "EngineMaxGameY?=11000" \
+      "EngineHeightOneToOne?=true" \
+      "EngineHeightPreferVanillaCeiling?=false" \
+      "LocalWindowSize?=$LOCAL_WINDOW_SIZE"
   fi
   echo "Installed mod → $dest (MapMode=${map_mode})"
 }
@@ -173,7 +132,7 @@ fi
 
 WORLD_SRC="$ROOT/worlds/RealEarth"
 if [[ ! -d "$WORLD_SRC" || ! -f "$WORLD_SRC/dtm.raw" ]]; then
-  echo "WARN: no baked world at $WORLD_SRC — run bake-world first" >&2
+  echo "WARN: no baked world at $WORLD_SRC, run bake-world first" >&2
 else
   if ! command -v python3 >/dev/null; then
     echo "ERROR: python3 required to resolve world install targets" >&2
