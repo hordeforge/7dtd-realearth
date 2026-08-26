@@ -121,8 +121,19 @@ def lonlat_cmd(lon: float, lat: float) -> None:
     show_default=True,
     help="Meters per sample (use 1 for true 1:1, huge)",
 )
-@click.option("--tile-size", type=int, default=512, show_default=True)
-@click.option("--name", default="RealEarthRegion", show_default=True)
+@click.option(
+    "--tile-size",
+    type=int,
+    default=512,
+    show_default=True,
+    help="Tile edge in blocks",
+)
+@click.option(
+    "--name",
+    default="RealEarthRegion",
+    show_default=True,
+    help="Region name written into the pack manifest",
+)
 @click.option(
     "--settlements",
     type=click.Path(exists=True),
@@ -185,8 +196,17 @@ def build_region_cmd(
     For realism without Google: --source terrarium or --source geotiff (Copernicus DEM).
     Google Earth data cannot be bulk-reused; see docs/REALISM_AND_GOOGLE_EARTH.md.
     """
+    for flag, value in (
+        ("--west", west),
+        ("--south", south),
+        ("--east", east),
+        ("--north", north),
+    ):
+        _require_finite(flag, value)
     if east <= west or north <= south:
-        raise click.ClickException("bbox must have east>west and north>south")
+        raise click.BadParameter(
+            "bbox must have east>west and north>south", param_hint="--west/--east"
+        )
     settles = list(SEED_SETTLEMENTS)
     if settlements:
         settles = load_settlements_geojson(Path(settlements))
@@ -318,14 +338,24 @@ def planet_tiles_cmd(
     west: float, south: float, east: float, north: float, tile_size: int
 ) -> None:
     """List absolute Earth tile indices covering a bbox (planning full planet builds)."""
+    for flag, value in (
+        ("--west", west),
+        ("--south", south),
+        ("--east", east),
+        ("--north", north),
+    ):
+        _require_finite(flag, value)
     if east <= west or north <= south:
-        raise click.ClickException("bbox must have east>west and north>south")
+        raise click.BadParameter(
+            "bbox must have east>west and north>south", param_hint="--west/--east"
+        )
     tiles = world_tile_indices_for_bbox(west, south, east, north, tile_size=tile_size)
-    click.echo(f"{len(tiles)} tiles")
+    # Status on stderr so piped stdout stays pure "tx tz" data lines.
+    click.echo(f"{len(tiles)} tiles", err=True)
     for tx, tz in tiles[:50]:
         click.echo(f"{tx} {tz}")
     if len(tiles) > 50:
-        click.echo(f"... and {len(tiles) - 50} more")
+        click.echo(f"... and {len(tiles) - 50} more", err=True)
 
 
 @main.command("wrap-check", context_settings={"ignore_unknown_options": True})
@@ -601,12 +631,17 @@ def sample_chunk_cmd(
     )
 
     if (lon is None) != (lat is None):
-        raise click.ClickException("--lon and --lat must be given together")
+        raise click.BadParameter(
+            "--lon and --lat must be given together", param_hint="--lon/--lat"
+        )
     if (origin_x is None) != (origin_z is None):
-        raise click.ClickException("--x and --z must be given together")
+        raise click.BadParameter(
+            "--x and --z must be given together", param_hint="--x/--z"
+        )
     if lon is not None and origin_x is not None:
-        raise click.ClickException(
-            "choose one location mode: --lon/--lat or --x/--z, not both"
+        raise click.BadParameter(
+            "choose one location mode: --lon/--lat or --x/--z, not both",
+            param_hint="--lon/--lat",
         )
 
     pack = Path(pack_dir)
@@ -820,8 +855,13 @@ def export_viewer_cmd(
 
 
 @main.command("serve")
-@click.option("--port", type=int, default=8765, show_default=True)
-@click.option("--bind", default="127.0.0.1", show_default=True)
+@click.option("--port", type=int, default=8765, show_default=True, help="TCP port")
+@click.option(
+    "--bind",
+    default="127.0.0.1",
+    show_default=True,
+    help="Bind address (use 0.0.0.0 to expose on the LAN)",
+)
 @click.option(
     "--root",
     type=click.Path(exists=True),

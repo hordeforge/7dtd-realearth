@@ -1,6 +1,7 @@
 """CLI contract tests: exit codes, clean errors, help consistency."""
 
 import json
+import re
 from pathlib import Path
 
 import pytest
@@ -139,10 +140,15 @@ def test_planet_tiles_valid_bbox() -> None:
         ],
     )
     assert result.exit_code == 0
-    first, second = result.stdout.splitlines()[:2]
-    count = int(first.split()[0])
-    assert second.count(" ") == 1  # one "tx tz" pair per line
-    assert len(result.stdout.splitlines()) - 1 <= count
+    # stdout is pure data ("tx tz" pairs); the count line lives on stderr so
+    # scripts can pipe stdout straight into a read loop.
+    match = re.search(r"^(\d+) tiles$", result.stderr, flags=re.MULTILINE)
+    assert match
+    assert int(match.group(1)) >= len(result.stdout.splitlines())
+    for line in result.stdout.splitlines():
+        tx, tz = line.split()
+        int(tx)
+        int(tz)
 
 
 def test_planet_tiles_rejects_inverted_bbox() -> None:
@@ -160,15 +166,68 @@ def test_planet_tiles_rejects_inverted_bbox() -> None:
             "40",
         ],
     )
-    assert result.exit_code == 1
+    assert result.exit_code == 2
     assert "east>west" in result.stderr
+
+
+@pytest.mark.parametrize("bad", ["inf", "-inf", "nan"])
+def test_planet_tiles_rejects_non_finite_bbox(bad: str) -> None:
+    """Non-finite bbox floats must be a usage error, not a deep ValueError."""
+    result = CliRunner().invoke(
+        main,
+        ["planet-tiles", "--west", bad, "--south", "0", "--east", "1", "--north", "1"],
+    )
+    assert result.exit_code == 2
+    assert "Traceback" not in result.stderr
+    assert "--west" in result.stderr
+
+
+def test_build_region_rejects_inverted_and_non_finite_bbox(tmp_path: Path) -> None:
+    runner = CliRunner()
+    inverted = runner.invoke(
+        main,
+        [
+            "build-region",
+            "--west",
+            "10",
+            "--east",
+            "5",
+            "--south",
+            "0",
+            "--north",
+            "1",
+            "--out",
+            str(tmp_path / "out"),
+        ],
+    )
+    assert inverted.exit_code == 2
+    assert "east>west" in inverted.stderr
+    non_finite = runner.invoke(
+        main,
+        [
+            "build-region",
+            "--north",
+            "nan",
+            "--west",
+            "0",
+            "--south",
+            "0",
+            "--east",
+            "1",
+            "--out",
+            str(tmp_path / "out"),
+        ],
+    )
+    assert non_finite.exit_code == 2
+    assert "Traceback" not in non_finite.stderr
+    assert "finite" in non_finite.stderr
 
 
 def test_sample_chunk_requires_lon_lat_pair(tmp_path: Path) -> None:
     result = CliRunner().invoke(
         main, ["sample-chunk", "--pack", str(tmp_path), "--lon", "-74"]
     )
-    assert result.exit_code == 1
+    assert result.exit_code == 2
     assert "--lon and --lat must be given together" in result.stderr
 
 
@@ -176,7 +235,7 @@ def test_sample_chunk_requires_origin_pair(tmp_path: Path) -> None:
     result = CliRunner().invoke(
         main, ["sample-chunk", "--pack", str(tmp_path), "--x", "64"]
     )
-    assert result.exit_code == 1
+    assert result.exit_code == 2
     assert "--x and --z must be given together" in result.stderr
 
 
@@ -197,7 +256,7 @@ def test_sample_chunk_rejects_mixed_location_modes(tmp_path: Path) -> None:
             "0",
         ],
     )
-    assert result.exit_code == 1
+    assert result.exit_code == 2
     assert "--lon/--lat or --x/--z" in result.stderr
 
 
@@ -205,6 +264,16 @@ def test_serve_help_documents_no_browser() -> None:
     result = CliRunner().invoke(main, ["serve", "--help"])
     assert result.exit_code == 0
     assert "--no-browser" in result.stdout
+
+
+def test_key_options_document_their_meaning() -> None:
+    """Options beyond bare defaults must say what they do."""
+    build = CliRunner().invoke(main, ["build-region", "--help"]).stdout
+    assert "Tile edge in blocks" in build
+    assert "Region name" in build
+    serve = CliRunner().invoke(main, ["serve", "--help"]).stdout
+    assert "TCP port" in serve
+    assert "Bind address" in serve
 
 
 def test_every_command_has_help_text() -> None:
