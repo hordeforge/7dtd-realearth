@@ -127,3 +127,29 @@ def test_focus_map_has_ttl_sweep():
         "\n        /// <summary>",
     )
     assert "unchecked(now - kv.Value.tick)" in sweep
+
+
+def test_cdn_tile_decode_precedes_durable_publish():
+    """A CDN body that passes the RTE1 magic check but fails full decode must
+    never be published into the local tile store: File.Exists would then route
+    every later attempt to the poisoned disk copy instead of the CDN, pinning
+    the tile on fail-closed ocean until manual cleanup. Both CDN paths must
+    validate via RteTile.Decode before PublishTileBytes."""
+    src = _read("TileStreamer.cs")
+    sync = _method_body(
+        src,
+        r"void TryLoadCdnSync\(int tx, int tz, string path, long key, string url\)",
+        "\n        /// <summary>\n        /// Durable publish",
+    )
+    assert sync.index("RteTile.Decode") < sync.index(
+        "PublishTileBytes"
+    ), "sync CDN path must decode-validate before publishing to disk"
+    fire = _method_body(
+        src,
+        r"async Task LoadTileFireAndForget\(int tx, int tz, string path, long key, bool fromCdn\)",
+        "\n        /// <summary>",
+    )
+    cdn_branch = fire[: fire.index("else")]
+    assert cdn_branch.index("RteTile.Decode") < cdn_branch.index(
+        "PublishTileBytes"
+    ), "async CDN path must decode-validate before publishing to disk"

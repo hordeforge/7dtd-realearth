@@ -346,8 +346,10 @@ def test_retry_apply_never_double_patch():
     assert "HashSet<MethodBase>" in hooks
     assert "_patchedMethods.Add(target)" in hooks
     # Extract TryRetryApply body: must not re-enter full gen scan when ChunkIndexPatches > 0
+    # Anchor on the method's final 8-space closing brace (nested blocks indent deeper),
+    # not on whichever member happens to follow it.
     m = re.search(
-        r"public static void TryRetryApply\(\)\s*\{(?P<body>.*?)\n        static Type\?",
+        r"public static void TryRetryApply\(\)\s*\{(?P<body>.*?)\n        \}",
         hooks,
         re.S,
     )

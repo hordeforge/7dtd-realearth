@@ -422,8 +422,12 @@ namespace RealEarth
                 var dir = Path.GetDirectoryName(path);
                 if (!string.IsNullOrEmpty(dir))
                     Directory.CreateDirectory(dir);
-                PublishTileBytes(path, bytes);
+                // Validate the full payload BEFORE durable publish: a body that passes
+                // the magic check but fails decode must never reach the tile store,
+                // where File.Exists would shadow the CDN on every later attempt and
+                // pin this tile on fail-closed ocean until manual cleanup.
                 var tile = RteTile.Decode(bytes);
+                PublishTileBytes(path, bytes);
                 lock (_lock)
                 {
                     _hot[key] = tile;
@@ -557,6 +561,7 @@ namespace RealEarth
             try
             {
                 byte[] bytes;
+                RteTile tile;
                 if (fromCdn)
                 {
                     string? url = CdnTilePolicy.TileUrl(_cfg.TileCdnBaseUrl, tx, tz);
@@ -572,15 +577,18 @@ namespace RealEarth
                         MarkMiss(key);
                         return;
                     }
+                    // Decode before publish (same rationale as the sync CDN path):
+                    // only fully validated payloads may enter the durable tile store.
+                    tile = RteTile.Decode(bytes);
                     PublishTileBytes(path, bytes);
                 }
                 else
                 {
                     // Disk decode off inject thread.
                     bytes = await Task.Run(() => File.ReadAllBytes(path)).ConfigureAwait(false);
+                    tile = RteTile.Decode(bytes);
                 }
 
-                var tile = RteTile.Decode(bytes);
                 lock (_lock)
                 {
                     _hot[key] = tile;
