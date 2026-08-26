@@ -16,9 +16,7 @@ from pathlib import Path
 
 STEAM_APPID = "251570"
 
-DEFAULT_CLIENT_GAME_DIR = (
-    Path.home() / ".local/share/Steam/steamapps/common/7 Days To Die"
-)
+DEFAULT_CLIENT_GAME_DIR = Path.home() / ".local/share/Steam/steamapps/common/7 Days To Die"
 
 
 def client_game_dir() -> Path:

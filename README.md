@@ -185,13 +185,13 @@ Details: [docs/SINGLE_WORLD.md](docs/SINGLE_WORLD.md). Engine max for a loaded m
 
 ## Globe minimap
 
-Runtime state lives in `GlobeMapState` / `GlobeMapFrame`:
+No in-game globe today: the unwired `GlobeMapState` / `GlobeMapFrame` scaffold was removed; the browser viewer (`viewer/`, Three.js) owns globe QA for now.
 
 - Sphere projection for a true globe UI
 - Equirectangular UV fallback (flat map that wraps)
 - Local radar remains the short-range minimap; globe is the planetary view
 
-Wire to Unity IMGUI/UI once Harmony UI patches are in place. Toggle design intent: open globe map key → show planet + player lon/lat + discovered cities. In-game map names already use edge discovery (see [docs/CITY_MAP_LABELS.md](docs/CITY_MAP_LABELS.md)).
+An in-game XUi globe stays an idea ([DESIGN.md](DESIGN.md) §18.3). Toggle design intent: open globe map key → show planet + player lon/lat + discovered cities. In-game map names already use edge discovery (see [docs/CITY_MAP_LABELS.md](docs/CITY_MAP_LABELS.md)).
 
 ## What “1:1” means
 
