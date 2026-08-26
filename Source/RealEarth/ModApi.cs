@@ -134,8 +134,32 @@ namespace RealEarth
         static volatile MethodInfo? _logOut;
         static volatile bool _logOutResolved;
 
+        /// <summary>
+        /// Drop C0/C1 control characters (CR, LF, ESC, DEL, ...) from text that
+        /// reaches logs or game UI. Strings travel in from shared tile packs
+        /// (place names, bands); raw controls would let a hostile pack forge or
+        /// rewrite server-log lines and garble nav labels. Same boundary rule as
+        /// the viewer server's log sanitization and the CLI's _display_text.
+        /// </summary>
+        public static string StripControlChars(string text)
+        {
+            foreach (char c in text)
+            {
+                if (char.IsControl(c))
+                {
+                    var sb = new System.Text.StringBuilder(text.Length);
+                    foreach (char ch in text)
+                        if (!char.IsControl(ch))
+                            sb.Append(ch);
+                    return sb.ToString();
+                }
+            }
+            return text;
+        }
+
         public static void Log(string msg)
         {
+            msg = msg == null ? "" : StripControlChars(msg);
             try
             {
                 // Prefer game logger when present (MethodInfo resolved once; hot-path callers

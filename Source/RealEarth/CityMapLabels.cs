@@ -535,11 +535,15 @@ namespace RealEarth
             var place = new Place();
             if (!TryReadString(obj, "name", out var name) || string.IsNullOrWhiteSpace(name))
                 return null;
-            place.Name = name;
+            // Names/bands come from shared pack files and become log text and
+            // player-facing nav labels; drop controls so CR/LF/ESC cannot forge
+            // log lines or garble UI (ModApi.StripControlChars).
+            place.Name = ModApi.StripControlChars(name);
             if (TryReadDouble(obj, "lon", out var lon)) place.Lon = lon;
             if (TryReadDouble(obj, "lat", out var lat)) place.Lat = lat;
             if (TryReadInt(obj, "population", out var pop)) place.Population = pop;
-            if (TryReadString(obj, "band", out var band)) place.Band = band;
+            if (TryReadString(obj, "band", out var band))
+                place.Band = ModApi.StripControlChars(band);
             ApplyEdgeFromObject(obj, place);
             return place;
         }
