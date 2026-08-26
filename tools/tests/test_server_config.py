@@ -35,9 +35,7 @@ def write_template(tmp_path: Path, text: str = TEMPLATE) -> Path:
 def test_overrides_existing_and_inserts_missing(tmp_path: Path):
     src = write_template(tmp_path)
     dest = tmp_path / "out" / "live.xml"
-    rc = server_config.main(
-        [str(src), str(dest), "GameWorld=RealEarth_H500", "ServerVisibility=0"]
-    )
+    rc = server_config.main([str(src), str(dest), "GameWorld=RealEarth_H500", "ServerVisibility=0"])
     assert rc == 0
     props = properties(dest)
     assert props["GameWorld"] == "RealEarth_H500"

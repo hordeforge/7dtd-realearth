@@ -79,8 +79,12 @@ PYTEST        := cd $(TOOLS) && $(UV) run --locked --extra dev python -m pytest
 # standalone helpers CI also runs.
 PY_SOURCES    := realearth tests ../scripts
 RUFF          := cd $(TOOLS) && $(UV) run --locked --extra dev ruff check $(PY_SOURCES)
-BLACK         := cd $(TOOLS) && $(UV) run --locked --extra dev black --check $(PY_SOURCES)
-MYPY          := cd $(TOOLS) && $(UV) run --locked --extra dev mypy realearth
+# --config pins discovery: with mixed roots (realearth tests ../scripts)
+# black anchors project root at .git and silently drops [tool.black]
+# (line-length 100 -> default 88), so the gate stops enforcing the declared
+# format while still passing.
+BLACK         := cd $(TOOLS) && $(UV) run --locked --extra dev black --check --config pyproject.toml $(PY_SOURCES)
+MYPY          := cd $(TOOLS) && $(UV) run --locked --extra dev mypy realearth ../scripts
 
 # ---------------------------------------------------------------------------
 # Help

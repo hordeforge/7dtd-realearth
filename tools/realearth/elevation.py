@@ -76,9 +76,7 @@ def sample_open_meteo(
                 "latitude": ",".join(f"{v:.5f}" for v in lats_f[sl]),
                 "longitude": ",".join(f"{v:.5f}" for v in lons_f[sl]),
             }
-            r = _get_with_retry(
-                client, "https://api.open-meteo.com/v1/elevation", params=params
-            )
+            r = _get_with_retry(client, "https://api.open-meteo.com/v1/elevation", params=params)
             data = r.json()
             elev = data.get("elevation")
             if elev is None:
@@ -100,9 +98,7 @@ def grid_lonlat(
     if east <= west or north <= south:
         raise ValueError("invalid bbox")
     xs = np.linspace(west, east, width, endpoint=False) + (east - west) / width / 2
-    ys = (
-        np.linspace(north, south, height, endpoint=False) + (south - north) / height / 2
-    )
+    ys = np.linspace(north, south, height, endpoint=False) + (south - north) / height / 2
     # ys goes north→south so row 0 is north (matches Z increase southward)
     lon, lat = np.meshgrid(xs, ys)
     return lon, lat
@@ -148,9 +144,7 @@ def decode_terrarium_png(rgb: np.ndarray) -> np.ndarray:
 
 
 # AWS Open Data terrain tiles (Mapzen Terrarium encoding). Not Google data.
-TERRARIUM_URL = (
-    "https://s3.amazonaws.com/elevation-tiles-prod/terrarium/{z}/{x}/{y}.png"
-)
+TERRARIUM_URL = "https://s3.amazonaws.com/elevation-tiles-prod/terrarium/{z}/{x}/{y}.png"
 
 
 def terrarium_cache_dir() -> Path | None:
@@ -323,17 +317,13 @@ def fetch_region_geotiff(
     with rasterio.open(path) as ds:
         # Transform WGS84 lon/lat to dataset CRS if needed
         if ds.crs and str(ds.crs) not in ("EPSG:4326", "OGC:CRS84"):
-            xs, ys = rio_transform(
-                "EPSG:4326", ds.crs, lon.ravel().tolist(), lat.ravel().tolist()
-            )
+            xs, ys = rio_transform("EPSG:4326", ds.crs, lon.ravel().tolist(), lat.ravel().tolist())
             xs = np.asarray(xs).reshape(lon.shape)
             ys = np.asarray(ys).reshape(lat.shape)
         else:
             xs, ys = lon, lat
         samples = list(ds.sample(zip(xs.ravel(), ys.ravel(), strict=True)))
-        vals = np.array([s[0] for s in samples], dtype=np.float32).reshape(
-            height, width
-        )
+        vals = np.array([s[0] for s in samples], dtype=np.float32).reshape(height, width)
         if ds.nodata is not None:
             vals = np.where(vals == ds.nodata, np.nan, vals)
         if np.isnan(vals).any():
@@ -382,9 +372,7 @@ def synthetic_elevation(
     # Central ridge
     cy, cx = height // 2, int(width * 0.55)
     yy, xx = np.ogrid[:height, :width]
-    ridge = np.exp(
-        -(((yy - cy) / (height * 0.15)) ** 2 + ((xx - cx) / (width * 0.08)) ** 2)
-    )
+    ridge = np.exp(-(((yy - cy) / (height * 0.15)) ** 2 + ((xx - cx) / (width * 0.08)) ** 2))
     elev += ridge * 600.0
     return elev.astype(np.float32)
 

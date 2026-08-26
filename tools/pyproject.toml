@@ -63,8 +63,24 @@ target-version = "py311"
 # ignore` without a rule code; T10 catches debugger/breakpoint imports.
 # RUF100 fails any noqa whose rule is not enabled or not triggered, so a
 # suppression cannot silently outlive its finding.
+# A bans shadowing builtins; N enforces PEP8 naming; DTZ requires tz-aware
+# datetime calls (naive UTC math is a defect class); PERF flags loop/list
+# performance anti-patterns; RET simplifies return flow (no explicit
+# `return None`, no return-else); PIE/RSE drop dead constructs; ISC bans
+# same-line implicit string concatenation; ICN/TID keep import style single;
+# FLY prefers f-strings in joins; YTT pins truthy sys/version checks.
 select = ["E", "F", "W", "I", "B", "UP", "C4", "SIM"]
-extend-select = ["RUF100", "PLE", "PLW", "SLF", "PGH", "T10"]
+extend-select = [
+  "RUF100", "PLE", "PLW", "SLF", "PGH", "T10",
+  "A", "N", "DTZ", "PERF", "RET", "PIE", "RSE",
+  "ISC", "ICN", "TID", "FLY", "YTT",
+]
+
+[tool.ruff.lint.per-file-ignores]
+# viewer_server.py overrides http.server.BaseHTTPRequestHandler.log_message,
+# whose stdlib parameter is named `format`; parity with the overridden
+# signature beats a rename that callers cannot see.
+"realearth/viewer_server.py" = ["A002"]
 
 [tool.black]
 line-length = 100

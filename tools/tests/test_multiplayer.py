@@ -198,9 +198,7 @@ def test_mp_config_shared_fixed_keys():
     from pathlib import Path
 
     root = Path(__file__).resolve().parents[2]
-    cfg = json.loads(
-        (root / "Config" / "realearth.mp.json").read_text(encoding="utf-8")
-    )
+    cfg = json.loads((root / "Config" / "realearth.mp.json").read_text(encoding="utf-8"))
     assert cfg["MapMode"] == "Streamed"
     assert cfg["MultiplayerOriginMode"] == "SharedFixed"
     assert cfg["EnableEngineHeightMod"] is True

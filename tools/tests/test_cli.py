@@ -35,10 +35,7 @@ def test_display_text_keeps_plain_names() -> None:
 
 
 def test_safe_name_component_accepts_plain_names() -> None:
-    assert (
-        _safe_name_component({"name": "RealEarth_H500"}, "name", "Fallback")
-        == "RealEarth_H500"
-    )
+    assert _safe_name_component({"name": "RealEarth_H500"}, "name", "Fallback") == "RealEarth_H500"
     assert _safe_name_component({}, "name", "Fallback") == "Fallback"
 
 
@@ -55,9 +52,7 @@ def test_install_height_test_rejects_hostile_pack_name(tmp_path: Path) -> None:
     """Pack metadata name must never steer rmtree/copytree outside GeneratedWorlds."""
     pack = tmp_path / "pack"
     pack.mkdir()
-    (pack / "height_test.json").write_text(
-        json.dumps({"name": "../../victim"}), encoding="utf-8"
-    )
+    (pack / "height_test.json").write_text(json.dumps({"name": "../../victim"}), encoding="utf-8")
     victim = tmp_path / "victim"
     victim.mkdir()
     (victim / "keep.txt").write_text("x", encoding="utf-8")
@@ -165,17 +160,13 @@ def test_planet_tiles_rejects_inverted_bbox() -> None:
 
 
 def test_sample_chunk_requires_lon_lat_pair(tmp_path: Path) -> None:
-    result = CliRunner().invoke(
-        main, ["sample-chunk", "--pack", str(tmp_path), "--lon", "-74"]
-    )
+    result = CliRunner().invoke(main, ["sample-chunk", "--pack", str(tmp_path), "--lon", "-74"])
     assert result.exit_code == 1
     assert "--lon and --lat must be given together" in result.stderr
 
 
 def test_sample_chunk_requires_origin_pair(tmp_path: Path) -> None:
-    result = CliRunner().invoke(
-        main, ["sample-chunk", "--pack", str(tmp_path), "--x", "64"]
-    )
+    result = CliRunner().invoke(main, ["sample-chunk", "--pack", str(tmp_path), "--x", "64"])
     assert result.exit_code == 1
     assert "--x and --z must be given together" in result.stderr
 

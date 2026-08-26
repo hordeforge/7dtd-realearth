@@ -84,18 +84,14 @@ def audit_engine_height(dll: Path | None = None) -> dict[str, Any]:
         "notes": [],
     }
     if not path.is_file():
-        result["notes"].append(
-            "Assembly-CSharp.dll not found; using documented 3.0.1 defaults"
-        )
+        result["notes"].append("Assembly-CSharp.dll not found; using documented 3.0.1 defaults")
         result["constants"] = dict(VANILLA_3_0_1)
         return result
 
     try:
         consts = read_int32_constants(path)
     except ImportError as ex:
-        result["notes"].append(
-            f"dnfile missing ({ex}); live audit needs: uv sync --extra audit"
-        )
+        result["notes"].append(f"dnfile missing ({ex}); live audit needs: uv sync --extra audit")
         result["constants"] = dict(VANILLA_3_0_1)
         return result
     except Exception as ex:

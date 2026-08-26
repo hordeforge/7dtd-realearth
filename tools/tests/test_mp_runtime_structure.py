@@ -38,9 +38,7 @@ def test_try_patch_player_tick_patches_entity_player_and_local():
         or body.count("EntityPlayer") >= 2
     )
     # No early return of 1 after first successful patch
-    assert (
-        "return 1;" not in body
-    ), "early return 1 would skip EntityPlayer on dedicated"
+    assert "return 1;" not in body, "early return 1 would skip EntityPlayer on dedicated"
     # Must accumulate Update-path tick binds (not unload-only)
     assert "tickPatched++" in body or "patched++" in body or "patched +=" in body
     assert "return tickPatched" in body or "return patched" in body
@@ -183,6 +181,4 @@ def test_reinject_counters_are_reset_with_session():
     assert reset, "ResetSessionCounters not found"
     # Counters are cross-thread (gen thread vs WorldReady reset), so the reset must
     # be atomic: Interlocked.Exchange on the backing field, not a plain assignment.
-    assert "Interlocked.Exchange(ref _sessionReinjectedChunks, 0)" in reset.group(
-        "body"
-    )
+    assert "Interlocked.Exchange(ref _sessionReinjectedChunks, 0)" in reset.group("body")

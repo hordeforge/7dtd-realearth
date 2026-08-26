@@ -21,9 +21,7 @@ from realearth.height import compress_elevation
 from realearth.region import world_tile_indices_for_bbox
 
 
-@pytest.mark.parametrize(
-    "profile", ["relative", "local_stretch", "linear_clamp", "one_to_one"]
-)
+@pytest.mark.parametrize("profile", ["relative", "local_stretch", "linear_clamp", "one_to_one"])
 def test_compress_elevation_nan_fails_closed(profile):
     elev = np.array([[np.nan, -50.0], [120.0, 8849.0]])
     out = compress_elevation(
@@ -64,9 +62,7 @@ def test_world_tile_indices_for_bbox_rejects_bad_bbox():
     # Sanity: tile count matches the block span covered by the bbox.
     g = EarthGrid()
     west, south, east, north = -105.3, 39.5, -104.7, 40.0
-    tiles = world_tile_indices_for_bbox(
-        west, south, east, north, tile_size=DEFAULT_TILE_SIZE
-    )
+    tiles = world_tile_indices_for_bbox(west, south, east, north, tile_size=DEFAULT_TILE_SIZE)
     x0, _ = lonlat_to_block(west, south, g)
     x1, _ = lonlat_to_block(east, north, g)
     _, zs = lonlat_to_block(west, south, g)
@@ -78,9 +74,7 @@ def test_world_tile_indices_for_bbox_rejects_bad_bbox():
 
 def test_world_tile_indices_uses_default_grid():
     g = EarthGrid()
-    tiles = world_tile_indices_for_bbox(
-        0.0, 0.0, 1e-4, 1e-4, tile_size=DEFAULT_TILE_SIZE
-    )
+    tiles = world_tile_indices_for_bbox(0.0, 0.0, 1e-4, 1e-4, tile_size=DEFAULT_TILE_SIZE)
     tx, tz = tiles[0]
     x, z = lonlat_to_block(0.0, 0.0, g)
     assert (tx, tz) == (x // DEFAULT_TILE_SIZE, z // DEFAULT_TILE_SIZE)

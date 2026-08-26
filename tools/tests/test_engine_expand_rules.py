@@ -65,9 +65,9 @@ def test_modlet_stock_safe_config_default():
     assert (ROOT / "scripts" / "apply_engine_expand.sh").is_file()
     modlet = (ROOT / "docs" / "MODLET.md").read_text(encoding="utf-8")
     assert "YDim expand" in modlet
-    mod = (
-        ROOT / "Source" / "RealEarth" / "EngineHeight" / "EngineHeightMod.cs"
-    ).read_text(encoding="utf-8")
+    mod = (ROOT / "Source" / "RealEarth" / "EngineHeight" / "EngineHeightMod.cs").read_text(
+        encoding="utf-8"
+    )
     assert "RealEarth YDim expand" in mod
     assert "OPT-IN compress on stock" in mod
 

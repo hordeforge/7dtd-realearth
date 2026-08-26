@@ -50,9 +50,9 @@ def compress_elevation(
         return np.clip(np.rint(y), min_y, max_y).astype(out_dtype)
 
     if profile == "local_stretch":
-        return _local_stretch(
-            elev, min_y=min_y, max_y=max_y, sea_level_y=sea_level_y
-        ).astype(out_dtype)
+        return _local_stretch(elev, min_y=min_y, max_y=max_y, sea_level_y=sea_level_y).astype(
+            out_dtype
+        )
     if profile == "linear_clamp":
         scale_m_per_block = 1.0 if max_y > 255 else 40.0
         y = sea_level_y + elev / scale_m_per_block

@@ -142,9 +142,7 @@ def detect_client_versions() -> tuple[str, str]:
         if root.is_dir():
             logs.extend(root.glob("output_log_client__*.txt"))
             logs.extend(root.glob("**/output_log*.txt"))
-    logs = sorted(
-        {p.resolve() for p in logs if p.is_file()}, key=lambda p: p.stat().st_mtime
-    )
+    logs = sorted({p.resolve() for p in logs if p.is_file()}, key=lambda p: p.stat().st_mtime)
     for log in reversed(logs):
         try:
             text = log.read_text(encoding="utf-8", errors="replace")
@@ -172,9 +170,7 @@ def detect_ttw_version_string() -> str:
     return detect_client_versions()[1]
 
 
-def write_ttw_with_version(
-    path: Path, template: Path, version: str | None = None
-) -> None:
+def write_ttw_with_version(path: Path, template: Path, version: str | None = None) -> None:
     """Copy template main.ttw and rewrite embedded game version string."""
     version = version or detect_ttw_version_string()
     data = bytearray(template.read_bytes())
@@ -190,9 +186,7 @@ def write_ttw_with_version(
     path.write_bytes(head + bytes(data[9 + old_len :]))
 
 
-def write_map_info(
-    path: Path, size: int, name: str, game_version: str | None = None
-) -> None:
+def write_map_info(path: Path, size: int, name: str, game_version: str | None = None) -> None:
     # If present, GameVersion major must match the client or a warning is shown.
     gv = game_version or detect_game_version_string()
     # World names come from --name (arbitrary text). Escape for the attribute
@@ -247,9 +241,7 @@ def write_spawnpoints(
     lines = ["<spawnpoints>"]
     for i, (wx, wy, wz) in enumerate(pts):
         rot = (i * 37) % 360
-        lines.append(
-            f'    <spawnpoint position="{wx},{wy:.5f},{wz}" rotation="0,{rot},0"/>'
-        )
+        lines.append(f'    <spawnpoint position="{wx},{wy:.5f},{wz}" rotation="0,{rot},0"/>')
     lines.append("</spawnpoints>\n")
     path.write_text("\n".join(lines), encoding="utf-8")
 
@@ -279,12 +271,12 @@ def write_splats(path3: Path, path4: Path, size: int, lc: np.ndarray) -> None:
     Image.fromarray(s4, mode="RGBA").save(path4)
     # half res
     half = size // 2
-    Image.fromarray(s3, mode="RGBA").resize(
-        (half, half), Image.Resampling.BILINEAR
-    ).save(path3.with_name("splat3_half.png"))
-    Image.fromarray(s4, mode="RGBA").resize(
-        (half, half), Image.Resampling.BILINEAR
-    ).save(path4.with_name("splat4_half.png"))
+    Image.fromarray(s3, mode="RGBA").resize((half, half), Image.Resampling.BILINEAR).save(
+        path3.with_name("splat3_half.png")
+    )
+    Image.fromarray(s4, mode="RGBA").resize((half, half), Image.Resampling.BILINEAR).save(
+        path4.with_name("splat4_half.png")
+    )
     # processed = same as full for our purposes
     Image.fromarray(s3, mode="RGBA").save(path3.with_name("splat3_processed.png"))
     Image.fromarray(s4, mode="RGBA").save(path4.with_name("splat4_processed.png"))
@@ -294,8 +286,7 @@ def _find_ttw_template() -> Path | None:
     """Prefer a main.ttw from the current game install (Pregen), then any GeneratedWorlds."""
     home = Path.home()
     preferred = [
-        home
-        / ".local/share/Steam/steamapps/common/7 Days To Die/Data/Worlds/Pregen06k01/main.ttw",
+        home / ".local/share/Steam/steamapps/common/7 Days To Die/Data/Worlds/Pregen06k01/main.ttw",
         home
         / ".local/share/Steam/steamapps/common/7 Days to Die Dedicated Server"
         / "Data/Worlds/Pregen06k01/main.ttw",
@@ -478,8 +469,6 @@ def bake_generated_world(
         "files": required + ["cities.json", "population.png"],
     }
     world_json = out_dir / "realearth_world.json"
-    world_json.write_text(
-        json.dumps(meta, indent=2, ensure_ascii=False) + "\n", encoding="utf-8"
-    )
+    world_json.write_text(json.dumps(meta, indent=2, ensure_ascii=False) + "\n", encoding="utf-8")
 
     return meta

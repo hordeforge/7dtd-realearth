@@ -29,9 +29,7 @@ def test_engine_height_module_files_exist():
 def test_engine_mod_enabled_in_default_config():
     cfg = (ROOT / "Config" / "realearth.json").read_text(encoding="utf-8")
     assert "EnableEngineHeightMod" in cfg
-    assert (
-        '"EnableEngineHeightMod": true' in cfg or '"EnableEngineHeightMod":true' in cfg
-    )
+    assert '"EnableEngineHeightMod": true' in cfg or '"EnableEngineHeightMod":true' in cfg
     assert '"SeaLevelGameY": 100' in cfg or '"SeaLevelGameY":100' in cfg
 
 

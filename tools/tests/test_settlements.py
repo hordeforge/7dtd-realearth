@@ -87,10 +87,7 @@ def test_population_band_ladder_matches_runtime_fallback():
 
     # Structural pin on the C# fallback ladder: same thresholds, same order.
     src = (
-        Path(__file__).resolve().parents[2]
-        / "Source"
-        / "RealEarth"
-        / "RuntimePoiInject.cs"
+        Path(__file__).resolve().parents[2] / "Source" / "RealEarth" / "RuntimePoiInject.cs"
     ).read_text(encoding="utf-8")
     body = src[src.index("static string BandFromPop") :]
     body = body[: body.index("}")]

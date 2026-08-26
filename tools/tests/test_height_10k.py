@@ -61,9 +61,7 @@ def test_relative_tall_band_uses_int32():
 
 def test_stock_250_still_uint8():
     elev = np.array([[0.0, 500.0]])
-    y = compress_elevation(
-        elev, max_y=250, profile="relative", regional_exaggeration=1.0
-    )
+    y = compress_elevation(elev, max_y=250, profile="relative", regional_exaggeration=1.0)
     assert y.dtype == np.uint8
     assert int(y.max()) <= 250
 

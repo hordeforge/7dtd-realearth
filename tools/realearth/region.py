@@ -80,9 +80,7 @@ def build_region(
     import math
 
     m_per_deg_lat = EARTH_MERIDIAN_HALF_M / 180.0
-    m_per_deg_lon = abs(math.cos(math.radians(mid_lat))) * (
-        EARTH_CIRCUMFERENCE_M / 360.0
-    )
+    m_per_deg_lon = abs(math.cos(math.radians(mid_lat))) * (EARTH_CIRCUMFERENCE_M / 360.0)
     width_m = (east - west) * m_per_deg_lon
     height_m = (north - south) * m_per_deg_lat
     width = max(32, int(round(width_m / resolution_m)))
@@ -98,26 +96,20 @@ def build_region(
         elev = fetch_region_open_meteo(west, south, east, north, width, height)
         sources = ["Open-Meteo Elevation API (not Google)"]
     elif source == "terrarium":
-        elev = fetch_region_terrarium(
-            west, south, east, north, width, height, zoom=terrarium_zoom
-        )
+        elev = fetch_region_terrarium(west, south, east, north, width, height, zoom=terrarium_zoom)
         sources = [
             "AWS Terrain Tiles / Mapzen Terrarium (open data, not Google Earth)",
         ]
     elif source == "geotiff":
         if geotiff is None:
             raise ValueError("source=geotiff requires geotiff= path to DEM GeoTIFF")
-        elev = fetch_region_geotiff(
-            Path(geotiff), west, south, east, north, width, height
-        )
+        elev = fetch_region_geotiff(Path(geotiff), west, south, east, north, width, height)
         sources = [f"GeoTIFF DEM: {Path(geotiff).name} (e.g. Copernicus GLO-30 / SRTM)"]
     elif source == "synthetic":
         elev = synthetic_elevation(width, height)
         sources = ["synthetic procedural (offline demo)"]
     else:
-        raise ValueError(
-            f"unknown source: {source} (use synthetic|open_meteo|terrarium|geotiff)"
-        )
+        raise ValueError(f"unknown source: {source} (use synthetic|open_meteo|terrarium|geotiff)")
 
     lon, lat = grid_lonlat(west, south, east, north, width, height)
     dens_f, pop = build_density_field(
@@ -198,11 +190,7 @@ def build_region(
                 fz = (north - s.lat) / (north - south)
                 lx = int(fx * width) - x0
                 lz = int(fz * height) - y0
-                if (
-                    0 <= lx < tw
-                    and 0 <= lz < th
-                    and _place_name_key(s.name) not in plan_names
-                ):
+                if 0 <= lx < tw and 0 <= lz < th and _place_name_key(s.name) not in plan_names:
                     plan_names.add(_place_name_key(s.name))
                     plan.append(
                         {
@@ -258,17 +246,13 @@ def build_region(
         )
 
     # Human-readable settlement dump with map-derived urban edge (m).
-    present = [
-        s for s in settlements if west <= s.lon <= east and south <= s.lat <= north
-    ]
+    present = [s for s in settlements if west <= s.lon <= east and south <= s.lat <= north]
     settlement_rows = []
     for s in present:
         edge = s.edge_radius_m
         src = "map" if edge is not None and edge > 0 else None
         if edge is None or edge <= 0:
-            measured = measure_edge_at_lonlat(
-                dens_f, s.lon, s.lat, west, south, east, north
-            )
+            measured = measure_edge_at_lonlat(dens_f, s.lon, s.lat, west, south, east, north)
             if measured > 0:
                 edge = measured
                 src = "density"

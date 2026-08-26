@@ -113,9 +113,7 @@ def _prop_float(props: JsonDict, *keys: str) -> float | None:
     return None
 
 
-def edge_radius_m_from_properties(
-    props: JsonDict, lon: float, lat: float
-) -> float | None:
+def edge_radius_m_from_properties(props: JsonDict, lon: float, lat: float) -> float | None:
     """Extract urban edge meters from GeoJSON/JSON properties (map data fields)."""
     direct = _prop_float(
         props,
@@ -290,12 +288,12 @@ def paint_settlement_density(
 
     Uses a Gaussian falloff in lon/lat space (not perfect geodesy; fine for stamping).
 
-    Each Gaussian is painted only inside its ±CLIP_SIGMA window. Beyond
-    CLIP_SIGMA the contribution is < peak * exp(-CLIP_SIGMA²) ≈ 1e-13 * peak,
+    Each Gaussian is painted only inside its ±clip_sigma window. Beyond
+    clip_sigma the contribution is < peak * exp(-clip_sigma²) ≈ 1e-13 * peak,
     which is below float64 significance of the accumulated field, so results
     match an unrestricted full-grid paint to within rounding noise.
     """
-    CLIP_SIGMA = 6.0
+    clip_sigma = 6.0
 
     dens = np.zeros((height, width), dtype=np.float64)
     lon_step = (east - west) / width
@@ -320,8 +318,8 @@ def paint_settlement_density(
         # Pixel window around the settlement center (pixel centers at +step/2).
         fx = (s.lon - west) / lon_step - 0.5
         fz = (s.lat - north) / lat_step - 0.5
-        half_x = int(CLIP_SIGMA * r_lon / abs(lon_step)) + 1
-        half_z = int(CLIP_SIGMA * r_lat / abs(lat_step)) + 1
+        half_x = int(clip_sigma * r_lon / abs(lon_step)) + 1
+        half_z = int(clip_sigma * r_lat / abs(lat_step)) + 1
         x0 = max(0, int(math.floor(fx)) - half_x)
         x1 = min(width, int(math.ceil(fx)) + half_x + 1)
         z0 = max(0, int(math.floor(fz)) - half_z)
@@ -341,9 +339,7 @@ def paint_settlement_density(
 def encode_poi_blob(plan: list[JsonDict]) -> bytes:
     # ensure_ascii=False: POI names are real UTF-8 in the .rte blob (C# decodes
     # with Encoding.UTF8), not \uXXXX escapes.
-    return json.dumps({"pois": plan}, separators=(",", ":"), ensure_ascii=False).encode(
-        "utf-8"
-    )
+    return json.dumps({"pois": plan}, separators=(",", ":"), ensure_ascii=False).encode("utf-8")
 
 
 def decode_poi_blob(blob: bytes) -> list[JsonDict]:

@@ -105,11 +105,7 @@ class LocalWindow:
         ex = self.origin_x + local_x
         ez = self.origin_z + local_z
         if self.enable_longitude_wrap or self.should_fold():
-            ex = (
-                self.grid.wrap_x(ex)
-                if self.enable_longitude_wrap
-                else fold_x(ex, self.grid.width)
-            )
+            ex = self.grid.wrap_x(ex) if self.enable_longitude_wrap else fold_x(ex, self.grid.width)
         else:
             ex = max(0, min(self.grid.width - 1, ex))
         if self.should_fold() and not self.enable_longitude_wrap:

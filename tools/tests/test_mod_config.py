@@ -45,9 +45,7 @@ def test_override_set_and_setdefault(tmp_path: Path):
 
 
 def test_setdefault_keeps_explicit_value(tmp_path: Path):
-    cfg = write_config(
-        tmp_path, ["--fresh", "StreamRadiusTiles=4", "StreamRadiusTiles?=3"]
-    )
+    cfg = write_config(tmp_path, ["--fresh", "StreamRadiusTiles=4", "StreamRadiusTiles?=3"])
     # Explicit set wins over a later ?= default.
     assert cfg["StreamRadiusTiles"] == 4
 
@@ -89,9 +87,7 @@ def test_height_test_meta_spawn_and_ceiling(tmp_path: Path):
     tiles = dest / "Data" / "tiles"
     tiles.mkdir(parents=True)
     (tiles / "height_test.json").write_text(
-        json.dumps(
-            {"summit_lon": -121.7, "summit_lat": 46.85, "engine_max_game_y": 8849}
-        ),
+        json.dumps({"summit_lon": -121.7, "summit_lat": 46.85, "engine_max_game_y": 8849}),
         encoding="utf-8",
     )
     cfg: dict = {"EngineMaxGameY": 11000}

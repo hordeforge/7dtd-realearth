@@ -48,9 +48,7 @@ def load_pack_manifest(pack_dir: Path) -> Manifest | None:
 def load_pack_grid(pack_dir: Path) -> EarthGrid:
     m = load_pack_manifest(pack_dir)
     if m is not None:
-        return EarthGrid(
-            width=m.world_width, height=m.world_height, tile_size=m.tile_size
-        )
+        return EarthGrid(width=m.world_width, height=m.world_height, tile_size=m.tile_size)
     return EarthGrid()
 
 
@@ -240,9 +238,7 @@ def demo_pack_chunk_at_lonlat(
     man = load_pack_manifest(pack_dir)
     if man is None:
         raise FileNotFoundError(f"no earth.manifest.json in {pack_dir}")
-    g = EarthGrid(
-        width=man.world_width, height=man.world_height, tile_size=man.tile_size
-    )
+    g = EarthGrid(width=man.world_width, height=man.world_height, tile_size=man.tile_size)
     sea = man.sea_level_game_y if man.sea_level_game_y else sea_level_y
     ex, ez = lonlat_to_pack_block(lon, lat, man)
     # Window cannot exceed pack; clamp size

@@ -114,9 +114,7 @@ def test_live_assembly_has_rwg_and_raw_height_methods():
     byte_ats = [(t, n) for t, n in found if n == "GetTerrainHeightByteAt"]
     # skeptic: 4 GetTerrainHeightByteAt across ITerrain + DTM + Raw + BiomeResource
     assert len(byte_ats) >= 4, byte_ats
-    concrete_byte = [
-        t for t, n in byte_ats if t in PREFERRED or t.startswith("Terrain")
-    ]
+    concrete_byte = [t for t, n in byte_ats if t in PREFERRED or t.startswith("Terrain")]
     assert "TerrainGeneratorWithBiomeResource" in concrete_byte
     # Without a cap of 4 total patches, we can cover all ByteAt + At pairs
     assert len(found) >= 8, f"expected >=8 height methods, got {len(found)}: {found}"
@@ -139,7 +137,4 @@ def test_shipped_preferred_list_puts_rwg_first():
     # interface must not be preferred concrete
     assert "ITerrainGenerator" not in names
     # TypePatchPriority demotes interfaces
-    assert (
-        "if (t.IsInterface) return -50" in src.replace(" ", "")
-        or "t.IsInterface" in src
-    )
+    assert "if (t.IsInterface) return -50" in src.replace(" ", "") or "t.IsInterface" in src

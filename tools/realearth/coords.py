@@ -35,9 +35,7 @@ class EarthGrid:
         return max(0, min(self.height - 1, z))
 
 
-def lonlat_to_block(
-    lon: float, lat: float, grid: EarthGrid | None = None
-) -> tuple[int, int]:
+def lonlat_to_block(lon: float, lat: float, grid: EarthGrid | None = None) -> tuple[int, int]:
     """Convert WGS84 lon/lat (degrees) to block X/Z.
 
     Non-finite values raise ValueError (mirrors the CLI's usage-error guard);
@@ -55,9 +53,7 @@ def lonlat_to_block(
     return x, z
 
 
-def block_to_lonlat(
-    x: int, z: int, grid: EarthGrid | None = None
-) -> tuple[float, float]:
+def block_to_lonlat(x: int, z: int, grid: EarthGrid | None = None) -> tuple[float, float]:
     """Convert block X/Z to WGS84 lon/lat (degrees)."""
     g = grid or EarthGrid()
     x = g.wrap_x(x)

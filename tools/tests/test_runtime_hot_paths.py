@@ -20,9 +20,7 @@ def _read(rel: str) -> str:
 
 
 def _method_body(src: str, signature_regex: str, next_signature: str) -> str:
-    m = re.search(
-        signature_regex + r"(?P<body>.*?)" + re.escape(next_signature), src, re.S
-    )
+    m = re.search(signature_regex + r"(?P<body>.*?)" + re.escape(next_signature), src, re.S)
     assert m, f"method not found: {signature_regex}"
     return m.group("body")
 

@@ -19,9 +19,7 @@ def _classify(elev_m: float, lat_deg: float) -> np.ndarray:
 
 
 def test_ocean_covers_all_nonpositive_elevation():
-    lc = classify_from_elevation_and_lat(
-        np.array([[-1.0, 0.0]]), np.array([[65.0, 0.0]])
-    )
+    lc = classify_from_elevation_and_lat(np.array([[-1.0, 0.0]]), np.array([[65.0, 0.0]]))
     assert (lc == int(LandCover.OCEAN)).all()
 
 

@@ -61,15 +61,10 @@ def test_measure_urban_edge_scratch_reuse_matches_fresh():
     dens[5:9, 50:54] = 500
     west, south, east, north = -105.15, 39.70, -104.85, 40.00
     peaks = [(32, 32), (7, 52), (40, 10)]  # two blobs + degenerate peak
-    fresh = [
-        measure_urban_edge_radius_m(dens, y, x, west, south, east, north)
-        for y, x in peaks
-    ]
+    fresh = [measure_urban_edge_radius_m(dens, y, x, west, south, east, north) for y, x in peaks]
     scratch = np.zeros(dens.shape, dtype=bool)
     reused = [
-        measure_urban_edge_radius_m(
-            dens, y, x, west, south, east, north, visited_scratch=scratch
-        )
+        measure_urban_edge_radius_m(dens, y, x, west, south, east, north, visited_scratch=scratch)
         for y, x in peaks
     ]
     assert reused == fresh
@@ -78,9 +73,7 @@ def test_measure_urban_edge_scratch_reuse_matches_fresh():
 
 def test_edge_from_bbox_and_properties():
     # ~0.2° box at Denver lat → ~ half-width order 10 km
-    r = edge_radius_m_from_bbox(
-        -105.1, 39.65, -104.9, 39.85, center_lon=-105.0, center_lat=39.75
-    )
+    r = edge_radius_m_from_bbox(-105.1, 39.65, -104.9, 39.85, center_lon=-105.0, center_lat=39.75)
     assert 5_000 < r < 30_000
     props = {"edge_radius_m": 12345}
     assert edge_radius_m_from_properties(props, -105.0, 39.75) == 12345

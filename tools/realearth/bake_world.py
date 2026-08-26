@@ -42,9 +42,7 @@ def resize_arrays(
 ) -> tuple[np.ndarray, np.ndarray, np.ndarray]:
     """Resize mosaics to square `size` x `size` for a single continuous world."""
     elev_i = Image.fromarray(np.asarray(elev, dtype=np.float32), mode="F")
-    elev_r = np.asarray(
-        elev_i.resize((size, size), Image.Resampling.BILINEAR), dtype=np.float32
-    )
+    elev_r = np.asarray(elev_i.resize((size, size), Image.Resampling.BILINEAR), dtype=np.float32)
     lc_r = np.asarray(
         Image.fromarray(np.asarray(lc, dtype=np.uint8), mode="L").resize(
             (size, size), Image.Resampling.NEAREST

@@ -88,9 +88,7 @@ def cone_elevation(
 
 def everest_cone_elevation(size: int = TILE) -> np.ndarray:
     """Synthetic fallback if network DEM fetch fails."""
-    return cone_elevation(
-        size, peak_elev_m=float(EVEREST_METERS_ASL), plains_elev_m=200.0
-    )
+    return cone_elevation(size, peak_elev_m=float(EVEREST_METERS_ASL), plains_elev_m=200.0)
 
 
 def staged_peak_elevation(size: int = TILE, *, peak_game_y: int = 500) -> np.ndarray:
@@ -116,9 +114,7 @@ def fetch_everest_elevation(
     sources: list[str] = []
 
     if source == "synthetic":
-        return everest_cone_elevation(size), [
-            "synthetic Everest cone (offline fallback)"
-        ]
+        return everest_cone_elevation(size), ["synthetic Everest cone (offline fallback)"]
 
     try:
         if source == "open_meteo":
@@ -128,9 +124,7 @@ def fetch_everest_elevation(
                 f"bbox={west},{south},{east},{north}",
             ]
         else:
-            elev = fetch_region_terrarium(
-                west, south, east, north, size, size, zoom=terrarium_zoom
-            )
+            elev = fetch_region_terrarium(west, south, east, north, size, size, zoom=terrarium_zoom)
             sources = [
                 "AWS Terrain Tiles / Mapzen Terrarium (open data, not Google Earth)",
                 f"zoom={terrarium_zoom} bbox={west},{south},{east},{north}",
@@ -138,9 +132,7 @@ def fetch_everest_elevation(
         elev = np.asarray(elev, dtype=np.float32)
         if elev.shape != (size, size):
             elev = np.asarray(
-                Image.fromarray(elev, mode="F").resize(
-                    (size, size), Image.Resampling.BILINEAR
-                ),
+                Image.fromarray(elev, mode="F").resize((size, size), Image.Resampling.BILINEAR),
                 dtype=np.float32,
             )
         # NaN fill from neighbors / synthetic
@@ -225,9 +217,7 @@ def build_height_test_pack(
             f"EngineMaxGameY={engine_max}. Full solid fill (no Everest-scale cost)."
         )
     else:
-        elev, sources = fetch_everest_elevation(
-            size, source=source, terrarium_zoom=terrarium_zoom
-        )
+        elev, sources = fetch_everest_elevation(size, source=source, terrarium_zoom=terrarium_zoom)
         world_name = name or "RealEarth_HeightTest"
         region = "Mount Everest / Khumbu (Himalaya)"
         bbox = dict(EVEREST_BBOX)
@@ -290,16 +280,11 @@ def build_height_test_pack(
         "no_compression": True,
         "how_to_play": {
             "engine": "make engine-expand  # YDim=16384",
-            "install": (
-                "make install-height-500" if pg == 500 else "make install-height"
-            ),
+            "install": ("make install-height-500" if pg == 500 else "make install-height"),
             "streamed": "MapMode=Streamed + Data/tiles (this pack), host ~512",
             "baked": f"New Game → {world_name} (DTM 1:1 clamped ~250 at peak)",
             "teleport_hint": f"Peak in pack at local xz≈({px},{pz})",
-            "reheight": (
-                f"F1 → reheight  # expect gameY≈{peak_game_1to1} "
-                f"(elev_m≈{peak_m:.0f})"
-            ),
+            "reheight": (f"F1 → reheight  # expect gameY≈{peak_game_1to1} (elev_m≈{peak_m:.0f})"),
         },
     }
     (out_dir / "height_test.json").write_text(
@@ -319,14 +304,12 @@ def build_height_test_pack(
 
     def _norm(a: np.ndarray) -> np.ndarray:
         a = a.astype(np.float64)
-        return np.clip(
-            (a - a.min()) / max(1e-6, a.max() - a.min()) * 255, 0, 255
-        ).astype(np.uint8)
+        return np.clip((a - a.min()) / max(1e-6, a.max() - a.min()) * 255, 0, 255).astype(np.uint8)
 
     Image.fromarray(_norm(elev), mode="L").save(out_dir / "preview_elev_m.png")
-    Image.fromarray(
-        np.clip(np.asarray(game_stock), 0, 255).astype(np.uint8), mode="L"
-    ).save(out_dir / "preview_game_y_stock.png")
+    Image.fromarray(np.clip(np.asarray(game_stock), 0, 255).astype(np.uint8), mode="L").save(
+        out_dir / "preview_game_y_stock.png"
+    )
     Image.fromarray(_norm(game_mod.astype(np.float64)), mode="L").save(
         out_dir / "preview_game_y_heightmod.png"
     )
@@ -356,10 +339,7 @@ def bake_height_test_world(
     if name is None:
         ht = pack_dir / "height_test.json"
         if ht.is_file():
-            name = (
-                json.loads(ht.read_text(encoding="utf-8")).get("name")
-                or "RealEarth_HeightTest"
-            )
+            name = json.loads(ht.read_text(encoding="utf-8")).get("name") or "RealEarth_HeightTest"
         else:
             name = "RealEarth_HeightTest"
 
@@ -374,9 +354,7 @@ def bake_height_test_world(
     data = mosaic_pack(pack_dir)
     elev = data.elevation
     elev_i = Image.fromarray(np.asarray(elev, dtype=np.float32), mode="F")
-    elev_r = np.asarray(
-        elev_i.resize((size, size), Image.Resampling.BILINEAR), dtype=np.float32
-    )
+    elev_r = np.asarray(elev_i.resize((size, size), Image.Resampling.BILINEAR), dtype=np.float32)
     game_y = compress_elevation(
         elev_r,
         sea_level_y=DEFAULT_SEA_LEVEL_GAME_Y,
@@ -443,9 +421,7 @@ def bake_height_test_world(
     ]
     lines = ["<spawnpoints>"]
     for i, (sx, sy, sz) in enumerate(spawns):
-        lines.append(
-            f'    <spawnpoint position="{sx},{sy:.5f},{sz}" rotation="0,{i * 45},0"/>'
-        )
+        lines.append(f'    <spawnpoint position="{sx},{sy:.5f},{sz}" rotation="0,{i * 45},0"/>')
     lines.append("</spawnpoints>\n")
     (out_dir / "spawnpoints.xml").write_text("\n".join(lines), encoding="utf-8")
 

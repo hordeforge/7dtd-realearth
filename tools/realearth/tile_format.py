@@ -94,16 +94,12 @@ def encode_tile(tile: EarthTile) -> bytes:
     parts.append(elev_z)
 
     if tile.landcover is not None:
-        lc_z = zlib.compress(
-            np.asarray(tile.landcover, dtype=np.uint8).tobytes(), level=6
-        )
+        lc_z = zlib.compress(np.asarray(tile.landcover, dtype=np.uint8).tobytes(), level=6)
         parts.append(struct.pack("<I", len(lc_z)))
         parts.append(lc_z)
 
     if tile.population is not None:
-        pop_z = zlib.compress(
-            np.asarray(tile.population, dtype=np.uint8).tobytes(), level=6
-        )
+        pop_z = zlib.compress(np.asarray(tile.population, dtype=np.uint8).tobytes(), level=6)
         parts.append(struct.pack("<I", len(pop_z)))
         parts.append(pop_z)
 

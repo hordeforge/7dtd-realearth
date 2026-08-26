@@ -50,9 +50,7 @@ def test_build_pack_with_mocked_real_dem(tmp_path: Path):
     tile = read_tile(tile_path(tmp_path, 0, 0))
     assert float(tile.elevation_m.max()) >= 8800
     man = (tmp_path / "earth.manifest.json").read_text(encoding="utf-8")
-    assert (
-        "86.8" in man or "Everest" in man or "terrarium" in man.lower() or "mock" in man
-    )
+    assert "86.8" in man or "Everest" in man or "terrarium" in man.lower() or "mock" in man
     meta = (tmp_path / "height_test.json").read_text(encoding="utf-8")
     assert "no_compression" in meta
     assert str(EVEREST_BBOX["west"]) in meta or "86.8" in meta
@@ -90,9 +88,7 @@ def test_staged_peak_elevation_maps_to_game_y_500():
 
 def test_build_staged_h500_pack(tmp_path: Path):
     """Ship path for make install-height-500: peak_game_y=500 synthetic pack."""
-    info = build_height_test_pack(
-        tmp_path, peak_game_y=500, size=64, name="RealEarth_H500"
-    )
+    info = build_height_test_pack(tmp_path, peak_game_y=500, size=64, name="RealEarth_H500")
     assert info["peak_game_y_one_to_one"] == 500
     assert abs(info["peak_elev_m"] - 400.0) < 0.1
     meta = info["meta"]
@@ -115,9 +111,7 @@ def test_build_all_staged_paths(tmp_path: Path, monkeypatch):
     from realearth import height_test_map as htm
 
     pack_dir = tmp_path / "data" / "samples" / "height_test_500"
-    info = htm.build_height_test_pack(
-        pack_dir, peak_game_y=500, size=32, name="RealEarth_H500"
-    )
+    info = htm.build_height_test_pack(pack_dir, peak_game_y=500, size=32, name="RealEarth_H500")
     assert pack_dir.is_dir()
     assert (pack_dir / "earth.manifest.json").is_file()
     assert (pack_dir / "height_test.json").is_file()

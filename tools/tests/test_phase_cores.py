@@ -24,9 +24,7 @@ def _read(rel: str) -> str:
 
 
 # --- P0 ExpandProductGuard (mirror C#) ---
-def requires_expand_for_real_height(
-    stock_safe: bool, one_to_one: bool, ydim: int
-) -> bool:
+def requires_expand_for_real_height(stock_safe: bool, one_to_one: bool, ydim: int) -> bool:
     if stock_safe:
         return False
     if not one_to_one:
@@ -74,9 +72,7 @@ def test_p1_height_inject_math_everest():
         r"[^)]*oneToOne:\s*true\)",
         src,
     )
-    assert (
-        m
-    ), "MetersToGameYOneToOne must delegate to HeightCompress.MetersToGameY(oneToOne: true)"
+    assert m, "MetersToGameYOneToOne must delegate to HeightCompress.MetersToGameY(oneToOne: true)"
 
 
 # --- P2 session fold / slide ---
@@ -251,11 +247,7 @@ def test_p7_cdn_and_manifest():
     # Default EnsureHotAround remains async (height-query path).
     assert "allowSyncLoad: false" in ts
     # Gen path may sync-load CDN via TryLoadCdnSync; async fire-and-forget still present.
-    assert (
-        "TryLoadCdnSync" in ts
-        or "LoadTileFireAndForget" in ts
-        or "ConfigureAwait(false)" in ts
-    )
+    assert "TryLoadCdnSync" in ts or "LoadTileFireAndForget" in ts or "ConfigureAwait(false)" in ts
     assert "WaitForHotOrClaim" in ts
     assert "_missUntilTick" in ts or "MarkMiss" in ts
     # pure URL shape
@@ -293,9 +285,7 @@ def test_review_fixes_wired():
     ts = _read("TileStreamer.cs")
     assert "allowSyncLoad" in ts
     assert "LoadTileFireAndForget" in ts
-    assert ".tmp" in _read(
-        "AtomicPublish.cs"
-    )  # atomic CDN write (shared publish helper)
+    assert ".tmp" in _read("AtomicPublish.cs")  # atomic CDN write (shared publish helper)
     poi = _read("RuntimePoiInject.cs")
     assert "MaxPlaceFails" in poi or "_failCount" in poi
     assert "return placed" in poi
@@ -479,10 +469,7 @@ def test_slide_setpos_rollback():
 def test_center_window_respects_update_absolute():
     ws = _read("WorldSession.cs")
     assert "updateAbsolute" in ws
-    assert (
-        "CenterWindowOnAbsolute(earthX, earthZ, updateAbsolute: updateSessionAbsolute)"
-        in ws
-    )
+    assert "CenterWindowOnAbsolute(earthX, earthZ, updateAbsolute: updateSessionAbsolute)" in ws
 
 
 def test_implementation_plan_lists_all_phases():
@@ -556,9 +543,7 @@ def test_hooks_log_budgets_are_interlocked():
     hooks = _read("RuntimeHooks.cs")
     for field in ("_peakLogBudget", "_tickErrLogBudget", "_injectErrLogBudget"):
         assert f"--{field}" not in hooks, f"{field} decremented without Interlocked"
-        assert (
-            f"{field} > 0" not in hooks
-        ), f"{field} check-then-act outside Interlocked"
+        assert f"{field} > 0" not in hooks, f"{field} check-then-act outside Interlocked"
     assert "ConsumeBudget(ref _injectErrLogBudget)" in hooks
     assert "ResetBudget(ref _injectErrLogBudget" in hooks
     assert "Interlocked.Decrement(ref budget)" in hooks

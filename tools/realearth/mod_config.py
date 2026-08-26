@@ -48,9 +48,7 @@ def apply_override(cfg: JsonDict, pair: str) -> None:
     if "?=" in pair:
         key, _, raw = pair.partition("?=")
         if not key:
-            raise SystemExit(
-                f"ERROR: override must be KEY=VALUE or KEY?=VALUE, got: {pair!r}"
-            )
+            raise SystemExit(f"ERROR: override must be KEY=VALUE or KEY?=VALUE, got: {pair!r}")
         cfg.setdefault(key, parse_scalar(raw))
         return
     key, sep, raw = pair.partition("=")
@@ -127,9 +125,7 @@ def main(argv: list[str] | None = None) -> int:
         "write", help="write DEST/Config/realearth.json"
     )
     p_write.add_argument("dest", type=Path, help="installed mod directory")
-    p_write.add_argument(
-        "root", type=Path, help="repository root holding Config/ templates"
-    )
+    p_write.add_argument("root", type=Path, help="repository root holding Config/ templates")
     p_write.add_argument(
         "--fresh",
         action="store_true",
@@ -182,9 +178,7 @@ def main(argv: list[str] | None = None) -> int:
             spawn_from_bbox=args.spawn_from_bbox,
         )
         if not synced:
-            print(
-                f"note: no manifest at {args.dest / 'Data' / 'tiles' / 'earth.manifest.json'}"
-            )
+            print(f"note: no manifest at {args.dest / 'Data' / 'tiles' / 'earth.manifest.json'}")
     if args.height_test_meta:
         apply_height_test_meta(args.dest, cfg)
 

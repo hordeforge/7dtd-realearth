@@ -61,9 +61,7 @@ def write_config(src: Path, dest: Path, properties: dict[str, str]) -> list[str]
         summary.append(f"{name}={value}{' (inserted)' if inserted else ''}")
 
     dest.parent.mkdir(parents=True, exist_ok=True)
-    dest.write_text(
-        prolog + ET.tostring(root, encoding="unicode") + "\n", encoding="utf-8"
-    )
+    dest.write_text(prolog + ET.tostring(root, encoding="unicode") + "\n", encoding="utf-8")
     return summary
 
 
