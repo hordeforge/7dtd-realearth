@@ -165,10 +165,15 @@ def test_planet_tiles_valid_bbox() -> None:
         ],
     )
     assert result.exit_code == 0
-    first, second = result.stdout.splitlines()[:2]
-    count = int(first.split()[0])
-    assert second.count(" ") == 1  # one "tx tz" pair per line
-    assert len(result.stdout.splitlines()) - 1 <= count
+    # Stdout carries only "tx tz" pairs so scripts can pipe it; status text
+    # (tile count, truncation note) goes to stderr.
+    lines = result.stdout.splitlines()
+    assert lines
+    assert all(line.count(" ") == 1 for line in lines)
+    assert all(int(tx) and int(tz) for tx, tz in (line.split() for line in lines))
+    assert len(lines) <= 50
+    stderr_lines = result.stderr.splitlines()
+    assert any("tiles" in line for line in stderr_lines)
 
 
 def test_planet_tiles_rejects_inverted_bbox() -> None:
@@ -186,19 +191,56 @@ def test_planet_tiles_rejects_inverted_bbox() -> None:
             "40",
         ],
     )
-    assert result.exit_code == 1
+    assert result.exit_code == 2
     assert "east>west" in result.stderr
+    assert "Traceback" not in result.stderr
+
+
+@pytest.mark.parametrize("flag", ["west", "south", "east", "north"])
+def test_planet_tiles_rejects_non_finite_bbox(flag: str) -> None:
+    kwargs = {"--west": "-105.3", "--south": "39.5", "--east": "-104.7", "--north": "40.0"}
+    kwargs[f"--{flag}"] = "nan"
+    args = [arg for name, value in kwargs.items() for arg in (name, value)]
+    result = CliRunner().invoke(main, ["planet-tiles", *args])
+    assert result.exit_code == 2
+    assert "Traceback" not in result.stderr
+    assert flag in result.stderr.lower()
+
+
+def test_build_region_rejects_inverted_bbox(tmp_path: Path) -> None:
+    out_dir = tmp_path / "out"
+    result = CliRunner().invoke(
+        main,
+        [
+            "build-region",
+            "--west",
+            "10",
+            "--south",
+            "50",
+            "--east",
+            "5",
+            "--north",
+            "40",
+            "--out",
+            str(out_dir),
+        ],
+    )
+    assert result.exit_code == 2
+    assert "Traceback" not in result.stderr
+    assert "east>west" in result.stderr
+    # Validation must fire before any build work touches disk.
+    assert not out_dir.exists()
 
 
 def test_sample_chunk_requires_lon_lat_pair(tmp_path: Path) -> None:
     result = CliRunner().invoke(main, ["sample-chunk", "--pack", str(tmp_path), "--lon", "-74"])
-    assert result.exit_code == 1
+    assert result.exit_code == 2
     assert "--lon and --lat must be given together" in result.stderr
 
 
 def test_sample_chunk_requires_origin_pair(tmp_path: Path) -> None:
     result = CliRunner().invoke(main, ["sample-chunk", "--pack", str(tmp_path), "--x", "64"])
-    assert result.exit_code == 1
+    assert result.exit_code == 2
     assert "--x and --z must be given together" in result.stderr
 
 
@@ -219,7 +261,7 @@ def test_sample_chunk_rejects_mixed_location_modes(tmp_path: Path) -> None:
             "0",
         ],
     )
-    assert result.exit_code == 1
+    assert result.exit_code == 2
     assert "--lon/--lat or --x/--z" in result.stderr
 
 
