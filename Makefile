@@ -61,11 +61,13 @@ UV            := uv
 REEARTH       := cd $(TOOLS) && $(UV) run python -m realearth.cli
 PYTEST        := cd $(TOOLS) && $(UV) run --extra dev python -m pytest
 # Python gate: ruff (lint), black (format), mypy (types). scripts/ holds the
-# standalone helpers CI also runs.
+# standalone helpers CI also runs. ruff/black cover realearth, tests and
+# ../scripts; mypy's path set lives in tools/pyproject.toml ([tool.mypy]
+# files) so every invocation checks the same modules.
 PY_SOURCES    := realearth tests ../scripts
 RUFF          := cd $(TOOLS) && $(UV) run --extra dev ruff check $(PY_SOURCES)
 BLACK         := cd $(TOOLS) && $(UV) run --extra dev black --check $(PY_SOURCES)
-MYPY          := cd $(TOOLS) && $(UV) run --extra dev mypy realearth
+MYPY          := cd $(TOOLS) && $(UV) run --extra dev mypy
 
 # ---------------------------------------------------------------------------
 # Help

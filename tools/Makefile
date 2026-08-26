@@ -24,7 +24,8 @@ help:
 	@echo "  make bake               Bake worlds/RealEarth from demo pack"
 	@echo "  make sample-chunk       Sample Streamed chunk (demo pack)"
 	@echo "  make serve              Web viewer on :8765"
-	@echo "  make lint               ruff + black --check + mypy (realearth, tests, scripts)"
+	@echo "  make lint               ruff + black (realearth, tests, ../scripts);"
+	@echo "                          mypy strict over tools/pyproject [tool.mypy] files"
 	@echo "  make info               realearth info"
 	@echo "  make clean              pycache / pytest cache"
 	@echo ""
@@ -69,7 +70,7 @@ serve:
 lint:
 	$(UV) run --extra dev ruff check realearth tests ../scripts
 	$(UV) run --extra dev black --check realearth tests ../scripts
-	$(UV) run --extra dev mypy realearth
+	$(UV) run --extra dev mypy
 
 info:
 	$(REEARTH) info
