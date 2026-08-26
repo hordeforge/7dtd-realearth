@@ -48,7 +48,9 @@ present_dirs() {
 cmd_backup() {
   mkdir -p "$BACKUP_DIR"
   local stamp
-  stamp="$(date +%Y%m%dT%H%M%S)"
+  # UTC stamp: a fall-back DST hour would repeat a local stamp and tar would
+  # silently overwrite the earlier archive; UTC is unique and sorts by creation.
+  stamp="$(date -u +%Y%m%dT%H%M%S)"
   local archive="$BACKUP_DIR/realearth-artifacts-$stamp.tar.gz"
   local dirs
   dirs="$(present_dirs)"
@@ -110,7 +112,7 @@ cmd_restore() {
     if [[ -e "$ROOT/$d" ]]; then
       if [[ "${RE_FORCE_RESTORE:-0}" == "1" ]]; then
         echo "Moving existing $d aside (RE_FORCE_RESTORE=1)..."
-        mv "$ROOT/$d" "$ROOT/${d}.pre-restore-$(date +%Y%m%dT%H%M%S)"
+        mv "$ROOT/$d" "$ROOT/${d}.pre-restore-$(date -u +%Y%m%dT%H%M%S)"
       else
         conflicts+=("$d")
       fi

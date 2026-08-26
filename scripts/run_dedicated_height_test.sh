@@ -164,7 +164,9 @@ fi
 SAVE_TRASH_DAYS="${RE_SAVE_TRASH_DAYS:-7}"
 TRASH="$USERDATA/Saves_trash"
 mkdir -p "$TRASH"
-STAMP="$(date +%Y-%m-%d__%H-%M-%S)"
+# UTC stamp like the log name below: a fall-back DST hour would repeat a local
+# stamp and mv would nest this trash entry inside the earlier one.
+STAMP="$(date -u +%Y-%m-%d__%H-%M-%S)"
 for sv in "$USERDATA/Saves/HeightTest500" "$USERDATA/Saves/$WORLD_NAME"; do
   if [[ -d "$sv" ]]; then
     mv "$sv" "$TRASH/${STAMP}__$(basename "$sv")"
