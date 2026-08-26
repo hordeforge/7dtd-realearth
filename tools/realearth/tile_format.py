@@ -115,9 +115,18 @@ def encode_tile(tile: EarthTile) -> bytes:
 
 
 def _inflate_exact(blob: bytes, expected: int) -> bytes:
-    """zlib-decompress with an output cap; reject size mismatches (decompress-bomb guard)."""
+    """zlib-decompress with an output cap; reject size mismatches (decompress-bomb guard).
+
+    Corrupt streams surface as ValueError like every other malformed-tile
+    rejection: callers treat ValueError as the decoder's failure contract and
+    must never see a raw zlib.error across this trust boundary.
+    """
     d = zlib.decompressobj()
-    out = d.decompress(blob, expected + 1)
+    try:
+        # No flush(): it inflates without the cap and would defeat the bomb guard.
+        out = d.decompress(blob, expected + 1)
+    except zlib.error as e:
+        raise ValueError(f"corrupt compressed section: {e}") from e
     if len(out) != expected or not d.eof or d.unused_data or d.unconsumed_tail:
         raise ValueError("decompressed payload size mismatch")
     return out
