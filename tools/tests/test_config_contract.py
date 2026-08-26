@@ -104,6 +104,20 @@ def test_config_validate_exists_and_runs_at_init():
     assert m, "InitMod must run Config.Validate() immediately after Load"
 
 
+def test_config_validate_cross_field_guards():
+    """Validate() must flag contradictory/inert dependent configuration.
+
+    A single key is valid alone but dangerous or inert next to another; these
+    guards turn silent misconfiguration into a startup warning. Pin the message
+    text so the logic cannot be dropped without the test going red.
+    """
+    src = _read("Source/RealEarth/RealEarthConfig.cs")
+    assert "EngineHeightStockSafe && !EnableEngineHeightMod" in src
+    assert "EngineHeightStockSafe && EngineHeightOneToOne" in src
+    assert 'MapMode.Equals("Baked"' in src and "EnableLongitudeWrap" in src
+    assert "RuntimePoiMaxPerArea > 80" in src
+
+
 def _csharp_config_members() -> set[str]:
     """[DataMember] property names the C# loader actually deserializes."""
     src = _read("Source/RealEarth/RealEarthConfig.cs")

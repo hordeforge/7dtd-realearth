@@ -1,5 +1,5 @@
 {
-  "_comment": "Profile after RealEarth YDim expand (Tools/apply_engine_expand or make engine-expand). Expand is part of this mod.",
+  "_comment": "DEV TEMPLATE: after RealEarth YDim expand (Tools/apply_engine_expand or make engine-expand). Ships debug FOW ON (DebugRevealFullMap=true, DebugMapRevealRadiusChunks=128) and Everest spawn; do NOT use as a production server profile. Expand is part of this mod.",
   "MapMode": "Streamed",
   "SingleWorldSession": true,
   "TilePackPath": "Data/tiles",
@@ -18,6 +18,11 @@
   "EngineHeightOneToOne": true,
   "EngineHeightPreferVanillaCeiling": false,
   "SeaLevelGameY": 100,
+  "TileCdnBaseUrl": "",
+  "FailClosedMissingTiles": true,
+  "FullSolidBlockFillMaxSurface": 0,
+  "EnableRuntimePoiInject": true,
+  "RuntimePoiMaxPerArea": 80,
   "DefaultSpawnLon": 86.925,
   "DefaultSpawnLat": 27.988,
   "SpawnLongitude": 86.925,

@@ -290,6 +290,28 @@ namespace RealEarth
                     warnings.Add("TileCdnBaseUrl must not contain userinfo; CDN disabled.");
             }
 
+            // Cross-field / dependent-configuration guards: a single key is valid on
+            // its own but contradictory or inert next to another. Surface these at
+            // init so the operator fixes the config instead of getting silent,
+            // confusing behavior mid-session.
+            if (EngineHeightStockSafe && !EnableEngineHeightMod)
+                warnings.Add(
+                    "EngineHeightStockSafe=true has no effect unless EnableEngineHeightMod is " +
+                    "also true; real-height injection is disabled, so StockSafe is inert.");
+            if (EngineHeightStockSafe && EngineHeightOneToOne)
+                warnings.Add(
+                    "EngineHeightStockSafe and EngineHeightOneToOne are mutually exclusive " +
+                    "(compress vs 1 m = 1 block). Runtime forces OneToOne=false under StockSafe; " +
+                    "set EngineHeightOneToOne=false to match resolved behavior.");
+            if (MapMode.Equals("Baked", StringComparison.OrdinalIgnoreCase) && EnableLongitudeWrap)
+                warnings.Add(
+                    "EnableLongitudeWrap=true is contradictory with MapMode=Baked: a finite host " +
+                    "world cannot wrap at the antimeridian. Disable EnableLongitudeWrap for Baked.");
+            if (RuntimePoiMaxPerArea > 80)
+                warnings.Add(
+                    $"RuntimePoiMaxPerArea ({RuntimePoiMaxPerArea}) exceeds the hard cap " +
+                    "(DensityBudget.DefaultMaxPrefabsPerKm2 = 80); clamped at inject time.");
+
             return warnings;
         }
 

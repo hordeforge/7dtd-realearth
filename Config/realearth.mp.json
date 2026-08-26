@@ -18,6 +18,7 @@
   "EngineHeightOneToOne": true,
   "EngineHeightPreferVanillaCeiling": false,
   "SeaLevelGameY": 100,
+  "TileCdnBaseUrl": "",
   "DefaultSpawnLon": 0.025,
   "DefaultSpawnLat": 0.025,
   "SpawnLongitude": 0.025,

@@ -1,4 +1,5 @@
 {
+  "_comment": "Default RealEarth profile (Streamed, real 1:1 meters, debug FOW off). Shipped as a demo template: install scripts overwrite WorldWidth/WorldHeight/TileSize/LocalWindowSize/EnableLongitudeWrap from the tile pack manifest (earth.manifest.json). Edit values here or via make install overrides; unknown keys are ignored by the mod loader and missing keys fall back to code defaults in RealEarthConfig.cs.",
   "MapMode": "Streamed",
   "SingleWorldSession": true,
   "TilePackPath": "Data/tiles",
