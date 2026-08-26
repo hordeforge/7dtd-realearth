@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using System.Reflection;
+using System.Threading;
 
 namespace RealEarth
 {
@@ -10,13 +11,18 @@ namespace RealEarth
     /// </summary>
     public static class MapReveal
     {
-        static bool _fullDone;
+        // Reveal state is cross-thread: TryRevealIfConfigured runs on the main thread
+        // (player tick / world ready) while `rereveal` (console/telnet) resets and
+        // re-runs it off-thread, so budgets and done-flags use Interlocked/Volatile
+        // instead of plain read-modify-write. _lastCx/_lastCz stay plain ints:
+        // atomic writes, advisory throttle inputs where a stale read is harmless.
+        static int _fullDone; // 0 = pending, 1 = done or gave up
         static int _fullRetryBudget = 24;
         static int _radiusCooldown;
         static int _lastCx = int.MinValue;
         static int _lastCz = int.MinValue;
         /// <summary>GamePrefs cap raised at most once per process (per-tick re-raise is pure overhead).</summary>
-        static bool _uncoveredCapRaised;
+        static int _uncoveredCapRaised; // 0 = not raised, 1 = raised
 
         public static void TryRevealIfConfigured()
         {
@@ -37,16 +43,16 @@ namespace RealEarth
             {
                 RaiseUncoveredChunkCap();
 
-                if (cfg.DebugRevealFullMap && !_fullDone)
+                if (cfg.DebugRevealFullMap && Volatile.Read(ref _fullDone) == 0)
                 {
                     if (RevealFullMap())
                     {
-                        _fullDone = true;
+                        Volatile.Write(ref _fullDone, 1);
                         ModApi.Log("DebugRevealFullMap: host map FOW filled.");
                     }
-                    else if (_fullRetryBudget-- <= 0)
+                    else if (Interlocked.Decrement(ref _fullRetryBudget) < 0)
                     {
-                        _fullDone = true;
+                        Volatile.Write(ref _fullDone, 1);
                         ModApi.Log("DebugRevealFullMap: gave up (no FOW database yet).");
                     }
                 }
@@ -58,19 +64,19 @@ namespace RealEarth
             catch (Exception ex)
             {
                 ModApi.Log($"MapReveal failed: {ex.Message}");
-                _fullDone = true;
+                Volatile.Write(ref _fullDone, 1);
             }
         }
 
         /// <summary>Force re-run (world change / console).</summary>
         public static void Reset()
         {
-            _fullDone = false;
-            _fullRetryBudget = 24;
-            _radiusCooldown = 0;
+            Volatile.Write(ref _fullDone, 0);
+            Volatile.Write(ref _fullRetryBudget, 24);
+            Volatile.Write(ref _radiusCooldown, 0);
             _lastCx = int.MinValue;
             _lastCz = int.MinValue;
-            _uncoveredCapRaised = false;
+            Volatile.Write(ref _uncoveredCapRaised, 0);
         }
 
         public static bool RevealFullMap()
@@ -95,9 +101,9 @@ namespace RealEarth
         {
             if (radiusChunks <= 0)
                 return false;
-            if (_radiusCooldown > 0)
+            if (Volatile.Read(ref _radiusCooldown) > 0)
             {
-                _radiusCooldown--;
+                Interlocked.Decrement(ref _radiusCooldown);
                 return true;
             }
 
@@ -106,7 +112,7 @@ namespace RealEarth
             // Re-fill when player moved ≥ 8 chunks or every ~2s of ticks after cooldown
             if (Math.Abs(cx - _lastCx) < 8 && Math.Abs(cz - _lastCz) < 8 && _lastCx != int.MinValue)
             {
-                _radiusCooldown = 30;
+                Volatile.Write(ref _radiusCooldown, 30);
                 return true;
             }
 
@@ -123,7 +129,7 @@ namespace RealEarth
             {
                 _lastCx = cx;
                 _lastCz = cz;
-                _radiusCooldown = 45; // throttle
+                Volatile.Write(ref _radiusCooldown, 45); // throttle
             }
             return ok;
         }
@@ -291,7 +297,7 @@ namespace RealEarth
 
         static void RaiseUncoveredChunkCap()
         {
-            if (_uncoveredCapRaised) return;
+            if (Volatile.Read(ref _uncoveredCapRaised) != 0) return;
             try
             {
                 Type? prefs = EngineReflection.FindType("GamePrefs");
@@ -315,7 +321,7 @@ namespace RealEarth
                     set.Invoke(null, new[] { key, val });
                 else
                     set.Invoke(null, new[] { key, Convert.ChangeType(val, set.GetParameters()[1].ParameterType) });
-                _uncoveredCapRaised = true;
+                Volatile.Write(ref _uncoveredCapRaised, 1);
             }
             catch
             {

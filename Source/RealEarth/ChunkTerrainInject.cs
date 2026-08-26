@@ -78,8 +78,17 @@ namespace RealEarth
 
         /// <summary>
         /// When true, product real-height inject is refused (needs expand or patches missing).
+        /// Volatile: EnforceInjectGate writes it on the main thread while the
+        /// chunk-generation thread reads it per chunk in HeightModWantsInject; without
+        /// the fence a late clear (patches binding on a retry) can stay invisible to
+        /// gen and bake permanent stock-RWG/ocean columns into the save.
         /// </summary>
-        public static bool InjectBlocked { get; set; }
+        static volatile bool _injectBlocked;
+        public static bool InjectBlocked
+        {
+            get { return _injectBlocked; }
+            set { _injectBlocked = value; }
+        }
 
         static bool HeightModWantsInject()
         {
