@@ -5,10 +5,15 @@ Offline pipeline for RealEarth. Python **3.11+**, managed with **`uv` only**
 
 ```bash
 # from tools/
-uv sync --extra dev
-uv run realearth --help
-uv run realearth demo --out ../data/samples/demo_region
+uv sync --locked --extra dev
+uv run --locked realearth --help
+uv run --locked realearth demo --out ../data/samples/demo_region
 ```
+
+Every command below uses `--locked`: when pyproject.toml drifts from uv.lock,
+uv fails instead of silently re-resolving and rewriting the lockfile. A
+dependency change is an explicit `uv lock` review, never a side effect of
+running something.
 
 From the repo root, prefer Makefile targets:
 
@@ -21,20 +26,20 @@ make test
 Optional GIS stack (GeoTIFF DEM ingest):
 
 ```bash
-uv sync --extra gis --extra dev
+uv sync --locked --extra gis --extra dev
 ```
 
 Optional engine audit (`realearth engine-audit` against a live
 Assembly-CSharp.dll; without it the audit uses documented 3.0.1 defaults):
 
 ```bash
-uv sync --extra audit --extra dev
+uv sync --locked --extra audit --extra dev
 ```
 
 Tests and gates:
 
 ```bash
-uv run --extra dev python -m pytest
+uv run --locked --extra dev python -m pytest
 make lint      # ruff check + black --check + mypy (strict)
 # or from the repo root: make -C .. test && make -C .. lint
 ```
@@ -56,17 +61,18 @@ prepares mosaics for the browser viewer. It also contains coordinate, longitude
 wrapping, local-window, height-model, and engine-audit utilities used by the C#
 runtime project.
 
-Run `uv run realearth --help` and `uv run realearth COMMAND --help` for the
-authoritative option list. Common entry points:
+Run `uv run --locked realearth --help` and
+`uv run --locked realearth COMMAND --help` for the authoritative option list.
+Common entry points:
 
 ```bash
-uv run realearth info
-uv run realearth demo --out ../data/samples/demo_region
-uv run realearth build-region --help
-uv run realearth inspect-tile ../data/samples/demo_region TX TZ
-uv run realearth bake-world --help
-uv run realearth export-viewer --help
-uv run realearth serve --port 8765 --root ../viewer
+uv run --locked realearth info
+uv run --locked realearth demo --out ../data/samples/demo_region
+uv run --locked realearth build-region --help
+uv run --locked realearth inspect-tile ../data/samples/demo_region TX TZ
+uv run --locked realearth bake-world --help
+uv run --locked realearth export-viewer --help
+uv run --locked realearth serve --port 8765 --root ../viewer
 ```
 
 ## Inputs and outputs

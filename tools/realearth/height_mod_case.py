@@ -1,8 +1,8 @@
 """Small targeted test case for the RealEarth engine height mod.
 
 Run via:
-  cd tools && uv run python -m realearth.cli height-mod-test
-  cd tools && uv run pytest tests/test_height_mod_case.py -q
+  cd tools && uv run --locked python -m realearth.cli height-mod-test
+  cd tools && uv run --locked pytest tests/test_height_mod_case.py -q
 
 Checks (1 m ≈ 1 block, max = Everest + fly-over headroom):
   - ceiling constants

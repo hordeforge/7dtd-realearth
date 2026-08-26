@@ -76,8 +76,8 @@ The script:
 ## Rebuild world
 
 ```bash
-cd tools && uv sync --extra dev
-uv run python -m realearth.cli bake-world --pack ../data/samples/demo_region --size 4096 \
+cd tools && uv sync --locked --extra dev
+uv run --locked python -m realearth.cli bake-world --pack ../data/samples/demo_region --size 4096 \
   --name RealEarth --out ../worlds/RealEarth --generated
 ./scripts/install_proton.sh
 ```

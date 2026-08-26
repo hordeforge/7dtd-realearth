@@ -12,15 +12,15 @@ make setup
 
 # 1) Build a tile pack (if you do not already have one)
 make demo
-# or: cd tools && uv run realearth demo --out ../data/samples/demo_region
+# or: cd tools && uv run --locked realearth demo --out ../data/samples/demo_region
 
 # 2) Export viewer mosaics into viewer/data/demo
-cd tools && uv run realearth export-viewer \
+cd tools && uv run --locked realearth export-viewer \
   --pack ../data/samples/demo_region \
   --out ../viewer/data/demo
 
 # 3) Serve the static site
-uv run realearth serve
+uv run --locked realearth serve
 # open http://127.0.0.1:8765/
 # or from repo root: make serve
 ```

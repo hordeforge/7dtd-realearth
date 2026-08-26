@@ -70,9 +70,9 @@ serve:
 	$(REEARTH) serve --port 8765 --root $(ROOT)/viewer
 
 lint:
-	$(UV) run --extra dev ruff check realearth tests ../scripts
-	$(UV) run --extra dev black --check realearth tests ../scripts
-	$(UV) run --extra dev mypy realearth
+	$(UV) run --locked --extra dev ruff check realearth tests ../scripts
+	$(UV) run --locked --extra dev black --check realearth tests ../scripts
+	$(UV) run --locked --extra dev mypy realearth
 
 info:
 	$(REEARTH) info

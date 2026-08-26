@@ -64,10 +64,10 @@ Requires Python 3.11+ and [uv](https://github.com/astral-sh/uv).
 make setup && make demo # or manually below
 
 cd tools
-uv sync --extra dev
+uv sync --locked --extra dev
 
 # Offline demo (no network): Denver-sized synthetic pack
-uv run python -m realearth.cli demo --out ../data/samples/demo_region
+uv run --locked python -m realearth.cli demo --out ../data/samples/demo_region
 
 # Web map viewer (flat pan/zoom + 3D globe)
 make -C .. viewer && make -C .. serve

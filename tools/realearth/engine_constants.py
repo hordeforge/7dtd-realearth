@@ -94,7 +94,7 @@ def audit_engine_height(dll: Path | None = None) -> dict[str, Any]:
         consts = read_int32_constants(path)
     except ImportError as ex:
         result["notes"].append(
-            f"dnfile missing ({ex}); live audit needs: uv sync --extra audit"
+            f"dnfile missing ({ex}); live audit needs: uv sync --locked --extra audit"
         )
         result["constants"] = dict(VANILLA_3_0_1)
         return result
