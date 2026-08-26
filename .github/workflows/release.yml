@@ -43,3 +43,35 @@ jobs:
             exit 1
           fi
           echo "ok: tag $TAG matches $MANIFEST ($SHIPPED)"
+
+      # The Python wheel version lives in realearth/__init__.py and must claim
+      # the same release as ModInfo.xml; v0.3.0 was tagged while it still said
+      # 0.1.0.
+      - name: Check the tag matches the tools wheel version
+        shell: bash
+        run: |
+          set -euo pipefail
+          TAG="${GITHUB_REF_NAME#v}"
+          INIT="tools/realearth/__init__.py"
+          TOOLS_VER="$(sed -n 's/^__version__ = "\(.*\)"$/\1/p' "$INIT" | head -1)"
+          if [ -z "$TOOLS_VER" ]; then
+            echo "ERROR: no __version__ = \"...\" found in $INIT" >&2
+            exit 1
+          fi
+          if [ "$TOOLS_VER" != "$TAG" ]; then
+            echo "ERROR: tag v$TAG but $INIT declares $TOOLS_VER; make them match before tagging" >&2
+            exit 1
+          fi
+          echo "ok: tag v$TAG matches $INIT ($TOOLS_VER)"
+
+      # A tag without a dated CHANGELOG heading releases notes nobody wrote.
+      - name: Check CHANGELOG.md has a released entry for the tag
+        shell: bash
+        run: |
+          set -euo pipefail
+          TAG="${GITHUB_REF_NAME#v}"
+          if ! grep -Eq "^## \\[${TAG}\\] - [0-9]{4}-[0-9]{2}-[0-9]{2}$" CHANGELOG.md; then
+            echo "ERROR: CHANGELOG.md has no '## [$TAG] - YYYY-MM-DD' heading; write the release notes before tagging" >&2
+            exit 1
+          fi
+          echo "ok: CHANGELOG.md has a released entry for $TAG"
