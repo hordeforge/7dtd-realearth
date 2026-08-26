@@ -7,7 +7,8 @@ says what changed for you and what to do about it.
 Format follows Keep a Changelog. Versioning follows SemVer on a 0.x line:
 while 0.x, breaking changes may land in minor releases; they are always listed
 under Removed or Changed here. The shipped mod version lives in `ModInfo.xml`;
-tags are `v<version>`.
+the tools package mirrors it in `tools/realearth/__init__.py` (`__version__`),
+and the release gate requires both to match the tag (`v<version>`).
 
 ## [Unreleased]
 
@@ -20,7 +21,9 @@ tags are `v<version>`.
   views (button, `P` key, `?player=lat,lon` deep link, or the optional
   polled `viewer/data/player.json` feed). Region packs are composited at 4k
   with anisotropic filtering and auto-framed when the globe opens.
-- Threat model (`docs/THREAT_MODEL.md`) and security policy (`SECURITY.md`).
+- `realearth engine-audit` reads live `Assembly-CSharp.dll` metadata when
+  installed with the new `audit` extra (dnfile); without it the audit falls
+  back to documented engine defaults.
 - `make html-lint` validates the viewer HTML and CSS through the W3C Nu Html
   Checker, and `make lint` now also runs `black --check` and `mypy` beside
   ruff. Both run in CI.
@@ -42,29 +45,89 @@ tags are `v<version>`.
   is missing is inserted rather than skipped, so `EACEnabled`,
   `ServerVisibility` and `WebDashboardEnabled` cannot silently stop being
   forced.
-- Tools only: when `earth.manifest.json` omits `sea_level_game_y`, the default
-  is now 100 (shared `DEFAULT_SEA_LEVEL_GAME_Y`), matching the C# config
-  default; it was 32. Packs baked by any release always write the key, so
-  existing packs are unaffected; only hand-written manifests missing the key
-  sample different heights.
+- Height-pack installs now write `EngineHeightStockSafe=false`. The installer
+  previously opted installs into global height compress; unexpanded engines
+  are meant to hit the loud expand guard instead (see `docs/HEIGHT_LIMITS.md`).
+  If you relied on StockSafe compress, set it back explicitly after install.
+- Streamed installs decide `EnableLongitudeWrap` once from the final canvas
+  width: on for planet-wide canvases (10M+ blocks), off otherwise, matching
+  runtime behaviour. Previously streamed installs forced wrap on and only some
+  regional paths turned it off afterwards.
+- Dedicated-launch scripts no longer splice `$WORLD_NAME`, `$USERDATA` or
+  `$MAX_PLAYERS` into a python heredoc body, where a value carrying a quote or
+  a newline ran as code. Every value now arrives as argv and is written through
+  an XML parser.
+
+### Removed
+
+- Config key `EnableGlobeMap` (`Config/realearth.json`, `realearth.mp.json`,
+  `realearth.advanced_height.json`) and the unwired C# globe overlay stub it
+  controlled (`Source/RealEarth/GlobeMap.cs`). It was never reachable from any
+  UI. Existing config files keep loading; the runtime ignores unknown keys, so
+  you can leave stale entries in place or delete them.
+
+### Security
+
+- Pack inputs are rejected before destructive or networked use: hostile
+  manifests and pack strings fail fast instead of reaching bake, install, or
+  CDN paths, and engine expand gained a drift verify so a patched assembly is
+  detected before reuse.
+- CDN tile reads bound the response body before buffering, and pack/world
+  names containing path separators are rejected.
+- See `SECURITY.md` and `docs/THREAT_MODEL.md`.
+
+### Fixed
+
+- Errors are no longer swallowed silently in inject hooks, tile copies,
+  height smoothing, and chunk reinject: failures surface instead of leaving a
+  stale mesh or silent no-op.
+- Origin slides survive land-claim remap losses instead of desyncing player
+  positions.
+- `viewer_export.mosaic_pack` declared a return type it did not produce (it
+  returned the manifest under a key typed as an array); it returns a
+  `PackMosaic` named tuple now. Callers that unpacked it by key must use the
+  field names.
+- Atomic publish was extracted into one shared helper, and its non-atomic
+  fallback no longer loses data when replace fails midway.
+
+### Performance
+
+- Per-tick hot paths trimmed across streamer, map reveal, and density; column
+  sampling fused into single-lock lookups.
+
+## [0.2.2] - 2026-08-23
+
+Branding, docs alignment, and a large maintenance batch. `ModInfo.xml` was not
+bumped for this tag, so a mod installed from `v0.2.2` reports version 0.2.1;
+the tag content below still differs from 0.2.1 as listed.
+
+### Added
+
+- Threat model (`docs/THREAT_MODEL.md`) and security policy (`SECURITY.md`).
+- Viewer keyboard pan/zoom and accessibility labels on both map views.
+
+### Changed
+
+- Tools: when `earth.manifest.json` omits `sea_level_game_y`, the default is
+  now 100 (shared `DEFAULT_SEA_LEVEL_GAME_Y`), matching the C# config default;
+  it was 32. Packs baked by any release always write the key, so existing
+  packs are unaffected; only hand-written manifests missing the key sample
+  different heights.
+- Tools: the package version is single-sourced in `realearth/__init__.py` and
+  resolved by hatchling at build time.
 
 ### Removed
 
 - Config keys `MetersPerBlock` and `EngineHeightForceExpandedCompress`
-  (`Config/realearth.json`, `realearth.mp.json`,
-  `realearth.advanced_height.json`). They had no effect: height is fixed at
-  1 m = 1 block on every product path. Existing config files keep loading;
-  the runtime ignores unknown keys, so you can leave stale entries in place
-  or delete them.
+  (`Config/*.json`, `RealEarthConfig.cs`). They had no effect: height is fixed
+  at 1 m = 1 block on every product path. Existing config files keep loading;
+  the runtime ignores unknown keys.
 - Placeholder menu XML `Config/XUi_Menu/windows.xml` (never loaded by the game).
-- Experimental browser `.rte` decoder stub `viewer/js/rte.js`. It was never
-  wired into the viewer UI; nothing imports it.
+- Experimental browser `.rte` decoder stub `viewer/js/rte.js`. Nothing
+  imported it.
 - Unused pipeline helpers (`coords.tile_origin_block`,
   `coords.lonlat_bbox_to_tiles`, `coords.meters_per_degree_*`, GeoTIFF loader
   remnants, ttw version reader, settlement stamp plan).
-- `scripts/mod_config.py`. Call `python3 -m realearth.mod_config` with
-  `PYTHONPATH=tools` instead; the same form now covers `realearth.server_config`
-  and `realearth.proton_paths`.
 
 ### Security
 
@@ -73,36 +136,22 @@ tags are `v<version>`.
   (`tools/realearth/tile_format.py`): out-of-range tile dimensions, section
   lengths beyond the buffer, decompression bombs, and size mismatches now fail
   fast instead of trusting CDN or pack data.
-- Dedicated-launch scripts no longer splice `$WORLD_NAME`, `$USERDATA` or
-  `$MAX_PLAYERS` into a python heredoc body, where a value carrying a quote or
-  a newline ran as code. Every value now arrives as argv and is written through
-  an XML parser.
 - Example dedicated configs ship telnet off (read the log file instead);
   scripts and docs use `$HOME` instead of hardcoded user paths; CI runs with
-  least privilege. See `SECURITY.md` and `docs/THREAT_MODEL.md`.
+  least privilege.
 
 ### Fixed
 
 - Errors are no longer swallowed silently across tick, save, fetch, and bake
   paths (runtime hooks, session store, tile fetch, bake-world).
-- Tile miss cache is bounded; failed publish no longer leaves a temp file.
 - Engine expand is re-run safe (late backup plus marker healing); a second run
   detects an already-expanded assembly instead of double-patching.
-- `viewer_export.mosaic_pack` declared a return type it did not produce (it
-  returned the manifest under a key typed as an array); it returns a
-  `PackMosaic` named tuple now. Callers that unpacked it by key must use the
-  field names.
+- Tile miss cache is bounded; failed publish no longer leaves a temp file.
 
 ### Performance
 
 - Hot-path reflection cached; streaming and pipeline throughput improved.
 - Urban edge radius uses scanline flood fill instead of per-pixel search.
-
-## [0.2.2] - 2026-08-23
-
-Documentation and branding only: HordeForge naming, path updates, doc
-alignment. `ModInfo.xml` was not bumped for this tag, so a mod installed from
-`v0.2.2` reports version 0.2.1. Nothing else about it differs from 0.2.1.
 
 ## [0.2.1] - 2026-08-22
 

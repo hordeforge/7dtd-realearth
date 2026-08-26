@@ -2,7 +2,7 @@
 
 from typing import Any
 
-__version__ = "0.1.0"
+__version__ = "0.3.0"
 
 # JSON-shaped payloads (manifests, mod config, CLI summaries) that cross module
 # and file boundaries. Values stay heterogeneous by definition of the format.
