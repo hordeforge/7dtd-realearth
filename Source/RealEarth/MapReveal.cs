@@ -63,7 +63,7 @@ namespace RealEarth
             }
             catch (Exception ex)
             {
-                ModApi.Log($"MapReveal failed: {ex.Message}");
+                ModApi.LogError($"MapReveal failed: {ex.Message}");
                 Volatile.Write(ref _fullDone, 1);
             }
         }
@@ -222,7 +222,7 @@ namespace RealEarth
             var m = FindAdd(fow.GetType());
             if (m == null)
             {
-                ModApi.Log("MapReveal: MapChunkDatabase.Add(int,int,ushort[]) not found.");
+                ModApi.LogWarn("MapReveal: MapChunkDatabase.Add(int,int,ushort[]) not found.");
                 add = null;
                 return false;
             }

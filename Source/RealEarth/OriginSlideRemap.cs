@@ -203,7 +203,7 @@ namespace RealEarth
                 if (_logBudget > 0)
                 {
                     _logBudget--;
-                    ModApi.Log("OriginSlideRemap entities: " + ex.Message);
+                    ModApi.LogError("OriginSlideRemap entities: " + ex.Message);
                 }
             }
             return n;
@@ -299,7 +299,7 @@ namespace RealEarth
                 if (_logBudget > 0)
                 {
                     _logBudget--;
-                    ModApi.Log("OriginSlideRemap claims: " + ex.Message);
+                    ModApi.LogError("OriginSlideRemap claims: " + ex.Message);
                 }
             }
             return n;
@@ -427,7 +427,7 @@ namespace RealEarth
                     if (lost != null && _logBudget > 0)
                     {
                         _logBudget--;
-                        ModApi.Log(
+                        ModApi.LogWarn(
                             $"OriginSlideRemap: {lost.Count}/{items.Count} land-claim entries " +
                             "could not be re-added after remap (collection rejected new and old keys)");
                     }

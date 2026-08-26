@@ -296,7 +296,7 @@ namespace RealEarth
             // Refuse slide when land claims exist (builds would desync from absolute Earth).
             if (OriginSlideRemap.HasLandClaims())
             {
-                ModApi.Log(
+                ModApi.LogWarn(
                     "Origin slide refused: land claims present (SharedFixed / absolute builds).");
                 return false;
             }

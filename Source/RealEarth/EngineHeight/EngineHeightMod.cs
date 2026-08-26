@@ -61,7 +61,7 @@ namespace RealEarth.EngineHeight
             }
             else if (cfg.EngineHeightStockSafe)
             {
-                ModApi.Log(
+                ModApi.LogWarn(
                     $"EngineHeightMod: OPT-IN compress on stock YDim={Probe?.ChunkBlockYDim ?? 256} " +
                     "(~0-250). Product path is real height: make engine-expand, set " +
                     "EngineHeightStockSafe=false, restart.");
@@ -73,7 +73,7 @@ namespace RealEarth.EngineHeight
                     cfg.EngineHeightStockSafe,
                     cfg.EngineHeightOneToOne,
                     Probe?.ChunkBlockYDim ?? 256);
-                ModApi.Log(
+                ModApi.LogWarn(
                     $"EngineHeightMod: stock YDim={Probe?.ChunkBlockYDim ?? 256}, real-height mode - " +
                     "apply RealEarth YDim expand (Tools/apply_engine_expand.sh or make engine-expand) " +
                     "before playable tall columns. " +

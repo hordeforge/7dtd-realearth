@@ -489,7 +489,7 @@ namespace RealEarth
             {
                 if (ConsumeInjectLogBudget())
                 {
-                    ModApi.Log("ReinjectLoadedChunksAround failed (non-fatal): " + ex.Message);
+                    ModApi.LogWarn("ReinjectLoadedChunksAround failed (non-fatal): " + ex.Message);
                 }
             }
             return reinjected;
@@ -762,7 +762,7 @@ namespace RealEarth
             }
             catch (Exception ex)
             {
-                ModApi.Log($"Height inject BlockValue resolve failed: {ex.Message}");
+                ModApi.LogError($"Height inject BlockValue resolve failed: {ex.Message}");
             }
         }
     }

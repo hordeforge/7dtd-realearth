@@ -42,7 +42,7 @@ namespace RealEarth
 
                 Config = RealEarthConfig.Load(Path.Combine(ModPath, "Config", "realearth.json"));
                 foreach (var warning in Config.Validate())
-                    Log($"config: {warning}");
+                    LogWarn($"config: {warning}");
 
                 var tileRoot = Path.IsPathRooted(Config.TilePackPath)
                     ? Config.TilePackPath
@@ -87,7 +87,7 @@ namespace RealEarth
                         Config.EngineHeightOneToOne,
                         yDim))
                 {
-                    Log(
+                    LogWarn(
                         "P0 ExpandProductGuard: real-height product path needs YDim expand " +
                         $"(YDim={yDim}, StockSafe=false). Run make engine-expand.");
                 }
@@ -111,7 +111,7 @@ namespace RealEarth
                 }
                 catch (Exception hex)
                 {
-                    Log($"Harmony bootstrap skipped: {hex.Message}");
+                    LogWarn($"Harmony bootstrap skipped: {hex.Message}");
                 }
 
                 try
@@ -120,12 +120,12 @@ namespace RealEarth
                 }
                 catch (Exception rex)
                 {
-                    Log($"RuntimeHooks skipped: {rex.Message}");
+                    LogWarn($"RuntimeHooks skipped: {rex.Message}");
                 }
             }
             catch (Exception ex)
             {
-                Log($"RealEarth failed to init: {ex}");
+                LogError($"RealEarth failed to init: {ex}");
             }
         }
 
@@ -133,22 +133,40 @@ namespace RealEarth
         // async tile-load workers concurrently, and a stale flag could pair with a
         // null delegate and permanently fall back to Console output.
         static volatile MethodInfo? _logOut;
-        static volatile bool _logOutResolved;
+        static volatile MethodInfo? _logWarn;
+        static volatile MethodInfo? _logError;
+        static volatile bool _logResolved;
 
-        public static void Log(string msg)
+        enum LogLevel { Info, Warn, Error }
+
+        static void Emit(LogLevel level, string msg)
         {
+            string Prefix()
+                => level == LogLevel.Error ? "[RealEarth][ERROR] "
+                 : level == LogLevel.Warn ? "[RealEarth][WARN] "
+                 : "[RealEarth] ";
             try
             {
                 // Prefer game logger when present (MethodInfo resolved once; hot-path callers
-                // log from budgeted per-chunk/per-tick paths).
-                if (!_logOutResolved)
+                // log from budgeted per-chunk/per-tick paths). Game Log.Warning / Log.Error
+                // let operators filter RealEarth failures out of the flat game log.
+                if (!_logResolved)
                 {
-                    _logOut = Type.GetType("Log, Assembly-CSharp")?.GetMethod("Out", new[] { typeof(string) });
-                    _logOutResolved = true;
+                    var logType = Type.GetType("Log, Assembly-CSharp");
+                    if (logType != null)
+                    {
+                        _logOut = logType.GetMethod("Out", new[] { typeof(string) });
+                        _logWarn = logType.GetMethod("Warning", new[] { typeof(string) });
+                        _logError = logType.GetMethod("Error", new[] { typeof(string) });
+                    }
+                    _logResolved = true;
                 }
-                if (_logOut != null)
+                MethodInfo? m = level == LogLevel.Error ? _logError
+                    : level == LogLevel.Warn ? _logWarn
+                    : _logOut;
+                if (m != null)
                 {
-                    _logOut.Invoke(null, new object[] { $"[RealEarth] {msg}" });
+                    m.Invoke(null, new object[] { Prefix() + msg });
                     return;
                 }
             }
@@ -159,13 +177,17 @@ namespace RealEarth
 
             try
             {
-                Console.WriteLine($"[RealEarth] {msg}");
+                Console.WriteLine(Prefix() + msg);
             }
             catch
             {
                 // ignore
             }
         }
+
+        public static void Log(string msg) => Emit(LogLevel.Info, msg);
+        public static void LogWarn(string msg) => Emit(LogLevel.Warn, msg);
+        public static void LogError(string msg) => Emit(LogLevel.Error, msg);
 
         /// <summary>
         /// Read earth.manifest.json next to tiles/ so Streamed mode uses pack world size
@@ -217,7 +239,7 @@ namespace RealEarth
             }
             catch (Exception ex)
             {
-                Log($"Pack manifest skip: {ex.Message}");
+                LogWarn($"Pack manifest skip: {ex.Message}");
             }
         }
 

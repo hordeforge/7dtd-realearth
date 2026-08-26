@@ -84,7 +84,7 @@ namespace RealEarth
             }
             catch (Exception ex)
             {
-                ModApi.Log($"RuntimeHooks failed: {ex.Message}");
+                ModApi.LogError($"RuntimeHooks failed: {ex.Message}");
                 // Recompute gate from actual binds (do not leave InjectBlocked stuck true with healthy patches).
                 _applied = HasUsefulBinding;
                 EnforceInjectGate();
@@ -139,7 +139,7 @@ namespace RealEarth
             }
             catch (Exception ex)
             {
-                ModApi.Log("RuntimeHooks retry: " + ex.Message);
+                ModApi.LogWarn("RuntimeHooks retry: " + ex.Message);
             }
             EnforceInjectGate();
         }
@@ -564,7 +564,7 @@ namespace RealEarth
                 // Interfaces/abstracts expected to fail, so keep log quiet unless concrete.
                 var dt = target.DeclaringType;
                 if (dt != null && !dt.IsInterface && !dt.IsAbstract)
-                    ModApi.Log($"Patch failed {dt.Name}.{target.Name}: {ex.Message}");
+                            ModApi.LogWarn($"Patch failed {dt.Name}.{target.Name}: {ex.Message}");
                 return false;
             }
         }
@@ -708,7 +708,7 @@ namespace RealEarth
                 // a stuck tick path otherwise looks like "tiles never stream" with zero trace.
                 if (ConsumeBudget(ref _tickErrLogBudget))
                 {
-                    ModApi.Log($"PlayerTick postfix error: {ex.GetType().Name}: {ex.Message}");
+                        ModApi.LogWarn($"PlayerTick postfix error: {ex.GetType().Name}: {ex.Message}");
                 }
             }
         }
@@ -850,7 +850,7 @@ namespace RealEarth
                 }
                 catch (Exception sex)
                 {
-                    ModApi.Log("Session snapshot skip: " + sex.Message);
+                    ModApi.LogWarn("Session snapshot skip: " + sex.Message);
                 }
 
                 ModApi.Log(
@@ -869,7 +869,7 @@ namespace RealEarth
             }
             catch (Exception ex)
             {
-                ModApi.Log($"WorldReady: {ex.Message}");
+                ModApi.LogError($"WorldReady: {ex.Message}");
             }
         }
 
@@ -1008,7 +1008,7 @@ namespace RealEarth
                 // mapping/reflection failures so tiles missing forever stays debuggable.
                 if (ConsumeBudget(ref _injectErrLogBudget))
                 {
-                    ModApi.Log($"ChunkIndex postfix error ({__0},{__1}): {ex.Message}");
+                    ModApi.LogWarn($"ChunkIndex postfix error ({__0},{__1}): {ex.Message}");
                 }
             }
         }

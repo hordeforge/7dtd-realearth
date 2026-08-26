@@ -414,7 +414,7 @@ namespace RealEarth
                 var bytes = FetchTileBytesAsync(url).ConfigureAwait(false).GetAwaiter().GetResult();
                 if (bytes == null || bytes.Length < 8 || !RteTile.HasMagic(bytes))
                 {
-                    ModApi.Log($"CDN sync tile {tx},{tz}: bad payload");
+                    ModApi.LogWarn($"CDN sync tile {tx},{tz}: bad payload");
                     MarkMiss(key);
                     lock (_lock) { _loadInFlight.Remove(key); }
                     return;
@@ -433,7 +433,7 @@ namespace RealEarth
             }
             catch (Exception ex)
             {
-                ModApi.Log($"CDN sync tile {tx},{tz}: {ex.Message}");
+                ModApi.LogError($"CDN sync tile {tx},{tz}: {ex.Message}");
                 MarkMiss(key);
                 lock (_lock) { _loadInFlight.Remove(key); }
             }
@@ -510,7 +510,7 @@ namespace RealEarth
             }
             catch (Exception ex)
             {
-                ModApi.Log($"Load tile {tx},{tz}: {ex.Message}");
+                ModApi.LogError($"Load tile {tx},{tz}: {ex.Message}");
                 MarkMiss(key);
                 lock (_lock) { _loadInFlight.Remove(key); }
             }
@@ -568,7 +568,7 @@ namespace RealEarth
                     bytes = await FetchTileBytesAsync(url).ConfigureAwait(false);
                     if (bytes == null || bytes.Length < 8 || !RteTile.HasMagic(bytes))
                     {
-                        ModApi.Log($"CDN tile {tx},{tz}: bad payload (not RTE1)");
+                        ModApi.LogWarn($"CDN tile {tx},{tz}: bad payload (not RTE1)");
                         MarkMiss(key);
                         return;
                     }
@@ -591,12 +591,12 @@ namespace RealEarth
             {
                 if (fromCdn)
                 {
-                    ModApi.Log(
+                    ModApi.LogError(
                         $"CDN tile {tx},{tz} failed (failClosed={_cfg.FailClosedMissingTiles}): {ex.Message}");
                 }
                 else
                 {
-                    ModApi.Log($"Async load tile {tx},{tz}: {ex.Message}");
+                    ModApi.LogError($"Async load tile {tx},{tz}: {ex.Message}");
                 }
                 MarkMiss(key);
             }

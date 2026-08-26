@@ -149,7 +149,7 @@ namespace RealEarth
             {
                 if (ConsumeLogBudget())
                 {
-                    ModApi.Log("RuntimePoiInject: " + ex.Message);
+                    ModApi.LogError("RuntimePoiInject: " + ex.Message);
                 }
             }
         }
@@ -203,7 +203,7 @@ namespace RealEarth
             {
                 if (ConsumeLogBudget())
                 {
-                    ModApi.Log("RuntimePoiInject chunk: " + ex.Message);
+                    ModApi.LogError("RuntimePoiInject chunk: " + ex.Message);
                 }
             }
         }
