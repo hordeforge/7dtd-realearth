@@ -70,16 +70,21 @@ namespace RealEarth
             return false;
         }
 
-        public static int ElevToGameYInt(float elevM, RealEarthConfig? cfg)
+        /// <summary>
+        /// Map resolved elevation meters to a game Y column value.
+        /// allocatableMaxY: engine-allocatable ceiling supplied by the caller
+        /// (the engine-height subsystem exposes it) so this policy never reaches
+        /// up into that subsystem; 0 disables the cap.
+        /// </summary>
+        public static int ElevToGameYInt(float elevM, RealEarthConfig? cfg, int allocatableMaxY = 0)
         {
             int sea = cfg?.SeaLevelGameY ?? HeightInjectMath.DefaultSeaLevelGameY;
             int maxY = cfg != null && cfg.EngineMaxGameY > 0
                 ? cfg.EngineMaxGameY
                 : HeightCompress.EngineTargetMaxY;
             // Cap to engine-allocatable Y so callers never advertise Everest on stock YDim.
-            int cap = EngineHeight.EngineHeightMod.AllocatableColumnMaxY;
-            if (cap > 0 && maxY > cap)
-                maxY = cap;
+            if (allocatableMaxY > 0 && maxY > allocatableMaxY)
+                maxY = allocatableMaxY;
             return HeightInjectMath.MetersToGameYOneToOne(elevM, sea, maxY);
         }
     }

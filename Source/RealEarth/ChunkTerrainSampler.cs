@@ -54,7 +54,8 @@ namespace RealEarth
             // Single-lock sample: hot tile inline, miss queues async prefetch (no focus).
             bool ok = streamer.TrySamplePrefetch(ex, ez, out float elevM, out _, out _);
             TileSamplePolicy.ResolveElev(ok, elevM, cfg, out float elevResolved, out _);
-            int h = TileSamplePolicy.ElevToGameYInt(elevResolved, cfg);
+            int h = TileSamplePolicy.ElevToGameYInt(
+                elevResolved, cfg, EngineHeight.EngineHeightMod.AllocatableColumnMaxY);
             return HeightInjectMath.ToByteHeight(h);
         }
 
@@ -122,7 +123,8 @@ namespace RealEarth
             // Single-lock sample: hot tile inline, miss queues async prefetch (no focus).
             bool ok = streamer.TrySamplePrefetch(ex, ez, out float elevM, out byte lc, out _);
             TileSamplePolicy.ResolveElev(ok, elevM, cfg, out float elevResolved, out _);
-            int y = TileSamplePolicy.ElevToGameYInt(elevResolved, cfg);
+            int y = TileSamplePolicy.ElevToGameYInt(
+                elevResolved, cfg, EngineHeight.EngineHeightMod.AllocatableColumnMaxY);
             int cap = EngineHeight.EngineHeightMod.AllocatableColumnMaxY;
             if (y > cap) y = cap;
             if (y < 1) y = 1;
@@ -247,7 +249,8 @@ namespace RealEarth
             bool ok = streamer.TrySamplePrefetch(ex, ez, out float elevM, out byte lc, out _);
             landcover = ok ? lc : (byte)0;
             TileSamplePolicy.ResolveElev(ok, elevM, cfg, out float elevResolved, out _);
-            return HeightInjectMath.ToByteHeight(TileSamplePolicy.ElevToGameYInt(elevResolved, cfg));
+            return HeightInjectMath.ToByteHeight(TileSamplePolicy.ElevToGameYInt(
+                elevResolved, cfg, EngineHeight.EngineHeightMod.AllocatableColumnMaxY));
         }
 
         /// <summary>Map internal landcover code to a coarse biome id string for logging / XML bridge.</summary>
