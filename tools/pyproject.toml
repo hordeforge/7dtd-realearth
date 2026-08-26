@@ -27,6 +27,12 @@ realearth = "realearth.cli:main"
 requires = ["hatchling"]
 build-backend = "hatchling.build"
 
+[tool.uv]
+# Build-toolchain gate: uv older than this cannot be trusted with the
+# tools/uv.lock revision (lockfile format revisions move across uv releases).
+# CI pins the exact version; this floor guards host machines.
+required-version = ">=0.12"
+
 [tool.hatch.version]
 path = "realearth/__init__.py"
 

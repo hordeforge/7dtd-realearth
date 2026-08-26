@@ -8,27 +8,19 @@
 #      options.typeAware, so oxlint also runs the typescript/* type-aware
 #      rules through the oxlint-tsgolint binary.
 #
-# tsc/oxlint/@types/three run through bunx pinned by TSC_VERSION/OXLINT_VERSION/
-# OXLINT_TSGOLINT_VERSION/OXLINT_STANDARDS_VERSION/THREE_TYPES_VERSION. The
-# repo deliberately does not track package.json/node_modules, so the versions
-# live here as the single source of truth (same policy as lint-webmod.sh).
-# Override locally: TSC_VERSION=5.9.3 OXLINT_VERSION=1.79.0 \
-#   THREE_TYPES_VERSION=0.170.0 bash scripts/lint-viewer.sh
+# tsc/oxlint/@types/three run through bunx. The pins live in
+# scripts/toolchain-versions.env, the single source of truth shared by every
+# build/lint script (the repo deliberately does not track
+# package.json/node_modules). Override locally: TSC_VERSION=5.9.3 bash
+# scripts/lint-viewer.sh
 #
 # Requires: bun (bunx).
 
 set -euo pipefail
 
 root="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
-oxlint_version="${OXLINT_VERSION:-1.79.0}"
-oxlint_standards_version="${OXLINT_STANDARDS_VERSION:-0.8.1}"
-oxlint_tsgolint_version="${OXLINT_TSGOLINT_VERSION:-7.0.2001}"
-oxlint_plugins_version="${OXLINT_PLUGINS_VERSION:-1.79.0}"
-anti_slop_sha="${ANTI_SLOP_SHA:-6d538555cb151d4121ed51a27db81890eacf8ae9}"
-tsc_version="${TSC_VERSION:-5.9.3}"
-three_types_version="${THREE_TYPES_VERSION:-0.170.0}"
-# Runtime three.js version pinned by the page importmap (viewer/index.html).
-three_version="${THREE_VERSION:-0.170.0}"
+# shellcheck disable=SC1091
+source "$root/scripts/toolchain-versions.env"
 cache_dir="${XDG_CACHE_HOME:-$HOME/.cache}/realearth/oxlint-standards"
 src_dir="$root/viewer/src"
 
@@ -62,10 +54,10 @@ fetch_retry() {
 #    (lint-webmod.sh).
 mkdir -p "$cache_dir"
 if [ ! -d "$cache_dir/anti-slop-src" ]; then
-  fetch_retry "https://github.com/dmmulroy/anti-slop/archive/$anti_slop_sha.tar.gz" \
+  fetch_retry "https://github.com/dmmulroy/anti-slop/archive/$ANTI_SLOP_SHA.tar.gz" \
     "$cache_dir/anti-slop.tar.gz"
   mkdir -p "$cache_dir/anti-slop-src"
-  tar xzf "$cache_dir/anti-slop.tar.gz" -C "$cache_dir/anti-slop-src" --strip-components=2 "anti-slop-$anti_slop_sha/src"
+  tar xzf "$cache_dir/anti-slop.tar.gz" -C "$cache_dir/anti-slop-src" --strip-components=2 "anti-slop-$ANTI_SLOP_SHA/src"
 fi
 # bun add resolves from its cache when warm (CI cache hit) instead of
 # re-fetching on every run; cold cache fetches as usual. three is installed
@@ -76,12 +68,12 @@ fi
 # the runtime reparses it with a MODULE_TYPELESS_PACKAGE_JSON warning.
 [ -f "$cache_dir/package.json" ] || printf '{"type":"module"}\n' > "$cache_dir/package.json"
 ( cd "$cache_dir" && bun add --silent \
-    "@rikalabs/oxlint-standards@$oxlint_standards_version" \
-    "oxlint-tsgolint@$oxlint_tsgolint_version" \
-    "@oxlint/plugins@$oxlint_plugins_version" \
-    "typescript@$tsc_version" \
-    "@types/three@$three_types_version" \
-    "three@$three_version" ) >/dev/null 2>&1 || {
+    "@rikalabs/oxlint-standards@$OXLINT_STANDARDS_VERSION" \
+    "oxlint-tsgolint@$OXLINT_TSGOLINT_VERSION" \
+    "@oxlint/plugins@$OXLINT_PLUGINS_VERSION" \
+    "typescript@$TSC_VERSION" \
+    "@types/three@$THREE_TYPES_VERSION" \
+    "three@$THREE_VERSION" ) >/dev/null 2>&1 || {
   echo "realearth: lint-viewer: could not install the pinned lint toolchain into $cache_dir (offline?)" >&2
   exit 1
 }
@@ -90,12 +82,12 @@ fi
 #    walks up from viewer/src, so a symlink from viewer/node_modules to the
 #    cache's node_modules exposes @types/three without vendoring anything.
 ln -sfn "$cache_dir/node_modules" "$root/viewer/node_modules"
-bunx -p "typescript@$tsc_version" tsc -p "$root/viewer/tsconfig.json" --noEmit
+bunx -p "typescript@$TSC_VERSION" tsc -p "$root/viewer/tsconfig.json" --noEmit
 
 cp "$root/.oxlintrc.jsonc" "$cache_dir/oxlintrc.jsonc"
 cd "$cache_dir"
 # tsgolint is not on the user's PATH; oxlint finds it via PATH lookup.
 PATH="$cache_dir/node_modules/.bin:$PATH" \
-  bunx "oxlint@$oxlint_version" --config oxlintrc.jsonc --deny-warnings "$src_dir"
+  bunx "oxlint@$OXLINT_VERSION" --config oxlintrc.jsonc --deny-warnings "$src_dir"
 
 echo "realearth: lint-viewer: tsc type-check and oxlint ok"

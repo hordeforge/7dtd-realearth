@@ -2,8 +2,9 @@
   // Strict TypeScript for the RealEarth webmod (webmod/src). Compiled by
   // scripts/build-webmod.sh (esbuild) and type-gated by scripts/lint-webmod.sh
   // (tsc --noEmit, pinned TSC_VERSION). No package.json/node_modules tracked:
-  // tsc/esbuild/oxlint run through bunx with versions pinned in the scripts
-  // (same policy as ../zdtd-server-server/scripts/lint-webui.sh).
+  // tsc/esbuild/oxlint run through bunx with versions pinned in
+  // scripts/toolchain-versions.env (same policy as
+  // ../zdtd-server/scripts/lint-webui.sh).
   //
   // The bundle runs inside the stock 7dtd dashboard, which injects its own
   // React as a component prop (WebMod contract, see webmod/README.md). The

@@ -147,6 +147,9 @@ fi
 if [[ -d "$ROOT/webmod/build" ]]; then
   mkdir -p "$OUT/WebMod"
   cp -a "$ROOT/webmod/build/." "$OUT/WebMod/"
+  # bundle.js.map is a devtools aid for debugging the minified bundle; the
+  # shipped dashboard needs only bundle.js + styling.css.
+  rm -f "$OUT/WebMod/bundle.js.map"
   echo "Packaged WebMod/ (stock dashboard webui)"
 else
   echo "NOTE: no webmod/build output, run make webmod-export + make webmod to include the dashboard webui."

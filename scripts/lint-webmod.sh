@@ -7,29 +7,24 @@
 #      enables options.typeAware, so oxlint also runs the typescript/*
 #      type-aware rules through the oxlint-tsgolint binary.
 #
-# tsc/oxlint run through bunx pinned by TSC_VERSION/OXLINT_VERSION/
-# OXLINT_TSGOLINT_VERSION/OXLINT_STANDARDS_VERSION. The repo deliberately does
-# not track package.json/node_modules, so the versions live here as the single
-# source of truth (same policy as ../zdtd-server/scripts/lint-webui.sh).
-# Override locally: TSC_VERSION=5.9.3 OXLINT_VERSION=1.79.0 \
-#   OXLINT_TSGOLINT_VERSION=7.0.2001 bash scripts/lint-webmod.sh
+# tsc/oxlint run through bunx. The pins live in scripts/toolchain-versions.env,
+# the single source of truth shared by every build/lint script (the repo
+# deliberately does not track package.json/node_modules; same policy as
+# ../zdtd-server/scripts/lint-webui.sh).
+# Override locally: TSC_VERSION=5.9.3 bash scripts/lint-webmod.sh
 #
 # Requires: bun (bunx), python3 (already a make check requirement).
 
 set -euo pipefail
 
 root="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
-oxlint_version="${OXLINT_VERSION:-1.79.0}"
-oxlint_standards_version="${OXLINT_STANDARDS_VERSION:-0.8.1}"
-oxlint_tsgolint_version="${OXLINT_TSGOLINT_VERSION:-7.0.2001}"
-oxlint_plugins_version="${OXLINT_PLUGINS_VERSION:-1.79.0}"
-anti_slop_sha="${ANTI_SLOP_SHA:-6d538555cb151d4121ed51a27db81890eacf8ae9}"
-tsc_version="${TSC_VERSION:-5.9.3}"
+# shellcheck disable=SC1091
+source "$root/scripts/toolchain-versions.env"
 cache_dir="${XDG_CACHE_HOME:-$HOME/.cache}/realearth/oxlint-standards"
 src_dir="$root/webmod/src"
 
 # 1. Type check (tsc --strict per webmod/tsconfig.json).
-bunx -p "typescript@$tsc_version" tsc -p "$root/webmod/tsconfig.json" --noEmit
+bunx -p "typescript@$TSC_VERSION" tsc -p "$root/webmod/tsconfig.json" --noEmit
 
 # 2. Lint the sources with oxlint. The @rikalabs plugin, the vendored
 #    dmmulroy/anti-slop plugin source (pinned by ANTI_SLOP_SHA; the project is
@@ -60,10 +55,10 @@ fetch_retry() {
 
 mkdir -p "$cache_dir"
 if [ ! -d "$cache_dir/anti-slop-src" ]; then
-  fetch_retry "https://github.com/dmmulroy/anti-slop/archive/$anti_slop_sha.tar.gz" \
+  fetch_retry "https://github.com/dmmulroy/anti-slop/archive/$ANTI_SLOP_SHA.tar.gz" \
     "$cache_dir/anti-slop.tar.gz"
   mkdir -p "$cache_dir/anti-slop-src"
-  tar xzf "$cache_dir/anti-slop.tar.gz" -C "$cache_dir/anti-slop-src" --strip-components=2 "anti-slop-$anti_slop_sha/src"
+  tar xzf "$cache_dir/anti-slop.tar.gz" -C "$cache_dir/anti-slop-src" --strip-components=2 "anti-slop-$ANTI_SLOP_SHA/src"
 fi
 # bun add resolves from its cache when warm instead of re-fetching on every
 # run; cold cache fetches as usual.
@@ -71,16 +66,16 @@ fi
 # the runtime reparses it with a MODULE_TYPELESS_PACKAGE_JSON warning.
 [ -f "$cache_dir/package.json" ] || printf '{"type":"module"}\n' > "$cache_dir/package.json"
 ( cd "$cache_dir" && bun add --silent \
-    "@rikalabs/oxlint-standards@$oxlint_standards_version" \
-    "oxlint-tsgolint@$oxlint_tsgolint_version" \
-    "@oxlint/plugins@$oxlint_plugins_version" ) >/dev/null 2>&1 || {
-  echo "realearth: lint-webmod: could not install @rikalabs/oxlint-standards@$oxlint_standards_version + oxlint-tsgolint@$oxlint_tsgolint_version + @oxlint/plugins@$oxlint_plugins_version into $cache_dir (offline?)" >&2
+    "@rikalabs/oxlint-standards@$OXLINT_STANDARDS_VERSION" \
+    "oxlint-tsgolint@$OXLINT_TSGOLINT_VERSION" \
+    "@oxlint/plugins@$OXLINT_PLUGINS_VERSION" ) >/dev/null 2>&1 || {
+  echo "realearth: lint-webmod: could not install @rikalabs/oxlint-standards@$OXLINT_STANDARDS_VERSION + oxlint-tsgolint@$OXLINT_TSGOLINT_VERSION + @oxlint/plugins@$OXLINT_PLUGINS_VERSION into $cache_dir (offline?)" >&2
   exit 1
 }
 cp "$root/.oxlintrc.webmod.jsonc" "$cache_dir/oxlintrc.webmod.jsonc"
 cd "$cache_dir"
 # tsgolint is not on the user's PATH; oxlint finds it via PATH lookup.
 PATH="$cache_dir/node_modules/.bin:$PATH" \
-  bunx "oxlint@$oxlint_version" --config oxlintrc.webmod.jsonc --deny-warnings "$src_dir"
+  bunx "oxlint@$OXLINT_VERSION" --config oxlintrc.webmod.jsonc --deny-warnings "$src_dir"
 
 echo "realearth: lint-webmod: tsc type-check and oxlint ok"

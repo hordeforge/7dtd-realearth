@@ -10,6 +10,7 @@ SHELL := /bin/bash
 	test test-fast test-height test-python test-mp coverage \
 	build build-mod dll \
 	install install-full install-baked install-streamed install-height install-height-500 \
+	install-height-pack-everest \
 	height-test height-map height-map-500 height-map-install height-map-500-install \
 	engine-audit engine-expand engine-expand-dry engine-verify engine-restore dedicated-height-test \
 	demo bake bake-height package \

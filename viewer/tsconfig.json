@@ -3,8 +3,8 @@
   // scripts/build-viewer.sh (esbuild) into the ES modules the static page
   // loads from viewer/js/, and type-gated by scripts/lint-viewer.sh
   // (tsc --noEmit, pinned TSC_VERSION). No package.json/node_modules tracked:
-  // tsc/esbuild/oxlint run through bunx with versions pinned in the scripts
-  // (same policy as ../webmod; see scripts/lint-webmod.sh).
+  // tsc/esbuild/oxlint run through bunx with versions pinned in
+  // scripts/toolchain-versions.env.
   //
   // globe.ts imports three.js, which the browser resolves through index.html's
   // importmap (pinned CDN version). For the type gate, scripts/lint-viewer.sh
