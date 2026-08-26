@@ -732,6 +732,13 @@ namespace RealEarth
         {
             value = 0;
             if (!TryReadDouble(obj, key, out double d)) return false;
+            // Saturate instead of casting: an out-of-range double→int cast is
+            // undefined in unchecked C# (int.MinValue on .NET x64), so an external
+            // "population": 3000000000 would band as rural_scatter, sort last,
+            // and never discover. Truncation matches the Python loader's int().
+            if (double.IsNaN(d)) return false;
+            if (d >= int.MaxValue) { value = int.MaxValue; return true; }
+            if (d <= int.MinValue) { value = int.MinValue; return true; }
             value = (int)d;
             return true;
         }
