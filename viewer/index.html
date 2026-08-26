@@ -1,15 +1,15 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>RealEarth Map Viewer</title>
-  <link rel="icon" type="image/svg+xml" href="favicon.svg" />
-  <link rel="stylesheet" href="css/app.css" />
+  <link rel="icon" type="image/svg+xml" href="favicon.svg">
+  <link rel="stylesheet" href="css/app.css">
   <!-- three.js lives on the CDN but is only fetched when Globe mode is first
        used; warm the connection up front so that switch does not pay DNS +
        TLS on click. -->
-  <link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin />
+  <link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin>
   <script type="importmap">
   {
     "imports": {
@@ -40,7 +40,7 @@
         </label>
         <label class="field">
           <span>Or load viewer.json</span>
-          <input type="file" id="jsonFile" accept="application/json,.json" />
+          <input type="file" id="jsonFile" accept="application/json,.json">
         </label>
         <p id="packInfo" class="muted">No pack loaded.</p>
       </section>
@@ -58,8 +58,8 @@
         <div class="field">
           <span>Jump to lat, lon</span>
           <div class="jump-row">
-            <input type="text" id="jumpLat" inputmode="decimal" placeholder="lat" autocomplete="off" />
-            <input type="text" id="jumpLon" inputmode="decimal" placeholder="lon" autocomplete="off" />
+            <input type="text" id="jumpLat" inputmode="decimal" placeholder="lat" autocomplete="off">
+            <input type="text" id="jumpLon" inputmode="decimal" placeholder="lon" autocomplete="off">
             <button type="button" class="btn" id="btnJumpCoords">Go</button>
           </div>
         </div>
@@ -68,16 +68,16 @@
           <select id="layerSelect"></select>
         </label>
         <label class="check">
-          <input type="checkbox" id="showSettlements" checked />
+          <input type="checkbox" id="showSettlements" checked>
           <span>Settlements</span>
         </label>
         <label class="check">
-          <input type="checkbox" id="showGrid" />
+          <input type="checkbox" id="showGrid">
           <span>Tile grid</span>
         </label>
         <label class="field">
           <span>Opacity</span>
-          <input type="range" id="opacity" min="0.2" max="1" step="0.05" value="1" />
+          <input type="range" id="opacity" min="0.2" max="1" step="0.05" value="1">
         </label>
       </section>
 
@@ -108,7 +108,7 @@
         role="application"
         aria-label="Interactive map. Focus it and use arrow keys to pan, plus or minus to zoom, Home to fit the view. Mouse users can drag to pan and scroll to zoom."
       ></canvas>
-      <div id="globeHost" hidden aria-hidden="true"></div>
+      <div id="globeHost" hidden></div>
       <div id="hud">
         <div id="titleHud">RealEarth</div>
         <div class="hud-right">

@@ -11,6 +11,7 @@ import io
 import os
 import webbrowser
 from pathlib import Path
+from typing import BinaryIO
 
 
 class ViewerHandler(http.server.SimpleHTTPRequestHandler):
@@ -27,19 +28,21 @@ class ViewerHandler(http.server.SimpleHTTPRequestHandler):
 
     # Text formats that shrink under gzip. Images/archives are excluded: they
     # are stored compressed and gzip only wastes CPU on top of that.
-    _COMPRESSIBLE_SUFFIXES = frozenset({
-        ".html",
-        ".htm",
-        ".css",
-        ".js",
-        ".mjs",
-        ".json",
-        ".svg",
-        ".map",
-        ".txt",
-        ".xml",
-        ".csv",
-    })
+    _COMPRESSIBLE_SUFFIXES = frozenset(
+        {
+            ".html",
+            ".htm",
+            ".css",
+            ".js",
+            ".mjs",
+            ".json",
+            ".svg",
+            ".map",
+            ".txt",
+            ".xml",
+            ".csv",
+        }
+    )
     _MIN_COMPRESS_BYTES = 1024
 
     def log_message(self, format: str, *args: object) -> None:
@@ -47,7 +50,11 @@ class ViewerHandler(http.server.SimpleHTTPRequestHandler):
         if len(args) >= 2 and str(args[1]).startswith("2"):
             return
         safe_args = tuple(
-            str(a).replace("\r", "\\r").replace("\n", "\\n") if isinstance(a, str) else a
+            (
+                str(a).replace("\r", "\\r").replace("\n", "\\n")
+                if isinstance(a, str)
+                else a
+            )
             for a in args
         )
         super().log_message(format, *safe_args)
@@ -61,17 +68,21 @@ class ViewerHandler(http.server.SimpleHTTPRequestHandler):
         self.send_header("X-Content-Type-Options", "nosniff")
         self.send_header("X-Frame-Options", "DENY")
         self.send_header("Referrer-Policy", "no-referrer")
-        self.send_header("Content-Security-Policy",
-                         "default-src 'self'; "
-                         "script-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net; "
-                         "style-src 'self' 'unsafe-inline'; "
-                         "img-src 'self' data: blob:; "
-                         "connect-src 'self'; "
-                         "frame-ancestors 'none'")
-        self.send_header("Permissions-Policy", "camera=(), microphone=(), geolocation=()")
+        self.send_header(
+            "Content-Security-Policy",
+            "default-src 'self'; "
+            "script-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net; "
+            "style-src 'self' 'unsafe-inline'; "
+            "img-src 'self' data: blob:; "
+            "connect-src 'self'; "
+            "frame-ancestors 'none'",
+        )
+        self.send_header(
+            "Permissions-Policy", "camera=(), microphone=(), geolocation=()"
+        )
         super().end_headers()
 
-    def list_directory(self, path: str):  # type: ignore[override]
+    def list_directory(self, path: str) -> None:  # type: ignore[override]
         # Disable directory listings: viewer has explicit catalog.json / viewer.json.
         self.send_error(http.HTTPStatus.NOT_FOUND, "Not Found")
         return None
@@ -89,9 +100,10 @@ class ViewerHandler(http.server.SimpleHTTPRequestHandler):
             return True
         return int(mtime) > since.timestamp()
 
-    # No return annotation: this overrides stdlib's untyped
-    # BaseHTTPRequestHandler.send_head.
-    def send_head(self):
+    # Returns whatever stdlib SimpleHTTPRequestHandler.send_head does: an open
+    # binary file to stream, or None once an error response has been sent.
+
+    def send_head(self) -> io.BytesIO | BinaryIO | None:
         accept = self.headers.get("Accept-Encoding", "")
         raw_path = self.translate_path(self.path)
         # Containment: translated path must remain inside the served directory.
@@ -120,14 +132,18 @@ class ViewerHandler(http.server.SimpleHTTPRequestHandler):
             return super().send_head()
         if len(data) < self._MIN_COMPRESS_BYTES:
             return super().send_head()
-        if self._stale_client_copy(self.headers.get("If-Modified-Since"), fstat.st_mtime):
+        if self._stale_client_copy(
+            self.headers.get("If-Modified-Since"), fstat.st_mtime
+        ):
             payload = gzip.compress(data, compresslevel=6)
         else:
             self.send_response(http.HTTPStatus.NOT_MODIFIED)
             self.end_headers()
             return None
         self.send_response(http.HTTPStatus.OK)
-        self.send_header("Content-Type", self.guess_type(path) or "application/octet-stream")
+        self.send_header(
+            "Content-Type", self.guess_type(path) or "application/octet-stream"
+        )
         self.send_header("Content-Length", str(len(payload)))
         self.send_header("Content-Encoding", "gzip")
         self.send_header("Last-Modified", self.date_time_string(int(fstat.st_mtime)))

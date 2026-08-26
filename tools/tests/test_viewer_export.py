@@ -59,7 +59,7 @@ def test_mosaic_pack_warns_on_missing_tile(tmp_path: Path, capsys):
     tile_path(pack, tx, tz).unlink()
 
     data = mosaic_pack(pack)
-    assert data["elevation"].size > 0
+    assert data.elevation.size > 0
     err = capsys.readouterr().err
     assert "missing" in err
     assert f"({tx},{tz})" in err
@@ -83,7 +83,9 @@ def test_mosaic_pack_still_raises_when_all_tiles_missing(tmp_path: Path):
         ("world_height", -1),
     ],
 )
-def test_mosaic_pack_rejects_hostile_manifest_dims(tmp_path: Path, field: str, value: int):
+def test_mosaic_pack_rejects_hostile_manifest_dims(
+    tmp_path: Path, field: str, value: int
+):
     """Manifest integers must not steer np.full into an unbounded allocation."""
     pack = _tiny_region(tmp_path)
     raw = json.loads((pack / "earth.manifest.json").read_text(encoding="utf-8"))

@@ -12,7 +12,11 @@ import click
 from realearth import DEFAULT_SEA_LEVEL_GAME_Y, __version__
 from realearth.coords import EarthGrid, block_to_lonlat, lonlat_to_block
 from realearth.region import build_region, world_tile_indices_for_bbox
-from realearth.settlements import SEED_SETTLEMENTS, decode_poi_blob, load_settlements_geojson
+from realearth.settlements import (
+    SEED_SETTLEMENTS,
+    decode_poi_blob,
+    load_settlements_geojson,
+)
 from realearth.tile_format import read_manifest, read_tile, tile_path
 
 
@@ -25,7 +29,9 @@ def main() -> None:
 def _require_finite(name: str, value: float) -> None:
     """Reject NaN/inf coordinates as usage errors instead of crashing later."""
     if not math.isfinite(value):
-        raise click.BadParameter(f"must be a finite number, got {value}", param_hint=name)
+        raise click.BadParameter(
+            f"must be a finite number, got {value}", param_hint=name
+        )
 
 
 def _display_text(value: object) -> str:
@@ -53,7 +59,9 @@ def _safe_name_component(meta: dict[str, object], key: str, default: str) -> str
         or "\\" in name
         or Path(name).name != name
     ):
-        raise ValueError(f"pack metadata {key} must be a plain directory name, got {name!r}")
+        raise ValueError(
+            f"pack metadata {key} must be a plain directory name, got {name!r}"
+        )
     return name
 
 
@@ -64,9 +72,13 @@ def info_cmd() -> None:
     click.echo(f"RealEarth tools v{__version__}")
     click.echo(f"World size (1:1 blocks): {g.width} x {g.height}")
     click.echo(f"Default tile size: {g.tile_size}")
-    click.echo(f"Tiles on full Earth: {g.tiles_x} x {g.tiles_z} = {g.tiles_x * g.tiles_z:,}")
+    click.echo(
+        f"Tiles on full Earth: {g.tiles_x} x {g.tiles_z} = {g.tiles_x * g.tiles_z:,}"
+    )
     click.echo("1 block = 1 meter (vanilla 7DTD).")
-    click.echo("Stock engine height ~0-255; RealEarth YDim expand enables tall 1:1 columns.")
+    click.echo(
+        "Stock engine height ~0-255; RealEarth YDim expand enables tall 1:1 columns."
+    )
     click.echo("Longitude wraps; latitude clamps at poles.")
 
 
@@ -92,29 +104,63 @@ def lonlat_cmd(lon: float, lat: float) -> None:
 @click.option("--south", type=float, required=True, help="South latitude")
 @click.option("--east", type=float, required=True, help="East longitude")
 @click.option("--north", type=float, required=True, help="North latitude")
-@click.option("--out", "out_dir", type=click.Path(), required=True, help="Output directory")
+@click.option(
+    "--out", "out_dir", type=click.Path(), required=True, help="Output directory"
+)
 @click.option(
     "--source",
     type=click.Choice(["synthetic", "open_meteo", "terrarium", "geotiff"]),
     default="synthetic",
     help="Elevation: synthetic | open_meteo | terrarium (open AWS DEM tiles) | geotiff",
 )
-@click.option("--resolution", "resolution_m", type=float, default=30.0, show_default=True,
-              help="Meters per sample (use 1 for true 1:1, huge)")
+@click.option(
+    "--resolution",
+    "resolution_m",
+    type=float,
+    default=30.0,
+    show_default=True,
+    help="Meters per sample (use 1 for true 1:1, huge)",
+)
 @click.option("--tile-size", type=int, default=512, show_default=True)
 @click.option("--name", default="RealEarthRegion", show_default=True)
-@click.option("--settlements", type=click.Path(exists=True), default=None,
-              help="Optional GeoJSON of settlements")
-@click.option("--max-dim", type=int, default=2048, show_default=True,
-              help="Cap longest side in samples")
-@click.option("--geotiff", type=click.Path(exists=True), default=None,
-              help="DEM GeoTIFF path when --source geotiff (Copernicus/SRTM)")
-@click.option("--population-geotiff", type=click.Path(exists=True), default=None,
-              help="People/km² GeoTIFF (WorldPop / GHSL-POP) for real city density")
-@click.option("--built-geotiff", type=click.Path(exists=True), default=None,
-              help="Built-up fraction GeoTIFF (GHS-BUILT) for building fabric density")
-@click.option("--terrarium-zoom", type=int, default=10, show_default=True,
-              help="Terrarium tile zoom (8=coarse, 12=detail, more downloads)")
+@click.option(
+    "--settlements",
+    type=click.Path(exists=True),
+    default=None,
+    help="Optional GeoJSON of settlements",
+)
+@click.option(
+    "--max-dim",
+    type=int,
+    default=2048,
+    show_default=True,
+    help="Cap longest side in samples",
+)
+@click.option(
+    "--geotiff",
+    type=click.Path(exists=True),
+    default=None,
+    help="DEM GeoTIFF path when --source geotiff (Copernicus/SRTM)",
+)
+@click.option(
+    "--population-geotiff",
+    type=click.Path(exists=True),
+    default=None,
+    help="People/km² GeoTIFF (WorldPop / GHSL-POP) for real city density",
+)
+@click.option(
+    "--built-geotiff",
+    type=click.Path(exists=True),
+    default=None,
+    help="Built-up fraction GeoTIFF (GHS-BUILT) for building fabric density",
+)
+@click.option(
+    "--terrarium-zoom",
+    type=int,
+    default=10,
+    show_default=True,
+    help="Terrarium tile zoom (8=coarse, 12=detail, more downloads)",
+)
 @click.option("--no-export", is_flag=True, help="Skip heightmap/biomes PNG export")
 def build_region_cmd(
     west: float,
@@ -173,11 +219,21 @@ def build_region_cmd(
 
 
 @main.command("demo")
-@click.option("--out", "out_dir", type=click.Path(), default="data/samples/demo_region",
-              show_default=True, help="Output directory")
-@click.option("--source", type=click.Choice(["synthetic", "open_meteo"]),
-              default="synthetic", show_default=True,
-              help="Elevation source (synthetic needs no network)")
+@click.option(
+    "--out",
+    "out_dir",
+    type=click.Path(),
+    default="data/samples/demo_region",
+    show_default=True,
+    help="Output directory",
+)
+@click.option(
+    "--source",
+    type=click.Choice(["synthetic", "open_meteo"]),
+    default="synthetic",
+    show_default=True,
+    help="Elevation source (synthetic needs no network)",
+)
 def demo_cmd(out_dir: str, source: str) -> None:
     """Build a small playable demo region (approx Denver area footprint)."""
     # ~0.5 deg box around Denver (~40-50 km) at 60 m/sample → small pack
@@ -255,8 +311,9 @@ def inspect_tile_cmd(pack_dir: str, tx: int, tz: int) -> None:
 @click.option("--south", type=float, required=True, help="South latitude")
 @click.option("--east", type=float, required=True, help="East longitude")
 @click.option("--north", type=float, required=True, help="North latitude")
-@click.option("--tile-size", type=int, default=512, show_default=True,
-              help="Tile edge in blocks")
+@click.option(
+    "--tile-size", type=int, default=512, show_default=True, help="Tile edge in blocks"
+)
 def planet_tiles_cmd(
     west: float, south: float, east: float, north: float, tile_size: int
 ) -> None:
@@ -288,7 +345,9 @@ def wrap_check_cmd(x: int) -> None:
     default=None,
     help="Repo root (default: parent of tools/)",
 )
-@click.option("--size", type=int, default=2048, show_default=True, help="Baked world edge")
+@click.option(
+    "--size", type=int, default=2048, show_default=True, help="Baked world edge"
+)
 @click.option(
     "--source",
     type=click.Choice(["terrarium", "open_meteo", "synthetic"]),
@@ -296,16 +355,25 @@ def wrap_check_cmd(x: int) -> None:
     show_default=True,
     help="DEM: real AWS Terrarium | Open-Meteo | synthetic cone",
 )
-@click.option("--terrarium-zoom", type=int, default=11, show_default=True,
-              help="Terrarium tile zoom (8=coarse, 12=detail, more downloads)")
-@click.option("--pack-size", type=int, default=512, show_default=True, help=".rte grid edge")
+@click.option(
+    "--terrarium-zoom",
+    type=int,
+    default=11,
+    show_default=True,
+    help="Terrarium tile zoom (8=coarse, 12=detail, more downloads)",
+)
+@click.option(
+    "--pack-size", type=int, default=512, show_default=True, help=".rte grid edge"
+)
 @click.option(
     "--peak-game-y",
     type=int,
     default=None,
     help="Staged synthetic peak at this game Y (e.g. 500). Skips Everest DEM.",
 )
-@click.option("--install", is_flag=True, help="Copy world + pack into Steam/Proton paths")
+@click.option(
+    "--install", is_flag=True, help="Copy world + pack into Steam/Proton paths"
+)
 def height_test_map_cmd(
     repo: str | None,
     size: int,
@@ -379,10 +447,11 @@ def _install_height_test(
         dest_tiles = mod / "Data" / "tiles"
         dest_tiles.mkdir(parents=True, exist_ok=True)
         for child in list(dest_tiles.iterdir()):
-            if (
-                child.name in ("tiles", "earth.manifest.json", "height_test.json")
-                or child.suffix in (".json", ".png")
-            ):
+            if child.name in (
+                "tiles",
+                "earth.manifest.json",
+                "height_test.json",
+            ) or child.suffix in (".json", ".png"):
                 if child.is_dir():
                     shutil.rmtree(child)
                 else:
@@ -486,14 +555,31 @@ def engine_audit_cmd(dll: str | None) -> None:
 
 
 @main.command("sample-chunk")
-@click.option("--pack", "pack_dir", type=click.Path(exists=True), required=True,
-              help="Tile pack (earth.manifest.json + tiles/tz/tx.rte)")
-@click.option("--lon", type=float, default=None, help="Sample near longitude (uses pack bbox)")
+@click.option(
+    "--pack",
+    "pack_dir",
+    type=click.Path(exists=True),
+    required=True,
+    help="Tile pack (earth.manifest.json + tiles/tz/tx.rte)",
+)
+@click.option(
+    "--lon", type=float, default=None, help="Sample near longitude (uses pack bbox)"
+)
 @click.option("--lat", type=float, default=None, help="Sample near latitude")
-@click.option("--x", "origin_x", type=int, default=None, help="Pack/Earth chunk origin X")
-@click.option("--z", "origin_z", type=int, default=None, help="Pack/Earth chunk origin Z")
-@click.option("--size", "chunk_size", type=int, default=16, show_default=True,
-              help="Vanilla chunk edge (blocks)")
+@click.option(
+    "--x", "origin_x", type=int, default=None, help="Pack/Earth chunk origin X"
+)
+@click.option(
+    "--z", "origin_z", type=int, default=None, help="Pack/Earth chunk origin Z"
+)
+@click.option(
+    "--size",
+    "chunk_size",
+    type=int,
+    default=16,
+    show_default=True,
+    help="Vanilla chunk edge (blocks)",
+)
 def sample_chunk_cmd(
     pack_dir: str,
     lon: float | None,
@@ -519,10 +605,12 @@ def sample_chunk_cmd(
     if (origin_x is None) != (origin_z is None):
         raise click.ClickException("--x and --z must be given together")
     if lon is not None and origin_x is not None:
-        raise click.ClickException("choose one location mode: --lon/--lat or --x/--z, not both")
+        raise click.ClickException(
+            "choose one location mode: --lon/--lat or --x/--z, not both"
+        )
 
     pack = Path(pack_dir)
-    if lon is not None:
+    if lon is not None and lat is not None:
         _require_finite("--lon", lon)
         _require_finite("--lat", lat)
         info = demo_pack_chunk_at_lonlat(pack, lon, lat, chunk_size=chunk_size)
@@ -551,16 +639,28 @@ def sample_chunk_cmd(
 
 
 @main.command("window-slide")
-@click.option("--size", type=int, default=1024, show_default=True,
-              help="Local window edge in blocks")
-@click.option("--earth-x", type=int, required=True, help="Absolute Earth X to center on")
-@click.option("--earth-z", type=int, required=True, help="Absolute Earth Z to center on")
 @click.option(
-    "--local-x", type=int, default=None,
+    "--size",
+    type=int,
+    default=1024,
+    show_default=True,
+    help="Local window edge in blocks",
+)
+@click.option(
+    "--earth-x", type=int, required=True, help="Absolute Earth X to center on"
+)
+@click.option(
+    "--earth-z", type=int, required=True, help="Absolute Earth Z to center on"
+)
+@click.option(
+    "--local-x",
+    type=int,
+    default=None,
     help="Player local X (default: near edge to force slide)",
 )
-@click.option("--local-z", type=int, default=None,
-              help="Player local Z (default: window mid-row)")
+@click.option(
+    "--local-z", type=int, default=None, help="Player local Z (default: window mid-row)"
+)
 @click.option("--no-wrap", is_flag=True, help="Disable longitude wrap")
 def window_slide_cmd(
     size: int,
@@ -589,16 +689,36 @@ def window_slide_cmd(
 
 
 @main.command("bake-world")
-@click.option("--pack", "pack_dir", type=click.Path(exists=True), required=True,
-              help="Tile pack with earth.manifest.json")
-@click.option("--out", "out_dir", type=click.Path(), required=True,
-              help="Output folder for one continuous world")
-@click.option("--size", type=int, default=4096, show_default=True,
-              help="World edge in blocks (2048–16384, snapped to mult of 2048)")
+@click.option(
+    "--pack",
+    "pack_dir",
+    type=click.Path(exists=True),
+    required=True,
+    help="Tile pack with earth.manifest.json",
+)
+@click.option(
+    "--out",
+    "out_dir",
+    type=click.Path(),
+    required=True,
+    help="Output folder for one continuous world",
+)
+@click.option(
+    "--size",
+    type=int,
+    default=4096,
+    show_default=True,
+    help="World edge in blocks (2048–16384, snapped to mult of 2048)",
+)
 @click.option("--name", default=None, help="World display name")
-@click.option("--sea-level", "sea_level_y", type=int, default=DEFAULT_SEA_LEVEL_GAME_Y,
-              show_default=True,
-              help="Sea level in game Y blocks")
+@click.option(
+    "--sea-level",
+    "sea_level_y",
+    type=int,
+    default=DEFAULT_SEA_LEVEL_GAME_Y,
+    show_default=True,
+    help="Sea level in game Y blocks",
+)
 @click.option(
     "--generated/--heightmap-only",
     default=True,
@@ -620,7 +740,11 @@ def bake_world_cmd(
     ttw_template: str | None,
 ) -> None:
     """Bake ONE continuous playable map for in-game use (single save / single world)."""
-    from realearth.bake_world import bake_world_from_pack, planet_scale_for_size, snap_world_size
+    from realearth.bake_world import (
+        bake_world_from_pack,
+        planet_scale_for_size,
+        snap_world_size,
+    )
     from realearth.generated_world import bake_generated_world
 
     size = snap_world_size(size)
@@ -635,8 +759,12 @@ def bake_world_cmd(
             ttw_template=Path(ttw_template) if ttw_template else None,
         )
         click.echo(f"GeneratedWorld → {out_dir}")
-        click.echo(f"  size: {meta['size']} x {meta['size']}  dtm_bytes={meta['dtm_bytes']}")
-        click.echo("  files: dtm.raw dtm_processed.raw biomes.png map_info.xml spawnpoints.xml …")
+        click.echo(
+            f"  size: {meta['size']} x {meta['size']}  dtm_bytes={meta['dtm_bytes']}"
+        )
+        click.echo(
+            "  files: dtm.raw dtm_processed.raw biomes.png map_info.xml spawnpoints.xml …"
+        )
         click.echo(
             "  install: copy folder to ~/.local/share/7DaysToDie/"
             f"GeneratedWorlds/{Path(out_dir).name}"
@@ -652,18 +780,37 @@ def bake_world_cmd(
         )
         click.echo(f"Heightmap export → {result['out_dir']}")
         click.echo(f"  heightmap: {result['heightmap']}")
-    click.echo(f"  tip: full Earth in {size} blocks ≈ {planet_scale_for_size(size):.0f} m/block")
+    click.echo(
+        f"  tip: full Earth in {size} blocks ≈ {planet_scale_for_size(size):.0f} m/block"
+    )
 
 
 @main.command("export-viewer")
-@click.option("--pack", "pack_dir", type=click.Path(exists=True), required=True,
-              help="Tile pack directory (earth.manifest.json + tiles/)")
-@click.option("--out", "out_dir", type=click.Path(), required=True,
-              help="Output directory (viewer/data/<name>)")
-@click.option("--max-dim", type=int, default=2048, show_default=True,
-              help="Longest side of exported PNGs")
+@click.option(
+    "--pack",
+    "pack_dir",
+    type=click.Path(exists=True),
+    required=True,
+    help="Tile pack directory (earth.manifest.json + tiles/)",
+)
+@click.option(
+    "--out",
+    "out_dir",
+    type=click.Path(),
+    required=True,
+    help="Output directory (viewer/data/<name>)",
+)
+@click.option(
+    "--max-dim",
+    type=int,
+    default=2048,
+    show_default=True,
+    help="Longest side of exported PNGs",
+)
 @click.option("--name", default=None, help="Display name override")
-def export_viewer_cmd(pack_dir: str, out_dir: str, max_dim: int, name: str | None) -> None:
+def export_viewer_cmd(
+    pack_dir: str, out_dir: str, max_dim: int, name: str | None
+) -> None:
     """Export PNG mosaics + viewer.json for the web map viewer."""
     from realearth.viewer_export import export_viewer_pack
 

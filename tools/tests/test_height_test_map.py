@@ -50,7 +50,9 @@ def test_build_pack_with_mocked_real_dem(tmp_path: Path):
     tile = read_tile(tile_path(tmp_path, 0, 0))
     assert float(tile.elevation_m.max()) >= 8800
     man = (tmp_path / "earth.manifest.json").read_text(encoding="utf-8")
-    assert "86.8" in man or "Everest" in man or "terrarium" in man.lower() or "mock" in man
+    assert (
+        "86.8" in man or "Everest" in man or "terrarium" in man.lower() or "mock" in man
+    )
     meta = (tmp_path / "height_test.json").read_text(encoding="utf-8")
     assert "no_compression" in meta
     assert str(EVEREST_BBOX["west"]) in meta or "86.8" in meta
@@ -108,7 +110,7 @@ def test_build_all_staged_paths(tmp_path: Path, monkeypatch):
     # Point pack/world under tmp by faking repo root layout
     (tmp_path / "data" / "samples").mkdir(parents=True)
     (tmp_path / "worlds").mkdir()
-    # bake needs a lot of world files — only test pack generation side via build_height_test_pack
+    # bake needs a lot of world files, so only test pack generation side via build_height_test_pack
     # build_all calls bake which needs full bake path; exercise pack-only here and path naming:
     from realearth import height_test_map as htm
 

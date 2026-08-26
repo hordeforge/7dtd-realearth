@@ -32,7 +32,13 @@ from realearth.settlements import (
     normalize_place_name,
     settlement_to_json_dict,
 )
-from realearth.tile_format import EarthTile, Manifest, tile_path, write_manifest, write_tile
+from realearth.tile_format import (
+    EarthTile,
+    Manifest,
+    tile_path,
+    write_manifest,
+    write_tile,
+)
 
 
 def _place_name_key(name: str) -> str:
@@ -74,7 +80,9 @@ def build_region(
     import math
 
     m_per_deg_lat = EARTH_MERIDIAN_HALF_M / 180.0
-    m_per_deg_lon = abs(math.cos(math.radians(mid_lat))) * (EARTH_CIRCUMFERENCE_M / 360.0)
+    m_per_deg_lon = abs(math.cos(math.radians(mid_lat))) * (
+        EARTH_CIRCUMFERENCE_M / 360.0
+    )
     width_m = (east - west) * m_per_deg_lon
     height_m = (north - south) * m_per_deg_lat
     width = max(32, int(round(width_m / resolution_m)))
@@ -99,7 +107,9 @@ def build_region(
     elif source == "geotiff":
         if geotiff is None:
             raise ValueError("source=geotiff requires geotiff= path to DEM GeoTIFF")
-        elev = fetch_region_geotiff(Path(geotiff), west, south, east, north, width, height)
+        elev = fetch_region_geotiff(
+            Path(geotiff), west, south, east, north, width, height
+        )
         sources = [f"GeoTIFF DEM: {Path(geotiff).name} (e.g. Copernicus GLO-30 / SRTM)"]
     elif source == "synthetic":
         elev = synthetic_elevation(width, height)
@@ -188,7 +198,11 @@ def build_region(
                 fz = (north - s.lat) / (north - south)
                 lx = int(fx * width) - x0
                 lz = int(fz * height) - y0
-                if 0 <= lx < tw and 0 <= lz < th and _place_name_key(s.name) not in plan_names:
+                if (
+                    0 <= lx < tw
+                    and 0 <= lz < th
+                    and _place_name_key(s.name) not in plan_names
+                ):
                     plan_names.add(_place_name_key(s.name))
                     plan.append(
                         {
@@ -245,9 +259,7 @@ def build_region(
 
     # Human-readable settlement dump with map-derived urban edge (m).
     present = [
-        s
-        for s in settlements
-        if west <= s.lon <= east and south <= s.lat <= north
+        s for s in settlements if west <= s.lon <= east and south <= s.lat <= north
     ]
     settlement_rows = []
     for s in present:

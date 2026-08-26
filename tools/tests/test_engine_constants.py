@@ -1,11 +1,15 @@
-"""Engine height constants audit — drives shipped engine_constants against live DLL."""
+"""Engine height constants audit: drives shipped engine_constants against live DLL."""
 
 from pathlib import Path
 
 import numpy as np
 
 from realearth import DEFAULT_SEA_LEVEL_GAME_Y
-from realearth.engine_constants import VANILLA_3_0_1, audit_engine_height, default_game_dll
+from realearth.engine_constants import (
+    VANILLA_3_0_1,
+    audit_engine_height,
+    default_game_dll,
+)
 from realearth.height import compress_elevation
 
 ROOT = Path(__file__).resolve().parents[2]
@@ -25,7 +29,9 @@ def test_engine_height_module_files_exist():
 def test_engine_mod_enabled_in_default_config():
     cfg = (ROOT / "Config" / "realearth.json").read_text(encoding="utf-8")
     assert "EnableEngineHeightMod" in cfg
-    assert '"EnableEngineHeightMod": true' in cfg or '"EnableEngineHeightMod":true' in cfg
+    assert (
+        '"EnableEngineHeightMod": true' in cfg or '"EnableEngineHeightMod":true' in cfg
+    )
     assert '"SeaLevelGameY": 100' in cfg or '"SeaLevelGameY":100' in cfg
 
 

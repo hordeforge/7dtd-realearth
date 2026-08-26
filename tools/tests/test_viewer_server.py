@@ -81,7 +81,9 @@ def test_parallel_requests_are_concurrent(server: str):
 
     def fetch(path: str) -> None:
         try:
-            responses.append(httpx.get(f"{server}{path}", headers={"Accept-Encoding": "gzip"}))
+            responses.append(
+                httpx.get(f"{server}{path}", headers={"Accept-Encoding": "gzip"})
+            )
         # Broad catch is deliberate: any transport failure is collected and
         # asserted below, so the test reports it instead of the thread dying.
         except Exception as exc:

@@ -53,9 +53,7 @@ def test_high_lowlatitude_land_is_barren():
 def test_urban_mask_only_applies_to_land():
     elev = np.array([[-5.0, 100.0]])
     lat = np.array([[45.0, 45.0]])
-    lc = classify_from_elevation_and_lat(
-        elev, lat, urban_mask=np.array([[True, True]])
-    )
+    lc = classify_from_elevation_and_lat(elev, lat, urban_mask=np.array([[True, True]]))
     assert int(lc[0, 0]) == int(LandCover.OCEAN)
     assert int(lc[0, 1]) == int(LandCover.URBAN)
 

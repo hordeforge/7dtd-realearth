@@ -11,7 +11,7 @@ REEARTH := $(UV) run python -m realearth.cli
 PYTEST := $(UV) run --extra dev python -m pytest
 
 help:
-	@echo "RealEarth tools/ — Python pipeline"
+	@echo "RealEarth tools/: Python pipeline"
 	@echo ""
 	@echo "  make setup | sync       uv sync --extra dev"
 	@echo "  make test               Full pytest suite"
@@ -24,7 +24,7 @@ help:
 	@echo "  make bake               Bake worlds/RealEarth from demo pack"
 	@echo "  make sample-chunk       Sample Streamed chunk (demo pack)"
 	@echo "  make serve              Web viewer on :8765"
-	@echo "  make lint               ruff check (realearth, tests, scripts)"
+	@echo "  make lint               ruff + black --check + mypy (realearth, tests, scripts)"
 	@echo "  make info               realearth info"
 	@echo "  make clean              pycache / pytest cache"
 	@echo ""
@@ -67,7 +67,9 @@ serve:
 	$(REEARTH) serve --port 8765 --root $(ROOT)/viewer
 
 lint:
-	$(UV) run --extra dev ruff check realearth tests ../scripts/coverage_badge.py
+	$(UV) run --extra dev ruff check realearth tests ../scripts
+	$(UV) run --extra dev black --check realearth tests ../scripts
+	$(UV) run --extra dev mypy realearth
 
 info:
 	$(REEARTH) info

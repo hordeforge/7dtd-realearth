@@ -25,12 +25,12 @@ jobs:
           # Cache uv wheels/venv between runs (default on hosted runners; pinned here
           # so self-hosted forks keep it too).
           enable-cache: true
-      # oxlint/tsgolint/anti-slop toolchain for lint-viewer.sh + lint-webmod.sh;
+      # oxlint/tsgolint/anti-slop/vnu toolchain for the lint-*.sh scripts;
       # key hashes the scripts that pin those versions, so a bump invalidates it.
       - uses: actions/cache@0057852bfaa89a56745cba8c7296529d2fc39830 # v4.3.0
         with:
           path: ~/.cache/realearth/oxlint-standards
-          key: oxlint-standards-${{ runner.os }}-${{ hashFiles('scripts/lint-viewer.sh', 'scripts/lint-webmod.sh') }}
+          key: oxlint-standards-${{ runner.os }}-${{ hashFiles('scripts/lint-viewer.sh', 'scripts/lint-webmod.sh', 'scripts/lint-html.sh') }}
           restore-keys: |
             oxlint-standards-${{ runner.os }}-
       # C# analysis gate. The RealEarth mod DLL itself needs the proprietary
@@ -45,11 +45,12 @@ jobs:
       - run: shellcheck scripts/*.sh
       - run: make test-fast
       - run: make -C tools lint
-      # The lint scripts run oxlint, tsc and vnu through bunx at pinned
-      # versions; the runner preinstalls node, but not bun.
+      # The lint scripts install oxlint, tsc and vnu into a shared cache at
+      # pinned versions; the runner preinstalls node and java, but not bun.
       - uses: oven-sh/setup-bun@0c5077e51419868618aeaa5fe8019c62421857d6 # v2.2.0
       - run: bash scripts/lint-viewer.sh
       - run: bash scripts/lint-webmod.sh
+      - run: bash scripts/lint-html.sh
 
   coverage-badge:
     if: github.event_name == 'push' && github.ref == 'refs/heads/main'

@@ -29,7 +29,9 @@ def test_tile_roundtrip():
     lc[10:20, 10:20] = 6
     pop = np.zeros((64, 64), dtype=np.uint8)
     pop[12, 12] = 200
-    poi = encode_poi_blob([{"name": "Testville", "band": "town", "local_x": 12, "local_z": 12}])
+    poi = encode_poi_blob(
+        [{"name": "Testville", "band": "town", "local_x": 12, "local_z": 12}]
+    )
     tile = EarthTile(3, 4, elev, landcover=lc, population=pop, poi_blob=poi)
     raw = encode_tile(tile)
     back = decode_tile(raw)
@@ -58,7 +60,9 @@ def test_height_local_stretch_uses_full_band():
 
 def test_height_respects_custom_max_y_for_future_engine_mod():
     elev = np.array([[0.0, 5000.0]])
-    y = compress_elevation(elev, max_y=500, profile="relative", regional_exaggeration=1.0)
+    y = compress_elevation(
+        elev, max_y=500, profile="relative", regional_exaggeration=1.0
+    )
     assert int(y.max()) <= 500
     assert int(y[0, 0]) == DEFAULT_SEA_LEVEL_GAME_Y
 
@@ -95,9 +99,7 @@ def test_elevation_payload_is_little_endian_on_the_wire():
 
     elev = np.array([[123.0, -11000.0], [8849.0, 42.0]], dtype=np.float32)
     raw = _elevation_to_u16(elev).tobytes()
-    expected = b"".join(
-        _struct.pack("<H", v) for v in (11123, 0, 19849, 11042)
-    )
+    expected = b"".join(_struct.pack("<H", v) for v in (11123, 0, 19849, 11042))
     assert raw == expected
 
     tile = EarthTile(0, 0, elev)

@@ -84,7 +84,9 @@ def audit_engine_height(dll: Path | None = None) -> dict[str, Any]:
         "notes": [],
     }
     if not path.is_file():
-        result["notes"].append("Assembly-CSharp.dll not found; using documented 3.0.1 defaults")
+        result["notes"].append(
+            "Assembly-CSharp.dll not found; using documented 3.0.1 defaults"
+        )
         result["constants"] = dict(VANILLA_3_0_1)
         return result
 
@@ -107,7 +109,7 @@ def audit_engine_height(dll: Path | None = None) -> dict[str, Any]:
     if ydim <= 256:
         result["needs_engine_mod_for_taller"] = True
         result["notes"].append(
-            f"ChunkBlockYDim={ydim}: stock column height — run `make engine-expand` "
+            f"ChunkBlockYDim={ydim}: stock column height, run `make engine-expand` "
             "to patch Assembly-CSharp for 1:1 tall columns"
         )
     else:

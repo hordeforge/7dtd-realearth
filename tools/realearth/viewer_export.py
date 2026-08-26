@@ -6,12 +6,19 @@ import json
 import math
 import sys
 from pathlib import Path
+from typing import NamedTuple
 
 import numpy as np
 from PIL import Image
 
 from realearth.landcover import landcover_to_biome_rgb
-from realearth.tile_format import MAX_TILE_SAMPLES, Manifest, read_manifest, read_tile, tile_path
+from realearth.tile_format import (
+    MAX_TILE_SAMPLES,
+    Manifest,
+    read_manifest,
+    read_tile,
+    tile_path,
+)
 
 # Hostile-manifest guard: the mosaic allocates full-grid arrays, so manifest
 # integers must be clamped like the binary tile header is (MAX_TILE_SAMPLES).
@@ -21,6 +28,15 @@ MAX_MOSAIC_SAMPLES = MAX_TILE_SAMPLES * 16
 MAX_MOSAIC_TILE_SIZE = 4096
 
 
+class PackMosaic(NamedTuple):
+    """One pack stitched into full-resolution channels, with its manifest."""
+
+    elevation: np.ndarray
+    landcover: np.ndarray
+    population: np.ndarray
+    manifest: Manifest
+
+
 def _hillshade(elev: np.ndarray) -> np.ndarray:
     elev = np.asarray(elev, dtype=np.float64)
     gy, gx = np.gradient(elev)
@@ -28,9 +44,9 @@ def _hillshade(elev: np.ndarray) -> np.ndarray:
     aspect = np.arctan2(-gx, gy)
     azimuth = math.radians(315.0)
     altitude = math.radians(45.0)
-    shaded = np.sin(altitude) * np.sin(slope) + np.cos(altitude) * np.cos(slope) * np.cos(
-        azimuth - aspect
-    )
+    shaded = np.sin(altitude) * np.sin(slope) + np.cos(altitude) * np.cos(
+        slope
+    ) * np.cos(azimuth - aspect)
     return np.clip(shaded, 0, 1)
 
 
@@ -58,7 +74,9 @@ def _elevation_rgb(elev: np.ndarray) -> np.ndarray:
         mid = (h > 500) & (h <= 2000)
         high = h > 2000
         if np.any(low):
-            base[low] = np.stack([40 + 40 * t1[low], 90 + 100 * t1[low], 40 + 30 * t1[low]], axis=1)
+            base[low] = np.stack(
+                [40 + 40 * t1[low], 90 + 100 * t1[low], 40 + 30 * t1[low]], axis=1
+            )
         if np.any(mid):
             base[mid] = np.stack(
                 [100 + 60 * t2[mid], 120 - 40 * t2[mid], 50 + 20 * t2[mid]], axis=1
@@ -85,7 +103,7 @@ def _population_rgb(pop: np.ndarray) -> np.ndarray:
     return np.clip(rgb, 0, 255).astype(np.uint8)
 
 
-def mosaic_pack(pack_dir: Path) -> dict[str, np.ndarray]:
+def mosaic_pack(pack_dir: Path) -> PackMosaic:
     """Stitch all tiles in a pack into full-resolution arrays."""
     pack_dir = Path(pack_dir)
     man = read_manifest(pack_dir / "earth.manifest.json")
@@ -96,7 +114,9 @@ def mosaic_pack(pack_dir: Path) -> dict[str, np.ndarray]:
     max_tx = max(t["tx"] for t in man.tiles)
     max_tz = max(t["tz"] for t in man.tiles)
     if ts <= 0 or ts > MAX_MOSAIC_TILE_SIZE:
-        raise ValueError(f"manifest tile_size out of range (1..{MAX_MOSAIC_TILE_SIZE}): {ts}")
+        raise ValueError(
+            f"manifest tile_size out of range (1..{MAX_MOSAIC_TILE_SIZE}): {ts}"
+        )
     if min(max_tx, max_tz) < 0 or min(man.world_width, man.world_height) < 0:
         raise ValueError("manifest tile indices and world dims must be non-negative")
     # Prefer manifest sample dimensions when present
@@ -149,12 +169,12 @@ def mosaic_pack(pack_dir: Path) -> dict[str, np.ndarray]:
     # Crop to sample dimensions if smaller than grid
     h = min(height, grid_h)
     w = min(width, grid_w)
-    return {
-        "elevation": elev[:h, :w],
-        "landcover": lc[:h, :w],
-        "population": pop[:h, :w],
-        "manifest": man,
-    }
+    return PackMosaic(
+        elevation=elev[:h, :w],
+        landcover=lc[:h, :w],
+        population=pop[:h, :w],
+        manifest=man,
+    )
 
 
 def export_viewer_pack(
@@ -170,17 +190,19 @@ def export_viewer_pack(
     out_dir.mkdir(parents=True, exist_ok=True)
 
     data = mosaic_pack(pack_dir)
-    elev = data["elevation"]
-    lc = data["landcover"]
-    pop = data["population"]
-    man: Manifest = data["manifest"]
+    elev = data.elevation
+    lc = data.landcover
+    pop = data.population
+    man = data.manifest
 
     h, w = elev.shape
     scale = 1.0
     if max(h, w) > max_dim:
         scale = max_dim / max(h, w)
         nh, nw = max(1, int(h * scale)), max(1, int(w * scale))
-        elev_img = Image.fromarray(elev, mode="F").resize((nw, nh), Image.Resampling.BILINEAR)
+        elev_img = Image.fromarray(elev, mode="F").resize(
+            (nw, nh), Image.Resampling.BILINEAR
+        )
         elev_s = np.asarray(elev_img, dtype=np.float32)
         lc_s = np.asarray(
             Image.fromarray(lc, mode="L").resize((nw, nh), Image.Resampling.NEAREST),
@@ -197,9 +219,9 @@ def export_viewer_pack(
     elev_rgb = _elevation_rgb(elev_s)
     lc_rgb = landcover_to_biome_rgb(lc_s)
     pop_rgb = _population_rgb(pop_s)
-    hybrid = (elev_rgb.astype(np.float64) * 0.55 + lc_rgb.astype(np.float64) * 0.45).astype(
-        np.uint8
-    )
+    hybrid = (
+        elev_rgb.astype(np.float64) * 0.55 + lc_rgb.astype(np.float64) * 0.45
+    ).astype(np.uint8)
 
     Image.fromarray(elev_rgb).save(out_dir / "elevation.png")
     Image.fromarray(lc_rgb).save(out_dir / "landcover.png")

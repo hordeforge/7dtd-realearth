@@ -12,8 +12,12 @@ from pathlib import Path
 import numpy as np
 from PIL import Image
 
-from realearth import DEFAULT_SEA_LEVEL_GAME_Y
-from realearth.export_7dtd import export_biome_png, export_heightmap_png, export_preview_png
+from realearth import DEFAULT_SEA_LEVEL_GAME_Y, JsonDict
+from realearth.export_7dtd import (
+    export_biome_png,
+    export_heightmap_png,
+    export_preview_png,
+)
 from realearth.height import compress_elevation
 from realearth.tile_format import Manifest, write_manifest
 from realearth.viewer_export import mosaic_pack
@@ -38,7 +42,9 @@ def resize_arrays(
 ) -> tuple[np.ndarray, np.ndarray, np.ndarray]:
     """Resize mosaics to square `size` x `size` for a single continuous world."""
     elev_i = Image.fromarray(np.asarray(elev, dtype=np.float32), mode="F")
-    elev_r = np.asarray(elev_i.resize((size, size), Image.Resampling.BILINEAR), dtype=np.float32)
+    elev_r = np.asarray(
+        elev_i.resize((size, size), Image.Resampling.BILINEAR), dtype=np.float32
+    )
     lc_r = np.asarray(
         Image.fromarray(np.asarray(lc, dtype=np.uint8), mode="L").resize(
             (size, size), Image.Resampling.NEAREST
@@ -64,7 +70,7 @@ def bake_world_from_pack(
     size: int = 8192,
     name: str | None = None,
     sea_level_y: int = DEFAULT_SEA_LEVEL_GAME_Y,
-) -> dict:
+) -> JsonDict:
     """Stitch pack tiles and bake one continuous world of `size`×`size` blocks."""
     size = snap_world_size(size)
     pack_dir = Path(pack_dir)
@@ -72,10 +78,10 @@ def bake_world_from_pack(
     out_dir.mkdir(parents=True, exist_ok=True)
 
     data = mosaic_pack(pack_dir)
-    elev = data["elevation"]
-    lc = data["landcover"]
-    pop = data["population"]
-    man: Manifest = data["manifest"]
+    elev = data.elevation
+    lc = data.landcover
+    pop = data.population
+    man = data.manifest
     world_name = name or man.name or "RealEarth"
 
     elev_r, lc_r, pop_r = resize_arrays(elev, lc, pop, size)
@@ -101,7 +107,12 @@ def bake_world_from_pack(
     src_set = pack_dir / "settlements.json"
     bbox = man.bbox
     if src_set.exists() and bbox:
-        west, south, east, north = bbox["west"], bbox["south"], bbox["east"], bbox["north"]
+        west, south, east, north = (
+            bbox["west"],
+            bbox["south"],
+            bbox["east"],
+            bbox["north"],
+        )
         for s in json.loads(src_set.read_text(encoding="utf-8")):
             lon, lat = float(s["lon"]), float(s["lat"])
             if not (west <= lon <= east and south <= lat <= north):
@@ -158,7 +169,7 @@ def bake_world_from_pack(
                 "Install a custom heightmap importer mod for 7DTD 3.0.1, OR",
                 "Use your preferred RWG/custom heightmap workflow with heightmap.png + biomes.png",
                 "Place files as that tool expects (often heightmap.png next to its config)",
-                "Start a NEW game on this world — one continuous map, one save",
+                "Start a NEW game on this world: one continuous map, one save",
             ],
         },
     }
@@ -171,7 +182,7 @@ def bake_world_from_pack(
                 f"RealEarth baked world: {world_name}",
                 f"Size: {size} x {size} blocks (one continuous map)",
                 "",
-                "This is a SINGLE in-game world — not multiple region saves.",
+                "This is a SINGLE in-game world, not multiple region saves.",
                 "",
                 "Files:",
                 "  heightmap.png   16-bit terrain for custom heightmap importers",

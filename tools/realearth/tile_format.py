@@ -94,12 +94,16 @@ def encode_tile(tile: EarthTile) -> bytes:
     parts.append(elev_z)
 
     if tile.landcover is not None:
-        lc_z = zlib.compress(np.asarray(tile.landcover, dtype=np.uint8).tobytes(), level=6)
+        lc_z = zlib.compress(
+            np.asarray(tile.landcover, dtype=np.uint8).tobytes(), level=6
+        )
         parts.append(struct.pack("<I", len(lc_z)))
         parts.append(lc_z)
 
     if tile.population is not None:
-        pop_z = zlib.compress(np.asarray(tile.population, dtype=np.uint8).tobytes(), level=6)
+        pop_z = zlib.compress(
+            np.asarray(tile.population, dtype=np.uint8).tobytes(), level=6
+        )
         parts.append(struct.pack("<I", len(pop_z)))
         parts.append(pop_z)
 
@@ -260,9 +264,7 @@ class Manifest:
             world_width=int(d.get("world_width", 40_075_017)),
             world_height=int(d.get("world_height", 20_003_931)),
             crs=d.get("crs", "EPSG:4326"),
-            sea_level_game_y=int(
-                d.get("sea_level_game_y", DEFAULT_SEA_LEVEL_GAME_Y)
-            ),
+            sea_level_game_y=int(d.get("sea_level_game_y", DEFAULT_SEA_LEVEL_GAME_Y)),
             meters_per_block=float(d.get("meters_per_block", 1.0)),
             bbox=d.get("bbox"),
             tiles=list(d.get("tiles", [])),

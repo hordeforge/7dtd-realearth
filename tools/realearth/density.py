@@ -16,7 +16,7 @@ from pathlib import Path
 
 import numpy as np
 
-from realearth import DEFAULT_SEA_LEVEL_GAME_Y
+from realearth import DEFAULT_SEA_LEVEL_GAME_Y, JsonDict
 from realearth.elevation import grid_lonlat
 from realearth.landcover import LandCover
 from realearth.settlements import (
@@ -116,7 +116,7 @@ class CityCore:
     edge_radius_m: float = 0.0
     edge_source: str = "density"  # density | map | population_fallback
 
-    def to_dict(self) -> dict:
+    def to_dict(self) -> JsonDict:
         return asdict(self)
 
 
@@ -206,9 +206,7 @@ def measure_urban_edge_radius_m(
         return _degenerate()
 
     visited = (
-        np.zeros((h, w), dtype=bool)
-        if visited_scratch is None
-        else visited_scratch
+        np.zeros((h, w), dtype=bool) if visited_scratch is None else visited_scratch
     )
     stack: list[tuple[int, int]] = [(py, px)]
     while stack:
@@ -295,7 +293,7 @@ class PrefabStamp:
     rotation: int
     density_byte: int
 
-    def to_dict(self) -> dict:
+    def to_dict(self) -> JsonDict:
         return asdict(self)
 
 
@@ -318,7 +316,9 @@ def load_density_geotiff(
         import rasterio
         from rasterio.warp import transform as rio_transform
     except ImportError as e:
-        raise ImportError("install realearth-tools[gis] for density GeoTIFF support") from e
+        raise ImportError(
+            "install realearth-tools[gis] for density GeoTIFF support"
+        ) from e
 
     lon, lat = grid_lonlat(west, south, east, north, width, height)
     with rasterio.open(path) as ds:
@@ -330,7 +330,9 @@ def load_density_geotiff(
         else:
             coords = list(zip(lon.ravel().tolist(), lat.ravel().tolist(), strict=True))
         samples = list(ds.sample(coords))
-        vals = np.array([s[0] for s in samples], dtype=np.float64).reshape(height, width)
+        vals = np.array([s[0] for s in samples], dtype=np.float64).reshape(
+            height, width
+        )
         if ds.nodata is not None:
             vals = np.where(vals == ds.nodata, 0.0, vals)
         vals = np.nan_to_num(vals, nan=0.0) * scale
@@ -426,7 +428,13 @@ def detect_city_cores(
         best = None
         best_d = 1e9
         edge_m = measure_urban_edge_radius_m(
-            dens, y, x, west, south, east, north,
+            dens,
+            y,
+            x,
+            west,
+            south,
+            east,
+            north,
             visited_scratch=visited_scratch,
         )
         edge_src = "density"
@@ -660,7 +668,9 @@ def write_prefabs_xml(path: Path, stamps: list[PrefabStamp]) -> None:
     path.write_text("\n".join(lines), encoding="utf-8")
 
 
-def write_cities_json(path: Path, cores: list[CityCore], stamps: list[PrefabStamp]) -> None:
+def write_cities_json(
+    path: Path, cores: list[CityCore], stamps: list[PrefabStamp]
+) -> None:
     path.write_text(
         json.dumps(
             {
@@ -706,14 +716,18 @@ def build_density_field(
     built_geotiff: Path | None = None,
 ) -> tuple[np.ndarray, np.ndarray]:
     """Return (people_per_km2 float grid, density_byte uint8)."""
-    dens = paint_settlement_density(width, height, west, south, east, north, settlements)
+    dens = paint_settlement_density(
+        width, height, west, south, east, north, settlements
+    )
     if population_geotiff is not None:
         dens = load_density_geotiff(
             population_geotiff, west, south, east, north, width, height
         )
     built = None
     if built_geotiff is not None:
-        built = load_density_geotiff(built_geotiff, west, south, east, north, width, height)
+        built = load_density_geotiff(
+            built_geotiff, west, south, east, north, width, height
+        )
         # If values look like square meters of built surface, normalize roughly
         if np.nanmax(built) > 1.5:
             built = built / (np.nanmax(built) + 1e-6)

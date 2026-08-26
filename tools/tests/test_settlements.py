@@ -52,7 +52,7 @@ def test_encode_poi_blob_stores_real_utf8_and_round_trips():
 
 
 def test_encode_poi_blob_keeps_astral_characters_intact():
-    name = "A\U0001F600B"  # astral-plane emoji (surrogate pair in UTF-16)
+    name = "A\U0001f600B"  # astral-plane emoji (surrogate pair in UTF-16)
     blob = encode_poi_blob([{"name": name}])
     assert decode_poi_blob(blob)[0]["name"] == name
 
@@ -87,9 +87,11 @@ def test_population_band_ladder_matches_runtime_fallback():
 
     # Structural pin on the C# fallback ladder: same thresholds, same order.
     src = (
-        (Path(__file__).resolve().parents[2] / "Source" / "RealEarth" / "RuntimePoiInject.cs")
-        .read_text(encoding="utf-8")
-    )
+        Path(__file__).resolve().parents[2]
+        / "Source"
+        / "RealEarth"
+        / "RuntimePoiInject.cs"
+    ).read_text(encoding="utf-8")
     body = src[src.index("static string BandFromPop") :]
     body = body[: body.index("}")]
     ladder = [

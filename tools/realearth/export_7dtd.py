@@ -7,7 +7,7 @@ from pathlib import Path
 import numpy as np
 from PIL import Image
 
-from realearth import DEFAULT_SEA_LEVEL_GAME_Y
+from realearth import DEFAULT_SEA_LEVEL_GAME_Y, JsonDict
 from realearth.height import compress_elevation, to_heightmap_png_array
 from realearth.landcover import landcover_to_biome_rgb
 
@@ -22,7 +22,9 @@ def export_heightmap_png(game_y: np.ndarray, path: Path, *, bit16: bool = True) 
     else:
         # Clamp, never wrap: game_y from engine-height profiles can exceed 255
         # (Everest ≈ 8949) and a plain astype(uint8) would store 8949 % 256 = 69.
-        y = np.clip(np.rint(np.asarray(game_y, dtype=np.float64)), 0, 255).astype(np.uint8)
+        y = np.clip(np.rint(np.asarray(game_y, dtype=np.float64)), 0, 255).astype(
+            np.uint8
+        )
         Image.fromarray(y).save(path)
 
 
@@ -47,9 +49,9 @@ def export_preview_png(
     aspect = np.arctan2(-gx, gy)
     azimuth = np.radians(315.0)
     altitude = np.radians(45.0)
-    shaded = np.sin(altitude) * np.sin(slope) + np.cos(altitude) * np.cos(slope) * np.cos(
-        azimuth - aspect
-    )
+    shaded = np.sin(altitude) * np.sin(slope) + np.cos(altitude) * np.cos(
+        slope
+    ) * np.cos(azimuth - aspect)
     shaded = np.clip(shaded, 0, 1)
 
     biome = landcover_to_biome_rgb(landcover).astype(np.float64)
@@ -66,7 +68,7 @@ def export_region_pack(
     *,
     sea_level_y: int = DEFAULT_SEA_LEVEL_GAME_Y,
     name: str = "RealEarthRegion",
-) -> dict:
+) -> JsonDict:
     """Export a vanilla-friendly region folder: heightmap, biomes, preview, meta."""
     out_dir = Path(out_dir)
     out_dir.mkdir(parents=True, exist_ok=True)

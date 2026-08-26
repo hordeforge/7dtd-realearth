@@ -1,4 +1,4 @@
-# RealEarth — top-level Makefile
+# RealEarth: top-level Makefile
 # Run `make` or `make help` for targets.
 
 # Recipes use bash ([[ ]], echo -n); /bin/sh is dash on Debian/Ubuntu.
@@ -14,7 +14,7 @@ SHELL := /bin/bash
 	engine-audit engine-expand engine-expand-dry engine-verify engine-restore dedicated-height-test \
 	demo bake bake-height package \
 	viewer viewer-build serve viewer-lint \
-	webmod webmod-export webmod-lint \
+	webmod webmod-export webmod-lint html-lint \
 	info check clean clean-build
 
 # ---------------------------------------------------------------------------
@@ -60,13 +60,18 @@ WEBMOD_EXPORT_NAME ?= demo
 UV            := uv
 REEARTH       := cd $(TOOLS) && $(UV) run python -m realearth.cli
 PYTEST        := cd $(TOOLS) && $(UV) run --extra dev python -m pytest
-RUFF          := cd $(TOOLS) && $(UV) run --extra dev ruff check realearth tests ../scripts/coverage_badge.py
+# Python gate: ruff (lint), black (format), mypy (types). scripts/ holds the
+# standalone helpers CI also runs.
+PY_SOURCES    := realearth tests ../scripts
+RUFF          := cd $(TOOLS) && $(UV) run --extra dev ruff check $(PY_SOURCES)
+BLACK         := cd $(TOOLS) && $(UV) run --extra dev black --check $(PY_SOURCES)
+MYPY          := cd $(TOOLS) && $(UV) run --extra dev mypy realearth
 
 # ---------------------------------------------------------------------------
 # Help
 # ---------------------------------------------------------------------------
 help:
-	@echo "RealEarth — common targets"
+	@echo "RealEarth: common targets"
 	@echo ""
 	@echo "  Setup"
 	@echo "    make setup              Sync Python tools (uv) + check game dir"
@@ -101,7 +106,7 @@ help:
 	@echo "    make test               Full Python test suite"
 	@echo "    make test-height        Height mod + height-test map tests only"
 	@echo "    make test-fast          Quick subset (coords, height, tiles)"
-	@echo "    make lint               Ruff lint over tools/realearth + tools/tests"
+	@echo "    make lint               Ruff + black --check + mypy over tools/ and scripts/"
 	@echo ""
 	@echo "  Viewer"
 	@echo "    make viewer             Export demo pack into viewer/data/demo"
@@ -113,6 +118,7 @@ help:
 	@echo "    make webmod-export      Export demo pack into webmod/build/data/demo"
 	@echo "    make webmod             Build webmod/build/bundle.js + styling.css"
 	@echo "    make webmod-lint        tsc --strict + oxlint (anti-slop + strict)"
+	@echo "    make html-lint          W3C vnu validation of viewer HTML + CSS"
 	@echo ""
 	@echo "  Misc"
 	@echo "    make info               Paths + tool versions"
@@ -206,7 +212,7 @@ install-height-pack-everest: build
 engine-audit:
 	@$(REEARTH) engine-audit
 
-# RealEarth YDim expand (part of this mod — not a third-party tool).
+# RealEarth YDim expand (part of this mod, not a third-party tool).
 # Close the game first. Re-run after Steam verify/updates.
 engine-expand:
 	@chmod +x "$(SCRIPTS)/apply_engine_expand.sh" "$(SCRIPTS)/patch_engine_height.sh"
@@ -273,6 +279,8 @@ test test-python:
 
 lint lint-python:
 	@$(RUFF)
+	@$(BLACK)
+	@$(MYPY)
 
 test-height:
 	@$(PYTEST) tests/test_height_mod_case.py tests/test_height_10k.py \
@@ -305,8 +313,8 @@ coverage:
 		tests/test_local_window.py tests/test_mp_runtime_structure.py -q --tb=line
 	cd $(TOOLS) && $(COV) report -m
 
-check: setup test-fast lint-python build viewer-build viewer-lint webmod-lint
-	@echo "OK check (setup + test-fast + lint-python + build + viewer-build + viewer-lint + webmod-lint)"
+check: setup test-fast lint-python build viewer-build viewer-lint webmod-lint html-lint
+	@echo "OK check (setup + test-fast + lint-python + build + viewer-build + viewer-lint + webmod-lint + html-lint)"
 
 # ---------------------------------------------------------------------------
 # Viewer
@@ -336,6 +344,9 @@ webmod-export:
 
 webmod-lint:
 	bash scripts/lint-webmod.sh
+
+html-lint:
+	bash scripts/lint-html.sh
 
 # ---------------------------------------------------------------------------
 # Info / clean

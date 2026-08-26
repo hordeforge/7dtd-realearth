@@ -20,7 +20,9 @@ def _read(rel: str) -> str:
 
 
 def _method_body(src: str, signature_regex: str, next_signature: str) -> str:
-    m = re.search(signature_regex + r"(?P<body>.*?)" + re.escape(next_signature), src, re.S)
+    m = re.search(
+        signature_regex + r"(?P<body>.*?)" + re.escape(next_signature), src, re.S
+    )
     assert m, f"method not found: {signature_regex}"
     return m.group("body")
 
@@ -40,9 +42,9 @@ def test_tick_slide_gates_claim_scan_behind_recentering():
     body = m.group("body")
     needs = body.index("NeedsRecentering")
     claims = body.index("HasLandClaims")
-    assert needs < claims, (
-        "HasLandClaims must be gated behind the cheap NeedsRecentering band check"
-    )
+    assert (
+        needs < claims
+    ), "HasLandClaims must be gated behind the cheap NeedsRecentering band check"
 
 
 def test_estimate_player_count_is_ttl_cached():

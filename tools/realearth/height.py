@@ -29,9 +29,9 @@ def compress_elevation(
     """Map real meters ASL into game block heights.
 
     Profiles:
-      relative — piecewise ASL curve + optional detail exaggeration (default, stock)
-      local_stretch — map this array's min..max into [min_y, max_y]
-      linear_clamp — elev_m/scale into Y then clamp
+      relative: piecewise ASL curve + optional detail exaggeration (default, stock)
+      local_stretch: map this array's min..max into [min_y, max_y]
+      linear_clamp: elev_m/scale into Y then clamp
       one_to_one - product mapping: sea_level_y + elev_m (1 m = 1 block);
         use max_y=11000 for Everest
 

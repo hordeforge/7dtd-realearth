@@ -19,7 +19,7 @@ from xml.sax.saxutils import escape as saxutils_escape
 import numpy as np
 from PIL import Image
 
-from realearth import DEFAULT_SEA_LEVEL_GAME_Y
+from realearth import DEFAULT_SEA_LEVEL_GAME_Y, JsonDict
 from realearth.bake_world import resize_arrays, snap_world_size
 from realearth.density import (
     apply_urban_from_density,
@@ -31,7 +31,11 @@ from realearth.density import (
 from realearth.export_7dtd import export_preview_png
 from realearth.height import compress_elevation
 from realearth.landcover import LandCover
-from realearth.settlements import SEED_SETTLEMENTS, Settlement, edge_radius_m_from_properties
+from realearth.settlements import (
+    SEED_SETTLEMENTS,
+    Settlement,
+    edge_radius_m_from_properties,
+)
 from realearth.viewer_export import mosaic_pack
 
 # Verified against this install's biomes.xml biomemapcolor
@@ -138,7 +142,9 @@ def detect_client_versions() -> tuple[str, str]:
         if root.is_dir():
             logs.extend(root.glob("output_log_client__*.txt"))
             logs.extend(root.glob("**/output_log*.txt"))
-    logs = sorted({p.resolve() for p in logs if p.is_file()}, key=lambda p: p.stat().st_mtime)
+    logs = sorted(
+        {p.resolve() for p in logs if p.is_file()}, key=lambda p: p.stat().st_mtime
+    )
     for log in reversed(logs):
         try:
             text = log.read_text(encoding="utf-8", errors="replace")
@@ -184,7 +190,9 @@ def write_ttw_with_version(
     path.write_bytes(head + bytes(data[9 + old_len :]))
 
 
-def write_map_info(path: Path, size: int, name: str, game_version: str | None = None) -> None:
+def write_map_info(
+    path: Path, size: int, name: str, game_version: str | None = None
+) -> None:
     # If present, GameVersion major must match the client or a warning is shown.
     gv = game_version or detect_game_version_string()
     # World names come from --name (arbitrary text). Escape for the attribute
@@ -239,7 +247,9 @@ def write_spawnpoints(
     lines = ["<spawnpoints>"]
     for i, (wx, wy, wz) in enumerate(pts):
         rot = (i * 37) % 360
-        lines.append(f'    <spawnpoint position="{wx},{wy:.5f},{wz}" rotation="0,{rot},0"/>')
+        lines.append(
+            f'    <spawnpoint position="{wx},{wy:.5f},{wz}" rotation="0,{rot},0"/>'
+        )
     lines.append("</spawnpoints>\n")
     path.write_text("\n".join(lines), encoding="utf-8")
 
@@ -269,12 +279,12 @@ def write_splats(path3: Path, path4: Path, size: int, lc: np.ndarray) -> None:
     Image.fromarray(s4, mode="RGBA").save(path4)
     # half res
     half = size // 2
-    Image.fromarray(s3, mode="RGBA").resize((half, half), Image.Resampling.BILINEAR).save(
-        path3.with_name("splat3_half.png")
-    )
-    Image.fromarray(s4, mode="RGBA").resize((half, half), Image.Resampling.BILINEAR).save(
-        path4.with_name("splat4_half.png")
-    )
+    Image.fromarray(s3, mode="RGBA").resize(
+        (half, half), Image.Resampling.BILINEAR
+    ).save(path3.with_name("splat3_half.png"))
+    Image.fromarray(s4, mode="RGBA").resize(
+        (half, half), Image.Resampling.BILINEAR
+    ).save(path4.with_name("splat4_half.png"))
     # processed = same as full for our purposes
     Image.fromarray(s3, mode="RGBA").save(path3.with_name("splat3_processed.png"))
     Image.fromarray(s4, mode="RGBA").save(path4.with_name("splat4_processed.png"))
@@ -328,7 +338,7 @@ def bake_generated_world(
     sea_level_y: int = DEFAULT_SEA_LEVEL_GAME_Y,
     ttw_template: Path | None = None,
     game_version: str | None = None,
-) -> dict:
+) -> JsonDict:
     """Build a full GeneratedWorlds-compatible continuous map from a tile pack.
 
     Cities: density channel + city cores → vanilla POI stamps in prefabs.xml
@@ -340,10 +350,10 @@ def bake_generated_world(
     out_dir.mkdir(parents=True, exist_ok=True)
 
     data = mosaic_pack(pack_dir)
-    elev = data["elevation"]
-    lc = data["landcover"]
-    pop = data.get("population")
-    man = data["manifest"]
+    elev = data.elevation
+    lc = data.landcover
+    pop = data.population
+    man = data.manifest
     bbox = man.bbox or {"west": -180, "south": -90, "east": 180, "north": 90}
 
     # Resize to world size
@@ -352,7 +362,7 @@ def bake_generated_world(
     # Urban biome from density
     lc_r = apply_urban_from_density(lc_r, pop_r, urban_threshold=90)
 
-    # 1:1 m→block into stock DTM (peaks above 250 clamp in file format only — not a curve)
+    # 1:1 m→block into stock DTM (peaks above 250 clamp in file format only, not a curve)
 
     game_y = compress_elevation(
         elev_r,

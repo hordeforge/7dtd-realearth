@@ -7,8 +7,11 @@ import math
 import unicodedata
 from dataclasses import dataclass
 from pathlib import Path
+from typing import Any
 
 import numpy as np
+
+from realearth import JsonDict
 
 
 def normalize_place_name(name: str) -> str:
@@ -100,7 +103,7 @@ def edge_radius_m_from_bbox(
     return float(max(half_w, half_h, d_corner * 0.85))
 
 
-def _prop_float(props: dict, *keys: str) -> float | None:
+def _prop_float(props: JsonDict, *keys: str) -> float | None:
     for k in keys:
         if k in props and props[k] is not None and props[k] != "":
             try:
@@ -110,7 +113,9 @@ def _prop_float(props: dict, *keys: str) -> float | None:
     return None
 
 
-def edge_radius_m_from_properties(props: dict, lon: float, lat: float) -> float | None:
+def edge_radius_m_from_properties(
+    props: JsonDict, lon: float, lat: float
+) -> float | None:
     """Extract urban edge meters from GeoJSON/JSON properties (map data fields)."""
     direct = _prop_float(
         props,
@@ -128,8 +133,12 @@ def edge_radius_m_from_properties(props: dict, lon: float, lat: float) -> float 
     bbox = props.get("bbox") or props.get("extent")
     if isinstance(bbox, (list, tuple)) and len(bbox) >= 4:
         return edge_radius_m_from_bbox(
-            float(bbox[0]), float(bbox[1]), float(bbox[2]), float(bbox[3]),
-            center_lon=lon, center_lat=lat,
+            float(bbox[0]),
+            float(bbox[1]),
+            float(bbox[2]),
+            float(bbox[3]),
+            center_lon=lon,
+            center_lat=lat,
         )
     w = _prop_float(props, "west", "min_lon", "lon_min")
     s = _prop_float(props, "south", "min_lat", "lat_min")
@@ -171,7 +180,7 @@ SEED_SETTLEMENTS: list[Settlement] = [
 ]
 
 
-def _collect_ring_coords(c, lons: list[float], lats: list[float]) -> None:
+def _collect_ring_coords(c: Any, lons: list[float], lats: list[float]) -> None:
     """Flatten nested GeoJSON coordinate arrays into lon/lat lists."""
     if not c:
         return
@@ -214,8 +223,12 @@ def load_settlements_geojson(path: Path) -> list[Settlement]:
             lon = sum(lons) / len(lons)
             lat = sum(lats) / len(lats)
             edge_from_poly = edge_radius_m_from_bbox(
-                min(lons), min(lats), max(lons), max(lats),
-                center_lon=lon, center_lat=lat,
+                min(lons),
+                min(lats),
+                max(lons),
+                max(lats),
+                center_lon=lon,
+                center_lat=lat,
             )
         else:
             continue
@@ -239,8 +252,8 @@ def load_settlements_geojson(path: Path) -> list[Settlement]:
     return out
 
 
-def settlement_to_json_dict(s: Settlement) -> dict:
-    d: dict = {
+def settlement_to_json_dict(s: Settlement) -> JsonDict:
+    d: JsonDict = {
         "name": s.name,
         "lon": s.lon,
         "lat": s.lat,
@@ -325,15 +338,15 @@ def paint_settlement_density(
     return dens
 
 
-def encode_poi_blob(plan: list[dict]) -> bytes:
+def encode_poi_blob(plan: list[JsonDict]) -> bytes:
     # ensure_ascii=False: POI names are real UTF-8 in the .rte blob (C# decodes
     # with Encoding.UTF8), not \uXXXX escapes.
-    return json.dumps(
-        {"pois": plan}, separators=(",", ":"), ensure_ascii=False
-    ).encode("utf-8")
+    return json.dumps({"pois": plan}, separators=(",", ":"), ensure_ascii=False).encode(
+        "utf-8"
+    )
 
 
-def decode_poi_blob(blob: bytes) -> list[dict]:
+def decode_poi_blob(blob: bytes) -> list[JsonDict]:
     if not blob:
         return []
     return list(json.loads(blob.decode("utf-8")).get("pois", []))

@@ -78,7 +78,9 @@ def test_measure_urban_edge_scratch_reuse_matches_fresh():
 
 def test_edge_from_bbox_and_properties():
     # ~0.2° box at Denver lat → ~ half-width order 10 km
-    r = edge_radius_m_from_bbox(-105.1, 39.65, -104.9, 39.85, center_lon=-105.0, center_lat=39.75)
+    r = edge_radius_m_from_bbox(
+        -105.1, 39.65, -104.9, 39.85, center_lon=-105.0, center_lat=39.75
+    )
     assert 5_000 < r < 30_000
     props = {"edge_radius_m": 12345}
     assert edge_radius_m_from_properties(props, -105.0, 39.75) == 12345
@@ -131,7 +133,7 @@ def test_stamp_prefabs_preserves_h500_and_everest_surface_y():
     )
     assert len(stamps) >= 1
     assert all(s.y == 500 for s in stamps), {s.y for s in stamps}
-    # uint8 wrap would have produced 244 — prove we did not
+    # uint8 wrap would have produced 244, prove we did not
     assert all(s.y != 244 for s in stamps)
 
     gy_eve = np.full((n, n), 8949, dtype=np.int32)
@@ -163,7 +165,6 @@ def test_stamp_prefabs_applies_density_budget_per_chunk():
     for key, c in counts.items():
         assert c <= 2, f"chunk {key} has {c} stamps (budget 2)"
         assert c == clamp_prefabs_in_chunk(c, 2)
-
 
 
 def test_build_region_writes_cities_json(tmp_path: Path):

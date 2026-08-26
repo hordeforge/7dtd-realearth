@@ -50,7 +50,7 @@ def badge(pct: int, fill: str) -> str:
         '<stop offset="1" stop-opacity=".1"/></linearGradient>\n'
         f'<clipPath id="r"><rect width="{label_w + value_w}" height="20" '
         'rx="3" fill="#fff"/></clipPath>\n'
-        "<g clip-path=\"url(#r)\">"
+        '<g clip-path="url(#r)">'
         f'<rect width="{label_w}" height="20" fill="#555"/>'
         f'<rect x="{label_w}" width="{value_w}" height="20" fill="{fill}"/>'
         f'<rect width="{label_w + value_w}" height="20" fill="url(#s)"/></g>\n'

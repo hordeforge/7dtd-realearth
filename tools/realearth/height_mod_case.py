@@ -50,7 +50,9 @@ def run_height_mod_case() -> list[CaseResult]:
     results: list[CaseResult] = []
 
     # 1) Ceiling = sea + Everest + fly headroom (+ pad)
-    expected_ceil = DEFAULT_SEA_LEVEL_GAME_Y + EVEREST_METERS_ASL + FLY_OVER_HEADROOM_M + 51
+    expected_ceil = (
+        DEFAULT_SEA_LEVEL_GAME_Y + EVEREST_METERS_ASL + FLY_OVER_HEADROOM_M + 51
+    )
     ok = ENGINE_TARGET_MAX_Y == 11000 and expected_ceil == ENGINE_TARGET_MAX_Y
     results.append(
         CaseResult(

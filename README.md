@@ -224,7 +224,7 @@ make info # show resolved paths and tool versions
 make test-fast # coordinate, height, and tile smoke tests
 make test-mp # multiplayer window/origin model tests
 make build # compile against the selected game installation
-make check # setup, fast tests, and build
+make check # setup, fast tests, python + TS + HTML lint gates, and build
 ```
 
 If the mod does not load, first confirm that `ModInfo.xml` is directly under

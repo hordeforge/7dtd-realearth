@@ -9,7 +9,11 @@ from pathlib import Path
 import numpy as np
 
 from realearth import DEFAULT_SEA_LEVEL_GAME_Y
-from realearth.generated_world import bake_generated_world, game_y_to_dtm_u16, write_map_info
+from realearth.generated_world import (
+    bake_generated_world,
+    game_y_to_dtm_u16,
+    write_map_info,
+)
 from realearth.region import build_region
 
 

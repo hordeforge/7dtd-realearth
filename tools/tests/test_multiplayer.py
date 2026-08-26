@@ -198,7 +198,9 @@ def test_mp_config_shared_fixed_keys():
     from pathlib import Path
 
     root = Path(__file__).resolve().parents[2]
-    cfg = json.loads((root / "Config" / "realearth.mp.json").read_text(encoding="utf-8"))
+    cfg = json.loads(
+        (root / "Config" / "realearth.mp.json").read_text(encoding="utf-8")
+    )
     assert cfg["MapMode"] == "Streamed"
     assert cfg["MultiplayerOriginMode"] == "SharedFixed"
     assert cfg["EnableEngineHeightMod"] is True
@@ -218,6 +220,5 @@ def test_ensure_hot_mirror_does_not_evict_other_foci():
     hot2 = hot | inject_bubble
     # Eviction still based only on player foci (not inject point)
     gone = tiles_to_evict(hot2, foci, tile_size=512, unload_radius=5)
-    # Inject-only tiles far from both foci may go — player tiles must stay
+    # Inject-only tiles far from both foci may go, player tiles must stay
     assert not (gone & hot)
-

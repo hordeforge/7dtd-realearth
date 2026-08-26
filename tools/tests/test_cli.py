@@ -126,8 +126,17 @@ def test_list_tiles_missing_manifest_is_clean_error(tmp_path: Path) -> None:
 def test_planet_tiles_valid_bbox() -> None:
     result = CliRunner().invoke(
         main,
-        ["planet-tiles", "--west", "-105.3", "--south", "39.5",
-         "--east", "-104.7", "--north", "40.0"],
+        [
+            "planet-tiles",
+            "--west",
+            "-105.3",
+            "--south",
+            "39.5",
+            "--east",
+            "-104.7",
+            "--north",
+            "40.0",
+        ],
     )
     assert result.exit_code == 0
     first, second = result.stdout.splitlines()[:2]
@@ -139,7 +148,17 @@ def test_planet_tiles_valid_bbox() -> None:
 def test_planet_tiles_rejects_inverted_bbox() -> None:
     result = CliRunner().invoke(
         main,
-        ["planet-tiles", "--west", "10", "--south", "50", "--east", "5", "--north", "40"],
+        [
+            "planet-tiles",
+            "--west",
+            "10",
+            "--south",
+            "50",
+            "--east",
+            "5",
+            "--north",
+            "40",
+        ],
     )
     assert result.exit_code == 1
     assert "east>west" in result.stderr
@@ -164,8 +183,19 @@ def test_sample_chunk_requires_origin_pair(tmp_path: Path) -> None:
 def test_sample_chunk_rejects_mixed_location_modes(tmp_path: Path) -> None:
     result = CliRunner().invoke(
         main,
-        ["sample-chunk", "--pack", str(tmp_path),
-         "--lon", "-74", "--lat", "40", "--x", "0", "--z", "0"],
+        [
+            "sample-chunk",
+            "--pack",
+            str(tmp_path),
+            "--lon",
+            "-74",
+            "--lat",
+            "40",
+            "--x",
+            "0",
+            "--z",
+            "0",
+        ],
     )
     assert result.exit_code == 1
     assert "--lon/--lat or --x/--z" in result.stderr

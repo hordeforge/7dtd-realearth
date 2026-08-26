@@ -1,12 +1,12 @@
 """Build height-mod test maps.
 
 Modes:
-  * Everest DEM (default) — real Terrarium meters, 1:1 gameY ≈ 8949
-  * Staged peak (`peak_game_y=500`) — synthetic cone with peak at that game Y
+  * Everest DEM (default): real Terrarium meters, 1:1 gameY ≈ 8949
+  * Staged peak (`peak_game_y=500`): synthetic cone with peak at that game Y
 
 Outputs (Everest):
-  data/samples/height_test/     — .rte pack
-  worlds/RealEarth_HeightTest/  — baked world (DTM clamps ~250)
+  data/samples/height_test/: .rte pack
+  worlds/RealEarth_HeightTest/: baked world (DTM clamps ~250)
 
 Outputs (staged, e.g. 500):
   data/samples/height_test_500/
@@ -26,6 +26,7 @@ from realearth import (
     ENGINE_TARGET_MAX_Y,
     EVEREST_METERS_ASL,
     FLY_OVER_HEADROOM_M,
+    JsonDict,
 )
 from realearth.elevation import fetch_region_open_meteo, fetch_region_terrarium
 from realearth.generated_world import (
@@ -36,13 +37,19 @@ from realearth.generated_world import (
 )
 from realearth.height import compress_elevation
 from realearth.landcover import LandCover
-from realearth.tile_format import EarthTile, Manifest, tile_path, write_manifest, write_tile
+from realearth.tile_format import (
+    EarthTile,
+    Manifest,
+    tile_path,
+    write_manifest,
+    write_tile,
+)
 from realearth.viewer_export import mosaic_pack
 
 # Local pack size (single .rte tile)
 TILE = 512
 
-# Mount Everest summit ≈ 86.925°E, 27.988°N — small Himalaya footprint
+# Mount Everest summit ≈ 86.925°E, 27.988°N, small Himalaya footprint
 EVEREST_BBOX = {
     "west": 86.80,
     "south": 27.88,
@@ -109,7 +116,9 @@ def fetch_everest_elevation(
     sources: list[str] = []
 
     if source == "synthetic":
-        return everest_cone_elevation(size), ["synthetic Everest cone (offline fallback)"]
+        return everest_cone_elevation(size), [
+            "synthetic Everest cone (offline fallback)"
+        ]
 
     try:
         if source == "open_meteo":
@@ -129,7 +138,9 @@ def fetch_everest_elevation(
         elev = np.asarray(elev, dtype=np.float32)
         if elev.shape != (size, size):
             elev = np.asarray(
-                Image.fromarray(elev, mode="F").resize((size, size), Image.Resampling.BILINEAR),
+                Image.fromarray(elev, mode="F").resize(
+                    (size, size), Image.Resampling.BILINEAR
+                ),
                 dtype=np.float32,
             )
         # NaN fill from neighbors / synthetic
@@ -174,14 +185,16 @@ def build_height_test_pack(
     size: int = TILE,
     peak_game_y: int | None = None,
     name: str | None = None,
-) -> dict:
+) -> JsonDict:
     """Write .rte pack from real Everest DEM, synthetic Everest, or staged peak_game_y."""
     out_dir = Path(out_dir)
     out_dir.mkdir(parents=True, exist_ok=True)
 
-    staged = peak_game_y is not None and peak_game_y > 0
-    if staged:
-        pg = int(peak_game_y)
+    # A staged run is driven entirely by a positive peak_game_y; binding it once
+    # keeps the staged branch free of re-narrowing.
+    pg = peak_game_y if peak_game_y is not None and peak_game_y > 0 else None
+    staged = pg is not None
+    if pg is not None:
         elev = staged_peak_elevation(size, peak_game_y=pg)
         sources = [
             f"synthetic staged cone peak_game_y={pg}",
@@ -252,7 +265,7 @@ def build_height_test_pack(
         "sea_level_game_y": DEFAULT_SEA_LEVEL_GAME_Y,
         "engine_max_game_y": engine_max,
         "peak_game_y_one_to_one": peak_game_1to1,
-        "target_peak_game_y": int(peak_game_y) if staged else peak_game_1to1,
+        "target_peak_game_y": pg if pg is not None else peak_game_1to1,
         "staged": staged,
         "fly_headroom_m": 0 if staged else FLY_OVER_HEADROOM_M,
         "blocks_above_peak": max(0, engine_max - peak_game_1to1),
@@ -264,9 +277,7 @@ def build_height_test_pack(
         "how_to_play": {
             "engine": "make engine-expand  # YDim=16384",
             "install": (
-                "make install-height-500"
-                if staged and int(peak_game_y or 0) == 500
-                else "make install-height"
+                "make install-height-500" if pg == 500 else "make install-height"
             ),
             "streamed": "MapMode=Streamed + Data/tiles (this pack), host ~512",
             "baked": f"New Game → {world_name} (DTM 1:1 clamped ~250 at peak)",
@@ -294,14 +305,14 @@ def build_height_test_pack(
 
     def _norm(a: np.ndarray) -> np.ndarray:
         a = a.astype(np.float64)
-        return np.clip((a - a.min()) / max(1e-6, a.max() - a.min()) * 255, 0, 255).astype(
-            np.uint8
-        )
+        return np.clip(
+            (a - a.min()) / max(1e-6, a.max() - a.min()) * 255, 0, 255
+        ).astype(np.uint8)
 
     Image.fromarray(_norm(elev), mode="L").save(out_dir / "preview_elev_m.png")
-    Image.fromarray(np.clip(np.asarray(game_stock), 0, 255).astype(np.uint8), mode="L").save(
-        out_dir / "preview_game_y_stock.png"
-    )
+    Image.fromarray(
+        np.clip(np.asarray(game_stock), 0, 255).astype(np.uint8), mode="L"
+    ).save(out_dir / "preview_game_y_stock.png")
     Image.fromarray(_norm(game_mod.astype(np.float64)), mode="L").save(
         out_dir / "preview_game_y_heightmod.png"
     )
@@ -323,7 +334,7 @@ def bake_height_test_world(
     *,
     size: int = 2048,
     name: str | None = None,
-) -> dict:
+) -> JsonDict:
     """Bake playable GeneratedWorld; DTM is 1:1 into stock range (peak clamps ~250)."""
     pack_dir = Path(pack_dir)
     out_dir = Path(out_dir)
@@ -331,7 +342,10 @@ def bake_height_test_world(
     if name is None:
         ht = pack_dir / "height_test.json"
         if ht.is_file():
-            name = json.loads(ht.read_text(encoding="utf-8")).get("name") or "RealEarth_HeightTest"
+            name = (
+                json.loads(ht.read_text(encoding="utf-8")).get("name")
+                or "RealEarth_HeightTest"
+            )
         else:
             name = "RealEarth_HeightTest"
 
@@ -344,7 +358,7 @@ def bake_height_test_world(
     )
 
     data = mosaic_pack(pack_dir)
-    elev = data["elevation"]
+    elev = data.elevation
     elev_i = Image.fromarray(np.asarray(elev, dtype=np.float32), mode="F")
     elev_r = np.asarray(
         elev_i.resize((size, size), Image.Resampling.BILINEAR), dtype=np.float32
@@ -389,8 +403,12 @@ def bake_height_test_world(
     pack_h, pack_w = elev.shape
     wx = int(px * size / pack_w) - half
     wz = int(pz * size / pack_h) - half
-    peak_gy = int(game_y[pz * size // pack_h if False else min(size - 1, int(pz * size / pack_h)),
-                         min(size - 1, int(px * size / pack_w))])
+    peak_gy = int(
+        game_y[
+            pz * size // pack_h if False else min(size - 1, int(pz * size / pack_h)),
+            min(size - 1, int(px * size / pack_w)),
+        ]
+    )
     # fix indices properly
     iz = min(size - 1, int(pz * size / pack_h))
     ix = min(size - 1, int(px * size / pack_w))
@@ -440,11 +458,11 @@ def build_all(
     terrarium_zoom: int = 11,
     pack_size: int = TILE,
     peak_game_y: int | None = None,
-) -> dict:
+) -> JsonDict:
     root = Path(repo_root) if repo_root else Path(__file__).resolve().parents[2]
-    staged = peak_game_y is not None and peak_game_y > 0
-    if staged:
-        pg = int(peak_game_y)
+    pg = peak_game_y if peak_game_y is not None and peak_game_y > 0 else None
+    staged = pg is not None
+    if pg is not None:
         pack = root / "data" / "samples" / f"height_test_{pg}"
         world = root / "worlds" / f"RealEarth_H{pg}"
         world_name = f"RealEarth_H{pg}"
