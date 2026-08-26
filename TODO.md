@@ -9,7 +9,7 @@ provenance and distinguish prototypes from verified in-game behavior.
 ## Next
 
 - [x] Prioritized implementation plan in-repo (`docs/IMPLEMENTATION_PLAN.md`)
-- [x] P0–P8 offline cores: ExpandProductGuard, inject fail-closed (EngineHeight path), SessionOriginPolicy, StampSurfaceY, SessionStateStore, DensityBudget, CdnTilePolicy, SparseYScaffold
+- [x] P0–P8 offline cores: ExpandProductGuard, inject fail-closed (EngineHeight path), SessionOriginPolicy, StampSurfaceY, SessionStateStore, DensityBudget, CdnTilePolicy, AbsoluteHeightStore (SparseYScaffold removed as dead)
 - [x] Offline tests: `test_phase_cores.py` + inject math; loadgen `re-phase-offline-gate`
 - [ ] Retarget and live-test runtime chunk terrain/density hooks against the
   supported 7DTD `Assembly-CSharp.dll` build.

@@ -277,7 +277,7 @@ These shaped P0-P8 offline cores:
 | EngineHeight fail-closed not wired | Product could claim 1:1 without expand or tiles |
 | Stamp uint8 | Density stamps unusable above 255 |
 | Dead DensityBudget | Cap theater |
-| Offline pure modules first | ExpandProductGuard, HeightInjectMath, SessionOriginPolicy, StampSurfaceY, SessionStateStore, DensityBudget, CdnTilePolicy, SparseYScaffold |
+| Offline pure modules first | ExpandProductGuard, HeightInjectMath, SessionOriginPolicy, StampSurfaceY, SessionStateStore, DensityBudget, CdnTilePolicy, SparseYScaffold (later removed as dead; AbsoluteHeightStore keeps the sparse cache) |
 | Live inject not Done | Status discipline: offline green ≠ live soak |
 
 ---

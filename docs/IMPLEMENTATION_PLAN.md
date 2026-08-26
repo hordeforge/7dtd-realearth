@@ -75,7 +75,7 @@
 | P5 | SharedFixed via `SessionOriginPolicy` + `realearth.mp.json` | `test_p5_*` |
 | P6 | `DensityBudget` + `clamp_prefabs_in_chunk` inside stamp planner | `test_stamp_prefabs_applies_density_budget_*` |
 | P7 | `CdnTilePolicy` + TileStreamer CDN URL | `test_p7_*` |
-| P8 | AbsoluteHeightStore (SparseYScaffold section math removed as dead) | `test_p8_*` |
+| P8 | AbsoluteHeightStore (SparseYScaffold section math removed as dead) | `test_phase_cores.py::test_absolute_height_store_earth_key`, `test_engine_constants.py::test_absolute_height_store_csharp_has_sparse_api` |
 
 Also: `InjectPatchStats`, `reinject` console, loadgen run manifests.
 
