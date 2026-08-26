@@ -1,7 +1,7 @@
 # RealEarth Python tools (run from tools/ or: make -C tools <target>)
 
 .DEFAULT_GOAL := help
-.PHONY: help setup sync test test-height height-test engine-audit \
+.PHONY: help setup sync test test-one test-height height-test engine-audit \
 	demo height-map height-map-install bake sample-chunk serve lint info clean
 
 ROOT   := $(abspath $(dir $(lastword $(MAKEFILE_LIST)))/..)
@@ -18,6 +18,7 @@ help:
 	@echo ""
 	@echo "  make setup | sync       uv sync --locked --extra dev"
 	@echo "  make test               Full pytest suite"
+	@echo "  make test-one T=tests/test_coords.py   Single file (or -k expr)"
 	@echo "  make test-height        Height mod + map tests"
 	@echo "  make height-test        CLI height-mod smoke case"
 	@echo "  make engine-audit       Probe 7DTD YDim constants"
@@ -38,6 +39,15 @@ setup sync:
 
 test:
 	$(PYTEST) -q --tb=short
+
+# Single test file / node / -k expression, e.g.:
+#   make test-one T=tests/test_coords.py
+#   make test-one T=tests/test_coords.py::test_lonlat_wrap
+#   make test-one T=-kwrap
+T ?=
+test-one:
+	@test -n "$(T)" || { echo "ERROR: pass T=<tests/file.py[::node] | -k expr>" >&2; exit 1; }
+	$(PYTEST) $(T) -q --tb=short
 
 test-height:
 	$(PYTEST) tests/test_height_mod_case.py tests/test_height_10k.py \
@@ -70,9 +80,9 @@ serve:
 	$(REEARTH) serve --port 8765 --root $(ROOT)/viewer
 
 lint:
-	$(UV) run --extra dev ruff check realearth tests ../scripts
-	$(UV) run --extra dev black --check realearth tests ../scripts
-	$(UV) run --extra dev mypy realearth
+	$(UV) run --locked --extra dev ruff check realearth tests ../scripts
+	$(UV) run --locked --extra dev black --check realearth tests ../scripts
+	$(UV) run --locked --extra dev mypy realearth
 
 info:
 	$(REEARTH) info

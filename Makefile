@@ -7,8 +7,8 @@ SHELL := /bin/bash
 .DEFAULT_GOAL := help
 .PHONY: help help-all \
 	setup tools-sync \
-	test test-fast test-height test-python test-mp coverage \
-	build build-mod dll \
+	test test-fast test-height test-python test-mp test-one coverage \
+	build build-mod dll build-npi \
 	install install-full install-baked install-streamed install-height install-height-500 \
 	install-height-pack-everest \
 	height-test height-map height-map-500 height-map-install height-map-500-install \
@@ -17,6 +17,7 @@ SHELL := /bin/bash
 	artifacts-backup artifacts-restore \
 	viewer viewer-build serve viewer-lint \
 	webmod webmod-export webmod-lint html-lint \
+	shellcheck \
 	info check clean clean-build
 
 # ---------------------------------------------------------------------------
@@ -121,9 +122,14 @@ help:
 	@echo ""
 	@echo "  Tests"
 	@echo "    make test               Full Python test suite"
+	@echo "    make test-one T=tests/test_coords.py   Single file (or -k expr)"
 	@echo "    make test-height        Height mod + height-test map tests only"
 	@echo "    make test-fast          Quick subset (coords, height, tiles)"
 	@echo "    make lint               Ruff + black --check + mypy over tools/ and scripts/"
+	@echo ""
+	@echo "  CI parity (what .github/workflows/ci.yml runs beyond the targets above)"
+	@echo "    make shellcheck         Lint scripts/*.sh"
+	@echo "    make build-npi          Build NetworkProtocolInspector (C# analysis gate)"
 	@echo ""
 	@echo "  Viewer"
 	@echo "    make viewer             Export demo pack into viewer/data/demo"
@@ -173,6 +179,12 @@ build build-mod dll:
 	@echo "Building $(CSPROJ) → Release"
 	dotnet build "$(CSPROJ)" -c Release -p:GameDir="$(GAME_DIR)"
 	@test -f "$(DLL_OUT)" && ls -la "$(DLL_OUT)"
+
+# NetworkProtocolInspector builds standalone (no game DLLs needed) and is the
+# C# piece CI compiles; keep it one command locally so a push never surprises.
+build-npi:
+	@command -v dotnet >/dev/null || { echo "ERROR: dotnet not on PATH (set DOTNET_ROOT=...)" >&2; exit 1; }
+	dotnet build "$(ROOT)/tools/network_protocol_inspector/NetworkProtocolInspector.csproj" -c Release
 
 install: build
 	@echo "Installing (MAP_MODE=$(MAP_MODE)) → $(GAME_DIR)"
@@ -306,10 +318,25 @@ artifacts-restore:
 test test-python:
 	@$(PYTEST) -q --tb=short
 
+# Single test file / node / -k expression, e.g.:
+#   make test-one T=tests/test_coords.py
+#   make test-one T=tests/test_coords.py::test_lonlat_wrap
+#   make test-one T=-kwrap
+T ?=
+test-one:
+	@test -n "$(T)" || { echo "ERROR: pass T=<tests/file.py[::node] | -k expr>" >&2; exit 1; }
+	@$(PYTEST) $(T) -q --tb=short
+
 lint lint-python:
 	@$(RUFF)
 	@$(BLACK)
 	@$(MYPY)
+
+# CI runs this on every push; run it before committing shell changes.
+shellcheck:
+	@command -v shellcheck >/dev/null \
+		|| { echo "ERROR: shellcheck not installed (apt install shellcheck / brew install shellcheck)" >&2; exit 1; }
+	@shellcheck "$(SCRIPTS)"/*.sh && echo "OK shellcheck (scripts/*.sh)"
 
 test-height:
 	@$(PYTEST) tests/test_height_mod_case.py tests/test_height_10k.py \
@@ -342,8 +369,10 @@ coverage:
 		tests/test_local_window.py tests/test_mp_runtime_structure.py -q --tb=line
 	cd $(TOOLS) && $(COV) report -m
 
-check: setup test-fast lint-python build viewer-build viewer-lint webmod-lint html-lint
-	@echo "OK check (setup + test-fast + lint-python + build + viewer-build + viewer-lint + webmod-lint + html-lint)"
+# Everything CI's tools job runs, as one local step (minus the viewer/webmod
+# lint toolchains' first-run downloads). Keep in sync with ci.yml.
+check: setup test-fast lint-python shellcheck build-npi build viewer-build viewer-lint webmod-lint html-lint
+	@echo "OK check (setup + test-fast + lint-python + shellcheck + build-npi + build + viewer/webmod/html lint)"
 
 # ---------------------------------------------------------------------------
 # Viewer

@@ -38,6 +38,16 @@
     <GameDir Condition="'$(GameDir)' == ''">$(HOME)/.local/share/Steam/steamapps/common/7 Days To Die</GameDir>
   </PropertyGroup>
 
+  <!-- Name the real problem instead of failing with a page of CS0246
+       "type or namespace not found" once the conditional References above are
+       dropped. Runs before compile so the message is the only failure. -->
+  <Target Name="CheckGameReferences" BeforeTargets="BeforeBuild">
+    <Error Condition="!Exists('$(GameDir)/7DaysToDie_Data/Managed/Assembly-CSharp.dll')"
+           Text="Game assemblies not found under $(GameDir)/7DaysToDie_Data/Managed. Set SEVENDTD_GAME_DIR to the '7 Days To Die' install (or pass GAME_DIR=... to make / GameDir=... to dotnet). See README 'Build the C# mod'." />
+    <Error Condition="Exists('$(GameDir)/7DaysToDie_Data/Managed/Assembly-CSharp.dll') AND !Exists('$(GameDir)/Mods/0_TFP_Harmony/0Harmony.dll')"
+           Text="0Harmony.dll not found at $(GameDir)/Mods/0_TFP_Harmony/. Install the TFP Harmony modlet into this game copy (see docs/MODLET.md), or point GameDir at an install that has it." />
+  </Target>
+
   <ItemGroup>
     <Reference Include="System.Net.Http" />
   </ItemGroup>
