@@ -66,22 +66,8 @@ def landcover_to_vanilla_biome_rgb(lc: np.ndarray) -> np.ndarray:
     h, w = arr.shape
     rgb = np.zeros((h, w, 3), dtype=np.uint8)
     rgb[:] = (0, 64, 0)  # default pine_forest
-    mapping = {
-        int(LandCover.OCEAN): (0, 64, 0),
-        int(LandCover.INLAND_WATER): (0, 64, 0),
-        int(LandCover.ICE): (255, 255, 255),
-        int(LandCover.SNOW): (255, 255, 255),
-        int(LandCover.DESERT): (255, 228, 119),
-        int(LandCover.SHRUB): (255, 228, 119),
-        int(LandCover.BARREN): (186, 0, 255),
-        int(LandCover.URBAN): (255, 168, 0),
-        int(LandCover.FOREST): (0, 64, 0),
-        int(LandCover.GRASS): (0, 64, 0),
-        int(LandCover.CROPLAND): (0, 64, 0),
-        int(LandCover.WETLAND): (0, 64, 0),
-    }
-    for code, color in mapping.items():
-        mask = arr == code
+    for code, color in BIOME_RGB.items():
+        mask = arr == int(code)
         if np.any(mask):
             rgb[mask] = color
     return rgb
@@ -436,10 +422,9 @@ def bake_generated_world(
     map_ver, ttw_ver = detect_client_versions()
     if game_version:
         map_ver = game_version
-        # If caller passed map_info form only, keep live ttw stamp for major match
-        if game_version.startswith("V.") and " " not in game_version:
-            pass  # ttw_ver stays from client
-        else:
+        # Dotted map_info form only ("V.3.0.1"): keep the live client ttw stamp,
+        # which carries the full "V x.y.z (bN)" string the major check wants.
+        if not (game_version.startswith("V.") and " " not in game_version):
             ttw_ver = game_version
     write_map_info(out_dir / "map_info.xml", size, name, game_version=map_ver)
     write_spawnpoints(out_dir / "spawnpoints.xml", size, game_y, sea_level=sea_level_y)
