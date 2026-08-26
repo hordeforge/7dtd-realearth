@@ -41,7 +41,7 @@ namespace RealEarth
 
             try
             {
-                var harmonyType = FindType("HarmonyLib.Harmony", "0Harmony");
+                var harmonyType = EngineReflection.FindType("HarmonyLib.Harmony", "0Harmony");
                 if (harmonyType == null)
                 {
                     // Do not set _applied: WorldReady / player tick may retry when assemblies load.
@@ -143,12 +143,6 @@ namespace RealEarth
             }
             EnforceInjectGate();
         }
-
-        /// <summary>
-        /// Harmony types resolve with an assembly hint through the shared cached scanner.
-        /// </summary>
-        static Type? FindType(string fullName, string? asmHint = null)
-            => EngineReflection.FindType(fullName, asmHint);
 
         static MethodInfo? FindMethod(Type type, string name)
         {
@@ -511,7 +505,7 @@ namespace RealEarth
                 if (!_patchedMethods.Add(target))
                     return false;
 
-                var harmonyMethodType = FindType("HarmonyLib.HarmonyMethod", "0Harmony");
+                var harmonyMethodType = EngineReflection.FindType("HarmonyLib.HarmonyMethod", "0Harmony");
                 var harmonyType = _harmony.GetType();
                 if (harmonyMethodType == null)
                 {
