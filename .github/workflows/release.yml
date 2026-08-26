@@ -7,9 +7,12 @@ name: release
 #
 # The mod archive is deliberately NOT built here. `make package` compiles
 # against the dedicated server's own assemblies, which a hosted runner does
-# not have; a maintainer with a game install runs `make package` and attaches
-# the zip. Gating the tag is the half that can be proven automatically, and
-# asserting the other half here would be a claim, not evidence.
+# not have; a maintainer with a game install runs `make package`, which
+# assembles dist/RealEarth/ and writes the deterministic dist/RealEarth-v*.zip
+# (fixed entry order, timestamps, and permissions, plus sha256 + buildinfo
+# sidecars) via scripts/package_zip.sh. Gating the tag is the half that can be
+# proven automatically, and asserting the other half here would be a claim,
+# not evidence.
 
 on:
   push:

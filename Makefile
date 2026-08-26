@@ -103,7 +103,7 @@ help:
 	@echo "    make install-streamed   Same with MAP_MODE=Streamed"
 	@echo "    make install-height     Height-test map + install (Everest DEM)"
 	@echo "    make install-height-500 Staged 500-block peak map + install (fast test)"
-	@echo "    make package            dist/RealEarth (+ Tools/ YDim expand)"
+	@echo "    make package            dist/RealEarth folder + deterministic zip (release artifact)"
 	@echo ""
 	@echo "  Height mod"
 	@echo "    make height-test        Offline height-mod smoke (Everest + fly room)"
@@ -198,7 +198,8 @@ install-height: height-map-install
 package: build webmod
 	@chmod +x "$(SCRIPTS)/apply_engine_expand.sh" 2>/dev/null || true
 	@GAME_DIR="$(GAME_DIR)" "$(SCRIPTS)/package_mod.sh" "$(ROOT)/dist/RealEarth"
-	@echo "OK package → $(ROOT)/dist/RealEarth (includes Tools/ YDim expand + WebMod webui)"
+	@"$(SCRIPTS)/package_zip.sh" "$(ROOT)/dist/RealEarth"
+	@echo "OK package → $(ROOT)/dist/RealEarth (+ RealEarth-v*.zip, sha256 + buildinfo sidecars; includes Tools/ YDim expand + WebMod webui)"
 
 # ---------------------------------------------------------------------------
 # Height mod
@@ -337,7 +338,7 @@ test-fast:
 		tests/test_region.py tests/test_viewer_export.py \
 		tests/test_proton_paths.py tests/test_elevation_terrarium.py \
 		tests/test_multiplayer.py tests/test_host_fold.py tests/test_local_window.py \
-		tests/test_mp_runtime_structure.py -q --tb=line
+		tests/test_mp_runtime_structure.py tests/test_package_zip.py -q --tb=line
 
 # Line coverage of the realearth package under the same fast pytest list
 # test-fast runs. Writes tools/.coverage; CI renders it into the README

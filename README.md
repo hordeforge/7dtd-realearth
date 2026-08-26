@@ -42,7 +42,7 @@ make test # Python tests
 make build # RealEarth.dll
 make install-full # YDim expand (part of RealEarth) + mod install
 make install # mod only (still need expand for real height)
-make package # dist/RealEarth (+ Tools/ expand)
+make package # dist/RealEarth folder + deterministic RealEarth-v*.zip
 make install-height-500 # staged H500 pack
 make engine-expand # YDim expand alone (client + dedicated)
 make dedicated-height-test # SharedFixed MP config + YDim soak

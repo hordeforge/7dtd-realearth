@@ -13,6 +13,12 @@ tags are `v<version>`.
 
 ### Added
 
+- Deterministic release zip: `make package` now also writes
+  `dist/RealEarth-v<version>.zip` through `scripts/package_zip.sh` with sorted
+  entries, one fixed timestamp (`SOURCE_DATE_EPOCH`, else the commit date of
+  `ModInfo.xml`), normalized permissions, and `.sha256` / `.buildinfo.txt`
+  sidecars. Two builds of the same source produce identical archive bytes;
+  hand-rolled zips with host mtimes are no longer part of the release path.
 - Artifact durability net: `make artifacts-backup` writes a checksum-verified
   archive of worlds, region packs, the Terrarium tile cache, and viewer data;
   `make artifacts-restore ARCHIVE=path.tar.gz` restores it and refuses to
