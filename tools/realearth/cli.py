@@ -594,6 +594,7 @@ def sample_chunk_cmd(
     pack XZ → decode tile → compress elevation → 16×16 game heights.
     """
     from realearth.streamed_chunk import (
+        TileCache,
         demo_pack_chunk_at_lonlat,
         fill_chunk_heights,
         fill_chunk_landcover,
@@ -628,8 +629,14 @@ def sample_chunk_cmd(
     ox = origin_x if origin_x is not None else 0
     oz = origin_z if origin_z is not None else 0
 
-    heights = fill_chunk_heights(pack, ox, oz, chunk_size=chunk_size, sea_level_y=sea)
-    lc = fill_chunk_landcover(pack, ox, oz, chunk_size=chunk_size)
+    # One decode cache for both channels: a chunk spans up to 2x2 tiles and each
+    # would otherwise be read + inflated twice (same pattern as
+    # fill_chunk_from_local_window).
+    tile_cache: TileCache = {}
+    heights = fill_chunk_heights(
+        pack, ox, oz, chunk_size=chunk_size, sea_level_y=sea, cache=tile_cache
+    )
+    lc = fill_chunk_landcover(pack, ox, oz, chunk_size=chunk_size, cache=tile_cache)
     mid = chunk_size // 2
     click.echo(f"chunk origin ({ox},{oz}) size={chunk_size}")
     click.echo(

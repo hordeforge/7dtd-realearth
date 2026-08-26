@@ -176,7 +176,11 @@ namespace RealEarth
                 throw new InvalidDataException("zlib payload too short");
             using var input = new MemoryStream(zlibData, 2, zlibData.Length - 6);
             using var def = new DeflateStream(input, CompressionMode.Decompress);
-            var output = new MemoryStream();
+            // Callers pass the exact section size as the cap; reserving it up front
+            // avoids the 80 KB doubling growth (realloc + copy per step) while
+            // decoding multi-MB elevation sections.
+            int capacity = maxOutputBytes > int.MaxValue ? int.MaxValue : (int)maxOutputBytes;
+            var output = new MemoryStream(capacity > 0 ? capacity : 0);
             var buffer = new byte[81920];
             while (true)
             {
