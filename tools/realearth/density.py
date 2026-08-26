@@ -13,6 +13,7 @@ import json
 import math
 from dataclasses import asdict, dataclass
 from pathlib import Path
+from xml.sax.saxutils import escape as saxutils_escape
 
 import numpy as np
 
@@ -648,9 +649,17 @@ def _dedupe_stamps(stamps: list[PrefabStamp], min_dist: int = 20) -> list[Prefab
 
 def write_prefabs_xml(path: Path, stamps: list[PrefabStamp]) -> None:
     lines = ['<?xml version="1.0" encoding="UTF-8"?>', "<prefabs>"]
+
+    def attr(name: str) -> str:
+        # Stamp names are vanilla prefab ids today, but the writer is shared
+        # with any future settlement-derived naming; escape for the attribute
+        # context so '&', '<', '>' and quotes cannot break prefabs.xml
+        # (same as map_info.xml).
+        return saxutils_escape(name, {'"': "&quot;"})
+
     # y from terrain; rotation 0-3 as RWG uses
     lines.extend(
-        f'  <decoration type="model" name="{s.name}" '
+        f'  <decoration type="model" name="{attr(s.name)}" '
         f'position="{s.world_x},{s.y},{s.world_z}" rotation="{s.rotation}" />'
         for s in stamps
     )

@@ -115,6 +115,44 @@ def test_detect_cores_and_prefabs(tmp_path: Path):
     assert 'type="model"' in text
 
 
+def test_write_prefabs_xml_escapes_names(tmp_path: Path):
+    """Attribute values must not be able to break out of prefabs.xml."""
+    from realearth.density import PrefabStamp
+
+    stamps = [
+        PrefabStamp(
+            name='x" /><evil foo="1',
+            band="town",
+            world_x=0,
+            world_z=0,
+            y=10,
+            rotation=0,
+            density_byte=100,
+        )
+    ]
+    write_prefabs_xml(tmp_path / "prefabs.xml", stamps)
+    import xml.etree.ElementTree as ET
+
+    root = ET.parse(tmp_path / "prefabs.xml").getroot()
+    deco = root.findall("decoration")
+    assert len(deco) == 1
+    assert deco[0].get("name") == 'x" /><evil foo="1'
+    # Vanilla pool ids pass through byte-identical.
+    plain = [
+        PrefabStamp(
+            name="gas_station_05",
+            band="town",
+            world_x=1,
+            world_z=2,
+            y=3,
+            rotation=1,
+            density_byte=50,
+        )
+    ]
+    write_prefabs_xml(tmp_path / "plain.xml", plain)
+    assert 'name="gas_station_05"' in (tmp_path / "plain.xml").read_text()
+
+
 def test_stamp_prefabs_preserves_h500_and_everest_surface_y():
     """Drive stamp_prefabs_from_density with tall game_y (not uint8-truncated)."""
     n = 48
