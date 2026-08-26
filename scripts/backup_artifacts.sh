@@ -52,6 +52,14 @@ cmd_backup() {
   # silently overwrite the earlier archive; UTC is unique and sorts by creation.
   stamp="$(date -u +%Y%m%dT%H%M%S)"
   local archive="$BACKUP_DIR/realearth-artifacts-$stamp.tar.gz"
+  # The stamp resolves to one second; a second backup inside that same second
+  # would otherwise overwrite the earlier archive and destroy a durable copy.
+  # Bump a suffix until the name is free so every backup run is its own artifact.
+  local n=1
+  while [[ -e "$archive" ]]; do
+    archive="$BACKUP_DIR/realearth-artifacts-$stamp.$n.tar.gz"
+    n=$((n + 1))
+  done
   local dirs
   dirs="$(present_dirs)"
   if [[ -z "$dirs" ]]; then
@@ -120,7 +128,13 @@ cmd_restore() {
     if [[ -e "$ROOT/$d" ]]; then
       if [[ "${RE_FORCE_RESTORE:-0}" == "1" ]]; then
         echo "Moving existing $d aside (RE_FORCE_RESTORE=1)..."
-        mv "$ROOT/$d" "$ROOT/${d}.pre-restore-$(date -u +%Y%m%dT%H%M%S)"
+        local aside="$ROOT/${d}.pre-restore-$(date -u +%Y%m%dT%H%M%S)"
+        local m=1
+        while [[ -e "$aside" ]]; do
+          aside="$ROOT/${d}.pre-restore-$(date -u +%Y%m%dT%H%M%S).$m"
+          m=$((m + 1))
+        done
+        mv "$ROOT/$d" "$aside"
       else
         conflicts+=("$d")
       fi
