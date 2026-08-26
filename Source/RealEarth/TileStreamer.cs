@@ -33,6 +33,14 @@ namespace RealEarth
         readonly object _lock = new object();
         readonly HttpClient _http;
 
+        /// <summary>
+        /// Millisecond tick source with Environment.TickCount semantics (unchecked
+        /// wrap-safe deltas). Injectable so every time-driven decision in the cache
+        /// (miss negative-cache, stale-focus sweep, sync-load wait bounds) can be
+        /// stepped by virtual time in a deterministic harness instead of wall clock.
+        /// </summary>
+        internal Func<int> TickNow { get; set; } = static () => Environment.TickCount;
+
         const int MissCacheMs = 10_000;
         /// <summary>
         /// Deadline for the streamed CDN body copy (matches the HttpClient header
@@ -119,7 +127,7 @@ namespace RealEarth
             // cannot change anything (this focus's tiles are never evicted while it is a
             // registered center), so skip both instead of re-walking every hot tile
             // under the lock the height-sample hot path shares.
-            int now = Environment.TickCount;
+            int now = TickNow();
             bool droppedStale;
             lock (_lock)
             {
@@ -219,7 +227,7 @@ namespace RealEarth
             // Hot path (per block sample / player tick): one lock pass filters already-hot
             // and miss-cached tiles; only genuine misses go through EnsureTile.
             List<long>? missing = null;
-            int now = Environment.TickCount;
+            int now = TickNow();
             lock (_lock)
             {
                 for (int dz = -radius; dz <= radius; dz++)
@@ -290,7 +298,7 @@ namespace RealEarth
                     return true;
                 }
                 // Same negative-cache filter as EnsureRadius: do not re-queue within deadline.
-                int now = Environment.TickCount;
+                int now = TickNow();
                 if (_missUntilTick.TryGetValue(key, out int until)
                     && unchecked(now - until) < 0)
                 {
@@ -332,7 +340,7 @@ namespace RealEarth
                 // Miss cache is for async/query path only. Gen sync-load must retry after transient fails.
                 if (!allowSyncLoad
                     && _missUntilTick.TryGetValue(key, out int until)
-                    && unchecked(Environment.TickCount - until) < 0)
+                    && unchecked(TickNow() - until) < 0)
                     return;
             }
 
@@ -378,7 +386,7 @@ namespace RealEarth
         /// </summary>
         bool WaitForHotOrClaim(long key, int maxWaitMs)
         {
-            int start = Environment.TickCount;
+            int start = TickNow();
             while (true)
             {
                 lock (_lock)
@@ -391,7 +399,7 @@ namespace RealEarth
                         return true;
                     }
                 }
-                if (unchecked(Environment.TickCount - start) > maxWaitMs)
+                if (unchecked(TickNow() - start) > maxWaitMs)
                 {
                     // Timed out waiting; claim anyway so we can force a sync load after.
                     lock (_lock)
@@ -522,14 +530,14 @@ namespace RealEarth
             {
                 if (_missUntilTick.Count >= MissCachePruneThreshold)
                     PruneExpiredMissesLocked();
-                _missUntilTick[key] = Environment.TickCount + MissCacheMs;
+                _missUntilTick[key] = TickNow() + MissCacheMs;
             }
         }
 
         /// <summary>Caller holds _lock. Drop deadlines already past (same wrap math as readers).</summary>
         void PruneExpiredMissesLocked()
         {
-            int now = Environment.TickCount;
+            int now = TickNow();
             List<long>? expired = null;
             foreach (var kv in _missUntilTick)
             {
