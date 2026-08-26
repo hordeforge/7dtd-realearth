@@ -38,7 +38,7 @@ Workspace root guide: [`hordeforge/.github` MODDING_BEST_PRACTICES.md](https://g
 make help
 make setup                 # uv sync tools + check game path
 make test                  # Python tests
-make lint                  # Ruff + black --check (tools/, scripts/) + mypy (tools/realearth)
+make lint                  # Ruff + black --check (tools/, scripts/) + mypy (tools/realearth, scripts/)
 make test-mp               # multiplayer origin/bubble unit tests
 make build                 # RealEarth.dll
 make install               # mod only (still needs expand for real height)
