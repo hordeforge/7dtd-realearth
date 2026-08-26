@@ -247,7 +247,10 @@ can replace patched assemblies, so audit and reapply deliberately afterward.
 ## Contributing
 
 Keep Python pipeline changes deterministic and cover coordinate, wrapping,
-height, and tile-format behavior with tests under `tools/tests/`. C# Harmony
+height, and tile-format behavior with tests under `tools/tests/`. While
+iterating, run a single test instead of the whole suite:
+`make test-one T=tests/test_coords.py::test_wrap_x`. Changes under `scripts/`
+must pass the ShellCheck gate CI runs: `make lint-shell`. C# Harmony
 changes must be checked against the exact supported 7DTD build. Avoid committing
 third-party geodata unless its license and redistribution terms are documented
 in [`ATTRIBUTION.md`](ATTRIBUTION.md).

@@ -7,7 +7,7 @@ SHELL := /bin/bash
 .DEFAULT_GOAL := help
 .PHONY: help help-all \
 	setup tools-sync \
-	test test-fast test-height test-python test-mp coverage \
+	test test-one test-fast test-height test-python test-mp coverage \
 	build build-mod dll \
 	install install-full install-baked install-streamed install-height install-height-500 \
 	install-height-pack-everest \
@@ -17,7 +17,8 @@ SHELL := /bin/bash
 	artifacts-backup artifacts-restore \
 	viewer viewer-build serve viewer-lint \
 	webmod webmod-export webmod-lint html-lint \
-	info check clean clean-build
+	lint-shell info check clean clean-build \
+	build-npi
 
 # ---------------------------------------------------------------------------
 # Paths / knobs (override on the command line: make install GAME_DIR=...)
@@ -126,9 +127,12 @@ help:
 	@echo ""
 	@echo "  Tests"
 	@echo "    make test               Full Python test suite"
+	@echo "    make test-one T=tests/test_coords.py::test_wrap_x      Run one test/node"
 	@echo "    make test-height        Height mod + height-test map tests only"
 	@echo "    make test-fast          Quick subset (coords, height, tiles)"
 	@echo "    make lint               Ruff + black --check + mypy over tools/ and scripts/"
+	@echo "    make lint-shell         ShellCheck over scripts/*.sh (CI gate)"
+	@echo "    make build-npi          Compile tools/network_protocol_inspector (CI C# gate)"
 	@echo ""
 	@echo "  Viewer"
 	@echo "    make viewer             Export demo pack into viewer/data/demo"
@@ -164,6 +168,10 @@ setup: tools-sync
 	@echo "OK tools ready"
 
 tools-sync:
+	@command -v $(UV) >/dev/null || { \
+		echo "ERROR: uv not found on PATH. Install it (https://github.com/astral-sh/uv)" >&2; \
+		echo "       e.g.: curl -LsSf https://astral.sh/uv/install.sh | sh" >&2; \
+		exit 1; }
 	@cd $(TOOLS) && $(UV) sync --locked --extra dev
 	@echo "OK uv sync (tools/)"
 
@@ -182,6 +190,13 @@ build build-mod dll:
 install: build
 	@echo "Installing (MAP_MODE=$(MAP_MODE)) → $(GAME_DIR)"
 	MAP_MODE="$(MAP_MODE)" "$(SCRIPTS)/install_proton.sh"
+
+# C# analysis gate CI compiles standalone (NuGet Mono.Cecil; no game DLLs
+# needed, unlike the mod DLL). Run before committing changes under
+# tools/network_protocol_inspector/.
+build-npi:
+	@command -v dotnet >/dev/null || { echo "ERROR: dotnet not on PATH (set DOTNET_ROOT=...)" >&2; exit 1; }
+	dotnet build $(TOOLS)/network_protocol_inspector/NetworkProtocolInspector.csproj -c Release
 
 # Full RealEarth: YDim expand (part of this mod) + mod DLL + worlds
 install-full: engine-expand install
@@ -319,10 +334,22 @@ artifacts-drill:
 test test-python:
 	@$(PYTEST) -q --tb=short
 
+# One file / one node: make test-one T=tests/test_coords.py::test_wrap_x
+test-one:
+	@test -n "$(T)" || { echo "ERROR: pass what to run: make test-one T=tests/test_coords.py (or path::test_name)" >&2; exit 1; }
+	@$(PYTEST) "$(T)" -q --tb=short
+
 lint lint-python:
 	@$(RUFF)
 	@$(BLACK)
 	@$(MYPY)
+
+# ShellCheck gate over scripts/*.sh. CI runs this on every push; run it
+# before committing script edits so failures do not surface only after push.
+lint-shell:
+	@command -v shellcheck >/dev/null || { echo "ERROR: shellcheck not found (apt/brew install shellcheck; CI requires it)" >&2; exit 1; }
+	@shellcheck $(SCRIPTS)/*.sh
+	@echo "OK shellcheck ($(SCRIPTS)/*.sh)"
 
 test-height:
 	@$(PYTEST) tests/test_height_mod_case.py tests/test_height_10k.py \
