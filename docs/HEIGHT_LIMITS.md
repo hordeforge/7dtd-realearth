@@ -93,7 +93,7 @@ Does not replace expand or invent compress curves for the planet.
 
 ### Tier 2: YDim expand details
 
-**Purpose:** change the **game engine** so columns can be taller than 256, enabling true **1 m = 1 block** mountains (Everest ~8949). Remapping data alone is not enough.
+**Purpose:** change the **game engine** so columns can be taller than 256, enabling true **1 m = 1 block** mountains (Everest ~8849 m; sea + Everest ≈ 8949 game Y). Remapping data alone is not enough.
 
 Tall 1:1 columns are a **RealEarth feature**, not a third-party tool. The patcher ships in `Mods/RealEarth/Tools/` and as `make engine-expand`.
 

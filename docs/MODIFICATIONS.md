@@ -216,4 +216,5 @@ AI/mesh optim → `7dtd-server-optimizer`. Load bots → `7dtd-loadgen`. Google 
 
 ## Changelog
 
+- **2026-08-25:** Sparse Y scaffold row moved to Removed (dead code); globe/world map UI marked viewer-only after in-game scaffold removal.
 - **2026-07-18:** Related docs hub links; status remains sole home for Done/Partial/Needed.
