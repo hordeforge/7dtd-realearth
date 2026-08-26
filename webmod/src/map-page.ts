@@ -273,7 +273,16 @@ function attachControls(refs: MapPageRefs, startLoad: (path: string) => void): (
   const settlements = refs.settlements.current;
   const grid = refs.grid.current;
   const opacity = refs.opacity.current;
-  if (canvas === null || layerSelect === null || loadButton === null || settlements === null || grid === null || opacity === null) {
+  const packInput = refs.packInput.current;
+  if (
+    canvas === null ||
+    layerSelect === null ||
+    loadButton === null ||
+    settlements === null ||
+    grid === null ||
+    opacity === null ||
+    packInput === null
+  ) {
     return () => undefined;
   }
   const map = new Map2D(canvas);
@@ -286,12 +295,19 @@ function attachControls(refs: MapPageRefs, startLoad: (path: string) => void): (
   const onGridChange = createToggleListener(refs, "showGrid");
   const onOpacityChange = createOpacityListener(refs);
   const onLoadClick = createPackLoadListener(refs, startLoad);
+  const onPackKeyDown = (event: KeyboardEvent): void => {
+    if (event.key === "Enter") {
+      event.preventDefault();
+      onLoadClick();
+    }
+  };
 
   layerSelect.addEventListener("change", onLayerChange);
   settlements.addEventListener("change", onSettlementsChange);
   grid.addEventListener("change", onGridChange);
   opacity.addEventListener("input", onOpacityChange);
   loadButton.addEventListener("click", onLoadClick);
+  packInput.addEventListener("keydown", onPackKeyDown);
 
   return () => {
     layerSelect.removeEventListener("change", onLayerChange);
@@ -299,6 +315,7 @@ function attachControls(refs: MapPageRefs, startLoad: (path: string) => void): (
     grid.removeEventListener("change", onGridChange);
     opacity.removeEventListener("input", onOpacityChange);
     loadButton.removeEventListener("click", onLoadClick);
+    packInput.removeEventListener("keydown", onPackKeyDown);
     map.dispose();
   };
 }

@@ -330,6 +330,10 @@ body {
   font-size: 0.8rem;
 }
 
+.jump-row input.invalid {
+  border-color: var(--danger);
+}
+
 #settlementTip {
   position: absolute;
   z-index: 5;

@@ -65,7 +65,7 @@ export function RealEarthSettings(props: WebModComponentProps): unknown {
     h(
       "p",
       null,
-      "Default pack shown on the Map page. Packs live under WebMod/data/ on the server; generate one with `make webmod-export` (demo ships as data/demo)."
+      "Default pack shown on the Map page. Packs live under WebMod/data/ on the server; generate one with make webmod-export (demo ships as data/demo)."
     ),
     h(
       "div",

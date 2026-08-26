@@ -367,6 +367,7 @@ function setModeButtons(mode: ViewerMode): void {
   els.btnGlobe.classList.toggle("active", mode === "globe");
   els.btnFlat.setAttribute("aria-pressed", String(mode === "flat"));
   els.btnGlobe.setAttribute("aria-pressed", String(mode === "globe"));
+  els.btnSpinToggle.disabled = mode !== "globe";
 }
 
 function applyLayer(): void {
@@ -471,6 +472,7 @@ function zoomActiveView(factor: number): void {
 function setSpinToggle(enabled: boolean): void {
   els.btnSpinToggle.setAttribute("aria-pressed", String(enabled));
   els.btnSpinToggle.classList.toggle("active", enabled);
+  els.btnSpinToggle.textContent = enabled ? "Spinning" : "Paused";
   state.globeInstance?.setSpin(enabled);
 }
 
@@ -482,6 +484,11 @@ function toggleSpin(): void {
 function applyPlayer(player: PlayerFix | null): void {
   state.player = player;
   els.btnJumpPlayer.disabled = player === null;
+  if (player === null) {
+    els.btnJumpPlayer.setAttribute("title", "No player position known");
+  } else {
+    els.btnJumpPlayer.removeAttribute("title");
+  }
   els.playerHud.hidden = player === null;
   if (player !== null) {
     els.playerHud.textContent =
@@ -596,6 +603,7 @@ els.opacity.addEventListener("input", () => {
   }
 });
 els.packSelect.addEventListener("change", () => {
+  setStatus("Loading pack…");
   loadPack(els.packSelect.value)
     .then(adoptPack)
     .catch((error: unknown) => {
@@ -612,12 +620,23 @@ els.btnJumpPlayer.addEventListener("click", () => {
 els.btnJumpCoords.addEventListener("click", () => {
   const lat = coordinateFromText(els.jumpLat.value, -LAT_LIMIT_DEGREES, LAT_LIMIT_DEGREES);
   const lon = coordinateFromText(els.jumpLon.value, -LON_LIMIT_DEGREES, LON_LIMIT_DEGREES);
+  els.jumpLat.classList.toggle("invalid", lat === null);
+  els.jumpLon.classList.toggle("invalid", lon === null);
   if (lat === null || lon === null) {
     setStatus("Jump needs lat in [-90, 90] and lon in [-180, 180]");
     return;
   }
   goTo({ lon, lat });
 });
+for (const input of [els.jumpLat, els.jumpLon]) {
+  input.addEventListener("input", () => input.classList.remove("invalid"));
+  input.addEventListener("keydown", (event: KeyboardEvent) => {
+    if (event.key === "Enter") {
+      event.preventDefault();
+      els.btnJumpCoords.click();
+    }
+  });
+}
 els.btnSpinToggle.addEventListener("click", () => toggleSpin());
 els.btnZoomIn.addEventListener("click", () => zoomActiveView(ZOOM_BUTTON_STEP));
 els.btnZoomOut.addEventListener("click", () => zoomActiveView(ZOOM_BUTTON_STEP_OUT));
