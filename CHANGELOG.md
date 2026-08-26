@@ -11,6 +11,54 @@ tags are `v<version>`.
 
 ## [Unreleased]
 
+### Added
+
+- Artifact durability net: `make artifacts-backup` writes a checksum-verified
+  archive of worlds, region packs, the Terrarium tile cache, and viewer data;
+  `make artifacts-restore ARCHIVE=path.tar.gz` restores it and refuses to
+  clobber existing files unless `RE_FORCE_RESTORE=1`. New runbook:
+  `docs/BACKUP_RESTORE.md`.
+- Optional Terrarium DEM tile cache: set `RE_TERRARIUM_CACHE=<dir>` (or pass
+  `cache_dir=` to `realearth.elevation.fetch_region_terrarium`) and every
+  fetched tile is stored there and reused, so packs stay rebuildable offline
+  if the remote dataset changes or disappears. Default stays uncached.
+
+### Changed
+
+- The dedicated height-test harness no longer deletes existing saves outright:
+  old saves move to `<userdata>/Saves_trash/<utc-stamp>_<save>`, and trash
+  older than `RE_SAVE_TRASH_DAYS` days (default 7) is pruned on each run.
+  Runs pointed at real userdata can no longer destroy play progress.
+- Dedicated launch scripts stamp log filenames with UTC time and pid
+  (`server_minimal_<utc-stamp>_<pid>.txt` and friends), so two starts can no
+  longer write into one file. The chosen path is echoed and written to
+  `<userdata>/dedicated.logpath`: tail that file instead of a fixed name.
+- Makefile honors an exported `SEVENDTD_GAME_DIR`: it seeds the default
+  `GAME_DIR`, while an explicit `GAME_DIR=` on the command line still wins.
+  Install targets can no longer silently ignore the variable the scripts read.
+
+### Fixed
+
+- Map reveal state and the height-inject gate synchronize across threads,
+  removing races between chunk generation and map rendering under load.
+- Place names from settlement sources are normalized to NFC at C# ingestion
+  and settlement files declare UTF-8 reads, fixing mojibake city map labels
+  for accented names.
+- External settlement population values are clamped to the int range at parse
+  time, so out-of-range data cannot break label generation.
+- Corrupt `.rte` compressed sections now raise `ValueError`, like every other
+  malformed-tile rejection in `tools.realearth.tile_format`; previously a raw
+  `zlib.error` could escape `_inflate_exact`. Callers catching `ValueError`
+  need no change; code catching only `zlib.error` must catch `ValueError`.
+- Viewer and webmod map controls give feedback on invalid jump-to-coords
+  input and submit on Enter; globe spin/jump buttons carry state tooltips.
+
+### Removed
+
+- Inert placeholder configs `Config/biomes.xml` and `Config/rwgmixer.xml` are
+  gone from the mod package. The game never loaded them; delete any local
+  copies. Landcover and biome behavior is unchanged.
+
 ## [0.3.0] - 2026-08-26
 
 ### Added
