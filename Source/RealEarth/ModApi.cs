@@ -1,6 +1,7 @@
 using System;
 using System.IO;
 using System.Reflection;
+using System.Text;
 
 namespace RealEarth
 {
@@ -178,7 +179,7 @@ namespace RealEarth
                 if (!File.Exists(manPath))
                     return;
 
-                string json = File.ReadAllText(manPath);
+                string json = File.ReadAllText(manPath, Encoding.UTF8);
                 // Minimal parse without extra deps (DataContractJsonSerializer needs a type)
                 int ww = ReadJsonInt(json, "world_width");
                 int wh = ReadJsonInt(json, "world_height");

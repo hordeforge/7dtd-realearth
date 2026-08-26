@@ -258,7 +258,7 @@ namespace RealEarth
                 foreach (var p in SessionCandidatePaths(path))
                 {
                     if (!File.Exists(p)) continue;
-                    string json = File.ReadAllText(p);
+                    string json = File.ReadAllText(p, Encoding.UTF8);
                     if (!SessionSnapshot.TryParse(json, out var snap)) continue;
                     // The mod Config fallback is global across worlds; without this gate a
                     // new world would restore the previous world's absolute position

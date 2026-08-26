@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Globalization;
 using System.IO;
 using System.Reflection;
+using System.Text;
 using UnityEngine;
 
 namespace RealEarth
@@ -34,6 +35,17 @@ namespace RealEarth
         /// (ordering _cityGate → streamer/store; no reverse edge exists).
         /// </summary>
         static readonly object _cityGate = new object();
+
+        /// <summary>
+        /// Canonical form for place-name identity: NFC so an NFD spelling of the
+        /// same name (macOS-written JSON, some map exports) matches the composed
+        /// seed names instead of surviving dedup as a second place (duplicate map
+        /// labels and double POI stamps). Mirrors
+        /// tools/realearth/settlements.py normalize_place_name; applied at every
+        /// ingestion point so the Ordinal comparers below stay consistent.
+        /// </summary>
+        internal static string NormalizePlaceName(string name)
+            => string.IsNullOrEmpty(name) ? name : name.Normalize(NormalizationForm.FormC);
 
         public sealed class Place
         {
@@ -426,7 +438,9 @@ namespace RealEarth
                 if (!File.Exists(path)) continue;
                 try
                 {
-                    ParseSettlementsJson(File.ReadAllText(path), list);
+                    // Explicit UTF-8 (with BOM detection): packs are written UTF-8
+                    // by tools/realearth and may be produced on any host OS.
+                    ParseSettlementsJson(File.ReadAllText(path, Encoding.UTF8), list);
                     if (list.Count > 0)
                     {
                         ModApi.Log($"CityMapLabels: loaded {list.Count} from {path}");
@@ -535,7 +549,7 @@ namespace RealEarth
             var place = new Place();
             if (!TryReadString(obj, "name", out var name) || string.IsNullOrWhiteSpace(name))
                 return null;
-            place.Name = name;
+            place.Name = NormalizePlaceName(name);
             if (TryReadDouble(obj, "lon", out var lon)) place.Lon = lon;
             if (TryReadDouble(obj, "lat", out var lat)) place.Lat = lat;
             if (TryReadInt(obj, "population", out var pop)) place.Population = pop;
@@ -757,7 +771,7 @@ namespace RealEarth
                 }
                 into.Add(new Place
                 {
-                    Name = s.n,
+                    Name = NormalizePlaceName(s.n),
                     Lon = s.lon,
                     Lat = s.lat,
                     Population = s.pop,
