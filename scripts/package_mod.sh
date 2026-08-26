@@ -16,6 +16,14 @@ case "$MAP_MODE" in
     exit 1
     ;;
 esac
+
+# The shipped Config/realearth.json is generated through realearth.mod_config
+# (MAP_MODE + product defaults below); skipping it would silently package
+# template defaults that ignore them, so python3 is a hard requirement.
+if ! command -v python3 >/dev/null; then
+  echo "ERROR: python3 is required to write the packaged config" >&2
+  exit 1
+fi
 # The positional is rm -rf'd below: refuse anything that is not a safe
 # destination name/path (empty, root, or a traversal escape).
 case "$OUT" in
@@ -51,25 +59,23 @@ cp "$ROOT/Config/realearth.json" "$OUT/Config/"
 cp "$ROOT/ATTRIBUTION.md" "$OUT/" 2>/dev/null || true
 cp "$ROOT/CHANGELOG.md" "$OUT/" 2>/dev/null || true
 # Ensure single-world defaults are present in packaged config
-if command -v python3 >/dev/null; then
-  # Real-height product default (docs/HEIGHT_LIMITS.md): expand required, no
-  # compression. Debug FOW keys stay OFF in shipped packages (dev values:
-  # reveal=true, radius=128).
-  PYTHONPATH="$ROOT/tools" python3 -m realearth.mod_config write "$OUT" "$ROOT" \
-    --template "$ROOT/Config/realearth.json" \
-    "MapMode=$MAP_MODE" \
-    EngineHeightStockSafe=false \
-    "SingleWorldSession?=true" \
-    "LocalWindowSize?=$LOCAL_WINDOW_SIZE" \
-    "MultiplayerOriginMode?=SoloSlide" \
-    "StreamRadiusTiles?=2" \
-    "UnloadRadiusTiles?=4" \
-    "DebugRevealFullMap?=false" \
-    "ShowCityNamesOnMap?=true" \
-    "CityMapDiscoverRadiusScale?=1.0" \
-    "DebugMapRevealRadiusChunks?=0" \
-    "EnableEngineHeightMod?=true"
-fi
+# Real-height product default (docs/HEIGHT_LIMITS.md): expand required, no
+# compression. Debug FOW keys stay OFF in shipped packages (dev values:
+# reveal=true, radius=128).
+PYTHONPATH="$ROOT/tools" python3 -m realearth.mod_config write "$OUT" "$ROOT" \
+  --template "$ROOT/Config/realearth.json" \
+  "MapMode=$MAP_MODE" \
+  EngineHeightStockSafe=false \
+  "SingleWorldSession?=true" \
+  "LocalWindowSize?=$LOCAL_WINDOW_SIZE" \
+  "MultiplayerOriginMode?=SoloSlide" \
+  "StreamRadiusTiles?=2" \
+  "UnloadRadiusTiles?=4" \
+  "DebugRevealFullMap?=false" \
+  "ShowCityNamesOnMap?=true" \
+  "CityMapDiscoverRadiusScale?=1.0" \
+  "DebugMapRevealRadiusChunks?=0" \
+  "EnableEngineHeightMod?=true"
 if [[ -f "$ROOT/Config/realearth.advanced_height.json" ]]; then
   cp "$ROOT/Config/realearth.advanced_height.json" "$OUT/Config/"
 fi
@@ -113,12 +119,10 @@ if [[ -d "$ROOT/data/samples/demo_region" ]]; then
   # Point config at the packaged tiles and take the canvas from their manifest:
   # the demo pack is a local-indexed region, far below a planet canvas, so it
   # must not wrap at the antimeridian.
-  if command -v python3 >/dev/null; then
-    PYTHONPATH="$ROOT/tools" python3 -m realearth.mod_config write "$OUT" "$ROOT" \
-      --template "$OUT/Config/realearth.json" \
-      --sync-manifest --max-window "$LOCAL_WINDOW_SIZE" \
-      TilePackPath=Data/tiles
-  fi
+  PYTHONPATH="$ROOT/tools" python3 -m realearth.mod_config write "$OUT" "$ROOT" \
+    --template "$OUT/Config/realearth.json" \
+    --sync-manifest --max-window "$LOCAL_WINDOW_SIZE" \
+    TilePackPath=Data/tiles
 fi
 
 if [[ -n "$GAME_DIR" && -d "$GAME_DIR" ]]; then

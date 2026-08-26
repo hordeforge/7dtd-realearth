@@ -2,6 +2,7 @@
 name = "realearth-tools"
 description = "Offline pipeline: real-world Earth data → 7 Days to Die RealEarth tiles"
 readme = "README.md"
+license = { text = "MIT" }
 requires-python = ">=3.11"
 # Single source of truth for the version is realearth/__init__.py (__version__),
 # resolved by hatchling at build time so the two cannot disagree.
@@ -23,6 +24,10 @@ audit = ["dnfile>=0.5"]
 [project.scripts]
 realearth = "realearth.cli:main"
 
+[project.urls]
+Homepage = "https://github.com/hordeforge/7dtd-realearth"
+Changelog = "https://github.com/hordeforge/7dtd-realearth/blob/main/CHANGELOG.md"
+
 [build-system]
 requires = ["hatchling"]
 build-backend = "hatchling.build"
@@ -38,6 +43,12 @@ path = "realearth/__init__.py"
 
 [tool.hatch.build.targets.wheel]
 packages = ["realearth"]
+
+[tool.hatch.build.targets.sdist]
+# The C# patcher projects ship inside the mod package (Tools/) via
+# scripts/package_mod.sh; they are not Python sources, so keep them out of the
+# sdist.
+exclude = ["engine_patcher", "network_protocol_inspector"]
 
 [tool.ruff]
 line-length = 100

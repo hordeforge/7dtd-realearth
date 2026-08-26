@@ -43,6 +43,14 @@ case "$MAP_MODE" in
     ;;
 esac
 
+# The installed Config/realearth.json is generated through realearth.mod_config
+# (MAP_MODE + product defaults); skipping it would silently install template
+# defaults that ignore them, so python3 is a hard requirement.
+if ! command -v python3 >/dev/null; then
+  echo "ERROR: python3 is required to write the installed mod config" >&2
+  exit 1
+fi
+
 # Resolve client userdata via shipped helper (Proton Roaming preferred)
 resolve_world_targets() {
   local tools_py="$ROOT/tools"
@@ -95,33 +103,31 @@ install_mod() {
       echo "WARN: no earth.manifest.json under $dest/Data/tiles, pack incomplete? Run make demo." >&2
     fi
   fi
-  if command -v python3 >/dev/null; then
-    # Streamed takes world size, bbox and antimeridian wrap from the pack that
-    # just landed in Data/tiles (docs/MODLET.md: wrap on full-planet canvases
-    # only). Baked keeps the template canvas and never wraps.
-    local canvas=(EnableLongitudeWrap=false)
-    if [[ "${map_mode,,}" == "streamed" ]]; then
-      canvas=(--sync-manifest --sync-bbox --spawn-from-bbox --max-window "$LOCAL_WINDOW_SIZE")
-    fi
-    # Height: RealEarth YDim expand is part of this mod (Tools/). StockSafe is a
-    # fallback only, never the product path (docs/HEIGHT_LIMITS.md).
-    PYTHONPATH="$ROOT/tools" python3 -m realearth.mod_config write "$dest" "$ROOT" \
-      --template "$ROOT/Config/realearth.json" \
-      "${canvas[@]}" \
-      "MapMode=$map_mode" \
-      SingleWorldSession=true \
-      MultiplayerOriginMode=SoloSlide \
-      "StreamRadiusTiles?=2" \
-      "UnloadRadiusTiles?=4" \
-      TilePackPath=Data/tiles \
-      "DebugRevealFullMap?=false" \
-      "EnableEngineHeightMod?=true" \
-      "EngineHeightStockSafe?=false" \
-      "EngineMaxGameY?=11000" \
-      "EngineHeightOneToOne?=true" \
-      "EngineHeightPreferVanillaCeiling?=false" \
-      "LocalWindowSize?=$LOCAL_WINDOW_SIZE"
+  # Streamed takes world size, bbox and antimeridian wrap from the pack that
+  # just landed in Data/tiles (docs/MODLET.md: wrap on full-planet canvases
+  # only). Baked keeps the template canvas and never wraps.
+  local canvas=(EnableLongitudeWrap=false)
+  if [[ "${map_mode,,}" == "streamed" ]]; then
+    canvas=(--sync-manifest --sync-bbox --spawn-from-bbox --max-window "$LOCAL_WINDOW_SIZE")
   fi
+  # Height: RealEarth YDim expand is part of this mod (Tools/). StockSafe is a
+  # fallback only, never the product path (docs/HEIGHT_LIMITS.md).
+  PYTHONPATH="$ROOT/tools" python3 -m realearth.mod_config write "$dest" "$ROOT" \
+    --template "$ROOT/Config/realearth.json" \
+    "${canvas[@]}" \
+    "MapMode=$map_mode" \
+    SingleWorldSession=true \
+    MultiplayerOriginMode=SoloSlide \
+    "StreamRadiusTiles?=2" \
+    "UnloadRadiusTiles?=4" \
+    TilePackPath=Data/tiles \
+    "DebugRevealFullMap?=false" \
+    "EnableEngineHeightMod?=true" \
+    "EngineHeightStockSafe?=false" \
+    "EngineMaxGameY?=11000" \
+    "EngineHeightOneToOne?=true" \
+    "EngineHeightPreferVanillaCeiling?=false" \
+    "LocalWindowSize?=$LOCAL_WINDOW_SIZE"
   echo "Installed mod → $dest (MapMode=${map_mode})"
 }
 
