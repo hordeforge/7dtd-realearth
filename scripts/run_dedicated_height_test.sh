@@ -28,8 +28,17 @@ for pair in "RE_SERVER_WAIT:$WAIT_SEC" "RE_SERVER_SOAK:$SOAK_SEC"; do
   esac
 done
 SCRATCH_OUT="${RE_SCRATCH:-}"
-DOTNET_ROOT="${DOTNET_ROOT:-$HOME/.cache/dotnet-sdk}"
-export PATH="${DOTNET_ROOT}:${PATH}"
+# Locate a .NET SDK: explicit env first, then the usual local caches (mirrors
+# Makefile and install_proton.sh). Never export a DOTNET_ROOT without a dotnet
+# binary: apphosts resolve libhostfxr through it and fail to launch otherwise.
+for d in "${DOTNET_ROOT:-}" "$HOME/.cache/dotnet-sdk" "$HOME/.dotnet" \
+         "/usr/lib/dotnet" "/usr/share/dotnet" "/usr/local/share/dotnet"; do
+  if [[ -n "$d" && -x "$d/dotnet" ]]; then
+    export DOTNET_ROOT="$d"
+    break
+  fi
+done
+export PATH="${DOTNET_ROOT:+$DOTNET_ROOT:}${PATH}"
 
 if [[ ! -x "$DS_DIR/7DaysToDieServer.x86_64" ]]; then
   echo "ERROR: dedicated server not found: $DS_DIR" >&2
@@ -58,7 +67,6 @@ done
 sleep 2
 
 # Patch both client + dedicated Assembly-CSharp (Everest-scale YDim)
-export DOTNET_ROOT
 export SEVENDTD_GAME_DIR="$GAME_DIR"
 export SEVENDTD_SERVER_DIR="$DS_DIR"
 chmod +x "$ROOT/scripts/patch_engine_height.sh"

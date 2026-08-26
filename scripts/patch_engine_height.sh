@@ -6,8 +6,17 @@ ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 GAME_DIR="${SEVENDTD_GAME_DIR:-$HOME/.local/share/Steam/steamapps/common/7 Days To Die}"
 HARMONY="$GAME_DIR/Mods/0_TFP_Harmony"
 PATCHER_PROJ="$ROOT/tools/engine_patcher/EngineHeightPatcher.csproj"
-export DOTNET_ROOT="${DOTNET_ROOT:-$HOME/.cache/dotnet-sdk}"
-export PATH="${DOTNET_ROOT}:${PATH}"
+# Locate a .NET SDK: explicit env first, then the usual local caches (mirrors
+# Makefile and install_proton.sh). Never export a DOTNET_ROOT without a dotnet
+# binary: apphosts resolve libhostfxr through it and fail to launch otherwise.
+for d in "${DOTNET_ROOT:-}" "$HOME/.cache/dotnet-sdk" "$HOME/.dotnet" \
+         "/usr/lib/dotnet" "/usr/share/dotnet" "/usr/local/share/dotnet"; do
+  if [[ -n "$d" && -x "$d/dotnet" ]]; then
+    export DOTNET_ROOT="$d"
+    break
+  fi
+done
+export PATH="${DOTNET_ROOT:+$DOTNET_ROOT:}${PATH}"
 
 if [[ ! -f "$GAME_DIR/7DaysToDie_Data/Managed/Assembly-CSharp.dll" ]]; then
   echo "ERROR: game DLL not found under $GAME_DIR" >&2

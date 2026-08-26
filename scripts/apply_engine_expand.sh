@@ -37,8 +37,17 @@ done
 PATCHER="$TOOLS/EngineHeightPatcher.exe"
 if [[ ! -f "$PATCHER" ]]; then
   echo "Building RealEarth EngineHeightPatcher..."
-  export DOTNET_ROOT="${DOTNET_ROOT:-$HOME/.cache/dotnet-sdk}"
-  export PATH="${DOTNET_ROOT}:${PATH}"
+  # Locate a .NET SDK: explicit env first, then the usual local caches (mirrors
+  # install_proton.sh). Never export a DOTNET_ROOT without a dotnet binary:
+  # apphosts resolve libhostfxr through it and fail to launch otherwise.
+  for d in "${DOTNET_ROOT:-}" "$HOME/.cache/dotnet-sdk" "$HOME/.dotnet" \
+           "/usr/lib/dotnet" "/usr/share/dotnet" "/usr/local/share/dotnet"; do
+    if [[ -n "$d" && -x "$d/dotnet" ]]; then
+      export DOTNET_ROOT="$d"
+      break
+    fi
+  done
+  export PATH="${DOTNET_ROOT:+$DOTNET_ROOT:}${PATH}"
   if [[ -f "$ROOT/tools/engine_patcher/EngineHeightPatcher.csproj" ]]; then
     dotnet build "$ROOT/tools/engine_patcher/EngineHeightPatcher.csproj" -c Release \
       -p:HarmonyDir="$HARMONY" -v q

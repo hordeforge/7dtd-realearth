@@ -16,6 +16,9 @@ concurrency:
 jobs:
   tools:
     runs-on: ubuntu-latest
+    # Bound a hung step (network stall, deadlocked test) instead of burning
+    # the 6-hour hosted-runner default; release.yml bounds its job the same way.
+    timeout-minutes: 30
     steps:
       # Actions pinned by full commit SHA (tag in comment) so a moved tag or a
       # compromised major-version release cannot inject code into the pipeline.
@@ -56,6 +59,7 @@ jobs:
     if: github.event_name == 'push' && github.ref == 'refs/heads/main'
     needs: tools
     runs-on: ubuntu-latest
+    timeout-minutes: 15
     permissions:
       contents: write
     steps:
