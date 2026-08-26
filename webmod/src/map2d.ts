@@ -408,13 +408,29 @@ export class Map2D {
       case "Home":
       case "0":
         this.fit();
-        event.preventDefault();
-        return;
+        break;
       default:
         return;
     }
     event.preventDefault();
     this.draw();
+    this.probeViewCenter();
+  }
+
+  // Keyboard pans move the view without a pointer, so the probe readout would
+  // stay stale and a tooltip left by an earlier hover would never clear.
+  // Report lon/lat/elevation and any settlement under the new view center,
+  // giving keyboard users the same feedback pointer users get by hovering.
+  private probeViewCenter(): void {
+    const parent = this.canvas.parentElement;
+    if (this.image === null || parent === null) {
+      return;
+    }
+    const cx = parent.clientWidth / 2;
+    const cy = parent.clientHeight / 2;
+    const { ix, iy } = this.screenToImage(cx, cy);
+    this.emitProbe(this.probeAt(ix, iy, this.image));
+    this.emitHover(this.settlementHit(ix, iy), cx, cy);
   }
 
   private emitProbe(point: ProbePoint | null): void {

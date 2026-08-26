@@ -325,10 +325,14 @@ function renderToolbar(h: ElementFactory, refs: MapPageRefs): unknown {
     "div",
     { className: "re-toolbar" },
     h(
-      "label",
-      { className: "re-field" },
-      h("span", { className: "re-label" }, "Pack"),
-      h("input", { ref: refs.packInput, className: "re-input", defaultValue: initialPackPath(), type: "text" }),
+      "div",
+      { className: "re-field-group" },
+      h(
+        "label",
+        { className: "re-field" },
+        h("span", { className: "re-label" }, "Pack"),
+        h("input", { ref: refs.packInput, className: "re-input", defaultValue: initialPackPath(), type: "text" })
+      ),
       h("button", { ref: refs.loadButton, className: "re-btn", type: "button" }, "Load")
     ),
     h(
@@ -371,7 +375,7 @@ function renderStage(h: ElementFactory, refs: MapPageRefs): unknown {
       "aria-label":
         "Interactive map. Focus it and use arrow keys to pan, plus or minus to zoom, Home to fit the view. Mouse users can drag to pan and scroll to zoom.",
     }),
-    h("div", { ref: refs.tip, className: "re-tip", hidden: true, role: "tooltip" })
+    h("div", { ref: refs.tip, className: "re-tip", hidden: true, role: "tooltip", "aria-live": "polite" })
   );
 }
 

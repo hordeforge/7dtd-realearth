@@ -276,6 +276,13 @@ function coordinateFromText(raw: string, min: number, max: number): number | nul
   return value >= min && value <= max ? value : null;
 }
 
+// Keep the assistive-tech state in step with the visual .invalid border:
+// screen readers must hear that the field failed validation (WCAG 3.3.1).
+function setCoordinateInvalid(input: HTMLInputElement, invalid: boolean): void {
+  input.classList.toggle("invalid", invalid);
+  input.setAttribute("aria-invalid", invalid ? "true" : "false");
+}
+
 function finiteNumberIn(candidate: unknown, min: number, max: number): number | null {
   if (typeof candidate !== "number" || !Number.isFinite(candidate)) {
     return null;
@@ -633,8 +640,8 @@ els.btnJumpPlayer.addEventListener("click", () => {
 els.btnJumpCoords.addEventListener("click", () => {
   const lat = coordinateFromText(els.jumpLat.value, -LAT_LIMIT_DEGREES, LAT_LIMIT_DEGREES);
   const lon = coordinateFromText(els.jumpLon.value, -LON_LIMIT_DEGREES, LON_LIMIT_DEGREES);
-  els.jumpLat.classList.toggle("invalid", lat === null);
-  els.jumpLon.classList.toggle("invalid", lon === null);
+  setCoordinateInvalid(els.jumpLat, lat === null);
+  setCoordinateInvalid(els.jumpLon, lon === null);
   if (lat === null || lon === null) {
     setStatus("Jump needs lat in [-90, 90] and lon in [-180, 180]");
     return;
@@ -642,7 +649,7 @@ els.btnJumpCoords.addEventListener("click", () => {
   goTo({ lon, lat });
 });
 for (const input of [els.jumpLat, els.jumpLon]) {
-  input.addEventListener("input", () => input.classList.remove("invalid"));
+  input.addEventListener("input", () => setCoordinateInvalid(input, false));
   input.addEventListener("keydown", (event: KeyboardEvent) => {
     if (event.key === "Enter") {
       event.preventDefault();

@@ -56,6 +56,14 @@
   color: var(--re-text);
 }
 
+/* Groups a field with its action button without nesting the button inside
+ * the label (invalid HTML that re-routes button clicks at the input). */
+.re-field-group {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
 .re-label {
   color: var(--re-text-muted);
   white-space: nowrap;
