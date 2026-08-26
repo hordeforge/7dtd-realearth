@@ -25,6 +25,9 @@ namespace RealEarth
         static readonly ConcurrentDictionary<(Type, string), PropertyInfo?> PubProps =
             new ConcurrentDictionary<(Type, string), PropertyInfo?>();
 
+        static readonly ConcurrentDictionary<(Type, string), FieldInfo?> PubFields =
+            new ConcurrentDictionary<(Type, string), FieldInfo?>();
+
         /// <summary>Public+non-public instance lookup.</summary>
         public static PropertyInfo? Prop(Type t, string name)
             => Props.GetOrAdd((t, name), k => k.Item1.GetProperty(k.Item2, AnyInstance));
@@ -32,6 +35,10 @@ namespace RealEarth
         /// <summary>Public-only instance lookup (mirrors plain Type.GetProperty).</summary>
         public static PropertyInfo? PropPub(Type t, string name)
             => PubProps.GetOrAdd((t, name), k => k.Item1.GetProperty(k.Item2));
+
+        /// <summary>Default-flags lookup (mirrors plain Type.GetField; misses cached too).</summary>
+        public static FieldInfo? FieldPub(Type t, string name)
+            => PubFields.GetOrAdd((t, name), k => k.Item1.GetField(k.Item2));
 
         /// <summary>Public+non-public instance lookup.</summary>
         public static FieldInfo? Field(Type t, string name)

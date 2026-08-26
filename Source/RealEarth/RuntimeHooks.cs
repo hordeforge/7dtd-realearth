@@ -1017,24 +1017,28 @@ namespace RealEarth
         {
             cx = cz = 0;
             var t = chunk.GetType();
+            // Memoized member lookups (ReflectCache): this runs on the gen thread for
+            // every generated chunk; uncached GetProperty/GetField probes re-enumerate
+            // type metadata each time (same results; members are process-stable).
             // X/Z properties as chunk coords or world block
-            object? xObj = t.GetProperty("X")?.GetValue(chunk, null)
-                ?? t.GetField("m_X")?.GetValue(chunk)
-                ?? t.GetField("x")?.GetValue(chunk);
-            object? zObj = t.GetProperty("Z")?.GetValue(chunk, null)
-                ?? t.GetField("m_Z")?.GetValue(chunk)
-                ?? t.GetField("z")?.GetValue(chunk);
+            object? xObj = ReflectCache.PropPub(t, "X")?.GetValue(chunk, null)
+                ?? ReflectCache.FieldPub(t, "m_X")?.GetValue(chunk)
+                ?? ReflectCache.FieldPub(t, "x")?.GetValue(chunk);
+            object? zObj = ReflectCache.PropPub(t, "Z")?.GetValue(chunk, null)
+                ?? ReflectCache.FieldPub(t, "m_Z")?.GetValue(chunk)
+                ?? ReflectCache.FieldPub(t, "z")?.GetValue(chunk);
             if (xObj == null || zObj == null)
             {
                 // ChunkPos / worldPos
-                var wp = t.GetProperty("ChunkPos")?.GetValue(chunk, null)
-                    ?? t.GetField("chunkPos")?.GetValue(chunk);
+                var wp = ReflectCache.PropPub(t, "ChunkPos")?.GetValue(chunk, null)
+                    ?? ReflectCache.FieldPub(t, "chunkPos")?.GetValue(chunk);
                 if (wp != null)
                 {
-                    xObj = wp.GetType().GetField("x")?.GetValue(wp)
-                        ?? wp.GetType().GetProperty("x")?.GetValue(wp, null);
-                    zObj = wp.GetType().GetField("z")?.GetValue(wp)
-                        ?? wp.GetType().GetProperty("z")?.GetValue(wp, null);
+                    var wt = wp.GetType();
+                    xObj = ReflectCache.FieldPub(wt, "x")?.GetValue(wp)
+                        ?? ReflectCache.PropPub(wt, "x")?.GetValue(wp, null);
+                    zObj = ReflectCache.FieldPub(wt, "z")?.GetValue(wp)
+                        ?? ReflectCache.PropPub(wt, "z")?.GetValue(wp, null);
                 }
             }
             if (xObj == null || zObj == null) return false;
