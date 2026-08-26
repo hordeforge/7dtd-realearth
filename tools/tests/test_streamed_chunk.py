@@ -5,6 +5,7 @@ from pathlib import Path
 import numpy as np
 import pytest
 
+from realearth import DEFAULT_SEA_LEVEL_GAME_Y, ENGINE_TARGET_MAX_Y
 from realearth.height import compress_elevation
 from realearth.local_window import LocalWindow
 from realearth.streamed_chunk import (
@@ -26,10 +27,23 @@ DEMO = ROOT / "data" / "samples" / "demo_region"
 
 @pytest.fixture(scope="module")
 def demo_pack() -> Path:
-    assert DEMO.is_dir(), f"missing demo pack {DEMO}"
-    assert (DEMO / "earth.manifest.json").is_file()
-    assert tile_path(DEMO, 0, 0).is_file()
+    # data/samples is a gitignored runtime artifact; a fresh clone has none.
+    if not DEMO.is_dir() or not (DEMO / "earth.manifest.json").is_file():
+        pytest.skip(f"demo pack missing at {DEMO} (generate with: make demo)")
+    assert tile_path(DEMO, 0, 0).is_file(), f"demo pack {DEMO} has no tiles"
     return DEMO
+
+
+def test_missing_tile_fails_closed_to_ocean(tmp_path: Path):
+    """sample_point contract for a missing .rte: 0 m ASL, ocean landcover, no pop.
+
+    Offline twin of TileSamplePolicy.ResolveElev: a hole must never invent
+    terrain, so chunk fill over it stays flat at sea level (>= 1, no peaks).
+    """
+    assert sample_point(tmp_path, 5, 5) == (0.0, 0, 0)
+    h = fill_chunk_heights(tmp_path, 0, 0, chunk_size=VANILLA_CHUNK_SIZE)
+    assert int(h.min()) >= 1
+    assert int(h.max()) == DEFAULT_SEA_LEVEL_GAME_Y
 
 
 def test_sample_point_reads_demo_tile(demo_pack: Path):
@@ -43,12 +57,21 @@ def test_sample_point_reads_demo_tile(demo_pack: Path):
 def test_fill_chunk_heights_shape_and_range(demo_pack: Path):
     h = fill_chunk_heights(demo_pack, 0, 0, chunk_size=VANILLA_CHUNK_SIZE)
     assert h.shape == (16, 16)
-    # 1:1 path uses int32 when max_y > 255
-    assert h.dtype in (np.uint8, np.int32)
+    # 1:1 path with the engine ceiling (> 255) must return int32; uint8 here
+    # would wrap Everest-scale columns.
+    assert h.dtype == np.int32
     assert int(h.min()) >= 1
-    # no compression: heights are sea + elev_m (can exceed 250)
-    assert int(h.max()) >= int(h.min())
-    assert int(h.mean()) >= 1
+    # Fill is raw sea + elev_m (no compression): the corner cell must equal the
+    # documented one_to_one mapping of its own sampled elevation.
+    e0, _, _ = sample_point(demo_pack, 0, 0)
+    expected = compress_elevation(
+        np.array([[e0]]),
+        sea_level_y=DEFAULT_SEA_LEVEL_GAME_Y,
+        max_y=ENGINE_TARGET_MAX_Y,
+        profile="one_to_one",
+        regional_exaggeration=1.0,
+    )
+    assert int(h[0, 0]) == int(expected[0, 0])
 
 
 def test_fill_chunk_landcover_matches_sample(demo_pack: Path):

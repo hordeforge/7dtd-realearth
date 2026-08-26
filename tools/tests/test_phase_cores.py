@@ -1,10 +1,19 @@
-"""Offline tests for IMPLEMENTATION_PLAN P0–P8 pure cores (shipped C# + Python mirrors)."""
+"""Offline tests for IMPLEMENTATION_PLAN P0–P8 pure cores (shipped C# + Python mirrors).
+
+Where an offline Python twin exists (local_window fold/delta, density budget and
+stamp Y), the assertions drive that shipped implementation directly instead of a
+test-local copy; policy with no offline twin keeps a mirror plus a structural pin
+on the shipped C# source.
+"""
 
 from __future__ import annotations
 
 import json
 import re
 from pathlib import Path
+
+from realearth.density import clamp_prefabs_in_chunk, stamp_prefab_root_y
+from realearth.local_window import fold_x, fold_z, wrapped_delta
 
 ROOT = Path(__file__).resolve().parents[2]
 SRC = ROOT / "Source" / "RealEarth"
@@ -71,12 +80,6 @@ def test_p1_height_inject_math_everest():
 
 
 # --- P2 session fold / slide ---
-def fold_coord(v: int, extent: int) -> int:
-    e = max(1, extent)
-    r = v % e
-    return r if r >= 0 else r + e
-
-
 def allow_origin_slide(mode: str, window: int, ww: int, wh: int, players: int) -> bool:
     """Mirror SessionOriginPolicy.AllowOriginSlide (unknown count < 0 fails closed)."""
     if window >= ww and window >= wh:
@@ -105,15 +108,11 @@ def needs_recentering(lx: int, lz: int, window: int) -> bool:
     return lx < margin or lx > window - margin or lz < margin or lz > window - margin
 
 
-def wrapped_delta(delta: int, extent: int) -> int:
-    """Mirror SessionOriginPolicy.WrappedDelta (shortest signed wrapped distance)."""
-    e = max(1, extent)
-    return ((delta % e) + e + e // 2) % e - e // 2
-
-
 def test_p2_fold_and_shared_fixed():
-    assert fold_coord(32768, 512) == 0
-    assert fold_coord(-1, 512) == 511
+    assert fold_x(32768, 512) == 0
+    assert fold_z(32768, 512) == 0
+    assert fold_x(-1, 512) == 511
+    assert fold_z(-1, 512) == 511
     assert allow_origin_slide("SharedFixed", 1024, 40_000_000, 20_000_000, 8) is False
     assert allow_origin_slide("SoloSlide", 1024, 40_000_000, 20_000_000, 1) is True
     assert allow_origin_slide("SoloSlide", 1024, 40_000_000, 20_000_000, 2) is False
@@ -152,12 +151,7 @@ def test_p2_wrapped_delta_antimeridian():
     assert "SessionOriginPolicy.WrappedDelta(OriginEarthX - oldOx" in ws
 
 
-# --- P3 stamp surface Y ---
-def stamp_prefab_root_y(surface: int, offset: int = 0) -> int:
-    y = surface + offset
-    return 1 if y < 1 else y
-
-
+# --- P3 stamp surface Y (shipped density twin) ---
 def test_p3_stamp_surface_y():
     assert stamp_prefab_root_y(500) == 500
     assert stamp_prefab_root_y(500, -2) == 498
@@ -227,16 +221,11 @@ def test_p5_shared_fixed_enforcement_in_product():
     assert mp.get("MultiplayerOriginMode") == "SharedFixed"
 
 
-# --- P6 density budget ---
-def clamp_prefabs(requested: int, cap: int = 4) -> int:
-    if requested < 0:
-        return 0
-    return requested if requested <= cap else cap
-
-
+# --- P6 density budget (shipped density twin) ---
 def test_p6_density_budget():
-    assert clamp_prefabs(100, 4) == 4
-    assert clamp_prefabs(2, 4) == 2
+    assert clamp_prefabs_in_chunk(100, 4) == 4
+    assert clamp_prefabs_in_chunk(2, 4) == 2
+    assert clamp_prefabs_in_chunk(-1, 4) == 0
     src = _read("DensityBudget.cs")
     assert "ClampPrefabsInChunk" in src
     dens = (ROOT / "tools" / "realearth" / "density.py").read_text(encoding="utf-8")
