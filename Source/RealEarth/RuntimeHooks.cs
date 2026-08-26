@@ -144,6 +144,12 @@ namespace RealEarth
             EnforceInjectGate();
         }
 
+        /// <summary>
+        /// HarmonyMethod descriptor type resolved once per process; PatchPostfix reuses it.
+        /// Null is not cached so a later retry re-scans after assemblies settle.
+        /// </summary>
+        static Type? _harmonyMethodType;
+
         static MethodInfo? FindMethod(Type type, string name)
         {
             return type.GetMethods(BindingFlags.Instance | BindingFlags.Static | BindingFlags.Public | BindingFlags.NonPublic)
@@ -505,7 +511,7 @@ namespace RealEarth
                 if (!_patchedMethods.Add(target))
                     return false;
 
-                var harmonyMethodType = EngineReflection.FindType("HarmonyLib.HarmonyMethod", "0Harmony");
+                var harmonyMethodType = _harmonyMethodType ??= EngineReflection.FindType("HarmonyLib.HarmonyMethod", "0Harmony");
                 var harmonyType = _harmony.GetType();
                 if (harmonyMethodType == null)
                 {

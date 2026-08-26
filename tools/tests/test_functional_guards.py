@@ -79,3 +79,29 @@ def test_world_tile_indices_uses_default_grid():
     x, z = lonlat_to_block(0.0, 0.0, g)
     assert (tx, tz) == (x // DEFAULT_TILE_SIZE, z // DEFAULT_TILE_SIZE)
     assert math.isfinite(block_to_lonlat(x, z)[0])
+
+
+def test_world_tile_indices_bbox_touching_antimeridian_wraps():
+    """east=180 maps to block X 0; a valid bbox there must not span the planet.
+
+    lonlat_to_block(180) wraps to block 0, so min/max over raw block X used to
+    expand a 1-degree strip into a near-full-planet tile list (the same hang the
+    inverted-bbox guard documents)."""
+    g = EarthGrid()
+    x_west, _ = lonlat_to_block(179.0, 0.0, g)
+    x_east, _ = lonlat_to_block(180.0, 0.0, g)
+    assert x_east == 0  # the wrap that used to blow the span up
+    tiles = world_tile_indices_for_bbox(179.0, -9.0, 180.0, -8.0)
+    xs = {tx for tx, _ in tiles}
+    # West side runs from tile(179E) to the last column; east side covers 0..tile(180).
+    hi = sorted(x for x in xs if x > len(xs) // 2)
+    lo = sorted(x for x in xs if x <= len(xs) // 2)
+    assert hi[0] == x_west // DEFAULT_TILE_SIZE
+    assert hi[-1] == g.tiles_x - 1
+    assert lo == list(range(x_east // DEFAULT_TILE_SIZE + 1))
+    # No planet-scale explosion: columns stay bounded by the two wrapped sides.
+    assert len(xs) <= (g.tiles_x - x_west // DEFAULT_TILE_SIZE) + (x_east // DEFAULT_TILE_SIZE + 1)
+    # Non-wrapping bboxes keep the contiguous single-range layout.
+    plain = world_tile_indices_for_bbox(-105.3, 39.5, -104.7, 40.0)
+    cols = {tx for tx, _ in plain}
+    assert cols == set(range(min(cols), max(cols) + 1))

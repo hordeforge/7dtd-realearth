@@ -323,8 +323,16 @@ def world_tile_indices_for_bbox(
     g = EarthGrid(tile_size=tile_size)
     x0, z_south = lonlat_to_block(west, south, g)
     x1, z_north = lonlat_to_block(east, north, g)
-    tx0 = min(x0, x1) // tile_size
-    tx1 = max(x0, x1) // tile_size
     tz0 = min(z_north, z_south) // tile_size
     tz1 = max(z_north, z_south) // tile_size
-    return [(tx, tz) for tz in range(tz0, tz1 + 1) for tx in range(tx0, tx1 + 1)]
+    if x0 <= x1:
+        txs: list[int] = list(range(min(x0, x1) // tile_size, max(x0, x1) // tile_size + 1))
+    else:
+        # Block X wraps at the antimeridian (lon +180 maps to block 0), so an
+        # ordinary east>west bbox can still straddle it (west=179, east=180).
+        # Cover x0..last-tile then 0..x1 instead of min/max expanding to the
+        # near-full-planet span the guard above documents.
+        last_tx = g.tiles_x - 1
+        hi0, lo1 = x0 // tile_size, x1 // tile_size
+        txs = list(range(hi0, last_tx + 1)) + list(range(lo1 + 1))
+    return [(tx, tz) for tz in range(tz0, tz1 + 1) for tx in txs]
