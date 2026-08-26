@@ -8,6 +8,7 @@
 
 from __future__ import annotations
 
+import contextlib
 import math
 import os
 import time
@@ -168,13 +169,16 @@ def _store_tile(cache_dir: Path, zoom: int, tx: int, ty: int, data: bytes) -> No
     disappears, packs can only be rebuilt from what was persisted here.
     """
     directory = cache_dir / str(zoom) / str(tx)
+    tmp = directory / f".{ty}.{os.getpid()}.tmp"
     try:
         directory.mkdir(parents=True, exist_ok=True)
-        tmp = directory / f".{ty}.{os.getpid()}.tmp"
         tmp.write_bytes(data)
         os.replace(tmp, directory / f"{ty}.png")
     except OSError:
-        pass
+        # A failed publish must not orphan its temp file: the pid-scoped name
+        # differs per run, so leftovers would accumulate in the cache forever.
+        with contextlib.suppress(OSError):
+            tmp.unlink(missing_ok=True)
 
 
 def _decode_tile_png(data: bytes) -> np.ndarray | None:

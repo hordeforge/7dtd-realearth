@@ -1,5 +1,7 @@
 """Unit tests for Terrarium decode, tile math, HTTP retry, tile cache (no network)."""
 
+import os
+
 import httpx
 import numpy as np
 import pytest
@@ -7,6 +9,7 @@ import pytest
 from realearth.elevation import (
     _get_with_retry,
     _lonlat_to_tile,
+    _store_tile,
     decode_terrarium_png,
     fetch_region_terrarium,
 )
@@ -209,3 +212,22 @@ def test_terrarium_cache_corrupt_entry_is_refetched(monkeypatch, tmp_path):
 
     fetch_region_terrarium(*_BBOX, 8, 8, zoom=1, cache_dir=tmp_path)
     assert client.calls == poisoned
+
+
+def test_terrarium_cache_failed_publish_leaves_no_tmp_orphan(monkeypatch, tmp_path):
+    """A failed cache publish must not strand its pid-scoped .tmp file.
+
+    The temp name embeds the pid, so orphans from failed runs would otherwise
+    accumulate in a long-lived cache directory with nothing to sweep them.
+    """
+    d = tmp_path / "1" / "0"
+    d.mkdir(parents=True)
+
+    def failing_replace(src: object, dst: object, **kw: object) -> None:
+        raise OSError(28, "No space left on device")
+
+    monkeypatch.setattr(os, "replace", failing_replace)
+    _store_tile(tmp_path, 1, 0, 0, _tile_png())
+
+    leftovers = [p for p in d.iterdir() if p.name.endswith(".tmp")]
+    assert not leftovers, f"stranded temp files: {leftovers}"
