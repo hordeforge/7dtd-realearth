@@ -40,12 +40,40 @@ namespace RealEarth
         /// Canonical form for place-name identity: NFC so an NFD spelling of the
         /// same name (macOS-written JSON, some map exports) matches the composed
         /// seed names instead of surviving dedup as a second place (duplicate map
-        /// labels and double POI stamps). Mirrors
+        /// labels and double POI stamps). Also strips C0/C1 control chars: names
+        /// come from external pack JSON and are echoed into the server log
+        /// (discovery / POI stamp lines), so a raw CR/LF/TAB decoded by
+        /// UnescapeJson would let a hostile pack forge log lines. Legitimate
+        /// place names never contain control characters. Mirrors
         /// tools/realearth/settlements.py normalize_place_name; applied at every
         /// ingestion point so the Ordinal comparers below stay consistent.
         /// </summary>
         internal static string NormalizePlaceName(string name)
-            => string.IsNullOrEmpty(name) ? name : name.Normalize(NormalizationForm.FormC);
+            => string.IsNullOrEmpty(name)
+                ? name
+                : StripControlChars(name.Normalize(NormalizationForm.FormC));
+
+        /// <summary>
+        /// Remove Unicode Cc chars (C0, DEL, C1) after escape decoding; pass-through
+        /// fast path when nothing needs removal.
+        /// </summary>
+        internal static string StripControlChars(string s)
+        {
+            int i = 0;
+            while (i < s.Length && !char.IsControl(s[i]))
+                i++;
+            if (i == s.Length)
+                return s;
+            var sb = new System.Text.StringBuilder(s.Length);
+            sb.Append(s, 0, i);
+            for (; i < s.Length; i++)
+            {
+                char c = s[i];
+                if (!char.IsControl(c))
+                    sb.Append(c);
+            }
+            return sb.ToString();
+        }
 
         public sealed class Place
         {

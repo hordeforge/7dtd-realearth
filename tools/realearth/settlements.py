@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import json
 import math
+import re
 import unicodedata
 from dataclasses import dataclass
 from pathlib import Path
@@ -13,11 +14,18 @@ import numpy as np
 
 from realearth import JsonDict
 
+# C0 controls, DEL, C1: never legitimate in a place name. Stripped at ingestion
+# so a hostile pack cannot carry CR/LF into the runtime's server-log output.
+_CONTROL_CHARS_RE = re.compile(r"[\x00-\x1f\x7f-\x9f]")
+
 
 def normalize_place_name(name: str) -> str:
     """Canonical form for place-name identity: NFC so NFD input (macOS filenames,
-    some map exports) matches the NFC seed names instead of duplicating labels."""
-    return unicodedata.normalize("NFC", name)
+    some map exports) matches the NFC seed names instead of duplicating labels.
+    Also strips C0/C1 control chars (mirrors Source/RealEarth CityMapLabels):
+    names are echoed into the dedicated server log at runtime, so raw CR/LF/TAB
+    decoded from pack JSON would let a hostile pack forge log lines."""
+    return _CONTROL_CHARS_RE.sub("", unicodedata.normalize("NFC", name))
 
 
 @dataclass(frozen=True, slots=True)

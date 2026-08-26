@@ -21,6 +21,18 @@ def test_normalize_place_name_folds_nfd_to_nfc():
     assert normalize_place_name(nfd) == "São Paulo"
 
 
+def test_normalize_place_name_strips_control_chars():
+    """Names are echoed into the dedicated server log at runtime; a hostile
+    pack must not carry CR/LF/TAB (or any C0/C1 char) through ingestion."""
+    assert (
+        normalize_place_name("Foo\r\n[INFO] admin logged in")
+        == "Foo[INFO] admin logged in"
+    )
+    assert normalize_place_name("a\tb\x00c\x1bd\x7fe\x9ff") == "abcdef"
+    # Printable text, including astral chars, passes untouched.
+    assert normalize_place_name("A\U0001f600B") == "A\U0001f600B"
+
+
 def test_load_settlements_geojson_normalizes_name(tmp_path: Path):
     nfd_name = unicodedata.normalize("NFD", "São Paulo")
     gj = tmp_path / "s.geojson"

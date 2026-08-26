@@ -49,6 +49,31 @@ def test_city_map_labels_normalizes_names_at_ingestion():
     assert seed, "seed places must be NFC-normalized"
 
 
+def test_city_map_labels_strips_control_chars_at_ingestion():
+    """UnescapeJson decodes \\n / \\r / \\uXXXX into raw control chars; names are
+    then echoed into the server log (discovery + POI stamp lines), so ingestion
+    must strip Unicode control chars or a hostile pack can forge log lines."""
+    src = _read("CityMapLabels.cs")
+    helper = re.search(
+        r"internal static string StripControlChars\(string s\)[^}]*char\.IsControl",
+        src,
+        re.DOTALL,
+    )
+    assert helper, "CityMapLabels must define a char.IsControl-based stripper"
+    # The stripper is applied inside the same canonicalization the parsed rows
+    # go through (NormalizePlaceName wraps it), so every ingestion point is
+    # covered without a second application site to forget.
+    normalize = re.search(
+        r"internal static string NormalizePlaceName\(string name\)\s*=>[^;]*"
+        r"StripControlChars\([^;]*Normalize\(NormalizationForm\.FormC\)",
+        src,
+    )
+    assert normalize, (
+        "NormalizePlaceName must strip control chars after FormC normalization "
+        "(post-unescape order matters)"
+    )
+
+
 def test_pack_file_reads_declare_utf8_encoding():
     """External JSON/text reads in the mod declare UTF-8 instead of relying on
     the platform default decoder."""
