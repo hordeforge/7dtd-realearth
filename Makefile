@@ -28,7 +28,11 @@ SOURCE        := $(ROOT)/Source/RealEarth
 CSPROJ        := $(SOURCE)/RealEarth.csproj
 DLL_OUT       := $(SOURCE)/bin/Release/RealEarth.dll
 
-GAME_DIR      ?= $(HOME)/.local/share/Steam/steamapps/common/7 Days To Die
+# SEVENDTD_GAME_DIR is what every script reads; GAME_DIR is the make knob for
+# it. Seed one from the other so an exported SEVENDTD_GAME_DIR survives make
+# (an explicit GAME_DIR on the command line still wins over both).
+SEVENDTD_GAME_DIR ?= $(HOME)/.local/share/Steam/steamapps/common/7 Days To Die
+GAME_DIR      ?= $(SEVENDTD_GAME_DIR)
 export SEVENDTD_GAME_DIR := $(GAME_DIR)
 
 # Prefer a local SDK if present (cache or ~/.dotnet); fall back to host dotnet.

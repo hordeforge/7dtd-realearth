@@ -102,3 +102,28 @@ def test_config_validate_exists_and_runs_at_init():
         api,
     )
     assert m, "InitMod must run Config.Validate() immediately after Load"
+
+
+def _csharp_config_members() -> set[str]:
+    """[DataMember] property names the C# loader actually deserializes."""
+    src = _read("Source/RealEarth/RealEarthConfig.cs")
+    return set(re.findall(r"\[DataMember\]\s*public\s+\S+\s+(\w+)\s*\{", src))
+
+
+def test_shipped_config_keys_exist_in_csharp_loader():
+    """Every shipped realearth.json key must map to a C# [DataMember].
+
+    DataContractJsonSerializer silently drops keys it has no member for, so a
+    typo'd or renamed key would do nothing at runtime with no error anywhere.
+    Keys prefixed "_" are comment/metadata and exempt.
+    """
+    members = _csharp_config_members()
+    assert "MapMode" in members  # sanity: the regex still matches the schema
+    for name in (
+        "realearth.json",
+        "realearth.mp.json",
+        "realearth.advanced_height.json",
+    ):
+        cfg = json.loads(_read(f"Config/{name}"))
+        unknown = sorted(k for k in cfg if not k.startswith("_") and k not in members)
+        assert not unknown, f"{name} has keys the mod loader ignores: {unknown}"

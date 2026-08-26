@@ -77,7 +77,7 @@ All optional; defaults shown. Scripts fail fast when numeric values are invalid.
 
 | Variable | Default | Used by |
 |---|---|---|
-| `SEVENDTD_GAME_DIR` | Steam client path | install/expand/package (`make install GAME_DIR=...` exports it) |
+| `SEVENDTD_GAME_DIR` | Steam client path | install/expand/package. Set either this or the make knob `GAME_DIR`; an explicit `make install GAME_DIR=...` exports it |
 | `SEVENDTD_SERVER_DIR` | Dedicated server path | dedicated start/expand/install helpers |
 | `MAP_MODE` / `GAME_DIR` | `Streamed` / Steam path | `make install*`; only `Streamed\\|Baked` accepted |
 | `DOTNET_ROOT` | auto-detected local SDK caches | build + scripts |

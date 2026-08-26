@@ -536,7 +536,7 @@ See canonical list: [`residuals.md`](../../7dtd-engine-research/docs/residuals.m
 ## 12. Regeneration
 
 ```bash
-DS="${SEVENDTD_DS_DIR:-$HOME/.local/share/Steam/steamapps/common/7 Days to Die Dedicated Server}"
+DS="${SEVENDTD_SERVER_DIR:-$HOME/.local/share/Steam/steamapps/common/7 Days to Die Dedicated Server}"
 ASM="$DS/7DaysToDieServer_Data/Managed/Assembly-CSharp.dll"
 cd 7dtd-server-container-optimizer/tools
 mcs -r:Mono.Cecil.dll -out:DumpRealEarthSurfaces.exe DumpRealEarthSurfaces.cs
