@@ -17,6 +17,9 @@ namespace RealEarth
     {
         readonly EarthCoords _coords;
         readonly RealEarthConfig _cfg;
+        /// <summary>Config-constant fold decision cached at construction so the
+        /// per-block LocalToEarth hot path never re-evaluates it.</summary>
+        readonly bool _foldHostIntoPack;
 
         // Origin/absolute pairs are written by the player/sim thread (origin slide,
         // tick updates) and read by the chunk-generation thread plus height-query
@@ -79,6 +82,11 @@ namespace RealEarth
         {
             _coords = coords;
             _cfg = cfg;
+            _foldHostIntoPack = SessionOriginPolicy.ShouldFoldHostIntoPack(
+                _cfg.SingleWorldSession,
+                _cfg.HasRegionalBbox,
+                _coords.WorldWidth,
+                _coords.WorldHeight);
             int ox = 0;
             int oz = Math.Max(0, (_coords.WorldHeight - cfg.LocalWindowSize) / 2);
             WriteOriginLocked(ox, oz);
@@ -144,7 +152,7 @@ namespace RealEarth
             // Always fold into pack grid. Host worlds (RWG / large baked) generate chunks
             // far outside 0..packSize; without this, inject sampled earthX=32768 and
             // only ClampZ to the pack edge (plains forever).
-            if (_cfg.EnableLongitudeWrap || ShouldFoldHostIntoPack())
+            if (_cfg.EnableLongitudeWrap || _foldHostIntoPack)
                 earthX = _coords.WrapX(earthX);
             else
                 earthX = Math.Max(0, Math.Min(Math.Max(0, _coords.WorldWidth - 1), earthX));
@@ -155,16 +163,9 @@ namespace RealEarth
         /// Regional single-map packs tile across any host size so every host chunk
         /// maps into the .rte grid (512×512 H500/Everest test, etc.).
         /// </summary>
-        bool ShouldFoldHostIntoPack() =>
-            SessionOriginPolicy.ShouldFoldHostIntoPack(
-                _cfg.SingleWorldSession,
-                _cfg.HasRegionalBbox,
-                _coords.WorldWidth,
-                _coords.WorldHeight);
-
         int FoldZ(int z)
         {
-            if (ShouldFoldHostIntoPack() && !_cfg.EnableLongitudeWrap)
+            if (_foldHostIntoPack && !_cfg.EnableLongitudeWrap)
                 return SessionOriginPolicy.FoldCoord(z, _coords.WorldHeight);
             return _coords.ClampZ(z);
         }
@@ -172,7 +173,7 @@ namespace RealEarth
         public void EarthToLocal(int earthX, int earthZ, out int localX, out int localZ)
         {
             ReadOrigin(out int ox, out int oz);
-            if (_cfg.EnableLongitudeWrap || ShouldFoldHostIntoPack())
+            if (_cfg.EnableLongitudeWrap || _foldHostIntoPack)
             {
                 // Same shortest-delta fold as seam-crossing slides; one copy of the formula.
                 localX = SessionOriginPolicy.WrappedDelta(earthX - ox, _coords.WorldWidth);
@@ -181,7 +182,7 @@ namespace RealEarth
             {
                 localX = earthX - ox;
             }
-            if (ShouldFoldHostIntoPack() && !_cfg.EnableLongitudeWrap)
+            if (_foldHostIntoPack && !_cfg.EnableLongitudeWrap)
                 localZ = SessionOriginPolicy.WrappedDelta(earthZ - oz, _coords.WorldHeight);
             else
                 localZ = earthZ - oz;

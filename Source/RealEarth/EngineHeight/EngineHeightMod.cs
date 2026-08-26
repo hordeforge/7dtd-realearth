@@ -128,7 +128,7 @@ namespace RealEarth.EngineHeight
                 bool present = TileSamplePolicy.ResolveElev(
                     ok, elevM, cfg, out float elevResolved, out _);
                 if (present)
-                    Store.SetSurfaceMeters(localX, localZ, elevResolved);
+                    Store.SetSurfaceMeters(ex, ez, elevResolved);
                 // Map elev (real DEM or fail-closed ocean placeholder) through height policy.
                 return ClampToAllocatable(MapElev(elevResolved));
             }

@@ -32,6 +32,9 @@ namespace RealEarth
             new Dictionary<int, (int, int, int, int, int)>();
         readonly object _lock = new object();
         readonly HttpClient _http;
+        /// <summary>Config-constant decision cached at construction; FoldPackZ runs
+        /// on the per-block sample hot path and must not re-evaluate it each call.</summary>
+        readonly bool _shouldFoldPack;
 
         const int MissCacheMs = 10_000;
         /// <summary>
@@ -73,6 +76,10 @@ namespace RealEarth
             _root = tileRoot;
             _coords = coords;
             _cfg = cfg;
+            _shouldFoldPack = SessionOriginPolicy.ShouldFoldHostIntoPack(
+                _cfg.SingleWorldSession, _cfg.HasRegionalBbox,
+                _coords.WorldWidth, _coords.WorldHeight)
+                && !_cfg.EnableLongitudeWrap;
             _http = new HttpClient { Timeout = TimeSpan.FromSeconds(12) };
         }
 
@@ -201,10 +208,7 @@ namespace RealEarth
         /// </summary>
         int FoldPackZ(int z)
         {
-            if (SessionOriginPolicy.ShouldFoldHostIntoPack(
-                    _cfg.SingleWorldSession, _cfg.HasRegionalBbox,
-                    _coords.WorldWidth, _coords.WorldHeight)
-                && !_cfg.EnableLongitudeWrap)
+            if (_shouldFoldPack)
             {
                 return SessionOriginPolicy.FoldCoord(z, _coords.WorldHeight);
             }

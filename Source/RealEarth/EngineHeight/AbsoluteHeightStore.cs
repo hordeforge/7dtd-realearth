@@ -34,10 +34,20 @@ namespace RealEarth.EngineHeight
         public void SetSurfaceMeters(int worldBlockX, int worldBlockZ, float elevM)
         {
             ToEarthKey(worldBlockX, worldBlockZ, out int ex, out int ez);
-            int cx = EngineReflection.FloorDiv(ex, 16);
-            int cz = EngineReflection.FloorDiv(ez, 16);
-            int lx = SessionOriginPolicy.FoldCoord(ex, 16);
-            int lz = SessionOriginPolicy.FoldCoord(ez, 16);
+            SetSurfaceMeters(ex, ez, elevM);
+        }
+
+        /// <summary>
+        /// Store surface meters by already-resolved absolute Earth coords. Avoids a
+        /// second LocalToEarth remap when the caller (the per-block sample hot path)
+        /// already holds the Earth block position.
+        /// </summary>
+        public void SetSurfaceMeters(int earthX, int earthZ, float elevM)
+        {
+            int cx = EngineReflection.FloorDiv(earthX, 16);
+            int cz = EngineReflection.FloorDiv(earthZ, 16);
+            int lx = SessionOriginPolicy.FoldCoord(earthX, 16);
+            int lz = SessionOriginPolicy.FoldCoord(earthZ, 16);
             long key = Key(cx, cz);
             lock (_lock)
             {
@@ -61,10 +71,19 @@ namespace RealEarth.EngineHeight
         {
             elevM = 0;
             ToEarthKey(worldBlockX, worldBlockZ, out int ex, out int ez);
-            int cx = EngineReflection.FloorDiv(ex, 16);
-            int cz = EngineReflection.FloorDiv(ez, 16);
-            int lx = SessionOriginPolicy.FoldCoord(ex, 16);
-            int lz = SessionOriginPolicy.FoldCoord(ez, 16);
+            return TryGetSurfaceMeters(ex, ez, out elevM);
+        }
+
+        /// <summary>
+        /// Read surface meters by already-resolved absolute Earth coords.
+        /// </summary>
+        public bool TryGetSurfaceMeters(int earthX, int earthZ, out float elevM)
+        {
+            elevM = 0;
+            int cx = EngineReflection.FloorDiv(earthX, 16);
+            int cz = EngineReflection.FloorDiv(earthZ, 16);
+            int lx = SessionOriginPolicy.FoldCoord(earthX, 16);
+            int lz = SessionOriginPolicy.FoldCoord(earthZ, 16);
             long key = Key(cx, cz);
             lock (_lock)
             {
