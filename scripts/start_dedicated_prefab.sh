@@ -135,7 +135,7 @@ PYTHONPATH="$ROOT/tools" python3 -m realearth.server_config \
   DayLightLength=12 \
   BuildCreate=false
 
-LOG="$USERDATA/server_prefab_${WORLD_NAME}_${WORLD_GEN_SIZE}_$(date +%Y-%m-%d__%H-%M-%S).txt"
+LOG="$USERDATA/server_prefab_${WORLD_NAME}_${WORLD_GEN_SIZE}_$(date -u +%Y-%m-%d__%H-%M-%S)_$$.txt"
 echo "$LOG" >"$USERDATA/dedicated.logpath"
 echo "Log: $LOG"
 echo "Note: first RWG boot generates the 4k world (can take several minutes)."

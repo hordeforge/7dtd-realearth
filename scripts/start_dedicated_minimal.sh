@@ -180,7 +180,7 @@ else
 fi
 echo "UserOptions DiscordDisabled=true → $OPTS"
 
-LOG="$USERDATA/server_minimal_$(date +%Y-%m-%d__%H-%M-%S).txt"
+LOG="$USERDATA/server_minimal_$(date -u +%Y-%m-%d__%H-%M-%S)_$$.txt"
 cd "$DS_DIR"
 export LD_LIBRARY_PATH="."
 ./7DaysToDieServer.x86_64 \

@@ -178,7 +178,7 @@ PYTHONPATH="$ROOT/tools" python3 -m realearth.server_config \
   ServerReservedSlots=0 \
   ServerAdminSlots=0
 
-LOG="$USERDATA/server_test_$(date +%Y-%m-%d__%H-%M-%S).txt"
+LOG="$USERDATA/server_test_$(date -u +%Y-%m-%d__%H-%M-%S)_$$.txt"
 mkdir -p "$USERDATA"
 cd "$DS_DIR"
 export LD_LIBRARY_PATH="."
