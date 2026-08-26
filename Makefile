@@ -8,13 +8,13 @@ SHELL := /bin/bash
 .PHONY: help help-all \
 	setup tools-sync \
 	test test-fast test-height test-python test-mp coverage \
-	build build-mod dll \
+	build build-mod dll build-npi \
 	install install-full install-baked install-streamed install-height install-height-500 \
 	height-test height-map height-map-500 height-map-install height-map-500-install \
 	engine-audit engine-expand engine-expand-dry engine-verify engine-restore dedicated-height-test \
 	demo bake bake-height package \
 	viewer viewer-build serve viewer-lint \
-	webmod webmod-export webmod-lint html-lint \
+	webmod webmod-export webmod-lint html-lint lint-shell \
 	info check clean clean-build
 
 # ---------------------------------------------------------------------------
@@ -106,7 +106,10 @@ help:
 	@echo "    make test               Full Python test suite"
 	@echo "    make test-height        Height mod + height-test map tests only"
 	@echo "    make test-fast          Quick subset (coords, height, tiles)"
+	@echo "    Single test: cd tools && uv run --extra dev pytest tests/test_coords.py -k name"
 	@echo "    make lint               Ruff + black --check + mypy over tools/ and scripts/"
+	@echo "    make lint-shell         shellcheck over scripts/ (CI parity)"
+	@echo "    make build-npi          Build NetworkProtocolInspector (CI parity)"
 	@echo ""
 	@echo "  Viewer"
 	@echo "    make viewer             Export demo pack into viewer/data/demo"
@@ -160,6 +163,12 @@ build build-mod dll:
 install: build
 	@echo "Installing (MAP_MODE=$(MAP_MODE)) → $(GAME_DIR)"
 	MAP_MODE="$(MAP_MODE)" "$(SCRIPTS)/install_proton.sh"
+
+# NetworkProtocolInspector: the C# piece CI analyzer-gates (it builds without
+# the proprietary game DLLs, unlike RealEarth.dll).
+build-npi:
+	@command -v dotnet >/dev/null || { echo "ERROR: dotnet not on PATH (set DOTNET_ROOT=...)" >&2; exit 1; }
+	dotnet build "$(ROOT)/tools/network_protocol_inspector/NetworkProtocolInspector.csproj" -c Release
 
 # Full RealEarth: YDim expand (part of this mod) + mod DLL + worlds
 install-full: engine-expand install
@@ -282,6 +291,12 @@ lint lint-python:
 	@$(BLACK)
 	@$(MYPY)
 
+# CI parity: ci.yml runs `shellcheck scripts/*.sh` with no other wrapper.
+lint-shell:
+	@command -v shellcheck >/dev/null || { echo "ERROR: shellcheck not on PATH (e.g. apt install shellcheck)" >&2; exit 1; }
+	@shellcheck "$(SCRIPTS)"/*.sh
+	@echo "OK shellcheck (scripts/*.sh)"
+
 test-height:
 	@$(PYTEST) tests/test_height_mod_case.py tests/test_height_10k.py \
 		tests/test_height_test_map.py tests/test_engine_constants.py \
@@ -313,8 +328,10 @@ coverage:
 		tests/test_local_window.py tests/test_mp_runtime_structure.py -q --tb=line
 	cd $(TOOLS) && $(COV) report -m
 
-check: setup test-fast lint-python build viewer-build viewer-lint webmod-lint html-lint
-	@echo "OK check (setup + test-fast + lint-python + build + viewer-build + viewer-lint + webmod-lint + html-lint)"
+# Mirrors ci.yml (tools job) as far as a game-less machine allows: build needs
+# the installed game assemblies, everything else here is what CI checks.
+check: setup test-fast lint-python lint-shell build-npi build viewer-build viewer-lint webmod-lint html-lint
+	@echo "OK check (setup + test-fast + lint-python + lint-shell + build-npi + build + viewer-build + viewer-lint + webmod-lint + html-lint)"
 
 # ---------------------------------------------------------------------------
 # Viewer

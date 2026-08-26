@@ -7,6 +7,7 @@ import pytest
 
 from realearth.height import compress_elevation
 from realearth.local_window import LocalWindow
+from realearth.region import build_region
 from realearth.streamed_chunk import (
     VANILLA_CHUNK_SIZE,
     demo_pack_chunk_at_lonlat,
@@ -26,8 +27,22 @@ DEMO = ROOT / "data" / "samples" / "demo_region"
 
 @pytest.fixture(scope="module")
 def demo_pack() -> Path:
-    assert DEMO.is_dir(), f"missing demo pack {DEMO}"
-    assert (DEMO / "earth.manifest.json").is_file()
+    # data/samples is git-ignored generated space; rebuild the pack offline
+    # (synthetic source, same parameters as `realearth cli demo`) so the full
+    # suite passes on a fresh clone instead of erroring on missing fixtures.
+    if not (DEMO / "earth.manifest.json").is_file():
+        build_region(
+            -105.3,
+            39.5,
+            -104.7,
+            40.0,
+            DEMO,
+            resolution_m=60.0,
+            source="synthetic",
+            name="RealEarth_Demo_Denver",
+            max_dim=1024,
+        )
+    assert DEMO.is_dir(), f"demo pack generation failed at {DEMO}"
     assert tile_path(DEMO, 0, 0).is_file()
     return DEMO
 
