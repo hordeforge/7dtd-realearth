@@ -123,6 +123,8 @@ if [[ -d "$ROOT/data/samples/demo_region" ]]; then
     --template "$OUT/Config/realearth.json" \
     --sync-manifest --max-window "$LOCAL_WINDOW_SIZE" \
     TilePackPath=Data/tiles
+else
+  echo "NOTE: no pack at data/samples/demo_region, run make demo; shipping without Data/tiles." >&2
 fi
 
 if [[ -n "$GAME_DIR" && -d "$GAME_DIR" ]]; then
