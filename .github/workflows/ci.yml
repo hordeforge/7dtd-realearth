@@ -51,6 +51,9 @@ jobs:
       - uses: actions/setup-dotnet@67a3573c9a986a3f9c594539f4ab511d57bb3ce9 # v4
       - run: dotnet build tools/network_protocol_inspector/NetworkProtocolInspector.csproj -c Release
       - run: shellcheck scripts/*.sh
+      # Restore is only a backup if it has been proven: roundtrip drill on
+      # synthetic state (sandboxed, no game install needed).
+      - run: make artifacts-drill
       - run: make test-fast
       - run: make -C tools lint
       # The lint scripts install oxlint, tsc and vnu into a shared cache at

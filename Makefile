@@ -122,6 +122,7 @@ help:
 	@echo "    make bake-height        Bake RealEarth_HeightTest only"
 	@echo "    make artifacts-backup   Verified archive of worlds/packs/cache (docs/BACKUP_RESTORE.md)"
 	@echo "    make artifacts-restore ARCHIVE=path.tar.gz   Restore artifact archive"
+	@echo "    make artifacts-drill    Prove backup/restore roundtrip in a sandbox"
 	@echo ""
 	@echo "  Tests"
 	@echo "    make test               Full Python test suite"
@@ -303,6 +304,13 @@ artifacts-restore:
 	@test -n "$(ARCHIVE)" || { echo "ERROR: pass ARCHIVE=path/to/realearth-artifacts-*.tar.gz" >&2; exit 1; }
 	@chmod +x "$(SCRIPTS)/backup_artifacts.sh"
 	@"$(SCRIPTS)/backup_artifacts.sh" restore "$(ARCHIVE)"
+
+# Prove the backup/restore roundtrip on synthetic state inside a temp
+# sandbox (clobber guard, forced-restore move-aside, corrupt-archive
+# refusal). Run this after any change to backup_artifacts.sh; CI does.
+artifacts-drill:
+	@chmod +x "$(SCRIPTS)/backup_artifacts.sh" "$(SCRIPTS)/artifacts_drill.sh"
+	@"$(SCRIPTS)/artifacts_drill.sh"
 
 # ---------------------------------------------------------------------------
 # Tests

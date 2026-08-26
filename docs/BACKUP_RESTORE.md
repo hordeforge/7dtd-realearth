@@ -62,6 +62,22 @@ The script verifies the gzip stream and sha256 before declaring success, and
 refuses corrupt archives or silent overwrite on restore. A zero-byte or
 truncated archive fails the command instead of passing quietly.
 
+### Restore drill
+
+A backup that has never been restored is a hypothesis. Prove the whole path
+on synthetic state (no real artifacts touched) any time:
+
+```bash
+make artifacts-drill
+```
+
+The drill builds a sandbox tree shaped like real state, backs it up, destroys
+the artifacts, restores, and compares every file byte-for-byte. It also
+asserts the guardrails: clobber is refused without `RE_FORCE_RESTORE=1`, a
+forced restore moves the old tree aside instead of deleting it, and a corrupt
+archive is refused with nothing extracted. CI runs it on every change to keep
+the claim current (`scripts/artifacts_drill.sh`).
+
 Engine DLL recovery is separate and already scripted: `make engine-restore`,
 `make engine-verify` (drift detection against the sha256 recorded at expand
 time). See [HEIGHT_LIMITS](HEIGHT_LIMITS.md) and [THREAT_MODEL](THREAT_MODEL.md).
@@ -80,8 +96,10 @@ time). See [HEIGHT_LIMITS](HEIGHT_LIMITS.md) and [THREAT_MODEL](THREAT_MODEL.md)
 ## Open questions (evidence outside this repo)
 
 - Is any off-host copy target configured or scheduled for this machine?
-  Nothing in the repo says so; absent evidence, assume no.
-- Has a full restore drill been executed against real baked state? The
-  artifact roundtrip is verified by construction (checksum gate) but no drill
-  artifact exists yet; the same is true of the engine expand/restore pair
-  (TODO.md tracks both).
+  Nothing in the repo says so; absent evidence, assume no. Until one exists,
+  the RPO for repo-disk loss is however long an operator waits between
+  `make artifacts-backup` and the off-host copy.
+- The artifact backup/restore roundtrip is proven by `make artifacts-drill`
+  and re-proven on every CI run. Not yet drilled against real multi-gigabyte
+  baked state, nor is the engine expand/restore pair (needs a game install;
+  TODO.md tracks both).

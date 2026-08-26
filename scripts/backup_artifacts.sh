@@ -17,9 +17,11 @@
 #                    IMPORTANT: the default shares the repo disk's failure
 #                    domain. Copy archives off-host after each run.
 #   RE_FORCE_RESTORE set to 1 to overwrite existing artifacts during restore.
+#   RE_ROOT         operate on this tree instead of the repo (used by the
+#                   artifacts-drill sandbox; never point it at anything else).
 set -euo pipefail
 
-ROOT="$(cd "$(dirname "$0")/.." && pwd)"
+ROOT="${RE_ROOT:-$(cd "$(dirname "$0")/.." && pwd)}"
 BACKUP_DIR="${RE_BACKUP_DIR:-$ROOT/backups}"
 
 ARTIFACT_DIRS=(worlds data/samples data/cache viewer/data)
@@ -27,7 +29,7 @@ ARTIFACT_DIRS=(worlds data/samples data/cache viewer/data)
 die() { echo "ERROR: $*" >&2; exit 1; }
 
 usage() {
-  grep '^#' "$0" | sed -n '2,20p'
+  grep '^#' "$0" | sed -n '2,22p'
   exit "${1:-0}"
 }
 
