@@ -234,7 +234,7 @@ def test_build_region_rejects_inverted_bbox(tmp_path: Path) -> None:
 
 
 @pytest.mark.parametrize("bad", ["inf", "-inf", "nan"])
-def test_planet_tiles_rejects_non_finite_bbox(bad: str) -> None:
+def test_planet_tiles_rejects_each_non_finite_form(bad: str) -> None:
     """Non-finite bbox floats must be a usage error, not a deep ValueError."""
     result = CliRunner().invoke(
         main,

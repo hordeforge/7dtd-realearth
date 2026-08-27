@@ -12,6 +12,11 @@ UV     := uv
 REEARTH := $(UV) run --locked python -m realearth.cli
 # --extra dev keeps pytest on uv.lock (a bare --with pytest would float).
 PYTEST := $(UV) run --locked --extra dev python -m pytest
+# Same gate as the repo-root Makefile lint target (which CI also runs): every
+# tool invocation stays on uv.lock, never a fresh resolution.
+RUFF := $(UV) run --locked --extra dev ruff check realearth tests ../scripts
+BLACK := $(UV) run --locked --extra dev black --check --config pyproject.toml realearth tests ../scripts
+MYPY := $(UV) run --locked --extra dev mypy realearth ../scripts
 
 help:
 	@echo "RealEarth tools/: Python pipeline"
@@ -81,9 +86,9 @@ serve:
 	$(REEARTH) serve --port 8765 --root $(ROOT)/viewer
 
 lint:
-	$(UV) run --locked --extra dev ruff check realearth tests ../scripts
-	$(UV) run --locked --extra dev black --check --config pyproject.toml realearth tests ../scripts
-	$(UV) run --locked --extra dev mypy realearth ../scripts
+	$(RUFF)
+	$(BLACK)
+	$(MYPY)
 
 info:
 	$(REEARTH) info

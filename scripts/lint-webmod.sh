@@ -57,6 +57,13 @@ mkdir -p "$cache_dir"
 if [ ! -d "$cache_dir/anti-slop-src" ]; then
   fetch_retry "https://github.com/dmmulroy/anti-slop/archive/$ANTI_SLOP_SHA.tar.gz" \
     "$cache_dir/anti-slop.tar.gz"
+  # Integrity gate: the archive has no upstream checksum manifest, so verify
+  # against the pin in toolchain-versions.env before anything extracts it.
+  if ! echo "${ANTI_SLOP_SHA256}  $cache_dir/anti-slop.tar.gz" | sha256sum -c - >/dev/null 2>&1; then
+    rm -f "$cache_dir/anti-slop.tar.gz"
+    echo "realearth: lint-webmod: anti-slop tarball sha256 mismatch (expected $ANTI_SLOP_SHA256)" >&2
+    exit 1
+  fi
   mkdir -p "$cache_dir/anti-slop-src"
   tar xzf "$cache_dir/anti-slop.tar.gz" -C "$cache_dir/anti-slop-src" --strip-components=2 "anti-slop-$ANTI_SLOP_SHA/src"
 fi
