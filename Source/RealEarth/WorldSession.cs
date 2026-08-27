@@ -346,10 +346,16 @@ namespace RealEarth
         static bool _playerCountCacheValid;
         static int _playerCountCached;
         static int _playerCountCacheExpiry;
+        /// <summary>
+        /// Millisecond tick source with Environment.TickCount semantics (unchecked
+        /// wrap-safe deltas), injectable so the player-count TTL can be stepped by
+        /// virtual time in a deterministic harness.
+        /// </summary>
+        internal static Func<int> TickNow { get; set; } = static () => Environment.TickCount;
 
         public static int EstimatePlayerCount()
         {
-            int now = Environment.TickCount;
+            int now = TickNow();
             lock (_playerCountGate)
             {
                 if (_playerCountCacheValid && unchecked(now - _playerCountCacheExpiry) < 0)
@@ -360,7 +366,7 @@ namespace RealEarth
             lock (_playerCountGate)
             {
                 _playerCountCached = n;
-                _playerCountCacheExpiry = Environment.TickCount + PlayerCountCacheMs;
+                _playerCountCacheExpiry = TickNow() + PlayerCountCacheMs;
                 _playerCountCacheValid = true;
             }
             return n;
