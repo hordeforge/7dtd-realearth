@@ -262,11 +262,14 @@ def fetch_region_terrarium(
                     return ty, tx, elev
         url = TERRARIUM_URL.format(z=zoom, x=tx, y=ty)
         r = _get_with_retry(client, url)
-        if cache is not None:
-            _store_tile(cache, zoom, tx, ty, r.content)
         elev = _decode_tile_png(r.content)
         if elev is None:
             raise ValueError(f"undecodable tile PNG from {url}")
+        # Store only validated tiles: a corrupt-but-HTTP-200 body must not enter
+        # the durable cache as a success entry (the cached copy would shadow the
+        # source until the next refetch overwrites it).
+        if cache is not None:
+            _store_tile(cache, zoom, tx, ty, r.content)
         return ty, tx, elev
 
     with httpx.Client(timeout=timeout, follow_redirects=True) as client:

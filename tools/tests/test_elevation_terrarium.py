@@ -214,6 +214,26 @@ def test_terrarium_cache_corrupt_entry_is_refetched(monkeypatch, tmp_path):
     assert client.calls == poisoned
 
 
+def test_terrarium_undecodable_response_is_not_cached(monkeypatch, tmp_path):
+    """A corrupt-but-HTTP-200 tile must not be persisted into the cache.
+
+    Only validated payloads may enter the durable cache: an undecodable body
+    stored first would shadow the source on later runs until a refetch
+    happened to overwrite it.
+    """
+    client = _FakeTileClient(b"not a png")
+    monkeypatch.setattr(httpx, "Client", lambda **kw: client)
+
+    with pytest.raises(ValueError, match="undecodable"):
+        fetch_region_terrarium(*_BBOX, 8, 8, zoom=1, cache_dir=tmp_path)
+
+    stored = [
+        *tmp_path.rglob("*.png"),
+        *tmp_path.rglob("*.tmp"),
+    ]
+    assert stored == [], f"undecodable response leaked into cache: {stored}"
+
+
 def test_terrarium_cache_failed_publish_leaves_no_tmp_orphan(monkeypatch, tmp_path):
     """A failed cache publish must not strand its pid-scoped .tmp file.
 
