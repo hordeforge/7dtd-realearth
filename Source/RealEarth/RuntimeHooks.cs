@@ -968,21 +968,11 @@ namespace RealEarth
                     return;
 
                 // Prefer Chunk as second arg
-                object? chunk = null;
-                int cx = 0, cz = 0;
-                if (__1 != null && __1.GetType().Name.IndexOf("Chunk", StringComparison.OrdinalIgnoreCase) >= 0)
-                {
-                    chunk = __1;
-                    if (!TryGetChunkIndices(chunk, out cx, out cz))
-                        return;
-                }
-                else if (__0 != null && __0.GetType().Name.IndexOf("Chunk", StringComparison.OrdinalIgnoreCase) >= 0)
-                {
-                    chunk = __0;
-                    if (!TryGetChunkIndices(chunk, out cx, out cz))
-                        return;
-                }
-                else
+                object? chunk =
+                    __1 != null && __1.GetType().Name.IndexOf("Chunk", StringComparison.OrdinalIgnoreCase) >= 0 ? __1 :
+                    __0 != null && __0.GetType().Name.IndexOf("Chunk", StringComparison.OrdinalIgnoreCase) >= 0 ? __0 :
+                    null;
+                if (chunk == null || !TryGetChunkIndices(chunk, out int cx, out int cz))
                     return;
 
                 ChunkTerrainInject.OnChunkGenerated(__instance, cx, cz, chunk);

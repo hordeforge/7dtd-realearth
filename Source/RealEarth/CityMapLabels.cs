@@ -780,7 +780,8 @@ namespace RealEarth
 
         static void AddSeedPlacesInPack(List<Place> into)
         {
-            // edge_m ≈ real urban continuum half-width (map extent order-of-magnitude).
+            // Mirrors tools/realearth/settlements.py SEED_SETTLEMENTS (same names,
+            // coords, populations, edges), in the same order.
             // Band is not listed: it is derived from population via the single ladder
             // (RuntimePoiInject.BandFromPop), matching Python Settlement.band, so a
             // seed can never drift onto the wrong prefab pool.
@@ -789,15 +790,23 @@ namespace RealEarth
                 ("New York", -74.006, 40.7128, 8_300_000, 35_000),
                 ("Los Angeles", -118.2437, 34.0522, 3_900_000, 45_000),
                 ("Chicago", -87.6298, 41.8781, 2_700_000, 28_000),
-                ("Denver", -104.9903, 39.7392, 715_000, 22_000),
                 ("London", -0.1276, 51.5074, 9_000_000, 28_000),
                 ("Paris", 2.3522, 48.8566, 2_100_000, 18_000),
                 ("Berlin", 13.4050, 52.5200, 3_700_000, 16_000),
                 ("Tokyo", 139.6917, 35.6895, 14_000_000, 40_000),
                 ("Sydney", 151.2093, -33.8688, 5_300_000, 22_000),
-                ("São Paulo", -46.6333, -23.5505, 12_500_000, 30_000),
+                ("São Paulo", -46.6333, -23.5505, 12_000_000, 30_000),
                 ("Cairo", 31.2357, 30.0444, 10_000_000, 22_000),
                 ("Mumbai", 72.8777, 19.0760, 12_500_000, 25_000),
+                ("Denver", -104.9903, 39.7392, 715_000, 22_000),
+                ("Phoenix", -112.0740, 33.4484, 1_600_000, 35_000),
+                ("Seattle", -122.3321, 47.6062, 750_000, 20_000),
+                ("Miami", -80.1918, 25.7617, 450_000, 25_000),
+                ("Rome", 12.4964, 41.9028, 2_800_000, 12_000),
+                ("Moscow", 37.6173, 55.7558, 12_500_000, 25_000),
+                ("Beijing", 116.4074, 39.9042, 21_000_000, 35_000),
+                ("Cape Town", 18.4241, -33.9249, 460_000, 15_000),
+                ("Reykjavik", -21.8174, 64.1466, 140_000, 8_000),
                 ("Kathmandu", 85.3240, 27.7172, 1_400_000, 10_000),
                 ("Namche Bazaar", 86.7140, 27.8069, 1_600, 800),
                 ("Lukla", 86.7314, 27.6866, 1_500, 600),
