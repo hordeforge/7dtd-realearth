@@ -56,3 +56,15 @@ jobs:
             exit 1
           fi
           echo "ok: tag $TAG matches $MANIFEST ($SHIPPED) and $TOOLS ($TOOLS_VERSION)"
+
+      # A tag without a dated CHANGELOG heading releases notes nobody wrote.
+      - name: Check CHANGELOG.md has a released entry for the tag
+        shell: bash
+        run: |
+          set -euo pipefail
+          TAG="${GITHUB_REF_NAME#v}"
+          if ! grep -Eq "^## \\[${TAG}\\] - [0-9]{4}-[0-9]{2}-[0-9]{2}$" CHANGELOG.md; then
+            echo "ERROR: CHANGELOG.md has no '## [$TAG] - YYYY-MM-DD' heading; write the release notes before tagging" >&2
+            exit 1
+          fi
+          echo "ok: CHANGELOG.md has a released entry for $TAG"

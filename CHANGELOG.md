@@ -40,9 +40,16 @@ and the release gate requires both to match the tag (`v<version>`).
   (`server_minimal_<utc-stamp>_<pid>.txt` and friends), so two starts can no
   longer write into one file. The chosen path is echoed and written to
   `<userdata>/dedicated.logpath`: tail that file instead of a fixed name.
-- Makefile honors an exported `SEVENDTD_GAME_DIR`: it seeds the default
-  `GAME_DIR`, while an explicit `GAME_DIR=` on the command line still wins.
+- Makefile and Python tools honor an exported `SEVENDTD_GAME_DIR`: it seeds
+  the default `GAME_DIR` in make, while an explicit `GAME_DIR=` on the command
+  line still wins; `realearth.cli`, generated-world export, and the proton
+  path helpers resolve the game dir and Steam roots through the same variable.
   Install targets can no longer silently ignore the variable the scripts read.
+- The packaged mod folder ships `LICENSE` next to `ModInfo.xml` (the mod is
+  redistributed standalone, so the license text must travel with it), and no
+  longer copies `docs/INDEX.md` into `Docs/` because its links point at
+  workspace paths that do not exist inside a shipped folder. Refresh the mod
+  folder contents when re-packaging an install.
 
 ### Fixed
 
@@ -59,12 +66,32 @@ and the release gate requires both to match the tag (`v<version>`).
   need no change; code catching only `zlib.error` must catch `ValueError`.
 - Viewer and webmod map controls give feedback on invalid jump-to-coords
   input and submit on Enter; globe spin/jump buttons carry state tooltips.
+- Seed-generated places derive label size bands from the same population
+  ladder as externally stamped settlements, so mixed worlds label
+  consistently instead of sizing the two sources differently.
 
 ### Removed
 
 - Inert placeholder configs `Config/biomes.xml` and `Config/rwgmixer.xml` are
   gone from the mod package. The game never loaded them; delete any local
   copies. Landcover and biome behavior is unchanged.
+
+### Security
+
+- Place names from external settlement files are stripped of Unicode control
+  characters after NFC normalization (`CityMapLabels.NormalizePlaceName` and
+  `tools.realearth.settlements.normalize_place_name`). Names are echoed into
+  the server log, so a hostile pack could forge log lines with embedded CR/LF
+  or tab characters; legitimate place names never contain control characters.
+
+### Performance
+
+- Chunk terrain sampling inflates each `.rte` section once and reserves the
+  exact output capacity up front instead of growing the buffer during decode,
+  cutting allocation cost on multi-MB elevation sections in the streaming hot
+  path.
+- Per-chunk reflection member lookups are memoized in the generation hook,
+  removing repeated lookups per chunk.
 
 ## [0.3.0] - 2026-08-26
 
