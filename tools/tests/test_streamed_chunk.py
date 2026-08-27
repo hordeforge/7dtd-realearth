@@ -8,6 +8,7 @@ import pytest
 from realearth import DEFAULT_SEA_LEVEL_GAME_Y, ENGINE_TARGET_MAX_Y
 from realearth.height import compress_elevation
 from realearth.local_window import LocalWindow
+from realearth.region import build_region
 from realearth.streamed_chunk import (
     VANILLA_CHUNK_SIZE,
     demo_pack_chunk_at_lonlat,
@@ -25,13 +26,26 @@ ROOT = Path(__file__).resolve().parents[2]
 DEMO = ROOT / "data" / "samples" / "demo_region"
 
 
-@pytest.fixture(scope="module")
-def demo_pack() -> Path:
-    # data/samples is a gitignored runtime artifact; a fresh clone has none.
-    if not DEMO.is_dir() or not (DEMO / "earth.manifest.json").is_file():
-        pytest.skip(f"demo pack missing at {DEMO} (generate with: make demo)")
-    assert tile_path(DEMO, 0, 0).is_file(), f"demo pack {DEMO} has no tiles"
-    return DEMO
+@pytest.fixture(scope="session")
+def demo_pack(tmp_path_factory) -> Path:
+    """Prefer the generated pack (make demo); else build the same synthetic one."""
+    if (DEMO / "earth.manifest.json").is_file() and tile_path(DEMO, 0, 0).is_file():
+        return DEMO
+    out = tmp_path_factory.mktemp("demo_region")
+    build_region(
+        -105.3,
+        39.5,
+        -104.7,
+        40.0,
+        out,
+        resolution_m=60.0,
+        source="synthetic",
+        name="RealEarth_Demo_Denver",
+        max_dim=1024,
+    )
+    assert (out / "earth.manifest.json").is_file()
+    assert tile_path(out, 0, 0).is_file()
+    return out
 
 
 def test_missing_tile_fails_closed_to_ocean(tmp_path: Path):
