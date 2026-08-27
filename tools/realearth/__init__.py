@@ -1,4 +1,17 @@
-"""RealEarth offline pipeline for 7 Days to Die."""
+"""RealEarth offline pipeline for 7 Days to Die.
+
+Module map (dependency direction: top imports bottom, never the reverse):
+- coords, local_window          planet grid math, longitude wrap, sliding window
+- elevation                     DEM fetch (open-meteo / terrarium)
+- landcover, settlements, density   surface classification, POIs, population bands
+- height, tile_format           real-meters-to-game-Y math, .rte tile codec
+- streamed_chunk                fill one Streamed chunk from .rte samples
+- region, generated_world, bake_world, height_test_map   world builders
+- export_7dtd, viewer_export, viewer_server   pack export and web serving
+- mod_config, server_config     XML config writers
+- proton_paths, engine_constants, height_mod_case   install/engine integration
+Entry point: python -m realearth.cli (see cli.py).
+"""
 
 from typing import Any
 

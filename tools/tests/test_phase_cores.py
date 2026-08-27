@@ -60,6 +60,13 @@ def test_p1_engine_height_uses_tile_sample_policy():
     assert "HeightInjectMath" in src
 
 
+def test_tile_sample_policy_does_not_reach_into_engine_height():
+    """Dependency direction: the sampling policy must not pull from the
+    engine-height subsystem (that edge closed a policy<->subsystem cycle);
+    callers pass the allocatable ceiling in explicitly."""
+    src = _read("TileSamplePolicy.cs")
+    assert "EngineHeight" not in src
+
 def test_p1_height_inject_math_everest():
     # mirrors HeightInjectMath.MetersToGameYOneToOne
     sea, elev = 100, 8849
@@ -346,6 +353,7 @@ def test_retry_apply_never_double_patch():
     assert "HashSet<MethodBase>" in hooks
     assert "_patchedMethods.Add(target)" in hooks
     # Extract TryRetryApply body: must not re-enter full gen scan when ChunkIndexPatches > 0
+    # Body ends at the method's own closing brace (8-space indent); inner blocks are deeper.
     m = re.search(
         r"public static void TryRetryApply\(\)\s*\{(?P<body>.*?)\n        \}",
         hooks,
