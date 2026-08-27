@@ -29,12 +29,13 @@ jobs:
       # Actions pinned by full commit SHA (tag in comment) so a moved tag or a
       # compromised major-version release cannot inject code into the pipeline.
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
-      - name: Check the tag matches ModInfo.xml
+      - name: Check the tag matches ModInfo.xml and the tools package
         shell: bash
         run: |
           set -euo pipefail
           TAG="${GITHUB_REF_NAME}"
           MANIFEST="ModInfo.xml"
+          TOOLS="tools/realearth/__init__.py"
           case "$TAG" in v*) ;; *) echo "ERROR: tag '$TAG' does not start with 'v'" >&2; exit 1;; esac
           SHIPPED="$(sed -n 's/.*<Version[^>]*value="\([^"]*\)".*/\1/p' "$MANIFEST" | head -1)"
           if [ -z "$SHIPPED" ]; then
@@ -45,4 +46,13 @@ jobs:
             echo "ERROR: tag $TAG but $MANIFEST ships $SHIPPED; make them match before tagging" >&2
             exit 1
           fi
-          echo "ok: tag $TAG matches $MANIFEST ($SHIPPED)"
+          TOOLS_VERSION="$(sed -n 's/^__version__ = "\(.*\)"$/\1/p' "$TOOLS" | head -1)"
+          if [ -z "$TOOLS_VERSION" ]; then
+            echo "ERROR: no __version__ found in $TOOLS" >&2
+            exit 1
+          fi
+          if [ "$TOOLS_VERSION" != "${TAG#v}" ]; then
+            echo "ERROR: tag $TAG but $TOOLS ships $TOOLS_VERSION; make them match before tagging" >&2
+            exit 1
+          fi
+          echo "ok: tag $TAG matches $MANIFEST ($SHIPPED) and $TOOLS ($TOOLS_VERSION)"
