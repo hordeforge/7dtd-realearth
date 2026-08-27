@@ -67,6 +67,7 @@ def test_tile_sample_policy_does_not_reach_into_engine_height():
     src = _read("TileSamplePolicy.cs")
     assert "EngineHeight" not in src
 
+
 def test_p1_height_inject_math_everest():
     # mirrors HeightInjectMath.MetersToGameYOneToOne
     sea, elev = 100, 8849
