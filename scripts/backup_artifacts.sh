@@ -128,7 +128,8 @@ cmd_restore() {
     if [[ -e "$ROOT/$d" ]]; then
       if [[ "${RE_FORCE_RESTORE:-0}" == "1" ]]; then
         echo "Moving existing $d aside (RE_FORCE_RESTORE=1)..."
-        local aside="$ROOT/${d}.pre-restore-$(date -u +%Y%m%dT%H%M%S)"
+        local aside
+        aside="$ROOT/${d}.pre-restore-$(date -u +%Y%m%dT%H%M%S)"
         local m=1
         while [[ -e "$aside" ]]; do
           aside="$ROOT/${d}.pre-restore-$(date -u +%Y%m%dT%H%M%S).$m"
