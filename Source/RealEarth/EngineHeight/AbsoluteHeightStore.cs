@@ -34,7 +34,7 @@ namespace RealEarth.EngineHeight
         public void SetSurfaceMeters(int worldBlockX, int worldBlockZ, float elevM)
         {
             ToEarthKey(worldBlockX, worldBlockZ, out int ex, out int ez);
-            SetSurfaceMeters(ex, ez, elevM);
+            SetSurfaceMetersEarth(ex, ez, elevM);
         }
 
         /// <summary>
@@ -42,7 +42,7 @@ namespace RealEarth.EngineHeight
         /// second LocalToEarth remap when the caller (the per-block sample hot path)
         /// already holds the Earth block position.
         /// </summary>
-        public void SetSurfaceMeters(int earthX, int earthZ, float elevM)
+        public void SetSurfaceMetersEarth(int earthX, int earthZ, float elevM)
         {
             int cx = EngineReflection.FloorDiv(earthX, 16);
             int cz = EngineReflection.FloorDiv(earthZ, 16);
@@ -71,13 +71,13 @@ namespace RealEarth.EngineHeight
         {
             elevM = 0;
             ToEarthKey(worldBlockX, worldBlockZ, out int ex, out int ez);
-            return TryGetSurfaceMeters(ex, ez, out elevM);
+            return TryGetSurfaceMetersEarth(ex, ez, out elevM);
         }
 
         /// <summary>
         /// Read surface meters by already-resolved absolute Earth coords.
         /// </summary>
-        public bool TryGetSurfaceMeters(int earthX, int earthZ, out float elevM)
+        public bool TryGetSurfaceMetersEarth(int earthX, int earthZ, out float elevM)
         {
             elevM = 0;
             int cx = EngineReflection.FloorDiv(earthX, 16);
