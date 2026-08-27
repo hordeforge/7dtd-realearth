@@ -23,7 +23,7 @@ jobs:
       # Actions pinned by full commit SHA (tag in comment) so a moved tag or a
       # compromised major-version release cannot inject code into the pipeline.
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
-      - uses: astral-sh/setup-uv@d0cc045d04ccac9d8b7881df0226f9e82c39688e # v6.8.0
+      - uses: astral-sh/setup-uv@20cfd1bf945f4377ade1205e4dbc17946fc9a30d # v10.0.1
         with:
           # Pin the uv binary itself (the action otherwise installs whatever
           # is latest at run time). Matches tools/pyproject.toml
@@ -78,7 +78,7 @@ jobs:
       # Actions pinned by full commit SHA (tag in comment) so a moved tag or a
       # compromised major-version release cannot inject code into the pipeline.
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
-      - uses: astral-sh/setup-uv@d0cc045d04ccac9d8b7881df0226f9e82c39688e # v6.8.0
+      - uses: astral-sh/setup-uv@20cfd1bf945f4377ade1205e4dbc17946fc9a30d # v10.0.1
         with:
           version: "0.12.6"
           enable-cache: true
