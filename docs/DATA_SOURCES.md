@@ -4,7 +4,7 @@
 **Not:** legal policy narrative ([REALISM_AND_GOOGLE_EARTH](REALISM_AND_GOOGLE_EARTH.md)), density stamp bands ([CITIES_AND_DENSITY](CITIES_AND_DENSITY.md)), product status.  
 **Hub:** [INDEX](INDEX.md).
 
-CLI examples assume `cd tools && uv run realearth …` (or `make` targets from repo root).
+CLI examples assume `cd tools && uv run --locked realearth …` (or `make` targets from repo root).
 
 ---
 
@@ -32,7 +32,7 @@ realearth build-region ... --source geotiff --geotiff /path/to/copernicus.tif
 With GIS extras:
 
 ```bash
-cd tools && uv sync --extra gis --extra dev
+cd tools && uv sync --locked --extra gis --extra dev
 ```
 
 **Product height:** tiles store **meters ASL**. Runtime: `gameY ≈ seaLevelGameY + elev_m` after YDim expand. Do not bake global compress as the ship path ([HEIGHT_LIMITS.md](HEIGHT_LIMITS.md)).

@@ -160,7 +160,7 @@ Config (`realearth.json`):
 Audit anytime:
 
 ```bash
-cd tools && uv run python -m realearth.cli engine-audit
+cd tools && uv run --locked python -m realearth.cli engine-audit
 # or workspace RE:
 # mono 7dtd-server-optimizer/tools/DumpTerrain.exe $ASM 7dtd-engine-research/il/terrain-VERSION
 ```

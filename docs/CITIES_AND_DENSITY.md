@@ -39,7 +39,7 @@ flowchart LR
 
 ## Pipeline
 
-Commands assume `cd tools && uv run …`, or a venv with `realearth` on PATH.
+Commands assume `cd tools && uv run --locked …`, or a venv with `realearth` on PATH.
 
 ```bash
 # 1) Region pack with settlement-driven density (default seeds include real cities)

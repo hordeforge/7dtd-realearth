@@ -132,7 +132,7 @@ help:
 	@echo "    make test-one T=tests/test_coords.py::test_wrap_x      Run one test/node"
 	@echo "    make test-height        Height mod + height-test map tests only"
 	@echo "    make test-fast          Quick subset (coords, height, tiles)"
-	@echo "    Single test: cd tools && uv run --extra dev pytest tests/test_coords.py -k name"
+	@echo "    Single test: cd tools && uv run --locked --extra dev pytest tests/test_coords.py -k name"
 	@echo "    make lint               Ruff + black --check + mypy over tools/ and scripts/"
 	@echo "    make lint-shell         ShellCheck over scripts/*.sh (CI gate)"
 	@echo "    make build-npi          Compile tools/network_protocol_inspector (CI C# gate)"

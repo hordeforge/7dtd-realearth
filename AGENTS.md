@@ -67,8 +67,8 @@ Dedicated is a separate Steam app; expand/install scripts may target both. Proto
 
 ```bash
 cd tools && uv sync --locked --extra dev
-uv run python -m realearth.cli demo --out ../data/samples/demo_region
-uv run python -m realearth.cli bake-world --pack ../data/samples/demo_region \
+uv run --locked python -m realearth.cli demo --out ../data/samples/demo_region
+uv run --locked python -m realearth.cli bake-world --pack ../data/samples/demo_region \
   --size 8192 --out ../worlds/RealEarth_8k
 ```
 
