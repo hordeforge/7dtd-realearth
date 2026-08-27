@@ -252,9 +252,17 @@ Full-column Reflect to ~8849 hangs gen and is not a product requirement for play
 |---|---|
 | Session inject count / peak | Only on **successful** apply; reset on WorldReady |
 | Miss / present tile hits | Fail-closed observability |
+| `TileLoadStats` disk/cdn ok/fail | Tile load outcomes; `badPayload` = CDN serving wrong bytes, `existsErr` = unreadable tile root (streamer blind) |
 | Player tick stats | Count **Update** path only (unload success must not mask missing tick) |
 | `reinject` / `reheight` | Console: force sync load + sample proof |
 | `InjectPatchStats` | Bind counts, blocked flag |
+
+Log levels: routine state goes through `Log.Out`; recoverable degradation
+(transient CDN/tile failures, unbound patches pending retry, config warnings)
+through `Log.Warning`; operator-visible path failures (init failed, INJECT GATE
+closed, tick/gen postfix errors) through `Log.Error`. When the host logger lacks
+the level method the line falls back to an `[RealEarth][WARN]`/`[RealEarth][ERROR]`
+tagged Out line, so grepping either channel works.
 
 ---
 

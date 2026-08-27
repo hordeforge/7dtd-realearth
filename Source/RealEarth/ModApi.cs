@@ -111,7 +111,7 @@ namespace RealEarth
                 }
                 catch (Exception hex)
                 {
-                    LogWarn($"Harmony bootstrap skipped: {hex.Message}");
+                    LogWarn($"Harmony bootstrap skipped: {hex.GetType().Name}: {hex.Message}");
                 }
 
                 try
@@ -120,7 +120,7 @@ namespace RealEarth
                 }
                 catch (Exception rex)
                 {
-                    LogWarn($"RuntimeHooks skipped: {rex.Message}");
+                    LogWarn($"RuntimeHooks skipped: {rex.GetType().Name}: {rex.Message}");
                 }
             }
             catch (Exception ex)
@@ -167,6 +167,13 @@ namespace RealEarth
                 if (m != null)
                 {
                     m.Invoke(null, new object[] { Prefix() + msg });
+                    return;
+                }
+                if (_logOut != null)
+                {
+                    // Host logger has no Warning/Error overload: stay on the game log
+                    // channel and let the prefix carry the level.
+                    _logOut.Invoke(null, new object[] { Prefix() + msg });
                     return;
                 }
             }
@@ -239,7 +246,7 @@ namespace RealEarth
             }
             catch (Exception ex)
             {
-                LogWarn($"Pack manifest skip: {ex.Message}");
+                LogWarn($"Pack manifest skip: {ex.GetType().Name}: {ex.Message}");
             }
         }
 

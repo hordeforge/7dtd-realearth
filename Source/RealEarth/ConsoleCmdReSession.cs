@@ -66,7 +66,7 @@ namespace RealEarth
                 }
                 catch (Exception ex)
                 {
-                    Out("[RealEarth] resession load failed: " + ex.Message);
+                    Out("[RealEarth] resession load failed: " + ex.GetType().Name + ": " + ex.Message);
                 }
                 return;
             }

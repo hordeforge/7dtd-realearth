@@ -155,6 +155,9 @@ namespace RealEarth
             var streamer = ModApi.Streamer;
             if (session == null || streamer == null) return;
 
+            // Wrap-safe tick delta: answers "how long did inject hold the gen thread"
+            // without a per-chunk allocation.
+            int startTick = Environment.TickCount;
             int n = ChunkTerrainSampler.VanillaChunkSize * ChunkTerrainSampler.VanillaChunkSize;
             var heights = new int[n];
             var landcover = new byte[n];
@@ -195,7 +198,8 @@ namespace RealEarth
                     $"allocY={EngineHeight.EngineHeightMod.AllocatableColumnMaxY} " +
                     $"expanded={EngineHeight.EngineHeightMod.EngineExpanded} " +
                     $"biome={ChunkTerrainSampler.LandcoverToBiomeName(lc)} " +
-                    $"hotTiles={streamer.HotTileCount} blocks={applied}");
+                    $"hotTiles={streamer.HotTileCount} blocks={applied} " +
+                    $"ms={unchecked(Environment.TickCount - startTick)}");
             }
         }
 
@@ -489,7 +493,7 @@ namespace RealEarth
             {
                 if (ConsumeInjectLogBudget())
                 {
-                    ModApi.LogWarn("ReinjectLoadedChunksAround failed (non-fatal): " + ex.Message);
+                    ModApi.LogWarn("ReinjectLoadedChunksAround failed (non-fatal): " + ex.GetType().Name + ": " + ex.Message);
                 }
             }
             return reinjected;
@@ -762,7 +766,7 @@ namespace RealEarth
             }
             catch (Exception ex)
             {
-                ModApi.LogError($"Height inject BlockValue resolve failed: {ex.Message}");
+                ModApi.LogError($"Height inject BlockValue resolve failed: {ex.GetType().Name}: {ex.Message}");
             }
         }
     }

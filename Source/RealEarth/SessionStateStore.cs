@@ -236,14 +236,14 @@ namespace RealEarth
                     }
                     catch (Exception ex)
                     {
-                        ModApi.LogWarn("SessionStateStore.TrySave path " + p + ": " + ex.Message);
+                        ModApi.LogWarn("SessionStateStore.TrySave path " + p + ": " + ex.GetType().Name + ": " + ex.Message);
                     }
                 }
                 return any;
             }
             catch (Exception ex)
             {
-                ModApi.LogError("SessionStateStore.TrySave: " + ex.Message);
+                ModApi.LogError("SessionStateStore.TrySave: " + ex.GetType().Name + ": " + ex.Message);
                 return false;
             }
         }
@@ -280,7 +280,7 @@ namespace RealEarth
             }
             catch (Exception ex)
             {
-                ModApi.LogError("SessionStateStore.TryLoad: " + ex.Message);
+                ModApi.LogError("SessionStateStore.TryLoad: " + ex.GetType().Name + ": " + ex.Message);
                 return false;
             }
         }

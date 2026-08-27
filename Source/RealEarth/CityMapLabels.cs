@@ -244,7 +244,7 @@ namespace RealEarth
             }
             catch (Exception ex)
             {
-                ModApi.LogWarn($"CityMapLabels tick: {ex.Message}");
+                ModApi.LogWarn($"CityMapLabels tick: {ex.GetType().Name}: {ex.Message}");
             }
         }
 
@@ -304,7 +304,7 @@ namespace RealEarth
             catch (Exception ex)
             {
                 _catalogRetry--;
-                ModApi.LogError($"CityMapLabels: catalog load failed: {ex.Message}");
+                ModApi.LogError($"CityMapLabels: catalog load failed: {ex.GetType().Name}: {ex.Message}");
                 return false;
             }
         }
@@ -373,7 +373,10 @@ namespace RealEarth
             }
             catch (Exception ex)
             {
-                ModApi.LogWarn($"CityMapLabels: pin '{p.Name}' failed: {ex.InnerException?.Message ?? ex.Message}");
+                ModApi.LogWarn($"CityMapLabels: pin '{p.Name}' failed: " +
+                    (ex.InnerException != null
+                        ? $"{ex.InnerException.GetType().Name}: {ex.InnerException.Message}"
+                        : $"{ex.GetType().Name}: {ex.Message}"));
                 return false;
             }
         }
@@ -477,7 +480,7 @@ namespace RealEarth
                 }
                 catch (Exception ex)
                 {
-                    ModApi.LogWarn($"CityMapLabels: parse {path}: {ex.Message}");
+                    ModApi.LogWarn($"CityMapLabels: parse {path}: {ex.GetType().Name}: {ex.Message}");
                 }
             }
 

@@ -203,7 +203,7 @@ namespace RealEarth
                 if (_logBudget > 0)
                 {
                     _logBudget--;
-                    ModApi.LogError("OriginSlideRemap entities: " + ex.Message);
+                    ModApi.LogError("OriginSlideRemap entities: " + ex.GetType().Name + ": " + ex.Message);
                 }
             }
             return n;
@@ -299,7 +299,7 @@ namespace RealEarth
                 if (_logBudget > 0)
                 {
                     _logBudget--;
-                    ModApi.LogError("OriginSlideRemap claims: " + ex.Message);
+                    ModApi.LogError("OriginSlideRemap claims: " + ex.GetType().Name + ": " + ex.Message);
                 }
             }
             return n;
