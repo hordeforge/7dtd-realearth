@@ -129,13 +129,17 @@ help:
 	@echo ""
 	@echo "  Tests"
 	@echo "    make test               Full Python test suite"
-	@echo "    make test-one T=tests/test_coords.py::test_wrap_x      Run one test/node"
+	@echo "    make test-one T=tests/test_coords.py::test_wrap_x      One file, node, or -k expr"
 	@echo "    make test-height        Height mod + height-test map tests only"
 	@echo "    make test-fast          Quick subset (coords, height, tiles)"
 	@echo "    Single test: cd tools && uv run --locked --extra dev pytest tests/test_coords.py -k name"
 	@echo "    make lint               Ruff + black --check + mypy over tools/ and scripts/"
 	@echo "    make lint-shell         ShellCheck over scripts/*.sh (CI gate)"
 	@echo "    make build-npi          Compile tools/network_protocol_inspector (CI C# gate)"
+	@echo ""
+	@echo "  CI parity (what .github/workflows/ci.yml runs beyond the targets above)"
+	@echo "    make shellcheck         Lint scripts/*.sh"
+	@echo "    make build-npi          Build NetworkProtocolInspector (C# analysis gate)"
 	@echo ""
 	@echo "  Viewer"
 	@echo "    make viewer             Export demo pack into viewer/data/demo"
@@ -337,10 +341,13 @@ artifacts-drill:
 test test-python:
 	@$(PYTEST) -q --tb=short
 
-# One file / one node: make test-one T=tests/test_coords.py::test_wrap_x
+# One file, one node, or a -k expression:
+#   make test-one T=tests/test_coords.py
+#   make test-one T=tests/test_coords.py::test_wrap_x
+#   make test-one T="-k wrap"
 test-one:
-	@test -n "$(T)" || { echo "ERROR: pass what to run: make test-one T=tests/test_coords.py (or path::test_name)" >&2; exit 1; }
-	@$(PYTEST) "$(T)" -q --tb=short
+	@test -n "$(T)" || { echo "ERROR: pass T=<tests/file.py[::node] | -k expr>" >&2; exit 1; }
+	@$(PYTEST) $(T) -q --tb=short
 
 lint lint-python:
 	@$(RUFF)

@@ -119,9 +119,14 @@ Product height is **real meters** (seaLevelY + elev_m) after **YDim expand**. St
 2. Build the C# mod against your game:
 
 ```bash
+make build # resolves the SDK via DOTNET_ROOT (~/.cache/dotnet-sdk or ~/.dotnet)
+# or directly (needs a dotnet 8 SDK resolvable on PATH / via DOTNET_ROOT):
 export SEVENDTD_GAME_DIR="/path/to/7 Days To Die"
 dotnet build Source/RealEarth/RealEarth.csproj -c Release -p:GameDir="$SEVENDTD_GAME_DIR"
 ```
+
+A wrong `GAME_DIR` fails fast with a named error instead of a page of
+missing-type errors.
 
 3. Install (same layout as [7daystodiemods.com](https://7daystodiemods.com/posts/how-to-install-7-days-to-die-mods) guides):
 
@@ -221,6 +226,7 @@ delta implications described in `docs/MULTIPLAYER_STREAMING.md`.
 ```bash
 make info # show resolved paths and tool versions
 make test-fast # coordinate, height, and tile smoke tests
+make test-one T=tests/test_coords.py # single file (or -k expr, or file::node)
 make test-mp # multiplayer window/origin model tests
 make build # compile against the selected game installation
 make check # setup, fast tests, python + shell + TS + HTML lint gates, NPI and mod build
