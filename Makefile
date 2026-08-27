@@ -132,6 +132,7 @@ help:
 	@echo "    make test-one T=tests/test_coords.py::test_wrap_x      Run one test/node"
 	@echo "    make test-height        Height mod + height-test map tests only"
 	@echo "    make test-fast          Quick subset (coords, height, tiles)"
+	@echo "    Single test: cd tools && uv run --extra dev pytest tests/test_coords.py -k name"
 	@echo "    make lint               Ruff + black --check + mypy over tools/ and scripts/"
 	@echo "    make lint-shell         ShellCheck over scripts/*.sh (CI gate)"
 	@echo "    make build-npi          Compile tools/network_protocol_inspector (CI C# gate)"
@@ -198,7 +199,7 @@ install: build
 # tools/network_protocol_inspector/.
 build-npi:
 	@command -v dotnet >/dev/null || { echo "ERROR: dotnet not on PATH (set DOTNET_ROOT=...)" >&2; exit 1; }
-	dotnet build $(TOOLS)/network_protocol_inspector/NetworkProtocolInspector.csproj -c Release
+	dotnet build "$(TOOLS)/network_protocol_inspector/NetworkProtocolInspector.csproj" -c Release
 
 # Full RealEarth: YDim expand (part of this mod) + mod DLL + worlds
 install-full: engine-expand install
@@ -350,7 +351,7 @@ lint lint-python:
 # before committing script edits so failures do not surface only after push.
 lint-shell:
 	@command -v shellcheck >/dev/null || { echo "ERROR: shellcheck not found (apt/brew install shellcheck; CI requires it)" >&2; exit 1; }
-	@shellcheck $(SCRIPTS)/*.sh
+	@shellcheck "$(SCRIPTS)"/*.sh
 	@echo "OK shellcheck ($(SCRIPTS)/*.sh)"
 
 test-height:
@@ -384,8 +385,10 @@ coverage:
 		tests/test_local_window.py tests/test_mp_runtime_structure.py -q --tb=line
 	cd $(TOOLS) && $(COV) report -m
 
-check: setup test-fast lint-python build viewer-build viewer-lint webmod-lint html-lint
-	@echo "OK check (setup + test-fast + lint-python + build + viewer-build + viewer-lint + webmod-lint + html-lint)"
+# Mirrors ci.yml (tools job) as far as a game-less machine allows: build needs
+# the installed game assemblies, everything else here is what CI checks.
+check: setup test-fast lint-python lint-shell build-npi build viewer-build viewer-lint webmod-lint html-lint
+	@echo "OK check (setup + test-fast + lint-python + lint-shell + build-npi + build + viewer-build + viewer-lint + webmod-lint + html-lint)"
 
 # ---------------------------------------------------------------------------
 # Viewer
