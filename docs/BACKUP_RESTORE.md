@@ -107,3 +107,15 @@ time). See [HEIGHT_LIMITS](HEIGHT_LIMITS.md) and [THREAT_MODEL](THREAT_MODEL.md)
   and re-proven on every CI run. Not yet drilled against real multi-gigabyte
   baked state, nor is the engine expand/restore pair (needs a game install;
   TODO.md tracks both).
+
+## Related docs
+
+| Doc | Role |
+|---|---|
+| [DATA_SOURCES](DATA_SOURCES.md) | Source policy for rebuildable inputs |
+| [THREAT_MODEL](THREAT_MODEL.md) | Attack surface around artifacts and installs |
+| [HEIGHT_LIMITS](HEIGHT_LIMITS.md) | Engine DLL backup/restore discipline |
+
+## Changelog
+
+- **2026-08-26:** Registered as durability posture hub (state inventory, RPO/RTO, procedures, drill).

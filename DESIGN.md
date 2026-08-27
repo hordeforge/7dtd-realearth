@@ -411,6 +411,8 @@ Viewer (browser) is for **data QA** before/without the game (`viewer/`); it can 
 
 Status of “done” pieces lives in [`README.md`](README.md) and [`TODO.md`](TODO.md). Design here is the **target**; do not treat unchecked TODO items as shipped.
 
+These design phases are **not** the `P0-P8` implementation priorities; that vocabulary is owned by [`docs/IMPLEMENTATION_PLAN.md`](docs/IMPLEMENTATION_PLAN.md).
+
 ---
 
 ## 14. Scale modes (config, not competing products)
