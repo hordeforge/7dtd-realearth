@@ -141,6 +141,9 @@ namespace RealEarth
 
         static void Emit(LogLevel level, string msg)
         {
+            // Log text carries pack-sourced strings (place names, bands, paths): strip
+            // controls here so no caller can forge or split a server-log line.
+            msg = msg == null ? "" : CityMapLabels.StripControlChars(msg);
             string Prefix()
                 => level == LogLevel.Error ? "[RealEarth][ERROR] "
                  : level == LogLevel.Warn ? "[RealEarth][WARN] "

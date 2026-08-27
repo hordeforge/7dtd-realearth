@@ -580,11 +580,15 @@ namespace RealEarth
             var place = new Place();
             if (!TryReadString(obj, "name", out var name) || string.IsNullOrWhiteSpace(name))
                 return null;
+            // Names and bands come from shared pack files and become log text and
+            // player-facing nav labels; strip controls so CR/LF/ESC cannot forge log
+            // lines or garble UI.
             place.Name = NormalizePlaceName(name);
             if (TryReadDouble(obj, "lon", out var lon)) place.Lon = lon;
             if (TryReadDouble(obj, "lat", out var lat)) place.Lat = lat;
             if (TryReadInt(obj, "population", out var pop)) place.Population = pop;
-            if (TryReadString(obj, "band", out var band)) place.Band = band;
+            if (TryReadString(obj, "band", out var band))
+                place.Band = NormalizePlaceName(band);
             ApplyEdgeFromObject(obj, place);
             return place;
         }
