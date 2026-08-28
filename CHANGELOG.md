@@ -14,6 +14,12 @@ and the release gate requires both to match the tag (`v<version>`).
 
 ### Added
 
+- 3.2.0 retarget: the engine patcher now detects a Steam update/verify that
+  replaced `Assembly-CSharp.dll` (marker sha no longer matches the DLL). It
+  refreshes the stale `.re_stock_bak` from the current stock build before
+  re-patching, so `make engine-expand` after an update converges instead of
+  restoring the previous build's backup into the new game. Live dedicated
+  boot on V3.2.0 (b9) binds every inject hook (see `docs/GAME_VERSION.md`).
 - Deterministic release zip: `make package` now also writes
   `dist/RealEarth-v<version>.zip` through `scripts/package_zip.sh` with sorted
   entries, one fixed timestamp (`SOURCE_DATE_EPOCH`, else the commit date of
@@ -240,7 +246,7 @@ First tagged release.
 
 ### Added
 
-- RealEarth mod for 7 Days to Die V3.1.0 (Henpocalypse): streamed `.rte` tiles
+- RealEarth mod for 7 Days to Die V3.2.0 (Henpocalypse): streamed `.rte` tiles
   with Harmony height inject, longitude wrap, multiplayer origin modes
   (SoloSlide / SharedFixed), and city map labels.
 - RealEarth YDim expand tools (`Tools/` engine patcher) for tall columns;

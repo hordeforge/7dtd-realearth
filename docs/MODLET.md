@@ -143,7 +143,7 @@ F1: `recities` / `recities reset` / `recities here`. XML: `Config/nav_objects.xm
 |---|---|
 | [PROTON_INSTALL](PROTON_INSTALL.md) | Proton GeneratedWorlds paths |
 | [HEIGHT_LIMITS](HEIGHT_LIMITS.md) | Expand required |
-| [GAME_VERSION](GAME_VERSION.md) | V3.1.0 pin |
+| [GAME_VERSION](GAME_VERSION.md) | V3.2.0 pin |
 | [SINGLE_WORLD](SINGLE_WORLD.md) | Baked vs Streamed |
 | [MODIFICATIONS](MODIFICATIONS.md) | Status |
 

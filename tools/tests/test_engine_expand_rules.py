@@ -107,3 +107,23 @@ def test_marker_records_dll_sha256_and_verify_mode_detects_drift():
     # Verify must run before any write path and never reach ModuleDefinition.ReadModule.
     assert src.index("if (verify)") < src.index("ModuleDefinition.ReadModule")
     assert '"--verify"' in src
+
+
+def test_stale_marker_after_update_does_not_block_reexpand():
+    """A Steam update/verify replaces the expanded DLL with new stock: the old
+    marker's sha no longer matches, so "already patched" must not fire and the
+    stale .re_stock_bak (previous build) must be refreshed onto the current
+    stock before re-patching. Restoring the old backup would downgrade the game."""
+    src = _src()
+    # Already-patched gate compares marker sha to the current DLL sha
+    assert "markerSha == currentSha" in src
+    # Stale marker path re-applies instead of refusing
+    assert "Stale expand marker" in src
+    # Backup refresh is guarded by "current is stock" (readable and not expanded
+    # to target), so an expanded or unreadable DLL can never be relabeled as stock.
+    assert "ReadChunkBlockYDim(gameDll)" in src
+    assert "currentYDim > 0 && currentYDim != TargetYDim" in src
+    assert "backup refreshed to the current build" in src
+    # The refresh must happen before the restore-from-backup step.
+    assert src.index("backup refreshed") < src.index("Restoring stock from backup")
+    assert "ReadMarkerSha" in src

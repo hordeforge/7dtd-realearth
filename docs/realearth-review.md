@@ -288,8 +288,8 @@ Do **not** erase these when campaigns report zero open critical/bug offline.
 
 | Residual | Severity | Notes |
 |---|---|---|
-| **Live Harmony / inject soak** | High | Offline tests cannot bind real `Assembly-CSharp` gen path |
-| **Live SharedFixed multi-bot** | High | Structure tests only |
+| **Live Harmony / inject soak** | Med (2026-08-28, 3.2.0 b9) | Dedicated soak bound real `Assembly-CSharp`: heightQ=7 gen=4 chunkIdx=2 playerTick=2 worldReady=1, `injectOk=True`, world load + soak clean. Open: per-chunk column rewrite needs a connected player; Everest run |
+| **Live SharedFixed multi-bot** | High | Structure tests + single-session boot only; no multi-bot cohort yet |
 | **SoloSlide mesh/voxel desync** | High | Mitigated (invalidate + prefetch); full chunk reinject still open |
 | **Tall hollow interiors** | Medium | Intentional crust tradeoff above hardMax |
 | **HasLandClaims freeze** | Medium | Fail-closed if PPL API missing on a build |

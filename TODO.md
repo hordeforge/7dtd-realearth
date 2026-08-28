@@ -11,16 +11,22 @@ provenance and distinguish prototypes from verified in-game behavior.
 - [x] Prioritized implementation plan in-repo (`docs/IMPLEMENTATION_PLAN.md`)
 - [x] P0–P8 offline cores: ExpandProductGuard, inject fail-closed (EngineHeight path), SessionOriginPolicy, StampSurfaceY, SessionStateStore, DensityBudget, CdnTilePolicy, AbsoluteHeightStore (SparseYScaffold removed as dead)
 - [x] Offline tests: `test_phase_cores.py` + inject math; loadgen `re-phase-offline-gate`
-- [ ] Retarget and live-test runtime chunk terrain/density hooks against the
-  supported 7DTD `Assembly-CSharp.dll` build.
+- [x] Retarget and live-test runtime chunk terrain/density hooks against the
+  supported 7DTD `Assembly-CSharp.dll` build (3.2.0 b9: heightQ=7 gen=4
+  chunkIdx=2 playerTick=2 worldReady=1 bound live, `injectOk=True`; per-chunk
+  inject evidence needs a connected player — [docs/COMPATIBILITY.md](docs/COMPATIBILITY.md)).
 - [ ] Complete an end-to-end Streamed-mode test: tile lookup, absolute
   coordinates, local window movement, longitude wrap, save/reload, and deltas.
+  (Live 3.2.0 covered: tile lookup, absolute spawn, SharedFixed, snapshot
+  written. Open: window movement, wrap, reload roundtrip.)
 - [ ] Lon/lat gaps tracked in docs/LON_LAT.md (lat-correct meters, antimeridian
   bboxes, save absolute session, geodesic / globe UX).
 - [ ] Validate the H500 sample before the Everest-scale expanded-height test and
   record collision, mesh, save, and reload results.
-- [ ] Add a compatibility matrix for client, dedicated server, Harmony targets,
-  YDim patcher, and tested operating modes.
+  (Live 3.2.0: H500 world loads, spawn sample gameY=500, clean soak.
+  Open: Everest-scale run, collision/mesh/save-reload records.)
+- [x] Add a compatibility matrix for client, dedicated server, Harmony targets,
+  YDim patcher, and tested operating modes ([docs/COMPATIBILITY.md](docs/COMPATIBILITY.md)).
 
 ## Runtime and multiplayer
 
@@ -76,8 +82,9 @@ provenance and distinguish prototypes from verified in-game behavior.
 - [ ] Add a first-time operator guide covering backup, install, verification,
   troubleshooting, rollback, and save compatibility.
 - [x] Choose and add a code license before public distribution (MIT, [`LICENSE`](LICENSE)).
-- [ ] Run Python tests, multiplayer tests, build, package inspection, and a clean
-  install smoke test before a release.
+- [x] Run Python tests, multiplayer tests, build, package inspection, and a clean
+  install smoke test before a release (308 pytest + 32 test-mp + make check green;
+  `make package` produced `dist/RealEarth-v0.3.0.zip`; live 3.2.0 dedicated smoke PASS).
 
 ## Done criteria
 

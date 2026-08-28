@@ -38,10 +38,10 @@ Y-expand is only **A (vertical)**. Everything below is the rest of the product s
 
 | Modification | Purpose | Status |
 |---|---|---|
-| **YDim + layer count + Y-bound IL** | Tall columns, consistent alloc/free | **Partial** (patcher ships; live soak still open) |
+| **YDim + layer count + Y-bound IL** | Tall columns, consistent alloc/free | **Done** (live dedicated soak on V3.2.0 b9; stale marker/backup refresh after Steam updates) |
 | **Do not rewrite XZ map size 256** | Avoid corrupting 16×16 height/biome maps | **Done** (patcher design) |
-| **Expand client + dedicated** | Same ceiling both ends | **Needed** (ops discipline every update) |
-| **Backup / restore / re-apply after Verify** | Steam undoes expand | **Done** scripts; **Needed** operator habit |
+| **Expand client + dedicated** | Same ceiling both ends | **Done** this machine (3.2.0 b9, both installs); re-apply after every update (`make engine-expand` now auto-refreshes the stock backup) |
+| **Backup / restore / re-apply after Verify** | Steam undoes expand | **Done** scripts + refresh on update; **Needed** operator habit |
 | **Optional: sparse column storage** | RAM at planet scale with tall Y | **Later** ([`DYNAMIC_CHUNK_HEIGHT.md`](DYNAMIC_CHUNK_HEIGHT.md)) |
 | **Optional: save-format awareness** | `.7rg` / region packing with tall Y | **Needed** (validate; may need more IL or sidecar) |
 
@@ -55,13 +55,13 @@ Stock terrain and world gen do not know about Earth DEM. Expand alone still yiel
 
 | Modification | Targets / surface | Status |
 |---|---|---|
-| **Height query override** | All concrete height APIs (see research `terrain-height.md`); never interface-only; **byte returns stay lossy** | **Partial** (`RuntimeHooks` + `HeightQueryPatcher` + `InjectPatchStats`) |
-| **Terrain generate rewrite** | `GenerateTerrain` / provider fill → solid+density from RealEarth | **Partial** (`GenerateTerrainPostfix` → `ChunkTerrainInject`) |
-| **Fail-closed missing tiles** | No fake DEM peaks when `.rte` missing | **Partial** (`TileSamplePolicy` on sampler + EngineHeight product path; live proof open) |
-| **Expand product guard** | Refuse real-height claims on stock YDim | **Partial** (`ExpandProductGuard`; live expand soak open) |
-| **Session origin policy** | SoloSlide / SharedFixed / fold | **Partial** (`SessionOriginPolicy` wired into WorldSession) |
+| **Height query override** | All concrete height APIs (see research `terrain-height.md`); never interface-only; **byte returns stay lossy** | **Done** (live 3.2.0 b9: heightQ=7 failed=0) |
+| **Terrain generate rewrite** | `GenerateTerrain` / provider fill → solid+density from RealEarth | **Partial** (bound live gen=4 on 3.2.0; per-chunk inject evidence needs a connected player / loadgen) |
+| **Fail-closed missing tiles** | No fake DEM peaks when `.rte` missing | **Partial** (`TileSamplePolicy` on sampler + EngineHeight product path; live `failClosed=True` on 3.2.0, no missing-tile event yet) |
+| **Expand product guard** | Refuse real-height claims on stock YDim | **Done** (live 3.2.0: `heightMode=ydim-expanded expanded=True`) |
+| **Session origin policy** | SoloSlide / SharedFixed / fold | **Partial** (`SessionOriginPolicy` wired into WorldSession; SharedFixed active live, multi-player proof open) |
 | **Surface-Y stamps** | Prefab Y on real DEM surface | **Partial** (`StampSurfaceY` + density.stamp_prefab_root_y) |
-| **Session snapshot** | Absolute origin save/reload JSON | **Partial** (`SessionStateStore`; hooked to stock `SaveWorld` / `SaveWorldState`, live proof open) |
+| **Session snapshot** | Absolute origin save/reload JSON | **Partial** (`SessionStateStore`; live snapshot written on 3.2.0, reload roundtrip open) |
 | **Density budgets** | Cap stamps / sleeper weights | **Partial** (`DensityBudget`) |
 | **CDN tile URL + fail-closed** | Optional CDN; miss → sample policy | **Partial** (`CdnTilePolicy`) |
 | **Sparse Y scaffold** | Section index math for tall columns | **Removed** (dead scaffold; AbsoluteHeightStore keeps the sparse surface cache) |
@@ -170,7 +170,7 @@ Geography without people is empty wilderness. Separate from height.
 | **net48 mod build against live Managed** | API match | **Done** scripts; **Needed** after each update |
 | **Proton GeneratedWorlds path** | Client New Game list | **Done** install path |
 | **Package `Tools/` expand with mod** | Ship expand with product | **Done** packaging intent |
-| **Compatibility matrix** (DLL hash, YDim, Harmony) | Refuse silent wrong build | **Needed** |
+| **Compatibility matrix** (DLL hash, YDim, Harmony) | Refuse silent wrong build | **Done** ([COMPATIBILITY](COMPATIBILITY.md)) |
 | **EAC off documentation** | Modded servers | **Done** notes |
 | **Retarget checklist** after TFP patch | Hooks + expand sites | **Needed** (formalize) |
 

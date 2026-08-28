@@ -208,13 +208,45 @@ namespace RealEarth.EnginePatcher
             Console.WriteLine("  dryRun = {0}", dryRun);
 
             string bak = gameDll + ".re_stock_bak";
+            string currentSha = Sha256Hex(File.ReadAllBytes(gameDll));
+            string? markerSha = ReadMarkerSha(marked);
 
-            if (File.Exists(marked) && !force && !dryRun)
+            // "Already patched" only when the marker matches the DLL on disk. After
+            // a Steam update/verify the DLL is new stock while the old marker's sha
+            // no longer matches, so a stale marker must not block re-expand.
+            if (File.Exists(marked) && !force && !dryRun && markerSha == currentSha)
             {
                 Console.WriteLine("Already patched (marker exists). Use --force to re-apply from backup.");
                 if (File.Exists(bak))
                     Console.WriteLine("  stock backup: " + bak);
                 return 0;
+            }
+            if (File.Exists(marked) && !force && !dryRun && markerSha != currentSha)
+            {
+                Console.WriteLine("Stale expand marker (DLL changed since expand, e.g. Steam update). Re-applying on the current build...");
+            }
+
+            // Steam updates / verify overwrite the expanded DLL with a new stock
+            // build, leaving .re_stock_bak on the previous build. Restoring that
+            // stale backup would downgrade the game, so refresh it from the current
+            // DLL first - but only when the current DLL is stock (not already
+            // expanded to target), so a re-run never labels an expanded DLL as
+            // "stock" (that would poison engine-restore).
+            if (!dryRun && File.Exists(bak) && markerSha != currentSha
+                && Sha256Hex(File.ReadAllBytes(bak)) != currentSha)
+            {
+                int currentYDim = ReadChunkBlockYDim(gameDll);
+                // Refresh only on positive stock evidence (readable, not already
+                // expanded); -1 (unreadable/foreign) must not relabel a backup.
+                if (currentYDim > 0 && currentYDim != TargetYDim)
+                {
+                    File.Copy(gameDll, bak, overwrite: true);
+                    Console.WriteLine("Game build changed since expand (update/verify): stock backup refreshed to the current build.");
+                }
+                else
+                {
+                    Console.WriteLine("Note: current DLL is already expanded or unreadable and does not match the marker (foreign patch or tampering). Check with --verify.");
+                }
             }
 
             string readPath = gameDll;
@@ -317,6 +349,77 @@ namespace RealEarth.EnginePatcher
                     sb.Append(b.ToString("x2", System.Globalization.CultureInfo.InvariantCulture));
             }
             return sb.ToString();
+        }
+
+        /// <summary>
+        /// Parse the expand-time sha256 from the marker file, or null when the
+        /// marker is absent/unreadable or predates hash recording.
+        /// </summary>
+        static string? ReadMarkerSha(string markedPath)
+        {
+            if (!File.Exists(markedPath)) return null;
+            try
+            {
+                foreach (string line in File.ReadAllLines(markedPath))
+                {
+                    if (line.StartsWith("sha256=", StringComparison.Ordinal))
+                        return line.Substring("sha256=".Length).Trim();
+                }
+            }
+            catch
+            {
+                // unreadable marker: treat as absent, the caller re-patches
+            }
+            return null;
+        }
+
+        /// <summary>
+        /// Read WorldConstants.ChunkBlockYDim from a DLL without writing, or -1
+        /// when the type/field is missing (foreign build) or the read fails.
+        /// Used to tell "new stock build after update" apart from "already
+        /// expanded", so the stock backup is only refreshed onto genuine stock.
+        /// </summary>
+        static int ReadChunkBlockYDim(string dllPath)
+        {
+            try
+            {
+                var resolver = new DefaultAssemblyResolver();
+                resolver.AddSearchDirectory(Path.GetDirectoryName(dllPath));
+                using (var module = ModuleDefinition.ReadModule(dllPath, new ReaderParameters
+                {
+                    AssemblyResolver = resolver,
+                    InMemory = true
+                }))
+                {
+                    foreach (var type in module.Types)
+                    {
+                        int v = ReadYDimField(type);
+                        if (v >= 0) return v;
+                        foreach (var nested in type.NestedTypes)
+                        {
+                            v = ReadYDimField(nested);
+                            if (v >= 0) return v;
+                        }
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine("  (could not read current YDim from " + dllPath + ": " + ex.Message + ")");
+            }
+            return -1;
+        }
+
+        static int ReadYDimField(TypeDefinition type)
+        {
+            foreach (var field in type.Fields)
+            {
+                if (field.Name != "ChunkBlockYDim" || !field.HasConstant) continue;
+                object? cur = field.Constant;
+                try { return cur is int i ? i : Convert.ToInt32(cur); }
+                catch { return -1; }
+            }
+            return -1;
         }
 
         /// <summary>

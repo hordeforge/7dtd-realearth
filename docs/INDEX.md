@@ -4,7 +4,7 @@
 **Not:** generic engine RE ([research INDEX](../../7dtd-engine-research/docs/INDEX.md)).  
 **Start here.** One hub so other docs do not re-list everything.
 
-**Game:** 7DTD V3.1.0 · **Product:** 1:1 Earth geography + population density
+**Game:** 7DTD V3.2.0 · **Product:** 1:1 Earth geography + population density
 
 ```mermaid
 flowchart TB
@@ -113,6 +113,7 @@ Never mark Done without live measure (GAP evidence checklist).
 | [ENGINE_LIMITATIONS](ENGINE_LIMITATIONS.md) | Stock blockers for 1:1 Earth (+ §7b other) |
 | [research engine-limitations](../../7dtd-engine-research/docs/engine-limitations.md) | Generic dedi ceilings |
 | [MODIFICATIONS](MODIFICATIONS.md) | Product surface status A-H |
+| [COMPATIBILITY](COMPATIBILITY.md) | Build/install/hook/mode matrix + re-verify steps |
 | [IMPLEMENTATION_PLAN](IMPLEMENTATION_PLAN.md) | P0-P8 order, outcomes, test gates |
 | [GAP_HARMONY_MODLETS](GAP_HARMONY_MODLETS.md) | Gaps + API choice (XPath/Harmony/…) |
 | [LON_LAT](LON_LAT.md) | Dual coords, limits |

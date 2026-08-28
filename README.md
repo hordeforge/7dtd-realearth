@@ -9,7 +9,7 @@
 ![languages](https://img.shields.io/github/languages/count/hordeforge/7dtd-realearth)
 ![top language](https://img.shields.io/github/languages/top/hordeforge/7dtd-realearth)
 
-A **1:1 scale real-world Earth** project for **7 Days to Die V3.1.0** (Henpocalypse): real elevation, landcover heuristics, city/population density, tile streaming, longitude wrap (circle the planet), and a globe-style world map.
+A **1:1 scale real-world Earth** project for **7 Days to Die V3.2.0** (Henpocalypse): real elevation, landcover heuristics, city/population density, tile streaming, longitude wrap (circle the planet), and a globe-style world map.
 
 This is **not** a single giant heightmap. Earth at 1 block = 1 m is ~40,075 km wide. Vanilla maps top out around 8–16 km. RealEarth uses **offline tile packs** + a **Harmony runtime** that streams only what is near the player.
 
@@ -28,7 +28,7 @@ Debug FOW / city names: see [MODLET](docs/MODLET.md) config keys (details in [CI
 | **Web map viewer** (flat + globe) | Done |
 | **One continuous in-game map** (Baked bake-world + Streamed session) | Done (Baked fully playable; Streamed hooks need live retarget) |
 | C# WorldSession + streamer + runtime Harmony discovery | Done |
-| Per-build terrain density inject | Needs your 3.1.0 `Assembly-CSharp` retarget |
+| Per-build terrain density inject | Needs your 3.2.0 `Assembly-CSharp` retarget |
 | Full-planet tile farm | Pipeline-ready; data download is on you |
 
 **In-game as one large map:** see [docs/SINGLE_WORLD.md](docs/SINGLE_WORLD.md).

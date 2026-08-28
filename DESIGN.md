@@ -1,6 +1,6 @@
 # RealEarth design
 
-**Target game:** 7 Days to Die **V3.1.0** (Henpocalypse)  
+**Target game:** 7 Days to Die **V3.2.0** (Henpocalypse)  
 **Product name:** RealEarth  
 **This document:** architecture and product intent. Operator install: [`README.md`](README.md), [`docs/MODLET.md`](docs/MODLET.md).
 
