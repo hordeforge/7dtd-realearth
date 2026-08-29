@@ -18,7 +18,8 @@ provenance and distinguish prototypes from verified in-game behavior.
 - [ ] Complete an end-to-end Streamed-mode test: tile lookup, absolute
   coordinates, local window movement, longitude wrap, save/reload, and deltas.
   (Live 3.2.0 covered: tile lookup, absolute spawn, SharedFixed, snapshot
-  written. Open: window movement, wrap, reload roundtrip.)
+  written + restored on restart (`Session restored absolute=(255,280)`).
+  Open: window movement, wrap, save/reload with player deltas.)
 - [ ] Lon/lat gaps tracked in docs/LON_LAT.md (lat-correct meters, antimeridian
   bboxes, save absolute session, geodesic / globe UX).
 - [ ] Validate the H500 sample before the Everest-scale expanded-height test and

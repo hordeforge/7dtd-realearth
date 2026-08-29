@@ -61,7 +61,7 @@ Stock terrain and world gen do not know about Earth DEM. Expand alone still yiel
 | **Expand product guard** | Refuse real-height claims on stock YDim | **Done** (live 3.2.0: `heightMode=ydim-expanded expanded=True`) |
 | **Session origin policy** | SoloSlide / SharedFixed / fold | **Partial** (`SessionOriginPolicy` wired into WorldSession; SharedFixed active live, multi-player proof open) |
 | **Surface-Y stamps** | Prefab Y on real DEM surface | **Partial** (`StampSurfaceY` + density.stamp_prefab_root_y) |
-| **Session snapshot** | Absolute origin save/reload JSON | **Partial** (`SessionStateStore`; live snapshot written on 3.2.0, reload roundtrip open) |
+| **Session snapshot** | Absolute origin save/reload JSON | **Done** (live 3.2.0: snapshot written; restart restored `absolute=(255,280)` via `SessionStateStore loaded`; same scope re-saved) |
 | **Density budgets** | Cap stamps / sleeper weights | **Partial** (`DensityBudget`) |
 | **CDN tile URL + fail-closed** | Optional CDN; miss → sample policy | **Partial** (`CdnTilePolicy`) |
 | **Sparse Y scaffold** | Section index math for tall columns | **Removed** (dead scaffold; AbsoluteHeightStore keeps the sparse surface cache) |
