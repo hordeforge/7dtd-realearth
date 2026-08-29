@@ -2,12 +2,19 @@
 
 from __future__ import annotations
 
+import hashlib
 import json
 from pathlib import Path
+from typing import Any
 
 import numpy as np
 
-from realearth import DEFAULT_TILE_SIZE, EARTH_CIRCUMFERENCE_M, EARTH_MERIDIAN_HALF_M
+from realearth import (
+    DEFAULT_TILE_SIZE,
+    EARTH_CIRCUMFERENCE_M,
+    EARTH_MERIDIAN_HALF_M,
+    __version__,
+)
 from realearth.coords import EarthGrid, lonlat_to_block
 from realearth.density import (
     apply_urban_from_density,
@@ -239,6 +246,47 @@ def build_region(
         ),
     )
     write_manifest(out_dir / "earth.manifest.json", manifest)
+
+    # Reproducible build manifest: every input file (hashed), the processing
+    # parameters that produced this pack, and the tool version, so a pack can
+    # be re-derived bit-identically or audited against its data licenses.
+    build: dict[str, Any] = {
+        "schema": "realearth.build.v1",
+        "tool_version": __version__,
+        "name": name,
+        "bbox": {"west": west, "south": south, "east": east, "north": north},
+        "resolution_m": round(resolution_m, 6),
+        "samples": {"width": width, "height": height},
+        "tile_size": tile_size,
+        "source": source,
+        "source_params": {
+            "terrarium_zoom": terrarium_zoom,
+            "max_dim": max_dim,
+        },
+        "inputs": {},
+        "landcover": "heuristic from elevation+latitude (classify_from_elevation_and_lat)",
+        "settlements": "seed catalog (Natural Earth built-in demo; not Google)",
+        "cities": "density peaks + settlement points (not Google)",
+        "attribution": [
+            "Copernicus DEM GLO-30: OpenTopography / ESA (see docs/DATA_SOURCES.md)",
+            "AWS Terrain Tiles / Mapzen Terrarium: open data, not Google Earth",
+            "GEBCO bathymetry: gebco.net (free registration; see docs/DATA_SOURCES.md)",
+        ],
+    }
+    for input_key, input_path in (
+        ("geotiff", geotiff),
+        ("population_geotiff", population_geotiff),
+        ("built_geotiff", built_geotiff),
+    ):
+        if input_path is not None:
+            source_file = Path(input_path)
+            build["inputs"][input_key] = {
+                "file": source_file.name,
+                "sha256": hashlib.sha256(source_file.read_bytes()).hexdigest(),
+            }
+    (out_dir / "build.json").write_text(
+        json.dumps(build, indent=2, ensure_ascii=False) + "\n", encoding="utf-8"
+    )
 
     if also_export_7dtd:
         export_region_pack(

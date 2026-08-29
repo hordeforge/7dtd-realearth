@@ -149,3 +149,32 @@ def test_build_region_gebco_bathymetry_negative_flow(tmp_path: Path):
     )
     assert int(y.min()) > 0 and int(y.min()) < 10000  # not clamped to 1
     assert int(y.max()) < DEFAULT_SEA_LEVEL_GAME_Y  # whole pack below sea
+
+
+def test_build_region_writes_reproducible_build_manifest(tmp_path: Path):
+    """build.json records schema, tool version, bbox, resolution, samples,
+    source params, and (when a raster input is given) file hashes, so a pack
+    is re-derivable/auditable."""
+    import json
+
+    build_region(
+        -105.2,
+        39.6,
+        -104.9,
+        39.9,
+        tmp_path / "pack",
+        resolution_m=250.0,
+        source="synthetic",
+        name="Manifest",
+        max_dim=64,
+        also_export_7dtd=False,
+    )
+    b = json.loads((tmp_path / "pack" / "build.json").read_text(encoding="utf-8"))
+    assert b["schema"] == "realearth.build.v1"
+    assert b["tool_version"] == __import__("realearth").__version__
+    assert b["source"] == "synthetic"
+    assert b["bbox"] == {"west": -105.2, "south": 39.6, "east": -104.9, "north": 39.9}
+    assert b["samples"]["width"] > 0 and b["samples"]["height"] > 0
+    assert b["resolution_m"] > 0
+    assert b["inputs"] == {}
+    assert any("Copernicus" in line for line in b["attribution"])

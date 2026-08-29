@@ -14,6 +14,10 @@ and the release gate requires both to match the tag (`v<version>`).
 
 ### Added
 
+- Reproducible build manifests: `build-region` writes `build.json`
+  (schema realearth.build.v1) with tool version, bbox, resolution, samples,
+  source + params, input-file sha256 hashes, and attribution lines; new
+  `realearth verify-build --pack` re-checks the hashes against on-disk files.
 - Viewer in-browser `.rte` streaming (decoder `viewer/src/rte.ts` via native
   `DecompressionStream` + relief layer `rteLayer.ts`; `export-viewer` ships the
   raw tiles; served tile verified end to end; "Streamed elevation (.rte)" layer

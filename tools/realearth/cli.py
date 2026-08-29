@@ -68,6 +68,42 @@ def info_cmd() -> None:
     click.echo("Longitude wraps; latitude clamps at poles.")
 
 
+@main.command("verify-build")
+@click.option(
+    "--pack",
+    type=click.Path(exists=True, file_okay=False, dir_okay=True),
+    required=True,
+    help="Pack directory containing build.json + earth.manifest.json",
+)
+def verify_build_cmd(pack: str) -> None:
+    """Verify a pack's build.json: schema, and input hashes vs on-disk files."""
+    import hashlib
+    import json
+    from pathlib import Path
+
+    root = Path(pack)
+    bpath = root / "build.json"
+    if not bpath.is_file():
+        raise click.ClickException(f"no build.json in {root} (run build-region first)")
+    b = json.loads(bpath.read_text(encoding="utf-8"))
+    if b.get("schema") != "realearth.build.v1":
+        raise click.ClickException(f"unexpected build schema: {b.get('schema')}")
+    ok = True
+    for key, meta in (b.get("inputs") or {}).items():
+        src = root.parent / meta["file"]
+        if not src.is_file():
+            click.echo(f"MISSING input {key}: {meta['file']} (expected at {src})")
+            ok = False
+            continue
+        actual = hashlib.sha256(src.read_bytes()).hexdigest()
+        match = actual == meta["sha256"]
+        click.echo(f"{'OK ' if match else 'MISMATCH'} {key}: {meta['file']} ({actual[:12]})")
+        ok = ok and match
+    if not ok:
+        raise click.ClickException("build manifest inputs do not match on-disk files")
+    click.echo(f"build.json ok (schema v1, tool {b.get('tool_version')}, source {b.get('source')})")
+
+
 # Numeric positionals may be negative (-74.006); without this Click reads the
 # leading dash as an option and every Americas longitude fails.
 @main.command("lonlat", context_settings={"ignore_unknown_options": True})

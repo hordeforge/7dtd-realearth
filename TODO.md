@@ -70,8 +70,11 @@ provenance and distinguish prototypes from verified in-game behavior.
 
 ## Data pipeline and realism
 
-- [ ] Add reproducible regional build manifests containing bounds, resolution,
+- [x] Add reproducible regional build manifests containing bounds, resolution,
   source URLs/versions, licenses, hashes, and processing parameters.
+  (build-region writes `build.json` (schema realearth.build.v1): tool version,
+  bbox, resolution, samples, source + params, input-file sha256 hashes,
+  attribution; `realearth verify-build --pack` re-checks the hashes.)
 - [ ] Implement or scope road, river, and settlement/prefab stamping with
   deterministic conflict rules.
 - [ ] Test tile seams, polar bounds, antimeridian regions, no-data DEM cells, and
