@@ -54,7 +54,7 @@ chunkIdx=2 playerTick=2 worldReady=1 `injectOk=True productOk=True` (see
 
 ## Height expand state (this machine)
 
-Live client and dedicated `Assembly-CSharp` may already have RealEarth YDim expand applied (`ChunkBlockYDim=16384`). Stock backups live next to the DLL as `Assembly-CSharp.dll.re_stock_bak` (`YDim=256`).
+Live client and dedicated `Assembly-CSharp` may already have RealEarth YDim expand applied (`ChunkBlockYDim=32768`). Stock backups live next to the DLL as `Assembly-CSharp.dll.re_stock_bak` (`YDim=256`).
 
 Probe with `realearth engine-audit` or regenerate dumps via `DumpTerrain` (see workspace [`7dtd-engine-research/docs/terrain-height.md`](../../7dtd-engine-research/docs/terrain-height.md)). After Steam Verify, re-run `make engine-expand`.
 

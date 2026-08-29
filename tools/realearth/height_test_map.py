@@ -22,7 +22,6 @@ import numpy as np
 from PIL import Image
 
 from realearth import (
-    DEFAULT_SEA_LEVEL_GAME_Y,
     ENGINE_TARGET_MAX_Y,
     EVEREST_METERS_ASL,
     FLY_OVER_HEADROOM_M,
@@ -48,6 +47,12 @@ from realearth.viewer_export import mosaic_pack
 
 # Local pack size (single .rte tile)
 TILE = 512
+
+# Test fixtures keep the historical low anchor (sea=32) so staged peak_game_y
+# stays a small absolute game Y (peak 500 → elev 468) and the Everest fixture
+# keeps its ~8778 peak. The product DEFAULT_SEA_LEVEL_GAME_Y (16000) is for
+# real-Earth packs that must represent trenches below sea.
+TEST_SEA_LEVEL_GAME_Y = 32
 
 # Mount Everest summit ≈ 86.925°E, 27.988°N, small Himalaya footprint
 EVEREST_BBOX = {
@@ -93,7 +98,7 @@ def everest_cone_elevation(size: int = TILE) -> np.ndarray:
 
 def staged_peak_elevation(size: int = TILE, *, peak_game_y: int = 500) -> np.ndarray:
     """Cone whose 1:1 peak is exactly peak_game_y (elev_m = peak_game_y - sea)."""
-    sea = DEFAULT_SEA_LEVEL_GAME_Y
+    sea = TEST_SEA_LEVEL_GAME_Y
     peak_elev = max(1.0, float(peak_game_y - sea))
     plains_elev = min(40.0, peak_elev * 0.1)
     return cone_elevation(size, peak_elev_m=peak_elev, plains_elev_m=plains_elev)
@@ -204,7 +209,7 @@ def build_height_test_pack(
         elev = staged_peak_elevation(size, peak_game_y=pg)
         sources = [
             f"synthetic staged cone peak_game_y={pg}",
-            f"elev_m peak = {pg - DEFAULT_SEA_LEVEL_GAME_Y} (1:1 sea={DEFAULT_SEA_LEVEL_GAME_Y})",
+            f"elev_m peak = {pg - TEST_SEA_LEVEL_GAME_Y} (1:1 sea={TEST_SEA_LEVEL_GAME_Y})",
         ]
         world_name = name or f"RealEarth_H{pg}"
         region = f"Staged height test (peak gameY={pg})"
@@ -213,7 +218,7 @@ def build_height_test_pack(
         engine_max = pg  # content ceiling matches peak for the test
         notes = (
             f"Staged height-mod test. Peak elev≈{float(elev.max()):.0f} m ASL → "
-            f"1:1 gameY≈{DEFAULT_SEA_LEVEL_GAME_Y + int(round(float(elev.max())))}. "
+            f"1:1 gameY≈{TEST_SEA_LEVEL_GAME_Y + int(round(float(elev.max())))}. "
             f"EngineMaxGameY={engine_max}. Full solid fill (no Everest-scale cost)."
         )
     else:
@@ -234,7 +239,7 @@ def build_height_test_pack(
 
     peak_m = float(elev.max())
     px, pz = peak_pixel(elev)
-    peak_game_1to1 = DEFAULT_SEA_LEVEL_GAME_Y + int(round(peak_m))
+    peak_game_1to1 = TEST_SEA_LEVEL_GAME_Y + int(round(peak_m))
     if notes is None:
         notes = (
             f"Real Everest DEM test. Peak elev≈{peak_m:.0f} m ASL at pixel ({px},{pz}). "
@@ -249,7 +254,7 @@ def build_height_test_pack(
         tile_size=tile_size,
         world_width=size,
         world_height=size,
-        sea_level_game_y=DEFAULT_SEA_LEVEL_GAME_Y,
+        sea_level_game_y=TEST_SEA_LEVEL_GAME_Y,
         meters_per_block=1.0,
         bbox=bbox,
         tiles=[{"tx": 0, "tz": 0}],
@@ -266,7 +271,7 @@ def build_height_test_pack(
         "peak_elev_m": peak_m,
         "peak_pixel_xz": [px, pz],
         "expected_everest_m": None if staged else EVEREST_METERS_ASL,
-        "sea_level_game_y": DEFAULT_SEA_LEVEL_GAME_Y,
+        "sea_level_game_y": TEST_SEA_LEVEL_GAME_Y,
         "engine_max_game_y": engine_max,
         "peak_game_y_one_to_one": peak_game_1to1,
         "target_peak_game_y": pg if pg is not None else peak_game_1to1,
@@ -292,11 +297,11 @@ def build_height_test_pack(
     )
 
     game_stock = compress_elevation(
-        elev, sea_level_y=DEFAULT_SEA_LEVEL_GAME_Y, max_y=250, profile="one_to_one"
+        elev, sea_level_y=TEST_SEA_LEVEL_GAME_Y, max_y=250, profile="one_to_one"
     )
     game_mod = compress_elevation(
         elev,
-        sea_level_y=DEFAULT_SEA_LEVEL_GAME_Y,
+        sea_level_y=TEST_SEA_LEVEL_GAME_Y,
         max_y=engine_max,
         profile="one_to_one",
         regional_exaggeration=1.0,
@@ -348,7 +353,7 @@ def bake_height_test_world(
         out_dir,
         size=size,
         name=name,
-        sea_level_y=DEFAULT_SEA_LEVEL_GAME_Y,
+        sea_level_y=TEST_SEA_LEVEL_GAME_Y,
     )
 
     data = mosaic_pack(pack_dir)
@@ -357,13 +362,13 @@ def bake_height_test_world(
     elev_r = np.asarray(elev_i.resize((size, size), Image.Resampling.BILINEAR), dtype=np.float32)
     game_y = compress_elevation(
         elev_r,
-        sea_level_y=DEFAULT_SEA_LEVEL_GAME_Y,
+        sea_level_y=TEST_SEA_LEVEL_GAME_Y,
         max_y=250,
         profile="one_to_one",
         regional_exaggeration=1.0,
     )
     game_y = np.asarray(game_y, dtype=np.int32).copy()
-    game_y[elev_r <= 0] = np.minimum(game_y[elev_r <= 0], DEFAULT_SEA_LEVEL_GAME_Y)
+    game_y[elev_r <= 0] = np.minimum(game_y[elev_r <= 0], TEST_SEA_LEVEL_GAME_Y)
     game_y = np.clip(game_y, 1, 250).astype(np.uint8)
 
     dtm = game_y_to_dtm_u16(game_y)
@@ -417,7 +422,7 @@ def bake_height_test_world(
     spawns = [
         (ox, float(base_gy + 3), oz),
         (wx, float(min(peak_gy + 2, 248)), wz),
-        (0, float(DEFAULT_SEA_LEVEL_GAME_Y + 10), 0),
+        (0, float(TEST_SEA_LEVEL_GAME_Y + 10), 0),
     ]
     lines = ["<spawnpoints>"]
     for i, (sx, sy, sz) in enumerate(spawns):

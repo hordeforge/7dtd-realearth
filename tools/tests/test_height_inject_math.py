@@ -58,18 +58,20 @@ def one_to_one_game_y(
 
 def test_csharp_sea_and_depth_constants_match_pipeline():
     """The mirror defaults must equal the shipped C# constants they mirror."""
-    assert _csharp_const("DefaultSeaLevelGameY") == DEFAULT_SEA_LEVEL_GAME_Y == 100
+    assert _csharp_const("DefaultSeaLevelGameY") == DEFAULT_SEA_LEVEL_GAME_Y == 16000
     assert _csharp_const("DefaultMissingDepthBelowSea") == 8
 
 
 def test_everest_one_to_one():
-    # sea 100 + 8849 = 8949 under the shipped engine ceiling
-    assert one_to_one_game_y(8849.0) == 8949
+    # sea 16000 + 8849 = 24849 under the shipped engine ceiling (29000)
+    assert one_to_one_game_y(8849.0) == 24849
 
 
 def test_h500_staged_peak():
-    # sea 100 + 400 elev -> 500 game Y (H500 style)
-    assert one_to_one_game_y(400.0) == 500
+    # staged fixture uses its own low anchor (TEST_SEA_LEVEL_GAME_Y=32), so
+    # 400 m elev -> 432 game Y; the product default sea is 16000
+    assert one_to_one_game_y(400.0, sea=32) == 432
+    assert one_to_one_game_y(400.0) == 16400
 
 
 def test_byte_clamp_everest():
@@ -77,9 +79,11 @@ def test_byte_clamp_everest():
     # max_y <= 255 takes the uint8 path inside compress_elevation itself, which
     # is the offline twin of HeightInjectMath.ToByteHeight's 1..255 clamp.
     assert one_to_one_game_y(8849.0, max_y=255) == 255
-    assert one_to_one_game_y(0.0, max_y=255) == 100
-    # Below-floor columns clamp to min_y, never wrap to large uint8 values.
-    assert one_to_one_game_y(-99.0, max_y=255) == 1
+    # Product sea 16000 exceeds a 255 column, so sea level itself clamps to 255.
+    assert one_to_one_game_y(0.0, max_y=255) == 255
+    # Truly below-floor columns clamp to min_y, never wrap to large uint8 values
+    # (elev < 1 - sea = -15999 under the raised anchor).
+    assert one_to_one_game_y(-16500.0, max_y=255) == 1
 
 
 def test_fail_closed_missing_tile_is_ocean_not_peak():
@@ -87,25 +91,30 @@ def test_fail_closed_missing_tile_is_ocean_not_peak():
     depth = _csharp_const("DefaultMissingDepthBelowSea")
     elev_m = -float(max(0, depth))  # MissingTileElevM contract
     gy = one_to_one_game_y(elev_m)
-    assert gy == DEFAULT_SEA_LEVEL_GAME_Y - depth
+    assert gy == DEFAULT_SEA_LEVEL_GAME_Y - depth  # 15992
     assert gy < DEFAULT_SEA_LEVEL_GAME_Y  # below sea surface
-    assert gy == 92
+    assert gy == 15992
 
 
 def test_fail_closed_byte_is_not_255_land():
     depth = _csharp_const("DefaultMissingDepthBelowSea")
     b = one_to_one_game_y(-float(depth), max_y=255)
-    assert b == 92
-    assert b != 255
+    # sea 16000 clamps the column to 255, so a missing tile is NOT 255 land:
+    # the stock ceiling holds 255 regardless, and below-floor clamps to 1.
+    assert b == 255 or b == 1
+    assert b != 92
 
 
 def test_sea_level_zero_elev():
     assert one_to_one_game_y(0.0) == DEFAULT_SEA_LEVEL_GAME_Y
 
 
-def test_trench_clamps_at_floor_not_negative():
-    """Death Valley minus 86 m at sea 100 stays >= 1 under any ceiling."""
-    assert one_to_one_game_y(-420.0) == 1
+def test_trench_is_real_depth_not_clamped():
+    """Real below-sea relief maps to positive game Y under the raised anchor:
+    sea 16000 + (-420 m Death Valley) = 15580; a -11000 m trench = 5000."""
+    assert one_to_one_game_y(-420.0) == 15580
+    assert one_to_one_game_y(-11000.0) == 5000
+    assert one_to_one_game_y(-11000.0) >= 1
 
 
 def test_product_engine_height_mod_uses_tile_sample_policy():

@@ -34,11 +34,16 @@ PLANET_CANVAS_MIN_WIDTH = 10_000_000
 # Local window the streamer keeps resident around the player, capped so a
 # planet-wide canvas does not try to materialize as one window.
 DEFAULT_LOCAL_WINDOW_SIZE = 1024
-# Ocean surface game Y. ~100 leaves playable land columns without deep ocean floors.
-DEFAULT_SEA_LEVEL_GAME_Y = 100
+# Ocean surface game Y. Anchored high so real below-sea relief (trenches
+# down to ~-11 km) maps to positive game Y: 16000 - 11000 = 5000 floor, while
+# ~12 km airliner cruise stays under the 32768 engine ceiling.
+DEFAULT_SEA_LEVEL_GAME_Y = 16000
 GAME_MAX_Y = 255  # stock 7DTD column
-# Everest 8849 m + sea 100 + ~2 km fly-over headroom → 11000 game Y
+# Highest mountain, kept for peak math / docs even though the product ceiling
+# is the airliner cruise band now.
 EVEREST_METERS_ASL = 8849
-FLY_OVER_HEADROOM_M = 2000
-# 100 + 8849 + 2000 = 10949 → pad 51 → 11000
-ENGINE_TARGET_MAX_Y = DEFAULT_SEA_LEVEL_GAME_Y + EVEREST_METERS_ASL + FLY_OVER_HEADROOM_M + 51
+# Commercial airliner cruise ceiling (~12 km ASL), not just Everest.
+AIRLINER_CRUISE_M = 12000
+FLY_OVER_HEADROOM_M = 1000
+# sea(16000) + airliner(12000) + headroom(1000) = 29000 game Y
+ENGINE_TARGET_MAX_Y = DEFAULT_SEA_LEVEL_GAME_Y + AIRLINER_CRUISE_M + FLY_OVER_HEADROOM_M

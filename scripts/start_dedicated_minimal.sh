@@ -128,7 +128,7 @@ install_mod() {
     MapMode=Streamed \
     SingleWorldSession=true \
     EnableEngineHeightMod=true \
-    EngineMaxGameY=11000 \
+    EngineMaxGameY=29000 \
     MultiplayerOriginMode=SharedFixed \
     TilePackPath=Data/tiles \
     WorldWidth=512 \

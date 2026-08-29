@@ -12,7 +12,7 @@ RealEarth is a **C# mod** (`IModApi` + Harmony) **plus** engine **YDim expand** 
 |--------|------|
 | `RealEarth.dll` + `IModApi` | Config, tiles, streamer, session |
 | Harmony hooks | Height queries, terrain inject |
-| **YDim expand** (`EngineHeightPatcher`) | Raises `Assembly-CSharp` vertical limits (YDim=16384) |
+| **YDim expand** (`EngineHeightPatcher`) | Raises `Assembly-CSharp` vertical limits (YDim=32768) |
 | `.rte` / bake data | Real elevation packs |
 
 Requires game **`0_TFP_Harmony`**. Do not ship a second Harmony.
@@ -44,7 +44,7 @@ Mods/RealEarth/
 ```bash
 # Close 7DTD first
 Mods/RealEarth/Tools/apply_engine_expand.sh
-# restart game - log should show YDim=16384 / ENGINE EXPANDED
+# restart game - log should show YDim=32768 / ENGINE EXPANDED
 ```
 
 Restore stock DLLs: `make engine-restore` or Steam Verify (then re-run expand after updates).
@@ -59,7 +59,7 @@ Optional experiment only: set `EngineHeightStockSafe=true` to compress into ~0-2
 |--|----------------|----------------------------|
 | Streamed tiles / fold | Yes | Yes |
 | Inject / Harmony | Real meters (needs expand for tall mesh) | Real meters 1:1 up to content maxY |
-| Everest-scale mesh | No | Yes (YDim=16384, maxGameY≤11000) |
+| Everest-scale mesh | No | Yes (YDim=32768, maxGameY≤29000) |
 
 ## Config
 
@@ -88,7 +88,7 @@ All optional; defaults shown. Scripts fail fast when numeric values are invalid.
 | `RE_SERVER_MAX_PLAYERS` | `1024` (height test) / `64` (prefab) | serverconfig injection |
 | `RE_SERVER_WAIT` / `RE_SERVER_SOAK` | `180` / `35` seconds | `run_dedicated_height_test.sh` |
 | `RE_SCRATCH` / `RE_LOADTEST_ROOT` | unset / `../7dtd-loadgen` | load-test wiring |
-| `RE_YDIM` | `16384` | `apply_engine_expand.sh` |
+| `RE_YDIM` | `32768` | `apply_engine_expand.sh` |
 | `HARMONY_DIR` | `<GAME_DIR>/Mods/0_TFP_Harmony` | `apply_engine_expand.sh` Harmony ref dir |
 | `RE_TERRARIUM_CACHE` | unset (no caching) / `<repo>/data/cache/terrarium` via make | offline tile cache for the Python pipeline (`tools`) |
 | `RE_SAVE_TRASH_DAYS` | `7` | `run_dedicated_height_test.sh` save-trash window |
@@ -106,11 +106,11 @@ All optional; defaults shown. Scripts fail fast when numeric values are invalid.
 | `StreamRadiusTiles` / `UnloadRadiusTiles` | `2` / `4` | Per-player tile bubble; unload must exceed stream radius |
 | `LocalWindowSize` | `1024` | Finite host window; clamped to pack extent at init |
 | `EnableLongitudeWrap` | `false` | Antimeridian wrap on full-planet canvases only |
-| `SeaLevelGameY` | `100` | Game Y of sea surface |
+| `SeaLevelGameY` | `16000` | Game Y of sea surface (anchored for real depth below sea) |
 | `FailClosedMissingTiles` | `true` | Log (and refuse to invent) missing DEM tiles |
 | `EnableEngineHeightMod` | `true` | Height sampling/inject for Streamed packs |
 | `EngineHeightStockSafe` | `false` | Opt-in compress for stock engines; **not** product path |
-| `EngineMaxGameY` | `11000` | 1:1 ceiling (sea + Everest + headroom) after expand |
+| `EngineMaxGameY` | `29000` | 1:1 ceiling (sea + airliner cruise + headroom) after expand |
 | `SpawnLongitude` / `SpawnLatitude` | `0` | Degrees; `0,0` falls back to `DefaultSpawn*` |
 
 ## Debug map FOW (config keys)

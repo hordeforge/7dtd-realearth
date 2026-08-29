@@ -8,7 +8,7 @@ namespace RealEarth
     /// </summary>
     public static class HeightInjectMath
     {
-        public const int DefaultSeaLevelGameY = 100;
+        public const int DefaultSeaLevelGameY = 16000;
         public const int DefaultMissingDepthBelowSea = 8;
 
         /// <summary>1 m ASL → 1 block: gameY = sea + elevM, clamped.

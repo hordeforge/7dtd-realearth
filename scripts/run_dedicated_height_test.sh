@@ -110,7 +110,7 @@ install_mod_to() {
     MapMode=Streamed \
     SingleWorldSession=true \
     EnableEngineHeightMod=true \
-    EngineMaxGameY=11000 \
+    EngineMaxGameY=29000 \
     EngineHeightOneToOne=true \
     "EngineHeightPreferVanillaCeiling=false" \
     TilePackPath=Data/tiles \

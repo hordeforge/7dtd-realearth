@@ -5,23 +5,26 @@ namespace RealEarth
     /// <summary>
     /// Real meters ASL → game Y. Vanilla path caps at 255 (byte columns).
     /// Engine-height path supports up to <see cref="EngineTargetMaxY"/>
-    /// (Everest + fly-over headroom) via <see cref="CompressExpanded"/> / <see cref="MetersToGameY"/>.
+    /// (sea + airliner cruise band) via <see cref="CompressExpanded"/> / <see cref="MetersToGameY"/>.
     /// </summary>
     public static class HeightCompress
     {
         /// <summary>Mount Everest elevation (m ASL), 1 m ≈ 1 block in one-to-one mode.</summary>
         public const int EverestMetersAsl = 8849;
 
-        /// <summary>Extra meters/blocks of air above Everest for flight / build headroom.</summary>
-        public const int FlyOverHeadroomM = 2000;
+        /// <summary>Commercial airliner cruise band (~12 km ASL), the product ceiling driver.</summary>
+        public const int AirlinerCruiseM = 12000;
+
+        /// <summary>Extra meters/blocks of air above the airliner band for flight / build headroom.</summary>
+        public const int FlyOverHeadroomM = 1000;
 
         /// <summary>
-        /// Height-mod ceiling: sea + Everest + fly-over (+ pad to a clean cap).
-        /// With 1:1, Everest surface ≈ 8949 (sea 100); ~2 km of air remains above the summit.
-        /// 100 + 8849 + 2000 = 10949 → cap 11000.
+        /// Height-mod ceiling: sea + airliner cruise + headroom. With 1:1,
+        /// sea 16000 + 12000 + 1000 = 29000; the packed game-Y ceiling is
+        /// 32767 (YDim 32768), so real trenches (sea - 11000 = 5000) stay above 0.
         /// </summary>
         public const int EngineTargetMaxY =
-            HeightInjectMath.DefaultSeaLevelGameY + EverestMetersAsl + FlyOverHeadroomM + 51; // 11000
+            HeightInjectMath.DefaultSeaLevelGameY + AirlinerCruiseM + FlyOverHeadroomM; // 29000
 
         public static byte Compress(float elevM, int seaLevelY = 100, int maxY = 250, int minY = 1)
         {

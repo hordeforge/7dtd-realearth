@@ -4,7 +4,6 @@ from pathlib import Path
 
 import numpy as np
 
-from realearth import DEFAULT_SEA_LEVEL_GAME_Y
 from realearth.engine_constants import (
     VANILLA_3_0_1,
     audit_engine_height,
@@ -30,7 +29,7 @@ def test_engine_mod_enabled_in_default_config():
     cfg = (ROOT / "Config" / "realearth.json").read_text(encoding="utf-8")
     assert "EnableEngineHeightMod" in cfg
     assert '"EnableEngineHeightMod": true' in cfg or '"EnableEngineHeightMod":true' in cfg
-    assert '"SeaLevelGameY": 100' in cfg or '"SeaLevelGameY":100' in cfg
+    assert '"SeaLevelGameY": 16000' in cfg or '"SeaLevelGameY":16000' in cfg
 
 
 def test_audit_against_live_assembly_or_defaults():
@@ -57,7 +56,9 @@ def test_compress_respects_custom_max_y_for_engine_policy():
     """Height path used by EngineHeightPolicy (Python twin of HeightCompress)."""
     elev = np.array([[0.0, 5000.0]])
     y = compress_elevation(elev, max_y=250, regional_exaggeration=1.0)
-    assert int(y[0, 0]) == DEFAULT_SEA_LEVEL_GAME_Y
+    # With sea (16000) above max_y (250), the one-to-one result clamps to the
+    # stock ceiling: the caller asked for a 250 column, so sea is unreachable.
+    assert int(y[0, 0]) == 250
     assert int(y.max()) <= 250
 
 

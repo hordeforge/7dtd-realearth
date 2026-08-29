@@ -14,6 +14,13 @@ and the release gate requires both to match the tag (`v<version>`).
 
 ### Added
 
+- Full vertical relief: YDim expand raised 16384 → **32768** (the engine's
+  packed game-Y ceiling), sea anchor `SeaLevelGameY` 100 → **16000**, ceiling
+  `EngineMaxGameY` 11000 → **29000**. Real below-sea depth is now representable
+  (trench -11 km → gameY 5000, diggable) and the airliner cruise band (+12 km →
+  gameY 28000) stays under the 32767 lid. `mod_config --height-test-meta`
+  raises the ceiling monotonically so a stale fixture hint cannot downgrade the
+  product knob. Live dedicated soak at YDim=32768 passed (V3.2.0 b9).
 - Viewer: vendored three.js r0.170.0 under `viewer/vendor/three/` (module +
   OrbitControls) so Globe mode works fully offline; the importmap resolves the
   local copy instead of the jsDelivr CDN. `scripts/vendor-three.sh` refreshes

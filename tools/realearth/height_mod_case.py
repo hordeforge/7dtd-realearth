@@ -18,6 +18,7 @@ from dataclasses import dataclass
 import numpy as np
 
 from realearth import (
+    AIRLINER_CRUISE_M,
     DEFAULT_SEA_LEVEL_GAME_Y,
     ENGINE_TARGET_MAX_Y,
     EVEREST_METERS_ASL,
@@ -49,16 +50,16 @@ def run_height_mod_case() -> list[CaseResult]:
     """Execute the height-mod smoke case; returns per-check results."""
     results: list[CaseResult] = []
 
-    # 1) Ceiling = sea + Everest + fly headroom (+ pad)
-    expected_ceil = DEFAULT_SEA_LEVEL_GAME_Y + EVEREST_METERS_ASL + FLY_OVER_HEADROOM_M + 51
-    ok = ENGINE_TARGET_MAX_Y == 11000 and expected_ceil == ENGINE_TARGET_MAX_Y
+    # 1) Ceiling = sea + airliner cruise + headroom
+    expected_ceil = DEFAULT_SEA_LEVEL_GAME_Y + AIRLINER_CRUISE_M + FLY_OVER_HEADROOM_M
+    ok = expected_ceil == ENGINE_TARGET_MAX_Y
     results.append(
         CaseResult(
             "ceiling_constants",
             ok,
             f"ENGINE_TARGET_MAX_Y={ENGINE_TARGET_MAX_Y} "
-            f"(sea={DEFAULT_SEA_LEVEL_GAME_Y} + everest={EVEREST_METERS_ASL} "
-            f"+ fly={FLY_OVER_HEADROOM_M} + pad=51 → {expected_ceil})",
+            f"(sea={DEFAULT_SEA_LEVEL_GAME_Y} + airliner={AIRLINER_CRUISE_M} "
+            f"+ headroom={FLY_OVER_HEADROOM_M} → {expected_ceil})",
         )
     )
 
@@ -98,7 +99,7 @@ def run_height_mod_case() -> list[CaseResult]:
     )
 
     # 5) Just under ceiling still maps; at/above elev that would exceed max clamps
-    max_elev_before_clamp = ENGINE_TARGET_MAX_Y - DEFAULT_SEA_LEVEL_GAME_Y  # 10900
+    max_elev_before_clamp = ENGINE_TARGET_MAX_Y - DEFAULT_SEA_LEVEL_GAME_Y  # 13000
     at_cap = _one_to_one(float(max_elev_before_clamp))
     over = _one_to_one(float(max_elev_before_clamp + 5000))
     results.append(
@@ -110,13 +111,15 @@ def run_height_mod_case() -> list[CaseResult]:
         )
     )
 
-    # 6) Deep trench clamps to min_y=1
+    # 6) Deep trench is now real below-sea floor, not clamped to 1:
+    #    sea(16000) + elev(-11000) = gameY 5000 (> 0, inside the column).
     trench_y = _one_to_one(-11000.0)
+    want_trench = DEFAULT_SEA_LEVEL_GAME_Y - 11000  # 5000
     results.append(
         CaseResult(
             "trench_floor",
-            trench_y == 1,
-            f"elev=-11000 m → gameY={trench_y} (want min_y=1)",
+            trench_y == want_trench and trench_y >= 1,
+            f"elev=-11000 m → gameY={trench_y} (want {want_trench}; real depth, not clamped)",
         )
     )
 

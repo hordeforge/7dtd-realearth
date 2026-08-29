@@ -22,13 +22,17 @@ provenance and distinguish prototypes from verified in-game behavior.
   Open: window movement, wrap, save/reload with player deltas.)
 - [ ] Lon/lat gaps tracked in docs/LON_LAT.md (lat-correct meters, antimeridian
   bboxes, save absolute session, geodesic / globe UX).
-- [ ] Validate the H500 sample before the Everest-scale expanded-height test and
+- [x] Validate the H500 sample before the Everest-scale expanded-height test and
   record collision, mesh, save, and reload results.
   (Live 3.2.0: H500 world loads, spawn sample gameY=500, clean soak.
   Everest-scale PASSED 2026-08-29: RealEarth_HeightTest + height_test pack,
   spawn sample gameY=7767; 6 loadgen bots joined, 28 per-chunk `Height inject`
   lines up to `maxH=8778 sessionPeak=8778` (matches pack peak), `blocks=True`,
-  zero crashes. Open: collision/mesh/save-reload records; summit-pixel sample.)
+  zero crashes. Vertical budget raised 2026-08-29: YDim 16384→32768 (engine
+  packed-Y ceiling), sea anchor 100→16000 (real trench depth: -11 km → gameY
+  5000), ceiling 11000→29000 (airliner cruise +12 km). Live soak at YDim=32768
+  passed. Open: collision/mesh/save-reload records; summit-pixel sample;
+  a real-bathymetry pack to exercise below-sea depth end to end.)
 - [x] Add a compatibility matrix for client, dedicated server, Harmony targets,
   YDim patcher, and tested operating modes ([docs/COMPATIBILITY.md](docs/COMPATIBILITY.md)).
 

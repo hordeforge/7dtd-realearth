@@ -77,11 +77,11 @@ There is no mature “just set MaxHeight=4096” mod that is known-good for full
 ```bash
 make install-full   # expand + install (product)
 # or:
-make engine-expand  # client + dedicated Assembly-CSharp (YDim=16384)
+make engine-expand  # client + dedicated Assembly-CSharp (YDim=32768)
 make install
 ```
 
-Config defaults: `EngineHeightOneToOne=true`, `EngineHeightStockSafe=false`, `EngineMaxGameY=11000`.
+Config defaults: `EngineHeightOneToOne=true`, `EngineHeightStockSafe=false`, `EngineMaxGameY=29000`.
 
 ### Tier 1: optional gameplay feel (after real height works)
 
@@ -93,7 +93,7 @@ Does not replace expand or invent compress curves for the planet.
 
 ### Tier 2: YDim expand details
 
-**Purpose:** change the **game engine** so columns can be taller than 256, enabling true **1 m = 1 block** mountains (Everest ~8849 m; sea + Everest ≈ 8949 game Y). Remapping data alone is not enough.
+**Purpose:** change the **game engine** so columns can be taller than 256, enabling true **1 m = 1 block** relief both ways: mountains up to ~12 km (airliner cruise) and real depth below sea (trenches to -11 km). Remapping data alone is not enough.
 
 Tall 1:1 columns are a **RealEarth feature**, not a third-party tool. The patcher ships in `Mods/RealEarth/Tools/` and as `make engine-expand`.
 
@@ -106,7 +106,7 @@ make dedicated-height-test
 make engine-restore
 ```
 
-**Everest-scale:** YDim=**16384**, layers=**4096**, `EngineMaxGameY` ≤ **11000**. Does **not** expand XZ maps.
+**Product vertical budget (2026-08-29):** YDim=**32768** (2^15, the packed game-Y ceiling: `Vector3iToUInt64` stores Y as `(y + 32768) & 0xFFFF`, so 32767 is the max), layers=**8192**, `EngineMaxGameY` ≤ **29000**. Sea anchor `SeaLevelGameY=16000` so real trenches (sea - 11000 = gameY 5000) stay above 0, and airliner cruise (sea + 12000 = 28000) stays under the lid. Does **not** expand XZ maps.
 
 ### Opt-in only: stock compress (not product)
 
@@ -120,10 +120,10 @@ make engine-restore
 
 | Constant | Stock | After RealEarth expand |
 |---|---:|---:|
-| `ChunkBlockYDim` | **256** | **16384** |
-| `ChunkBlockYPow` | 8 | 14 |
-| `ChunkBlockLayers` × `LayerHeight` | 64 × 4 | 4096 × 4 |
-| `cMaxHeight` | **255** | **16383** |
+| `ChunkBlockYDim` | **256** | **32768** |
+| `ChunkBlockYPow` | 8 | 15 |
+| `ChunkBlockLayers` × `LayerHeight` | 64 × 4 | 8192 × 4 |
+| `cMaxHeight` | **255** | **32767** |
 | `ChunkAreaDim` (XZ 16×16) | **256** | **256** (must stay) |
 | `Chunk.GetTerrainHeight` return | **byte** | **byte** (still lossy for peaks) |
 
@@ -142,19 +142,19 @@ Config (`realearth.json`):
 
 ```json
 "EnableEngineHeightMod": true,
-"EngineMaxGameY": 11000,
+"EngineMaxGameY": 29000,
 "EngineHeightOneToOne": true,
 "EngineHeightPreferVanillaCeiling": false
 ```
 
 | Knob | Default | Meaning |
 |---|---|---|
-| `EngineMaxGameY` | **11000** | sea(100) + Everest(8849) + ~2 km fly-over air |
+| `EngineMaxGameY` | **29000** | sea(16000) + airliner cruise(12000) + 1 km headroom |
 | `EngineHeightOneToOne` | **true** | `gameY = seaLevelY + elev_m` (1 m ≈ 1 block) |
 | `EngineHeightPreferVanillaCeiling` | false | If true, clamp back to ~255 for legacy short columns |
 
-- **Height mod math:** full int surfaces (`SampleGameHeightInt`, `AbsoluteHeightStore`); `gameY = seaLevelY(100) + elev_m`.
-- **Stock storage:** columns **256** tall until expand. **Product:** `make engine-expand` → YDim **16384**, layers **4096** (Measured on expanded installs).
+- **Height mod math:** full int surfaces (`SampleGameHeightInt`, `AbsoluteHeightStore`); `gameY = seaLevelY(16000) + elev_m` (negative elev_m = real depth below sea).
+- **Stock storage:** columns **256** tall until expand. **Product:** `make engine-expand` → YDim **32768**, layers **8192** (Measured on expanded installs).
 - **Residual after expand:** `Chunk`/`World.GetTerrainHeight` still return **byte** (lossy). Drive float/int queries + block/density inject. Long-term RAM: sparse Y sections ([`DYNAMIC_CHUNK_HEIGHT.md`](DYNAMIC_CHUNK_HEIGHT.md)).
 
 Audit anytime:
@@ -165,7 +165,7 @@ cd tools && uv run --locked python -m realearth.cli engine-audit
 # mono 7dtd-server-optimizer/tools/DumpTerrain.exe $ASM 7dtd-engine-research/il/terrain-VERSION
 ```
 
-If you only raise YDim to **1024** (staging), Everest still will not fit as true 1:1 (needs sea+8849 ≈ 8949). Product expand target is **16384** with `one_to_one` mapping, not a global compress curve.
+If you only raise YDim to **1024** (staging), Everest still will not fit as true 1:1 (needs sea+8849 ≈ 24849 at the product anchor). Product expand target is **32768** with `one_to_one` mapping, not a global compress curve.
 
 ### Tier 3: full 1:1 vertical (unlikely on stock Unity voxel stack)
 
@@ -189,7 +189,7 @@ That way if a future height-limit mod lands, you **re-export** with a taller `ma
 
 | Knob | Where | Meaning |
 |---|---|---|
-| `SeaLevelGameY` | `realearth.json` / bake | Game Y of sea surface (default **100** everywhere: config, bake-world, manifest fallback; deep ocean is not a survival target). A pack manifest with an explicit value overrides the runtime config at init |
+| `SeaLevelGameY` | `realearth.json` / bake | Game Y of sea surface (default **16000**: config, bake-world, manifest fallback). Anchored high so real below-sea relief (trench -11 km → gameY 5000) is diggable; airliner band (+12 km → 28000) stays under the 32767 lid. A pack manifest with an explicit value overrides the runtime config at init |
 | `regional_exaggeration` | `height.compress_elevation` | Local relief boost |
 | `max_y` | compress API | Ceiling (default 250) |
 
@@ -210,7 +210,7 @@ Full design: **[`DYNAMIC_CHUNK_HEIGHT.md`](DYNAMIC_CHUNK_HEIGHT.md)**.
 | Goal | Approach |
 |---|---|
 | Real mountain shape at true meters | **YDim expand + 1:1 inject** (product path) |
-| Everest-scale absolute meters | Expand YDim **16384** + `gameY = sea + elev_m` |
+| Everest-scale absolute meters | Expand YDim **32768** + `gameY = sea + elev_m` |
 | Stock / experiment only | Opt-in `EngineHeightStockSafe` compress (not ship) |
 | Planet-scale RAM for tall columns | Near term: accept expand cost near players; long term: sparse Y ([DYNAMIC_CHUNK_HEIGHT](DYNAMIC_CHUNK_HEIGHT.md)) |
 | Horizontal continuous Earth | Absolute XZ stream ([ABSOLUTE_STREAMING](ABSOLUTE_STREAMING.md)); orthogonal to vertical expand |

@@ -25,7 +25,7 @@ case "$KIND" in
     PACK="$ROOT/data/samples/height_test_500"
     WORLD="$ROOT/worlds/RealEarth_H500"
     WORLD_NAME="RealEarth_H500"
-    ENGINE_MAX=11000  # engine ceiling Everest-ready; map peak still 500
+    ENGINE_MAX=29000  # product ceiling (sea 16000 + airliner 12000 + headroom); fixture peak stays 500
     SPAWN_LON=0.025
     SPAWN_LAT=0.025
     ;;
@@ -33,7 +33,7 @@ case "$KIND" in
     PACK="$ROOT/data/samples/height_test"
     WORLD="$ROOT/worlds/RealEarth_HeightTest"
     WORLD_NAME="RealEarth_HeightTest"
-    ENGINE_MAX=11000
+    ENGINE_MAX=29000
     SPAWN_LON=86.925
     SPAWN_LAT=27.988
     ;;

@@ -5,10 +5,11 @@ from unittest.mock import patch
 
 import numpy as np
 
-from realearth import DEFAULT_SEA_LEVEL_GAME_Y, EVEREST_METERS_ASL
+from realearth import EVEREST_METERS_ASL
 from realearth.height import compress_elevation
 from realearth.height_test_map import (
     EVEREST_BBOX,
+    TEST_SEA_LEVEL_GAME_Y,
     build_height_test_pack,
     everest_cone_elevation,
     fetch_everest_elevation,
@@ -44,9 +45,7 @@ def test_build_pack_with_mocked_real_dem(tmp_path: Path):
         info = build_height_test_pack(tmp_path, source="terrarium", size=size)
 
     assert info["peak_elev_m"] >= 8800
-    assert info["peak_game_y_one_to_one"] == DEFAULT_SEA_LEVEL_GAME_Y + int(
-        round(info["peak_elev_m"])
-    )
+    assert info["peak_game_y_one_to_one"] == TEST_SEA_LEVEL_GAME_Y + int(round(info["peak_elev_m"]))
     tile = read_tile(tile_path(tmp_path, 0, 0))
     assert float(tile.elevation_m.max()) >= 8800
     man = (tmp_path / "earth.manifest.json").read_text(encoding="utf-8")
@@ -57,7 +56,7 @@ def test_build_pack_with_mocked_real_dem(tmp_path: Path):
 
     y = compress_elevation(
         tile.elevation_m,
-        sea_level_y=DEFAULT_SEA_LEVEL_GAME_Y,
+        sea_level_y=TEST_SEA_LEVEL_GAME_Y,
         max_y=250,
         profile="one_to_one",
     )
@@ -79,8 +78,8 @@ def test_staged_peak_elevation_maps_to_game_y_500():
     """Staged H500: elev_m peak = 500 - sea, 1:1 gameY = 500."""
     elev = staged_peak_elevation(128, peak_game_y=500)
     peak_m = float(elev.max())
-    assert abs(peak_m - (500 - DEFAULT_SEA_LEVEL_GAME_Y)) < 0.01
-    game_y = DEFAULT_SEA_LEVEL_GAME_Y + int(round(peak_m))
+    assert abs(peak_m - (500 - TEST_SEA_LEVEL_GAME_Y)) < 0.01
+    game_y = TEST_SEA_LEVEL_GAME_Y + int(round(peak_m))
     assert game_y == 500
     # plains ring must be below peak (cone)
     assert float(elev.min()) < peak_m
@@ -90,7 +89,7 @@ def test_build_staged_h500_pack(tmp_path: Path):
     """Ship path for make install-height-500: peak_game_y=500 synthetic pack."""
     info = build_height_test_pack(tmp_path, peak_game_y=500, size=64, name="RealEarth_H500")
     assert info["peak_game_y_one_to_one"] == 500
-    assert abs(info["peak_elev_m"] - 400.0) < 0.1
+    assert abs(info["peak_elev_m"] - (500 - TEST_SEA_LEVEL_GAME_Y)) < 0.1
     meta = info["meta"]
     assert meta["staged"] is True
     assert meta["engine_max_game_y"] == 500

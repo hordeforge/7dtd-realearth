@@ -40,7 +40,7 @@ namespace RealEarth
         [DataMember] public string MultiplayerOriginMode { get; set; } = "SoloSlide";
 
         [DataMember] public bool EnableLongitudeWrap { get; set; } = false;
-        [DataMember] public int SeaLevelGameY { get; set; } = 100;
+        [DataMember] public int SeaLevelGameY { get; set; } = 16000;
         [DataMember] public string TileCdnBaseUrl { get; set; } = "";
 
         /// <summary>Optional spawn override (degrees). 0,0 with UseDefaultSpawn uses DefaultSpawn*.</summary>
@@ -122,10 +122,10 @@ namespace RealEarth
         [DataMember] public bool EngineHeightStockSafe { get; set; } = false;
 
         /// <summary>
-        /// Target game-Y ceiling for 1:1 mapping (sea + peak + fly room).
-        /// Default 11000: sea(100) + Everest(8849) + headroom.
+        /// Target game-Y ceiling for 1:1 mapping (sea + airliner cruise + headroom).
+        /// Default 29000: sea(16000) + airliner(12000) + headroom(1000).
         /// </summary>
-        [DataMember] public int EngineMaxGameY { get; set; } = 11000;
+        [DataMember] public int EngineMaxGameY { get; set; } = 29000;
 
         /// <summary>
         /// Product default: 1 m real elevation ≈ 1 game block (seaLevelY + elev_m).
@@ -230,8 +230,8 @@ namespace RealEarth
             }
             if (SeaLevelGameY <= 0)
             {
-                SeaLevelGameY = 100;
-                warnings.Add("SeaLevelGameY <= 0; reset to 100.");
+                SeaLevelGameY = 16000;
+                warnings.Add("SeaLevelGameY <= 0; reset to 16000.");
             }
             if (EngineMaxGameY <= SeaLevelGameY)
                 warnings.Add(

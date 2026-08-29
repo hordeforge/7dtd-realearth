@@ -124,7 +124,7 @@ install_mod() {
     "DebugRevealFullMap?=false" \
     "EnableEngineHeightMod?=true" \
     "EngineHeightStockSafe?=false" \
-    "EngineMaxGameY?=11000" \
+    "EngineMaxGameY?=29000" \
     "EngineHeightOneToOne?=true" \
     "EngineHeightPreferVanillaCeiling?=false" \
     "LocalWindowSize?=$LOCAL_WINDOW_SIZE"

@@ -3,7 +3,7 @@ import zlib
 
 import numpy as np
 
-from realearth import DEFAULT_SEA_LEVEL_GAME_Y
+from realearth import DEFAULT_SEA_LEVEL_GAME_Y, ENGINE_TARGET_MAX_Y
 from realearth.height import compress_elevation
 from realearth.settlements import decode_poi_blob, encode_poi_blob
 from realearth.tile_format import (
@@ -42,10 +42,16 @@ def test_tile_roundtrip():
 
 
 def test_height_sea_level():
-    y = compress_elevation(np.array([[0.0, 500.0, -100.0]]))
-    assert int(y[0, 0]) == DEFAULT_SEA_LEVEL_GAME_Y
+    # Explicit engine ceiling (the bare default is the stock 250 column, which
+    # would clamp the 16000 anchor; the product path passes EngineMaxGameY).
+    y = compress_elevation(
+        np.array([[0.0, 500.0, -100.0]]),
+        max_y=ENGINE_TARGET_MAX_Y,
+        profile="one_to_one",
+    )
+    assert int(y[0, 0]) == DEFAULT_SEA_LEVEL_GAME_Y  # 16000
     assert int(y[0, 1]) > DEFAULT_SEA_LEVEL_GAME_Y
-    assert int(y[0, 2]) < DEFAULT_SEA_LEVEL_GAME_Y
+    assert int(y[0, 2]) < DEFAULT_SEA_LEVEL_GAME_Y  # 15900: real depth
 
 
 def test_height_local_stretch_uses_full_band():
@@ -60,7 +66,8 @@ def test_height_respects_custom_max_y_for_future_engine_mod():
     elev = np.array([[0.0, 5000.0]])
     y = compress_elevation(elev, max_y=500, profile="relative", regional_exaggeration=1.0)
     assert int(y.max()) <= 500
-    assert int(y[0, 0]) == DEFAULT_SEA_LEVEL_GAME_Y
+    # sea 16000 exceeds the 500 column: relative profile clamps sea to max_y.
+    assert int(y[0, 0]) == 500
 
 
 def test_elevation_u16_rounds_to_nearest_meter():

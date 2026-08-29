@@ -15,11 +15,11 @@ def _src() -> str:
     return PATCHER.read_text(encoding="utf-8")
 
 
-def test_everest_scale_ydim_is_16384():
+def test_everest_scale_ydim_is_32768():
     src = _src()
-    # Default Everest-scale; --ydim can override at runtime
-    assert "TargetYDim = 16384" in src
-    assert "TargetYPow = 14" in src
+    # Product default = packed game-Y ceiling; --ydim can override at runtime
+    assert "TargetYDim = 32768" in src
+    assert "TargetYPow = 15" in src
     assert "--ydim" in src
     assert "SetYDim" in src
 

@@ -8,8 +8,9 @@ namespace RealEarth
 {
     /// <summary>
     /// Inject RealEarth 1:1 heights into the live engine (no compression).
-    /// With engine-expand (YDim=16384), columns are filled solid up to true gameY
-    /// (e.g. Everest ≈ 8949). Stock 250 is ignored when the engine is expanded.
+    /// With engine-expand (YDim=32768), columns are filled solid up to true gameY
+    /// (e.g. Everest ≈ 24849 at sea 16000; airliner band to 29000). Stock 250 is
+    /// ignored when the engine is expanded.
     /// </summary>
     public static class ChunkTerrainInject
     {

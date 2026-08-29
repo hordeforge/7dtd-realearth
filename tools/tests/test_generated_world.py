@@ -9,7 +9,6 @@ from pathlib import Path
 import numpy as np
 import pytest
 
-from realearth import DEFAULT_SEA_LEVEL_GAME_Y
 from realearth.generated_world import (
     bake_generated_world,
     detect_client_versions,
@@ -22,7 +21,10 @@ from realearth.region import build_region
 
 def test_game_y_to_dtm_u16_scale():
     # Verified against V1.0 sample world: game height ≈ u16 / 256
-    sea = DEFAULT_SEA_LEVEL_GAME_Y
+    # Stock bake band only (dtm.raw is u16 = gameY*256): the product Streamed
+    # height path never goes through this. Use a stock-band sea (100), not the
+    # 16000 product anchor, which cannot fit the uint8 input column.
+    sea = 100
     y = np.array([[sea, 61], [1, 250]], dtype=np.uint8)
     u = game_y_to_dtm_u16(y)
     assert int(u[0, 0]) == sea * 256

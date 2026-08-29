@@ -96,8 +96,22 @@ def test_height_test_meta_spawn_and_ceiling(tmp_path: Path):
     assert cfg["SpawnLatitude"] == 46.85
     assert cfg["DefaultSpawnLon"] == -121.7
     assert cfg["DefaultSpawnLat"] == 46.85
-    # Staged ceiling above 500 replaces the default.
-    assert cfg["EngineMaxGameY"] == 8849
+    # Fixture ceiling above 500 AND above the configured value wins (monotonic):
+    # 8849 > 11000? No, so the caller's 11000 stays. A product 29000 config is
+    # never downgraded by a stale fixture hint.
+    assert cfg["EngineMaxGameY"] == 11000
+
+
+def test_height_test_meta_raises_ceiling_monotonically(tmp_path: Path):
+    dest = tmp_path / "dest"
+    tiles = dest / "Data" / "tiles"
+    tiles.mkdir(parents=True)
+    (tiles / "height_test.json").write_text(
+        json.dumps({"engine_max_game_y": 29000}), encoding="utf-8"
+    )
+    cfg: dict = {"EngineMaxGameY": 29000}
+    mod_config.apply_height_test_meta(dest, cfg)
+    assert cfg["EngineMaxGameY"] == 29000
 
 
 def test_height_test_meta_low_ceiling_keeps_default(tmp_path: Path):

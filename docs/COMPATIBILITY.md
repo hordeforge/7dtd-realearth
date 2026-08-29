@@ -28,8 +28,8 @@ expected to differ; this is stated as untested until a client boot is run.
 
 | Install | Path | Engine expand | Mod |
 |---|---|---|---|
-| Client (Proton 10/11) | `…/Steam/steamapps/common/7 Days To Die` | YDim=16384 (marker verified) | `Mods/RealEarth` |
-| Dedicated (native Linux) | `…/7 Days to Die Dedicated Server` | YDim=16384 (marker verified) | `Mods/RealEarth` |
+| Client (Proton 10/11) | `…/Steam/steamapps/common/7 Days To Die` | YDim=32768 (marker verified) | `Mods/RealEarth` |
+| Dedicated (native Linux) | `…/7 Days to Die Dedicated Server` | YDim=32768 (marker verified) | `Mods/RealEarth` |
 | Proton userdata | `…/compatdata/251570/pfx/…/Roaming/7DaysToDie` | n/a | World install target |
 
 Both `Assembly-CSharp.dll` files carry `.re_stock_bak` + `.re_height_expanded`
@@ -56,7 +56,7 @@ Startup verdict logged on 3.2.0: `injectOk=True productOk=True` with
 | Aspect | Value |
 |---|---|
 | Tool | `tools/engine_patcher` (`EngineHeightPatcher`, Mono.Cecil) |
-| Target | YDim 256→16384, YPow 8→14, Layers 64→4096, masks 255→16383, `cMaxHeight`→16383 |
+| Target | YDim 256→32768, YPow 8→15, Layers 64→8192, masks 255→32767, `cMaxHeight`→32767 |
 | Rewrites on 3.2.0 | 9 constant-table + 76 IL Ldc per install |
 | Re-run safety | `--force` restores stock from `.re_stock_bak` first |
 | Steam update | Stale marker (`sha256` mismatch) auto-refreshes the backup from the current stock build before re-patching |

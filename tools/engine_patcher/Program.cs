@@ -24,11 +24,14 @@ namespace RealEarth.EnginePatcher
     /// </summary>
     static class Program
     {
-        // Everest 1:1 default: sea(100)+8849+fly ≈ 11000 → next power-of-two YDim.
-        // Override with --ydim 512|1024|2048|4096|8192|16384 for lighter machines.
+        // Product 1:1 default: sea(16000) + airliner(12000) + headroom ≈ 29000
+        // → YDim 32768 (2^15), the packed game-Y ceiling (Vector3iToUInt64 packs
+        // Y as (y + 32768) & 0xFFFF, so 32767 is the max). Real trenches
+        // (sea - 11000 = 5000) stay above 0. Override with --ydim 512..16384
+        // for lighter machines.
         // Layer counts must be rewritten consistently (alloc + free) or Unity.Collections Free crashes.
-        static int TargetYDim = 16384; // 2^14
-        static int TargetYPow = 14;
+        static int TargetYDim = 32768; // 2^15
+        static int TargetYPow = 15;
         static int TargetYDimM1 = TargetYDim - 1;
         const int LayerHeight = 4;
         static int TargetLayers = TargetYDim / LayerHeight;

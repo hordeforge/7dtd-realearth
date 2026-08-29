@@ -99,9 +99,13 @@ def apply_height_test_meta(dest: Path, cfg: JsonDict) -> None:
         cfg["SpawnLatitude"] = float(meta["summit_lat"])
         cfg["DefaultSpawnLon"] = cfg["SpawnLongitude"]
         cfg["DefaultSpawnLat"] = cfg["SpawnLatitude"]
-    # Staged maps may set engine_max_game_y; Everest-scale still allows an 11000 ceiling.
+    # Staged maps may set engine_max_game_y; Everest-scale fixtures historically
+    # wrote 11000. The product ceiling is 29000 now, so a fixture value must only
+    # RAISE the configured ceiling (monotonic), never downgrade it: the config
+    # knob from the caller (e.g. scripts write EngineMaxGameY=29000) wins over
+    # a stale fixture hint.
     engine_max = int(meta.get("engine_max_game_y") or 0)
-    if engine_max > 500:
+    if engine_max > 500 and engine_max > int(cfg.get("EngineMaxGameY") or 0):
         cfg["EngineMaxGameY"] = engine_max
 
 

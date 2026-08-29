@@ -17,7 +17,7 @@ DS_DIR="${SEVENDTD_SERVER_DIR:-$HOME/.local/share/Steam/steamapps/common/7 Days 
 CLIENT_DLL="$GAME_DIR/7DaysToDie_Data/Managed/Assembly-CSharp.dll"
 DS_DLL="$DS_DIR/7DaysToDieServer_Data/Managed/Assembly-CSharp.dll"
 HARMONY="${HARMONY_DIR:-$GAME_DIR/Mods/0_TFP_Harmony}"
-YDIM="${RE_YDIM:-16384}"
+YDIM="${RE_YDIM:-32768}"
 
 # Parse --ydim from args for display; pass all args through to patcher
 EXTRA=()
