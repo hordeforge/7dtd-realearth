@@ -14,6 +14,10 @@ and the release gate requires both to match the tag (`v<version>`).
 
 ### Added
 
+- CDN tile policy test suite (tests/test_cdn_policy.py): pins the https-only
+  URL building/validation contract (injection, userinfo, host-smuggling
+  rejection) and the TileStreamer fetch failure contract (size caps,
+  redirect-downgrade guard, fail-closed missing tile = ocean floor).
 - Road/river/rail corridor stamping: `tools/realearth/corridors.py` +
   `--corridors <geojson>` on build-region burns LineString corridors into the
   landcover/population layers with deterministic conflict rules (road beats

@@ -52,8 +52,10 @@ provenance and distinguish prototypes from verified in-game behavior.
   at maximum intended separation.
 - [ ] Define authoritative persistence rules for terrain changes and player
   deltas as tiles unload and reload.
-- [ ] Add failure handling for missing, corrupt, mismatched, and unavailable CDN
-  tiles without silently generating incorrect terrain.
+- [x] Add failure handling for missing, corrupt, mismatched, and unavailable CDN
+  tiles without silently generating incorrect terrain. (C# CdnTilePolicy +
+  TileStreamer enforce https-only, size caps, redirect guards; fail-closed
+  missing tile = ocean floor. Behavior pinned by tests/test_cdn_policy.py.)
 - [ ] Measure memory, chunk queues, mesh latency, and network behavior during
   sustained travel.
 
