@@ -14,6 +14,11 @@ and the release gate requires both to match the tag (`v<version>`).
 
 ### Added
 
+- GAP_HARMONY_MODLETS status reconciliation after the 3.2.0 live evidence:
+  master-gap rows now carry a Status column (height inject, height APIs, byte
+  lossiness, expand soak, save absolute session, fail-closed = Done; origin
+  slide, region tall-Y, SharedFixed multi-bot, density stamps = Partial with
+  named open items), and Slice 1 (terrain truth) is marked measured green.
 - GEBCO bathymetry source: `--source gebco --geotiff <GEBCO GeoTIFF>` accepts
   real below-sea relief (negative elevation = depth below sea). The pipeline
   stores signed meters and the product sea anchor maps a -10000 m trench to

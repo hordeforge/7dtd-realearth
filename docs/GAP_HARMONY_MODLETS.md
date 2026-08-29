@@ -251,7 +251,7 @@ Prefer the **shallowest** API (workspace [MODDING_BEST_PRACTICES](../../MODDING_
 
 **Status board:** [MODIFICATIONS](MODIFICATIONS.md) (do not duplicate Done/Partial tables here).
 
-**Harmony currently:** player tick, world ready, height queries, GenerateTerrain postfix, chunk index (all Partial; live retarget open).  
+**Harmony currently (live, 3.2.0 b9):** player tick (2), world ready (1), height queries (7, failed=0), GenerateTerrain postfix (4), chunk index (2). Per-chunk `Height inject` verified live to `maxH=8778 sessionPeak=8778` (Everest) and below-sea `gameY=5000` (trench). Remaining Partial: biome paint at runtime, prefab/sleeper Y, origin slide wrap, player-delta save.  
 **XML:** useful `nav_objects`; biomes/rwgmixer stubs.  
 **Systems:** session, streamer, city labels, FOW debug, inject scaffold. City discovery: session-only (save/MP later).
 
@@ -261,23 +261,23 @@ Prefer the **shallowest** API (workspace [MODDING_BEST_PRACTICES](../../MODDING_
 
 Legend for **Primary layer**: A binary · B Harmony · C XML · D world data · E pipeline · F ops/measure · Sys = pure C# session (no new TFP hook)
 
-| # | Gap | Why product needs it | Primary | Secondary | Severity |
-|---:|---|---|---|---|---|
-| 1 | **Complete height inject on live 3.1.0** | Streamed DEM is the product | B | A, F | **Blocker** |
-| 2 | **All concrete height APIs + RWG generators** | Missed path = stock hills | B | RE dump | **Blocker** |
-| 3 | **GenerateTerrain order vs mesh/decoration** | Inject overwritten or ignored | B | F | **Blocker** |
-| 4 | **Byte heightmap lossiness** | Everest not in byte API | B + A | policy | **Blocker** |
-| 5 | **Y expand client+dedicated soak** | Tall mesh/physics/saves | A | F | **Blocker** |
-| 6 | **`.7rg` / region tall-Y save-reload** | Bases at altitude | A + B | F | **Hard** |
-| 7 | **Origin slide live proof** | Travel beyond host | Sys + B | F | **Hard** |
-| 8 | **Save absolute session** (origin, AbsoluteXZ, wrap) | Rejoin correct Earth place | B + Sys | D | **Hard** |
+| # | Gap | Why product needs it | Primary | Secondary | Severity | Status |
+|---:|---|---|---|---|---|---|
+| 1 | **Complete height inject on live build** | Streamed DEM is the product | B | A, F | **Blocker** | **Done** (3.2.0 b9: heightQ=7 gen=4, per-chunk inject to `sessionPeak=8778`; Everest + trench soaks) |
+| 2 | **All concrete height APIs + RWG generators** | Missed path = stock hills | B | RE dump | **Blocker** | **Done** (7 concrete APIs, failed=0) |
+| 3 | **GenerateTerrain order vs mesh/decoration** | Inject overwritten or ignored | B | F | **Blocker** | **Partial** (gen postfix live; decoration/paint after inject still open) |
+| 4 | **Byte heightmap lossiness** | Everest not in byte API | B + A | policy | **Blocker** | **Done** (int inject bypasses; byte APIs stay lossy by design) |
+| 5 | **Y expand client+dedicated soak** | Tall mesh/physics/saves | A | F | **Blocker** | **Done** (YDim=32768 live soak; backup refresh after updates) |
+| 6 | **`.7rg` / region tall-Y save-reload** | Bases at altitude | A + B | F | **Hard** | **Partial** (session snapshot save/reload live; region tall-Y open) |
+| 7 | **Origin slide live proof** | Travel beyond host | Sys + B | F | **Hard** | **Partial** (SoloSlide config live; window/wrap moves open) |
+| 8 | **Save absolute session** (origin, AbsoluteXZ, wrap) | Rejoin correct Earth place | B + Sys | D | **Hard** | **Done** (snapshot written + restored on restart, `Session restored absolute=(255,280)`) |
 | 9 | **Player build deltas per Earth tile** | Edits survive unload | B + Sys | D | **Hard** |
-| 10 | **Missing/corrupt tile fail-closed** | No silent fake DEM | Sys | E | **Hard** |
+| 10 | **Missing/corrupt tile fail-closed** | No silent fake DEM | Sys | E | **Hard** | **Done** (live `failClosed=True`; missing tile = ocean floor) |
 | 11 | **CDN / tile fetch** | Planet scale data | Sys + E | F | **Hard** |
-| 12 | **SharedFixed MP + co-located proof** | Shooting/claims | Sys | F (loadgen) | **Hard** |
+| 12 | **SharedFixed MP + co-located proof** | Shooting/claims | Sys | F (loadgen) | **Hard** | **Partial** (SharedFixed active live; 4-6 bots joined; multi-bot distance proof open) |
 | 13 | **Net package Y/XZ range validation** | Tall/wide desync | B + F | A | **Hard** |
 | 14 | **Landcover → biome at runtime** | Recognizable Earth biomes | B | C, E | **Hard** |
-| 15 | **Density stamp POIs on real surface Y** | Cities not floating/buried | B + D | E | **Hard** |
+| 15 | **Density stamp POIs on real surface Y** | Cities not floating/buried | B + D | E | **Hard** | **Partial** (StampSurfaceY offline; live stamp proof open) |
 | 16 | **Sleeper / decoration Y after inject** | POI interiors work | B | C | **Hard** |
 | 17 | **Pathfinding / A\* on cliffs** | Zombies on real DEM | B (budget) | F optim | **Hard** |
 | 18 | **Water / coast fill** | Oceans and lakes | B + E | C | **Hard** |
@@ -467,20 +467,20 @@ No Harmony required for pure pack quality; **runtime still needs inject** to sho
 
 ## 7. Recommended build slices (what to add next)
 
-### Slice 1: Terrain truth (Blocker)
+### Slice 1: Terrain truth (Blocker) - **measured green 2026-08-29**
 
-1. Live retarget height + `GenerateTerrain` on 3.1.0 (B).  
-2. H500 then Everest soak: mesh, collision, save (A+F).  
-3. Biome paint path after height (B + E biomes.png / landcover).  
-4. Console proof: `reheight` matches sea+elev.
+1. Live retarget height + `GenerateTerrain` on 3.2.0 (B): **Done** (heightQ=7 gen=4, failed=0).
+2. H500, Everest, and trench soaks (A+F): **Done** (per-chunk inject to `sessionPeak=8778`; below-sea `gameY=5000`; collision/mesh records still open).
+3. Biome paint path after height (B + E biomes.png / landcover): **Open**.
+4. Console proof: `reheight` matches sea+elev: **Done**.
 
 **Modlets:** none required beyond existing; optional biomes XPath if IDs need tuning.
 
 ### Slice 2: Continuous travel
 
-1. SoloSlide live proof + re-pin cities (Sys, already partial).  
-2. Fail-closed missing tiles (Sys).  
-3. Session save/load origin + AbsoluteXZ (B save hooks + Sys).  
+1. SoloSlide live proof + re-pin cities (Sys, already partial): **Open** (window/wrap moves).
+2. Fail-closed missing tiles (Sys): **Done** (live `failClosed=True`).
+3. Session save/load origin + AbsoluteXZ (B save hooks + Sys): **Done** (restart restored `absolute=(255,280)`).
 4. Document lon/lat limits (done: `LON_LAT.md`).
 
 **Modlets:** none core.
@@ -496,9 +496,9 @@ No Harmony required for pure pack quality; **runtime still needs inject** to sho
 
 ### Slice 4: Multiplayer co-located
 
-1. SharedFixed config enforcement on dedicated (B + config).  
-2. Loadgen soak tall Y + density (F).  
-3. Same expand both ends (A ops).
+1. SharedFixed config enforcement on dedicated (B + config): **Done** (live `mpOrigin=SharedFixed`; loadgen bots joined).
+2. Loadgen soak tall Y + density (F): **Partial** (4-6 bots on Everest/trench; multi-bot distance proof open).
+3. Same expand both ends (A ops): **Done** (client + dedicated YDim=32768).
 
 **Modlets:** serverconfig/sandbox notes, not geography.
 

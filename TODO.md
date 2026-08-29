@@ -96,6 +96,9 @@ provenance and distinguish prototypes from verified in-game behavior.
 
 - [ ] Work the priority slices in docs/GAP_HARMONY_MODLETS.md (terrain inject first,
   then travel/save, places, MP, UX); update status tags as each slice measures green.
+  (2026-08-29: Slice 1 terrain truth marked measured green; slice 2/4 items with
+  live evidence updated in the doc's gap table + slices. Open: biome paint,
+  prefab/sleeper Y, origin-slide wrap, multi-bot distance proof.)
 - [ ] Reconcile status claims across `README.md`, `DESIGN.md`, and research docs
   after each live game-version validation.
 - [x] Add a first-time operator guide covering backup, install, verification,
