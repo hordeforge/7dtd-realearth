@@ -80,11 +80,11 @@ Cross-referenced against the engine-research exact-diff changelog
 IL-verified 2026-08-28):
 
 - **Unchanged (verified by IL diff, consistent with our live results):**
-  world/chunk constants (dims, layers, heightmaps) — matches our expand
+  world/chunk constants (dims, layers, heightmaps), which matches our expand
   rewriting the same 9 constants + 76 IL sites as on 3.1.0; save format
-  (`CurrentSaveVersion` 23, `WorldState.SaveLoad` IL 926) — session snapshot
+  (`CurrentSaveVersion` 23, `WorldState.SaveLoad` IL 926); session snapshot
   hooks unaffected; core loop (`gmUpdate` 631 IL, 20 TPS); console command
-  registry byte-identical — `re*` commands unaffected; LiteNetLib pins and
+  registry byte-identical; `re*` commands unaffected; LiteNetLib pins and
   default port 26900 unchanged.
 - **Changed, no RealEarth touchpoints (grep-verified):** wire `NetPackageDamageEntity`
   (packed flags + KillXPScale, breaking), POI metadata packages
