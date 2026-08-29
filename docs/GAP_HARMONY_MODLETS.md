@@ -276,7 +276,7 @@ Legend for **Primary layer**: A binary · B Harmony · C XML · D world data · 
 | 11 | **CDN / tile fetch** | Planet scale data | Sys + E | F | **Hard** |
 | 12 | **SharedFixed MP + co-located proof** | Shooting/claims | Sys | F (loadgen) | **Hard** | **Partial** (SharedFixed active live; 4-6 bots joined; multi-bot distance proof open) |
 | 13 | **Net package Y/XZ range validation** | Tall/wide desync | B + F | A | **Hard** |
-| 14 | **Landcover → biome at runtime** | Recognizable Earth biomes | B | C, E | **Hard** |
+| 14 | **Landcover → biome at runtime** | Recognizable Earth biomes | B | C, E | **Hard** | **Partial** (SetBiomeId written from landcover; decor/sleeper open) |
 | 15 | **Density stamp POIs on real surface Y** | Cities not floating/buried | B + D | E | **Hard** | **Partial** (StampSurfaceY offline; live stamp proof open) |
 | 16 | **Sleeper / decoration Y after inject** | POI interiors work | B | C | **Hard** |
 | 17 | **Pathfinding / A\* on cliffs** | Zombies on real DEM | B (budget) | F optim | **Hard** |
@@ -471,7 +471,7 @@ No Harmony required for pure pack quality; **runtime still needs inject** to sho
 
 1. Live retarget height + `GenerateTerrain` on 3.2.0 (B): **Done** (heightQ=7 gen=4, failed=0).
 2. H500, Everest, and trench soaks (A+F): **Done** (per-chunk inject to `sessionPeak=8778`; below-sea `gameY=5000`; collision/mesh records still open).
-3. Biome paint path after height (B + E biomes.png / landcover): **Open**.
+3. Biome paint path after height (B + E biomes.png / landcover): **Partial** (inject writes per-column `SetBiomeId` from landcover; decoration/sleeper layers open).
 4. Console proof: `reheight` matches sea+elev: **Done**.
 
 **Modlets:** none required beyond existing; optional biomes XPath if IDs need tuning.

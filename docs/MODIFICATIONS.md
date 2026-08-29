@@ -68,7 +68,7 @@ Stock terrain and world gen do not know about Earth DEM. Expand alone still yiel
 | **Chunk load / index hooks** | Stream tiles when chunks enter range | **Partial** (`ChunkIndexPostfix`, streamer) |
 | **World ready / player tick** | Center origin, refresh stream bubble, session | **Partial** (`WorldReadyPostfix`, `PlayerTickPostfix`) |
 | **RWG generator types** | `TerrainGeneratorWithBiomeResource` etc. still sample stock | **Needed** (retarget if missed on live DLL) |
-| **Decoration / biome paint from landcover** | After height, paint biomes / density underlay | **Partial / Needed** |
+| **Decoration / biome paint from landcover** | After height, paint biomes / density underlay | **Partial** (live: inject writes `Chunk.SetBiomeId` from landcover; decoration/sleeper layers open) |
 | **Prefab / sleeper Y after surface known** | Avoid float/bury on real DEM | **Needed** |
 | **Water fill from DEM / masks** | Coasts, lakes (not deep trench product) | **Later** |
 | **Stability / light / mesh fallout** | After tall inject, fix breakage | **Needed** (validate under expand) |

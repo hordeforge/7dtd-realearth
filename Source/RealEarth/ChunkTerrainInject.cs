@@ -24,6 +24,7 @@ namespace RealEarth
         static MethodInfo? _setHeight;
         static MethodInfo? _setDensityCached;
         static MethodInfo? _setBlockCached;
+        static MethodInfo? _setBiomeId;
         static Type? _cachedChunkType;
         /// <summary>
         /// Serializes lazy init of the reflection caches above: chunk gen runs on the
@@ -265,6 +266,7 @@ namespace RealEarth
             MethodInfo? setDensity;
             MethodInfo? setBlock;
             MethodInfo? setHeight;
+            MethodInfo? setBiomeId;
             object? solidBlock;
             object? dirtBlock;
             object? snowBlock;
@@ -280,11 +282,17 @@ namespace RealEarth
                     // Prefer full SetBlock so mesh/collision dirty flags run after inject.
                     _setBlockCached = FindSetBlock(t) ?? FindSetBlockRaw(t);
                     _setHeight = FindSetHeight(t);
+                    _setBiomeId = FindSetBiomeId(t);
+                    if (_setBiomeId != null)
+                        ModApi.Log($"ChunkTerrainInject: SetBiomeId bound ({t.Name})");
+                    else
+                        ModApi.Log("ChunkTerrainInject: SetBiomeId NOT found (biome stays stock)");
                 }
                 ResolveTerrainBlocksLocked();
                 setDensity = _setDensityCached;
                 setBlock = _setBlockCached;
                 setHeight = _setHeight;
+                setBiomeId = _setBiomeId;
                 solidBlock = _solidBlock;
                 dirtBlock = _dirtBlock;
                 snowBlock = _snowBlock;
@@ -316,6 +324,7 @@ namespace RealEarth
             }
             object[]? blockArgs = setBlock != null ? new object[4] : null;
             object[]? densArgs = setDensity != null ? new object[4] : null;
+            object[]? biomeArgs = setBiomeId != null ? new object[3] : null;
 
             bool any = false;
             int columns = 0;
@@ -345,6 +354,23 @@ namespace RealEarth
                                 ? (object)(byte)Math.Min(255, surface)
                                 : surface;
                             setHeight.Invoke(chunk, heightArgs);
+                        }
+                        catch { /* optional */ }
+                    }
+
+                    // Biome from landcover: the stock RWG biome noise would otherwise
+                    // keep fighting the injected terrain (snow over desert etc.).
+                    // Stock ids (biomes.xml): snow=1, pine_forest=3, desert=5, water=6,
+                    // radiated=7, wasteland=8, burnt_forest=9. Missing/bare columns
+                    // default to pine_forest (green), never water-on-land.
+                    if (setBiomeId != null && biomeArgs != null)
+                    {
+                        try
+                        {
+                            biomeArgs[0] = x;
+                            biomeArgs[1] = z;
+                            biomeArgs[2] = ChunkTerrainSampler.LandcoverToBiomeId(lc);
+                            setBiomeId.Invoke(chunk, biomeArgs);
                         }
                         catch { /* optional */ }
                     }
@@ -685,6 +711,9 @@ namespace RealEarth
         static MethodInfo? FindSetBlockRaw(Type t) => FindSetterByIntParams(t, "SetBlockRaw", 4, 3);
 
         static MethodInfo? FindSetHeight(Type t) => FindSetterByIntParams(t, "SetHeight", 3, 2);
+
+        /// <summary>Chunk.SetBiomeId(int x, int z, int id) - biome per column.</summary>
+        static MethodInfo? FindSetBiomeId(Type t) => FindSetterByIntParams(t, "SetBiomeId", 3, 2);
 
         /// <summary>Caller holds _initLock. Resolve terrain BlockValues once per process.</summary>
         static void ResolveTerrainBlocksLocked()

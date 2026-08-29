@@ -269,5 +269,27 @@ namespace RealEarth
                 default: return "pine_forest";
             }
         }
+
+        /// <summary>
+        /// Map internal landcover code to a stock biome id (biomes.xml biomemap:
+        /// snow=1, pine_forest=3, desert=5, water=6, radiated=7, wasteland=8,
+        /// burnt_forest=9). Writes the per-column biome so the stock RWG biome
+        /// noise does not fight the injected terrain. Water stays water only
+        /// under sea; every land code falls back to pine_forest (never water).
+        /// </summary>
+        public static int LandcoverToBiomeId(byte lc)
+        {
+            switch (lc)
+            {
+                case 0:
+                case 1: return 6; // water
+                case 2:
+                case 10: return 1; // snow
+                case 3: return 8; // wasteland
+                case 5:
+                case 11: return 5; // desert
+                default: return 3; // pine_forest (also urban underlay)
+            }
+        }
     }
 }

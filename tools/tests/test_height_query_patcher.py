@@ -63,6 +63,24 @@ def test_chunk_inject_sets_blocks_not_only_density():
     assert "terrDirt" in src or "terrainFiller" in src
 
 
+def test_chunk_inject_writes_biome_from_landcover():
+    """The inject must write the per-column biome (Chunk.SetBiomeId) from the
+    landcover sample, so stock RWG biome noise cannot fight the injected
+    terrain. The id map lives in ChunkTerrainSampler and mirrors biomes.xml
+    biomemap ids (snow=1, pine_forest=3, desert=5, water=6, wasteland=8)."""
+    src = INJECT.read_text(encoding="utf-8")
+    assert "FindSetBiomeId" in src
+    assert "LandcoverToBiomeId" in src
+    assert "SetBiomeId" in src
+    sampler = (ROOT / "Source" / "RealEarth" / "ChunkTerrainSampler.cs").read_text(encoding="utf-8")
+    assert "LandcoverToBiomeId" in sampler
+    assert "return 6; // water" in sampler
+    assert "return 1; // snow" in sampler
+    assert "return 5; // desert" in sampler
+    assert "return 8; // wasteland" in sampler
+    assert "default: return 3; // pine_forest" in sampler
+
+
 def _monodis_height_methods() -> list[tuple[str, str]]:
     """Return (declaring_type, method_name) for GetTerrainHeight* on this install."""
     if not GAME_DLL.is_file():
