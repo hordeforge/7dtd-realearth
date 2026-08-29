@@ -14,6 +14,11 @@ and the release gate requires both to match the tag (`v<version>`).
 
 ### Added
 
+- Road/river/rail corridor stamping: `tools/realearth/corridors.py` +
+  `--corridors <geojson>` on build-region burns LineString corridors into the
+  landcover/population layers with deterministic conflict rules (road beats
+  river = bridge; never paint open ocean; population zeroed under roads, kept
+  riverside; idempotent re-stamp). 6 unit + integration tests.
 - Reproducible build manifests: `build-region` writes `build.json`
   (schema realearth.build.v1) with tool version, bbox, resolution, samples,
   source + params, input-file sha256 hashes, and attribution lines; new

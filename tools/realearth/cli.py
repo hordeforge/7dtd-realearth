@@ -192,6 +192,12 @@ def lonlat_cmd(lon: float, lat: float) -> None:
     show_default=True,
     help="Terrarium tile zoom (8=coarse, 12=detail, more downloads)",
 )
+@click.option(
+    "--corridors",
+    type=click.Path(exists=True),
+    default=None,
+    help="GeoJSON FeatureCollection of road/river/rail LineStrings (deterministic rules)",
+)
 @click.option("--no-export", is_flag=True, help="Skip heightmap/biomes PNG export")
 def build_region_cmd(
     west: float,
@@ -209,6 +215,7 @@ def build_region_cmd(
     population_geotiff: str | None,
     built_geotiff: str | None,
     terrarium_zoom: int,
+    corridors: str | None,
     no_export: bool,
 ) -> None:
     """Build a regional tile pack + optional 7DTD heightmap export.
@@ -250,6 +257,7 @@ def build_region_cmd(
         terrarium_zoom=terrarium_zoom,
         population_geotiff=Path(population_geotiff) if population_geotiff else None,
         built_geotiff=Path(built_geotiff) if built_geotiff else None,
+        corridors=Path(corridors) if corridors else None,
     )
     click.echo(f"Wrote {len(manifest.tiles)} tiles → {out_dir}")
     click.echo(f"Samples: {manifest.world_width} x {manifest.world_height}")

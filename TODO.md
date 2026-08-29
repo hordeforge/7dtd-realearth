@@ -75,8 +75,10 @@ provenance and distinguish prototypes from verified in-game behavior.
   (build-region writes `build.json` (schema realearth.build.v1): tool version,
   bbox, resolution, samples, source + params, input-file sha256 hashes,
   attribution; `realearth verify-build --pack` re-checks the hashes.)
-- [ ] Implement or scope road, river, and settlement/prefab stamping with
-  deterministic conflict rules.
+- [x] Implement or scope road, river, and settlement/prefab stamping with
+  deterministic conflict rules (prefab stamps live; road/river/rail corridors
+  implemented in `tools/realearth/corridors.py` + `--corridors` on
+  build-region: bridge semantics, no ocean painting, idempotent).
 - [x] Test tile seams, polar bounds, antimeridian regions, no-data DEM cells, and
   mixed source resolutions (seams/wrap already covered in test_coords,
   test_local_window, test_functional_guards; added 2026-08-29: polar-bound

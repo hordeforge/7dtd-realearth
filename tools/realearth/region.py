@@ -16,6 +16,7 @@ from realearth import (
     __version__,
 )
 from realearth.coords import EarthGrid, lonlat_to_block
+from realearth.corridors import load_corridors, stamp_corridors
 from realearth.density import (
     apply_urban_from_density,
     build_density_field,
@@ -69,6 +70,7 @@ def build_region(
     max_dim: int = 4096,
     geotiff: Path | None = None,
     terrarium_zoom: int = 10,
+    corridors: Path | None = None,
     population_geotiff: Path | None = None,
     built_geotiff: Path | None = None,
 ) -> Manifest:
@@ -136,6 +138,26 @@ def build_region(
     urban = pop >= 90
     lc = classify_from_elevation_and_lat(elev, lat, urban_mask=urban)
     lc = apply_urban_from_density(lc, pop, urban_threshold=90)
+
+    # Deterministic road/river/rail corridors (bridge semantics: road beats
+    # river; never paint open ocean). Runs after landcover so the final band
+    # wins, before tiling.
+    if corridors is not None:
+        layers = load_corridors(corridors)
+        per_lon = width / (east - west)
+        per_lat = height / (north - south)
+        stamp_corridors(
+            lc,
+            pop,
+            layers,
+            west=west,
+            north=north,
+            per_lon=per_lon,
+            per_lat=per_lat,
+        )
+        sources.append(
+            f"Corridors (GeoJSON): {corridors.name} (road/river/rail, deterministic rules)"
+        )
 
     cores = detect_city_cores(
         dens_f, west, south, east, north, settlements=settlements, min_peak=80.0
