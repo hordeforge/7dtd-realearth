@@ -14,6 +14,12 @@ and the release gate requires both to match the tag (`v<version>`).
 
 ### Added
 
+- Trench depth proof: `realearth height-test-map --trench-game-y 5000` (and
+  `make height-map-trench`) builds a synthetic trench pack at the PRODUCT sea
+  anchor (floor -11000 m ASL → gameY 5000). Live dedicated soak with
+  `RE_SCENARIO_PACK=trench` passed: spawn sample `gameY=5000` at `seaY=16000`,
+  world loaded, clean soak — below-sea elevation injects as real diggable depth,
+  no clamping.
 - Full vertical relief: YDim expand raised 16384 → **32768** (the engine's
   packed game-Y ceiling), sea anchor `SeaLevelGameY` 100 → **16000**, ceiling
   `EngineMaxGameY` 11000 → **29000**. Real below-sea depth is now representable

@@ -31,8 +31,12 @@ provenance and distinguish prototypes from verified in-game behavior.
   zero crashes. Vertical budget raised 2026-08-29: YDim 16384→32768 (engine
   packed-Y ceiling), sea anchor 100→16000 (real trench depth: -11 km → gameY
   5000), ceiling 11000→29000 (airliner cruise +12 km). Live soak at YDim=32768
-  passed. Open: collision/mesh/save-reload records; summit-pixel sample;
-  a real-bathymetry pack to exercise below-sea depth end to end.)
+  passed. TRENCH soak PASSED: synthetic trench pack at the product anchor
+  (floor -11000 m ASL → spawn sample gameY=5000, seaY=16000, world loaded,
+  clean soak) — below-sea depth injects live (`make height-map-trench`,
+  `RE_SCENARIO_PACK=trench`). Open: collision/mesh/save-reload records;
+  summit-pixel sample; a real-bathymetry pack (GEBCO-class source) to replace
+  the synthetic trench.)
 - [x] Add a compatibility matrix for client, dedicated server, Harmony targets,
   YDim patcher, and tested operating modes ([docs/COMPATIBILITY.md](docs/COMPATIBILITY.md)).
 

@@ -68,6 +68,7 @@ Startup verdict logged on 3.2.0: `injectOk=True productOk=True` with
 |---|---|---|
 | Baked (`MapMode=Baked`) | CI (`test-fast`, bake checks) | Partial (baked world loads; inject evidence via Streamed runs) |
 | Streamed (`MapMode=Streamed`) | CI | **Live** (3.2.0 dedicated: `RealEarth init OK`, spawn sample `gameY=500`, world load + soak clean) |
+| Streamed below-sea (trench) | `test_build_trench_pack_uses_product_sea_anchor` | **Live** (2026-08-29: trench pack at sea 16000, spawn sample `gameY=5000` = -11000 m floor, clean soak) |
 | SoloSlide | `test_multiplayer.py`, `test_local_window.py` | Not live (needs client window moves) |
 | SharedFixed | `test_mp_runtime_structure.py` | **Live** (3.2.0 dedicated: `mpOrigin=SharedFixed` active; multi-player distance proof open) |
 | Longitude wrap | `test_host_fold.py` | Not live (needs full-planet pack) |

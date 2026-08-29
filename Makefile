@@ -11,7 +11,7 @@ SHELL := /bin/bash
 	build build-mod dll \
 	install install-full install-baked install-streamed install-height install-height-500 \
 	install-height-pack-everest \
-	height-test height-map height-map-500 height-map-install height-map-500-install \
+	height-test height-map height-map-500 height-map-trench height-map-install height-map-500-install \
 	engine-audit engine-expand engine-expand-dry engine-verify engine-restore dedicated-height-test \
 	demo bake bake-height package sbom \
 	artifacts-backup artifacts-restore \
@@ -112,6 +112,7 @@ help:
 	@echo "    make height-test        Offline height-mod smoke (Everest + fly room)"
 	@echo "    make height-map         Generate Everest height-test pack + baked world"
 	@echo "    make height-map-500     Generate staged peak gameY=500 pack + world"
+	@echo "    make height-map-trench   Generate staged below-sea trench pack + world (product anchor)"
 	@echo "    make height-map-install Generate Everest + install for Proton New Game"
 	@echo "    make engine-audit       Print Assembly-CSharp YDim / cMaxHeight"
 	@echo "    make engine-expand      RealEarth YDim expand (part of this mod)"
@@ -244,6 +245,10 @@ height-map:
 height-map-500:
 	@$(REEARTH) height-test-map --repo "$(ROOT)" --size $(WORLD_SIZE) \
 		--peak-game-y 500 --pack-size 512
+
+height-map-trench:
+	@$(REEARTH) height-test-map --repo "$(ROOT)" --size $(WORLD_SIZE) \
+		--trench-game-y 5000 --pack-size 512
 
 height-map-install:
 	@$(REEARTH) height-test-map --repo "$(ROOT)" --size $(WORLD_SIZE) \

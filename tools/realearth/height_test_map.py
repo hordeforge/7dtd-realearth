@@ -22,6 +22,7 @@ import numpy as np
 from PIL import Image
 
 from realearth import (
+    DEFAULT_SEA_LEVEL_GAME_Y,
     ENGINE_TARGET_MAX_Y,
     EVEREST_METERS_ASL,
     FLY_OVER_HEADROOM_M,
@@ -102,6 +103,33 @@ def staged_peak_elevation(size: int = TILE, *, peak_game_y: int = 500) -> np.nda
     peak_elev = max(1.0, float(peak_game_y - sea))
     plains_elev = min(40.0, peak_elev * 0.1)
     return cone_elevation(size, peak_elev_m=peak_elev, plains_elev_m=plains_elev)
+
+
+def trench_floor_elevation(
+    size: int = TILE, *, floor_game_y: int = 5000, rim_game_y: int = 15900
+) -> np.ndarray:
+    """Synthetic trench: a below-sea floor at the product anchor.
+
+    Product sea = DEFAULT_SEA_LEVEL_GAME_Y (16000); a floor at floor_game_y
+    (e.g. 5000 = Mariana depth) sits -11000 m ASL, and the rim (e.g. 15900 =
+    -100 m) frames it. The full product mapping is exercised: negative
+    elevation_m flows through .rte → inject as real diggable depth.
+    """
+    sea = DEFAULT_SEA_LEVEL_GAME_Y
+    floor_elev = float(floor_game_y - sea)
+    rim_elev = float(rim_game_y - sea)
+    if floor_elev >= rim_elev:
+        raise ValueError(f"trench floor ({floor_game_y}) must be below rim ({rim_game_y})")
+    elev = np.full((size, size), rim_elev, dtype=np.float32)
+    cx = cy = size // 2
+    r = size // 6
+    yy, xx = np.ogrid[:size, :size]
+    disc = (xx - cx) ** 2 + (yy - cy) ** 2 <= r * r
+    # smooth ramp from rim to floor across the disc
+    dist = np.sqrt((xx - cx) ** 2 + (yy - cy) ** 2) / max(1, r)
+    t = np.clip(dist, 0.0, 1.0) ** 2
+    elev[disc] = floor_elev + (rim_elev - floor_elev) * t[disc]
+    return elev.astype(np.float32)
 
 
 def fetch_everest_elevation(
@@ -195,21 +223,49 @@ def build_height_test_pack(
     terrarium_zoom: int = 11,
     size: int = TILE,
     peak_game_y: int | None = None,
+    trench_game_y: int | None = None,
     name: str | None = None,
 ) -> JsonDict:
-    """Write .rte pack from real Everest DEM, synthetic Everest, or staged peak_game_y."""
+    """Write .rte pack from real Everest DEM, synthetic Everest, staged peak_game_y,
+    or a synthetic trench at the PRODUCT sea anchor (real below-sea depth)."""
     out_dir = Path(out_dir)
     out_dir.mkdir(parents=True, exist_ok=True)
 
-    # A staged run is driven entirely by a positive peak_game_y; binding it once
-    # keeps the staged branch free of re-narrowing.
-    pg = peak_game_y if peak_game_y is not None and peak_game_y > 0 else None
-    staged = pg is not None
-    if pg is not None:
+    # Trench: below-sea floor at the product anchor. The pack sea becomes
+    # DEFAULT_SEA_LEVEL_GAME_Y (16000), not the low test-fixture anchor, so the
+    # full product mapping (gameY = sea + elev_m, negative elev = real depth) is
+    # exercised end to end.
+    trench = trench_game_y is not None and trench_game_y > 0
+    sea = DEFAULT_SEA_LEVEL_GAME_Y if trench else TEST_SEA_LEVEL_GAME_Y
+    pg = None
+    staged = False
+    if trench and trench_game_y is not None:
+        tgy = trench_game_y
+        elev = trench_floor_elevation(size, floor_game_y=tgy)
+        sources = [
+            f"synthetic trench floor_game_y={tgy}",
+            f"elev_m floor = {tgy - sea} (1:1 sea={sea})",
+        ]
+        world_name = name or f"RealEarth_T{sea - tgy}"
+        region = f"Staged trench test (floor gameY={tgy}, sea={sea})"
+        bbox = dict(STAGED_BBOX)
+        summit_lon, summit_lat = STAGED_LON, STAGED_LAT
+        engine_max = ENGINE_TARGET_MAX_Y
+        notes = (
+            f"Staged trench depth test. Floor elev≈{float(elev.min()):.0f} m ASL → "
+            f"1:1 gameY≈{sea + int(round(float(elev.min())))} (below sea, diggable). "
+            f"Rim at {float(elev.max()):.0f} m ASL → gameY≈{sea + int(round(float(elev.max())))}. "
+            f"EngineMaxGameY={engine_max}. Full solid fill."
+        )
+    elif peak_game_y is not None and peak_game_y > 0:
+        # A staged run is driven entirely by a positive peak_game_y; binding it once
+        # keeps the staged branch free of re-narrowing.
+        pg = peak_game_y
+        staged = True
         elev = staged_peak_elevation(size, peak_game_y=pg)
         sources = [
             f"synthetic staged cone peak_game_y={pg}",
-            f"elev_m peak = {pg - TEST_SEA_LEVEL_GAME_Y} (1:1 sea={TEST_SEA_LEVEL_GAME_Y})",
+            f"elev_m peak = {pg - sea} (1:1 sea={sea})",
         ]
         world_name = name or f"RealEarth_H{pg}"
         region = f"Staged height test (peak gameY={pg})"
@@ -218,7 +274,7 @@ def build_height_test_pack(
         engine_max = pg  # content ceiling matches peak for the test
         notes = (
             f"Staged height-mod test. Peak elev≈{float(elev.max()):.0f} m ASL → "
-            f"1:1 gameY≈{TEST_SEA_LEVEL_GAME_Y + int(round(float(elev.max())))}. "
+            f"1:1 gameY≈{sea + int(round(float(elev.max())))}. "
             f"EngineMaxGameY={engine_max}. Full solid fill (no Everest-scale cost)."
         )
     else:
@@ -239,7 +295,7 @@ def build_height_test_pack(
 
     peak_m = float(elev.max())
     px, pz = peak_pixel(elev)
-    peak_game_1to1 = TEST_SEA_LEVEL_GAME_Y + int(round(peak_m))
+    peak_game_1to1 = sea + int(round(peak_m))
     if notes is None:
         notes = (
             f"Real Everest DEM test. Peak elev≈{peak_m:.0f} m ASL at pixel ({px},{pz}). "
@@ -254,7 +310,7 @@ def build_height_test_pack(
         tile_size=tile_size,
         world_width=size,
         world_height=size,
-        sea_level_game_y=TEST_SEA_LEVEL_GAME_Y,
+        sea_level_game_y=sea,
         meters_per_block=1.0,
         bbox=bbox,
         tiles=[{"tx": 0, "tz": 0}],
@@ -270,12 +326,13 @@ def build_height_test_pack(
         "summit_lat": summit_lat,
         "peak_elev_m": peak_m,
         "peak_pixel_xz": [px, pz],
-        "expected_everest_m": None if staged else EVEREST_METERS_ASL,
-        "sea_level_game_y": TEST_SEA_LEVEL_GAME_Y,
+        "expected_everest_m": None if (staged or trench) else EVEREST_METERS_ASL,
+        "sea_level_game_y": sea,
         "engine_max_game_y": engine_max,
         "peak_game_y_one_to_one": peak_game_1to1,
         "target_peak_game_y": pg if pg is not None else peak_game_1to1,
         "staged": staged,
+        "trench": trench,
         "fly_headroom_m": 0 if staged else FLY_OVER_HEADROOM_M,
         "blocks_above_peak": max(0, engine_max - peak_game_1to1),
         "tile_size": tile_size,
@@ -284,7 +341,7 @@ def build_height_test_pack(
         "sources": sources,
         "no_compression": True,
         "how_to_play": {
-            "engine": "make engine-expand  # YDim=16384",
+            "engine": "make engine-expand  # YDim=32768",
             "install": ("make install-height-500" if pg == 500 else "make install-height"),
             "streamed": "MapMode=Streamed + Data/tiles (this pack), host ~512",
             "baked": f"New Game → {world_name} (DTM 1:1 clamped ~250 at peak)",
@@ -296,12 +353,10 @@ def build_height_test_pack(
         json.dumps(meta, indent=2, ensure_ascii=False) + "\n", encoding="utf-8"
     )
 
-    game_stock = compress_elevation(
-        elev, sea_level_y=TEST_SEA_LEVEL_GAME_Y, max_y=250, profile="one_to_one"
-    )
+    game_stock = compress_elevation(elev, sea_level_y=sea, max_y=250, profile="one_to_one")
     game_mod = compress_elevation(
         elev,
-        sea_level_y=TEST_SEA_LEVEL_GAME_Y,
+        sea_level_y=sea,
         max_y=engine_max,
         profile="one_to_one",
         regional_exaggeration=1.0,
@@ -453,11 +508,18 @@ def build_all(
     terrarium_zoom: int = 11,
     pack_size: int = TILE,
     peak_game_y: int | None = None,
+    trench_game_y: int | None = None,
 ) -> JsonDict:
     root = Path(repo_root) if repo_root else Path(__file__).resolve().parents[2]
+    trench = trench_game_y is not None and trench_game_y > 0
     pg = peak_game_y if peak_game_y is not None and peak_game_y > 0 else None
     staged = pg is not None
-    if pg is not None:
+    if trench and trench_game_y is not None:
+        tgy = trench_game_y
+        pack = root / "data" / "samples" / f"height_test_trench_{tgy}"
+        world = root / "worlds" / f"RealEarth_T{DEFAULT_SEA_LEVEL_GAME_Y - tgy}"
+        world_name = f"RealEarth_T{DEFAULT_SEA_LEVEL_GAME_Y - tgy}"
+    elif pg is not None:
         pack = root / "data" / "samples" / f"height_test_{pg}"
         world = root / "worlds" / f"RealEarth_H{pg}"
         world_name = f"RealEarth_H{pg}"
@@ -468,10 +530,11 @@ def build_all(
 
     pack_info = build_height_test_pack(
         pack,
-        source=source if not staged else "synthetic",
+        source=source if not (staged or trench) else "synthetic",
         terrarium_zoom=terrarium_zoom,
         size=pack_size,
         peak_game_y=peak_game_y,
+        trench_game_y=trench_game_y,
         name=world_name,
     )
     bake_info = bake_height_test_world(pack, world, size=world_size, name=world_name)

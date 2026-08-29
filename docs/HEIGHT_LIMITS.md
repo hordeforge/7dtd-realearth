@@ -108,6 +108,8 @@ make engine-restore
 
 **Product vertical budget (2026-08-29):** YDim=**32768** (2^15, the packed game-Y ceiling: `Vector3iToUInt64` stores Y as `(y + 32768) & 0xFFFF`, so 32767 is the max), layers=**8192**, `EngineMaxGameY` ≤ **29000**. Sea anchor `SeaLevelGameY=16000` so real trenches (sea - 11000 = gameY 5000) stay above 0, and airliner cruise (sea + 12000 = 28000) stays under the lid. Does **not** expand XZ maps.
 
+**Depth below sea is product, not a clamp:** `gameY = sea + elev_m` with a **negative** `elev_m` yields real diggable depth (a -11000 m trench → gameY 5000; the old sea=100 anchor clamped anything below -100 m to 1). The `.rte` format stores signed meters ASL (u16 with 11000 offset → -11000..+54535), so bathymetry-style negative elevations flow through unchanged. Test fixture: `make height-map-trench` / `realearth height-test-map --trench-game-y 5000` writes a synthetic trench pack at the product anchor (see `tools/realearth/height_test_map.py` `trench_floor_elevation`).
+
 ### Opt-in only: stock compress (not product)
 
 `EngineHeightStockSafe=true` on an unexpanded engine compresses into **~0-250** so the mod can load without expand. Defaults are **false**. Do not document or ship this as the RealEarth experience. See [MODLET.md](MODLET.md).

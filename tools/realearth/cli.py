@@ -381,6 +381,13 @@ def wrap_check_cmd(x: int) -> None:
     default=None,
     help="Staged synthetic peak at this game Y (e.g. 500). Skips Everest DEM.",
 )
+@click.option(
+    "--trench-game-y",
+    type=int,
+    default=None,
+    help="Staged synthetic trench floor at this game Y below the product sea anchor "
+    "(e.g. 5000 = Mariana depth at sea 16000). Skips Everest DEM.",
+)
 @click.option("--install", is_flag=True, help="Copy world + pack into Steam/Proton paths")
 def height_test_map_cmd(
     repo: str | None,
@@ -389,11 +396,13 @@ def height_test_map_cmd(
     terrarium_zoom: int,
     pack_size: int,
     peak_game_y: int | None,
+    trench_game_y: int | None,
     install: bool,
 ) -> None:
     """Generate height-test pack + baked world.
 
-    Default: real Everest DEM. Use --peak-game-y 500 for a staged cone (full solid fill).
+    Default: real Everest DEM. Use --peak-game-y 500 for a staged cone, or
+    --trench-game-y 5000 for a staged below-sea trench at the product anchor.
     """
     from realearth.height_test_map import build_all
 
@@ -405,6 +414,7 @@ def height_test_map_cmd(
         terrarium_zoom=terrarium_zoom,
         pack_size=pack_size,
         peak_game_y=peak_game_y,
+        trench_game_y=trench_game_y,
     )
     click.echo(f"Pack:  {info['pack_dir']}")
     click.echo(f"World: {info['world_dir']}")

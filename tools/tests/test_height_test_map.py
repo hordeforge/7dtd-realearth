@@ -115,3 +115,32 @@ def test_build_all_staged_paths(tmp_path: Path, monkeypatch):
     assert (pack_dir / "earth.manifest.json").is_file()
     assert (pack_dir / "height_test.json").is_file()
     assert info["meta"]["target_peak_game_y"] == 500
+
+
+def test_build_trench_pack_uses_product_sea_anchor(tmp_path: Path):
+    """Trench pack: below-sea floor at the PRODUCT sea anchor (16000), so real
+    depth (floor gameY 5000 = elev -11000 m) survives .rte -> inject mapping."""
+    from realearth import height_test_map as htm
+
+    pack_dir = tmp_path / "trench"
+    info = htm.build_height_test_pack(
+        pack_dir, trench_game_y=5000, size=64, name="RealEarth_T11000"
+    )
+    meta = info["meta"]
+    assert meta["trench"] is True
+    assert meta["sea_level_game_y"] == htm.DEFAULT_SEA_LEVEL_GAME_Y == 16000
+    assert meta["engine_max_game_y"] == htm.ENGINE_TARGET_MAX_Y
+    tile = read_tile(tile_path(pack_dir, 0, 0))
+    assert float(tile.elevation_m.min()) <= -10900  # ~-11000 m ASL floor
+    # product mapping: floor gameY = 16000 + (-11000) = 5000
+    y = compress_elevation(
+        tile.elevation_m,
+        sea_level_y=meta["sea_level_game_y"],
+        max_y=meta["engine_max_game_y"],
+        profile="one_to_one",
+        regional_exaggeration=1.0,
+    )
+    assert int(y.min()) == 5000
+    assert int(y.max()) < meta["sea_level_game_y"]  # whole pack below sea
+    man = (pack_dir / "earth.manifest.json").read_text(encoding="utf-8")
+    assert '"sea_level_game_y": 16000' in man or '"sea_level_game_y":16000' in man

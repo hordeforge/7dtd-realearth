@@ -842,7 +842,8 @@ namespace RealEarth
                     }
                     ModApi.Log(
                         $"Spawn sample pack-center earth=({mid},{midZ}) gameY={h} " +
-                        $"(expect ~500 staged / ~8949 Everest DEM; focus not stomped)");
+                        $"(sea={cfg.SeaLevelGameY}; H500 fixture ~500 / Everest ~8949 / trench floor ~5000; " +
+                        "focus not stomped)");
                 }
 
                 MapReveal.Reset();

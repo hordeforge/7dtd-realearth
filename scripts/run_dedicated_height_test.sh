@@ -83,12 +83,15 @@ install_mod_to() {
   mkdir -p "$dest/Config" "$dest/Data/tiles"
   cp -f "$ROOT/ModInfo.xml" "$dest/"
   cp -f "$DLL" "$dest/"
-  # Pack selection: RE_SCENARIO_PACK=everest forces the Everest height_test
+  # Pack selection: RE_SCENARIO_PACK=trench forces the synthetic trench pack
+  # (product sea anchor, below-sea floor); everest forces the Everest height_test
   # pack (matches the sibling 7dtd-loadgen convention); default prefers the
   # staged H500 pack, falling back to height_test when it is absent.
   local pack="$ROOT/data/samples/height_test_500"
   if [[ "${RE_SCENARIO_PACK:-}" == "everest" ]]; then
     pack="$ROOT/data/samples/height_test"
+  elif [[ "${RE_SCENARIO_PACK:-}" == "trench" ]]; then
+    pack="$ROOT/data/samples/height_test_trench_5000"
   fi
   if [[ ! -d "$pack/tiles" ]]; then
     pack="$ROOT/data/samples/height_test"
