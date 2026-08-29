@@ -277,7 +277,7 @@ Legend for **Primary layer**: A binary · B Harmony · C XML · D world data · 
 | 12 | **SharedFixed MP + co-located proof** | Shooting/claims | Sys | F (loadgen) | **Hard** | **Partial** (SharedFixed active live; 4-6 bots joined; multi-bot distance proof open) |
 | 13 | **Net package Y/XZ range validation** | Tall/wide desync | B + F | A | **Hard** |
 | 14 | **Landcover → biome at runtime** | Recognizable Earth biomes | B | C, E | **Hard** | **Partial** (SetBiomeId written from landcover; decor/sleeper open) |
-| 15 | **Density stamp POIs on real surface Y** | Cities not floating/buried | B + D | E | **Hard** | **Partial** (StampSurfaceY offline; live stamp proof open) |
+| 15 | **Density stamp POIs on real surface Y** | Cities not floating/buried | B + D | E | **Hard** | **Done** (live 3.2.0: prefabs placed at real surface Y via PrefabCache + CopyIntoWorld) |
 | 16 | **Sleeper / decoration Y after inject** | POI interiors work | B | C | **Hard** |
 | 17 | **Pathfinding / A\* on cliffs** | Zombies on real DEM | B (budget) | F optim | **Hard** |
 | 18 | **Water / coast fill** | Oceans and lakes | B + E | C | **Hard** |

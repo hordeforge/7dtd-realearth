@@ -69,8 +69,15 @@ namespace RealEarth
             try
             {
                 var gmType = Type.GetType("GameManager, Assembly-CSharp");
-                var inst = gmType?.GetProperty("Instance")?.GetValue(null);
-                return inst?.GetType().GetProperty("World")?.GetValue(inst);
+                if (gmType == null) return null;
+                var instProp = gmType.GetProperty("Instance",
+                    BindingFlags.Static | BindingFlags.Public | BindingFlags.NonPublic);
+                var inst = instProp?.GetValue(null)
+                    ?? gmType.GetField("Instance", BindingFlags.Static | BindingFlags.Public | BindingFlags.NonPublic)?.GetValue(null);
+                if (inst == null) return null;
+                var worldProp = inst.GetType().GetProperty("World",
+                    BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic);
+                return worldProp?.GetValue(inst);
             }
             catch { return null; }
         }

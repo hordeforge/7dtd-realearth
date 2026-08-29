@@ -60,7 +60,7 @@ Stock terrain and world gen do not know about Earth DEM. Expand alone still yiel
 | **Fail-closed missing tiles** | No fake DEM peaks when `.rte` missing | **Partial** (`TileSamplePolicy` on sampler + EngineHeight product path; live `failClosed=True` on 3.2.0, no missing-tile event yet) |
 | **Expand product guard** | Refuse real-height claims on stock YDim | **Done** (live 3.2.0: `heightMode=ydim-expanded expanded=True`) |
 | **Session origin policy** | SoloSlide / SharedFixed / fold | **Partial** (`SessionOriginPolicy` wired into WorldSession; SharedFixed active live, multi-player proof open) |
-| **Surface-Y stamps** | Prefab Y on real DEM surface | **Partial** (`StampSurfaceY` + density.stamp_prefab_root_y) |
+| **Surface-Y stamps** | Prefab Y on real DEM surface | **Done** (live 3.2.0: `RuntimePoiInject` places prefabs via `PrefabCache`/`PrefabInstance.CopyIntoWorld` at real surface Y, e.g. farm_11 at y=4698) |
 | **Session snapshot** | Absolute origin save/reload JSON | **Done** (live 3.2.0: snapshot written; restart restored `absolute=(255,280)` via `SessionStateStore loaded`; same scope re-saved) |
 | **Density budgets** | Cap stamps / sleeper weights | **Partial** (`DensityBudget`) |
 | **CDN tile URL + fail-closed** | Optional CDN; miss → sample policy | **Partial** (`CdnTilePolicy`) |
@@ -69,7 +69,7 @@ Stock terrain and world gen do not know about Earth DEM. Expand alone still yiel
 | **World ready / player tick** | Center origin, refresh stream bubble, session | **Partial** (`WorldReadyPostfix`, `PlayerTickPostfix`) |
 | **RWG generator types** | `TerrainGeneratorWithBiomeResource` etc. still sample stock | **Needed** (retarget if missed on live DLL) |
 | **Decoration / biome paint from landcover** | After height, paint biomes / density underlay | **Partial** (live: inject writes `Chunk.SetBiomeId` from landcover; decoration/sleeper layers open) |
-| **Prefab / sleeper Y after surface known** | Avoid float/bury on real DEM | **Needed** |
+| **Prefab / sleeper Y after surface known** | Avoid float/bury on real DEM | **Partial** (prefab stamps on real surface Y live; sleeper Y open) |
 | **Water fill from DEM / masks** | Coasts, lakes (not deep trench product) | **Later** |
 | **Stability / light / mesh fallout** | After tall inject, fix breakage | **Needed** (validate under expand) |
 | **Console diagnostics** | `reheight` for sea+elev proof | **Done** |

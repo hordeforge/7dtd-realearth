@@ -297,6 +297,13 @@ def test_review_fixes_wired():
     poi = _read("RuntimePoiInject.cs")
     assert "MaxPlaceFails" in poi or "_failCount" in poi
     assert "return placed" in poi
+    # Stock placement path: PrefabInstance.CopyIntoWorld (verified against V3.2.0
+    # IL); the old World.*Prefab*Spawn scan alone never matched on 3.x. Prefabs
+    # resolve from World.m_PrefabCache (PrefabManager was removed on 3.2.0).
+    assert "TryPlaceViaPrefabInstance" in poi
+    assert "CopyIntoWorld" in poi
+    assert "m_PrefabCache" in poi
+    assert "PrefabCache" in poi
     cfg = json.loads((ROOT / "Config" / "realearth.json").read_text(encoding="utf-8"))
     assert cfg.get("DebugRevealFullMap") is False
     assert int(cfg.get("DebugMapRevealRadiusChunks") or 0) == 0
