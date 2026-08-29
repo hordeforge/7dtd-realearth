@@ -14,6 +14,11 @@ and the release gate requires both to match the tag (`v<version>`).
 
 ### Added
 
+- Viewer + WebMod pack schema validation: a `viewer.json` with no layers, a
+  degenerate/missing bbox, or non-positive sample dimensions /
+  `meters_per_block` now fails with a named error instead of silently drawing
+  an all-zero pack. Viewer pack info block additionally shows data sources,
+  notes, and sea level.
 - `start_dedicated_minimal.sh` honors `RE_SCENARIO_PACK=everest` (was
   hardcoded to the H500 pack, silently overwriting an Everest install at every
   start); same convention as `run_dedicated_height_test.sh` and the sibling

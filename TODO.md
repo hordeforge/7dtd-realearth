@@ -73,8 +73,11 @@ provenance and distinguish prototypes from verified in-game behavior.
 - [ ] Add in-browser `.rte` streaming for datasets too large for one mosaic
   (the experimental decoder was removed; see CHANGELOG).
 - [ ] Add offline/vendor support for the Three.js dependency.
-- [ ] Add loading/error states, pack schema validation, and clearer source/
-  resolution metadata in the UI.
+- [x] Add loading/error states, pack schema validation, and clearer source/
+  resolution metadata in the UI (viewer + webmod `packMetaFrom` now reject a
+  layer-less / degenerate-bbox / non-positive-dimension `viewer.json` with a
+  named error instead of rendering an all-zero pack; pack info shows sources +
+  notes + sea level).
 - [ ] Test keyboard, pointer, touch, narrow viewport, and large-pack memory use.
 
 ## Documentation and release

@@ -189,15 +189,27 @@ function describePack(meta: PackMeta): void {
   els.titleHud.textContent = meta.name === "" ? "RealEarth" : meta.name;
   const metersText = meta.meters_per_block > 0 ? `~${meta.meters_per_block} m/sample` : "";
   const viewText = meta.view_width > 0 ? ` · view ${meta.view_width}×${meta.view_height}` : "";
+  const seaText = meta.sea_level_game_y > 0 ? ` · sea Y ${meta.sea_level_game_y}` : "";
   const lines = [
     meta.name === "" ? "pack" : meta.name,
     `bbox ${fmt(meta.bbox.west)}°,${fmt(meta.bbox.south)}° → ${fmt(meta.bbox.east)}°,${fmt(meta.bbox.north)}°`,
     `samples ${meta.sample_width}×${meta.sample_height}${viewText}`,
-    metersText,
+    `${metersText}${seaText}`,
     `${meta.settlement_count} settlements · ${meta.tiles.length} tiles`,
   ].filter((line) => line !== "");
+  // Data provenance: export-time sources plus any free-form notes, rendered
+  // after the geometry block. Packs without either omit the section (most
+  // minimal exports carry at least the sources list).
+  const sources = meta.sources.filter((source) => source !== "");
+  const provenance: Array<string> = [];
+  if (sources.length > 0) {
+    provenance.push(`sources: ${sources.join(" · ")}`);
+  }
+  if (meta.notes !== "") {
+    provenance.push(meta.notes);
+  }
   els.packInfo.replaceChildren();
-  for (const [index, line] of lines.entries()) {
+  for (const [index, line] of lines.concat(provenance).entries()) {
     if (index > 0) {
       els.packInfo.append(document.createElement("br"));
     }

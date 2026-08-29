@@ -129,24 +129,50 @@ function settlementListFrom(candidate: unknown): Array<Settlement> {
 
 export function packMetaFrom(candidate: unknown): PackMeta {
   const record = asRecord(candidate);
+  const bbox = bboxFrom(record.bbox);
+  const layers = layerListFrom(record.layers);
+  const sampleWidth = asNumber(record.sample_width);
+  const sampleHeight = asNumber(record.sample_height);
+  const metersPerBlock = asNumber(record.meters_per_block);
+  // A viewer.json missing the fields the renderer actually needs must fail
+  // loudly with a named reason instead of silently drawing an all-zero pack
+  // (the coercers above default every missing number to 0).
+  if (layers.length === 0) {
+    throw new Error("Pack viewer.json has no layers (nothing to render)");
+  }
+  if (!(bbox.east > bbox.west && bbox.north > bbox.south)) {
+    throw new Error(
+      "Pack viewer.json bbox is missing or degenerate " +
+        `(west=${bbox.west} south=${bbox.south} east=${bbox.east} north=${bbox.north})`
+    );
+  }
+  if (!(sampleWidth > 0 && sampleHeight > 0)) {
+    throw new Error(
+      "Pack viewer.json sample dimensions are missing or non-positive " +
+        `(${sampleWidth}x${sampleHeight})`
+    );
+  }
+  if (!(metersPerBlock > 0)) {
+    throw new Error(`Pack viewer.json meters_per_block is missing or non-positive (${metersPerBlock})`);
+  }
   return {
     name: asString(record.name),
     version: asNumber(record.version),
-    bbox: bboxFrom(record.bbox),
-    sample_width: asNumber(record.sample_width),
-    sample_height: asNumber(record.sample_height),
+    bbox,
+    sample_width: sampleWidth,
+    sample_height: sampleHeight,
     view_width: asNumber(record.view_width),
     view_height: asNumber(record.view_height),
     scale: asNumber(record.scale),
     tile_size: asNumber(record.tile_size),
-    meters_per_block: asNumber(record.meters_per_block),
+    meters_per_block: metersPerBlock,
     world_width: asNumber(record.world_width),
     world_height: asNumber(record.world_height),
     sea_level_game_y: asNumber(record.sea_level_game_y),
     tiles: Array.isArray(record.tiles) ? record.tiles : [],
     sources: stringListFrom(record.sources),
     notes: asString(record.notes),
-    layers: layerListFrom(record.layers),
+    layers,
     settlement_count: asNumber(record.settlement_count),
     elev_raw: elevRawFrom(record.elev_raw),
   };
@@ -221,10 +247,9 @@ export async function loadPack(baseUrl: string): Promise<LoadedPack> {
     throw new Error(`Refusing unsafe pack path: ${baseUrl}`);
   }
   const base = baseUrl.replace(/\/$/u, "");
+  // packMetaFrom validates the schema (layers present, sane bbox, positive
+  // sample dims and meters_per_block); a broken viewer.json throws here.
   const meta = packMetaFrom(await fetchJson(`${base}/viewer.json`));
-  if (meta.layers.length === 0) {
-    throw new Error(`Pack ${base} has no layers`);
-  }
   const [settlements, images, elevRaw] = await Promise.all([
     loadSettlements(`${base}/settlements.json`),
     loadLayerImages(base, meta.layers),
