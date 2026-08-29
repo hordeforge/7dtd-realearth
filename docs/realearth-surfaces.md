@@ -73,7 +73,7 @@ flowchart TD
 
 `ChunkBlockLayer.GetAt` (IL=16): layer holds 16×16×4 = **1024** slots; formula `x + (z<<4) + ((y&3)*256)`.
 
-**Confirmed:** Y is split into **4-high layers**. Expanding `ChunkBlockLayers` from 64→4096 (with YDim 256→16384) is the correct binary expand strategy; **XZ remains 16**. Index math uses `y >> 2` and `y & 3`, not a hardcoded 255 ceiling in GetBlock.
+**Confirmed:** Y is split into **4-high layers**. Expanding `ChunkBlockLayers` from 64→8192 (with YDim 256→32768) is the correct binary expand strategy; **XZ remains 16**. Index math uses `y >> 2` and `y & 3`, not a hardcoded 255 ceiling in GetBlock.
 
 **Fail mode if expand incomplete:** `m_BlockLayers[y >> 2]` OOB when y ≥ layer array length → catch path logs `GetBlock failed: _y = …, len = …` and rethrows.
 
@@ -313,7 +313,7 @@ for (i = 0; i < 64; i++) {
 
 | Implication | Detail |
 |---|---|
-| Expand fields alone is **insufficient** | YDim/Layers constants can be 16384/4096 while save still only persists **64** layers (Y 0..255) |
+| Expand fields alone is **insufficient** | YDim/Layers constants can be 32768/8192 while save still only persists **64** layers (Y 0..255) |
 | Tall inject lost on unload/reload | Blocks in layers ≥64 vanish on save under stock write IL |
 | Patcher must rewrite these sites | Binary expand tools need to retarget `ldc.i4.s 64` in write/read (and any sibling loops) to expanded layer count |
 | Heightmap arrays stay 256 bytes | `m_HeightMap` / biomes clear/read use **ldc.i4 256** (16×16); correct; do not expand XZ |

@@ -111,7 +111,7 @@ Keep **meters in `.rte`** either way.
 |---|---|---|
 | **H0** | Product: real meters + YDim expand (not global compress) | **Product path** ([HEIGHT_LIMITS](HEIGHT_LIMITS.md)) |
 | **H1** | Research: Chunk arrays, Y clamps, light/mesh 255 sites on 3.0.1 | **Closed** in research + [realearth-surfaces](realearth-surfaces.md) |
-| **H2** | Static expand at full product YDim (16384) soak | **Partial** (patcher ships; live soak open) |
+| **H2** | Static expand at full product YDim (32768) soak | **Done** (2026-08-29 live: H500/Everest/trench soaks at YDim=32768) |
 | **H3** | Sparse sections: only allocate used Y bands | **Later** (this doc) |
 | **H4** | Stream sections with player Y (dig deep / fly high) | **Later** |
 | **H5** | Multiplayer section sync | **Later** |
@@ -130,7 +130,7 @@ Dynamic height = **sparsity in Y**, same philosophy as **sparsity in XZ**.
 
 ## Practical RealEarth recommendation
 
-1. **Near term (product):** real height + YDim expand 16384 + inject; absolute XZ streaming.
+1. **Near term (product):** real height + YDim expand 32768 + inject; absolute XZ streaming.
 2. **Do not** treat global compress into 255 as a shipping milestone.
 3. **Target architecture:** **sectioned dynamic columns** + XZ sliding window + Y section stream.
 4. Never bake Google/3D heights into static 255 and call it alpine 1:1.
@@ -156,7 +156,7 @@ Yes: **chunk height should be dynamic (sparse sections), not a static 255 slab**
 ```mermaid
 flowchart TB
   STOCK[Stock static YDim 256]
-  EXP[Product expand YDim 16384 static tall]
+  EXP[Product expand YDim 32768 static tall]
   SPA[Sparse Y sections target]
   STOCK -->|make engine-expand| EXP
   EXP -->|H3-H4| SPA

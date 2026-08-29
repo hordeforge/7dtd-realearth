@@ -180,7 +180,7 @@ RealEarth is designed as **one world / one save**, not multiple maps.
 realearth bake-world --pack data/samples/demo_region --size 8192 --out worlds/RealEarth_8k
 ```
 
-Details: [docs/SINGLE_WORLD.md](docs/SINGLE_WORLD.md). Engine max for a loaded mesh is ~**16384** blocks; full Earth 1:1 uses Streamed mode.
+Details: [docs/SINGLE_WORLD.md](docs/SINGLE_WORLD.md). Engine max for a loaded mesh is ~**32768** blocks (YDim expand; packed game-Y ceiling), with real depth below sea and ~12 km airliner band; full Earth 1:1 uses Streamed mode.
 
 ## Cities and density
 

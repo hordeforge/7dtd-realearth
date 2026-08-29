@@ -180,7 +180,7 @@ Both are **one continuous session**. Streamed is the long-term planetary mode; B
 gameY = seaLevelGameY + elev_m     # 1 m = 1 block
 ```
 
-capped by `EngineMaxGameY` (default 11000) and expanded column max.
+capped by `EngineMaxGameY` (default 29000 = sea 16000 + airliner 12000 + headroom) and the expanded column max (YDim 32768).
 
 | Component | Role |
 |---|---|
@@ -325,11 +325,11 @@ Config product defaults (see `Config/realearth.json`):
 {
   "MapMode": "Streamed",
   "SingleWorldSession": true,
-  "SeaLevelGameY": 100,
+  "SeaLevelGameY": 16000,
   "EnableEngineHeightMod": true,
   "EngineHeightOneToOne": true,
   "EngineHeightStockSafe": false,
-  "EngineMaxGameY": 11000,
+  "EngineMaxGameY": 29000,
   "LocalWindowSize": 1024,
   "TileSize": 512,
   "StreamRadiusTiles": 2,

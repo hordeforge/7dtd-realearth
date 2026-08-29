@@ -26,10 +26,10 @@ Those still bind RealEarth (metro density, tall inject, MP soak) but are not Ear
 
 | Limit (stock) | Evidence | Why it matters | Severity | Overcome with |
 |---|---|---|---|---|
-| Column height fixed **YDim = 256** (`ChunkBlockYDim`) | `WorldConstants` literals; `engine-audit` | Everest ≈ 8.8 km at 1 m/block cannot fit | **Blocker** | YDim expand IL patch (`make engine-expand`, default **16384**) |
+| Column height fixed **YDim = 256** (`ChunkBlockYDim`) | `WorldConstants` literals; `engine-audit` | Everest ≈ 8.8 km at 1 m/block cannot fit | **Blocker** | YDim expand IL patch (`make engine-expand`, default **32768**) |
 | `cMaxHeight` / surface byte paths **255** | DTM / heightmap APIs | Byte terrain maps cannot store tall peaks | **Blocker** | Bypass byte DTM for Streamed: inject int heights; expand vertical loops |
 | Literals **inlined in IL** (`ldc`) | Probe: `SetValue` cannot raise ceiling | Runtime field rewrite is insufficient | **Blocker** | Selective Mono.Cecil rewrites; re-apply after every Steam update |
-| **256 means two things**: vertical dim **and** 16×16 XZ map area | Patcher notes | Blind 256→16384 corrupts heightmaps and slows load ~64× | **Hard** | Vertical-only site list; never expand XZ map fields |
+| **256 means two things**: vertical dim **and** 16×16 XZ map area | Patcher notes | Blind 256→32768 corrupts heightmaps and slows load ~128× | **Hard** | Vertical-only site list; never expand XZ map fields |
 | Layer storage **64 layers × 4** must stay consistent | Alloc/free of layer arrays | Mismatched layer count → Unity.Collections Free crashes | **Hard** | Rewrite alloc + free layer counts together |
 | Static full-column RAM O(YDim) per column | Engine design | Tall static columns everywhere = huge RAM | **Hard** | Near term: accept expand cost near players only; long term: **sparse Y sections** ([`DYNAMIC_CHUNK_HEIGHT.md`](DYNAMIC_CHUNK_HEIGHT.md)) |
 | Mesh / light / stability / density loops assume short Y | Method list in patcher (`GetBlock`, `SetDensity`, sunlight, …) | Tall columns crash or clip if loops still use 255/256 | **Hard** | Expand Y-bound methods; validate H500 → Everest soak |
