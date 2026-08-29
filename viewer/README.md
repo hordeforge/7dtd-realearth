@@ -93,7 +93,9 @@ Then re-export each pack and refresh the page.
 ## Notes
 
 - Serve over HTTP (not `file://`) so ES modules and fetch work.
-- Globe uses Three.js from jsDelivr CDN, fetched on first switch to globe mode (needs network once; flat map never downloads it).
+- Globe uses the vendored Three.js under `vendor/three/` (resolved by the
+  importmap), so it works fully offline; refresh from node_modules with
+  `bash scripts/vendor-three.sh` after bumping the pinned version.
 - Full-planet packs should use lower `--max-dim` or multi-res later; this viewer loads one mosaic per pack.
 
 ## Keyboard / mouse
@@ -135,7 +137,7 @@ datasets, `pack.ts` parses pack artifacts, `map2d.ts` renders the flat view,
 and `globe.ts` renders the sphere (`types.ts`/`coerce.ts` hold the shared data
 shapes and JSON boundary coercion). esbuild compiles them to the served ES
 modules in `js/`; three.js stays external and is resolved by the importmap at
-runtime, so the CDN fetch still happens only when Globe mode is first used.
+runtime from the vendored copy under `vendor/three/` (offline-capable).
 
 ```bash
 # from repo root: rebuild js/ after editing src/, then type-check + lint

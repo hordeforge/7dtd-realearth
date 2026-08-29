@@ -14,6 +14,11 @@ and the release gate requires both to match the tag (`v<version>`).
 
 ### Added
 
+- Viewer: vendored three.js r0.170.0 under `viewer/vendor/three/` (module +
+  OrbitControls) so Globe mode works fully offline; the importmap resolves the
+  local copy instead of the jsDelivr CDN. `scripts/vendor-three.sh` refreshes
+  the vendored files from node_modules (and `--check` gates `make viewer-build`
+  against drift); ATTRIBUTION updated (three.js now bundled, MIT).
 - Viewer + WebMod pack schema validation: a `viewer.json` with no layers, a
   degenerate/missing bbox, or non-positive sample dimensions /
   `meters_per_block` now fails with a named error instead of silently drawing

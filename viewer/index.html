@@ -6,15 +6,15 @@
   <title>RealEarth Map Viewer</title>
   <link rel="icon" type="image/svg+xml" href="favicon.svg">
   <link rel="stylesheet" href="css/app.css">
-  <!-- three.js lives on the CDN but is only fetched when Globe mode is first
-       used; warm the connection up front so that switch does not pay DNS +
-       TLS on click. -->
+  <!-- three.js resolves from the vendored copy under vendor/three (offline,
+       no CDN dependency); the preconnect is harmless if never used. Keep
+       vendor/three in sync with node_modules via scripts/vendor-three.sh. -->
   <link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin>
   <script type="importmap">
   {
     "imports": {
-      "three": "https://cdn.jsdelivr.net/npm/three@0.170.0/build/three.module.js",
-      "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.170.0/examples/jsm/"
+      "three": "./vendor/three/three.module.js",
+      "three/addons/": "./vendor/three/addons/"
     }
   }
   </script>

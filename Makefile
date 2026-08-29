@@ -414,6 +414,7 @@ viewer:
 
 viewer-build:
 	bash scripts/build-viewer.sh
+	bash scripts/vendor-three.sh --check
 
 viewer-lint:
 	bash scripts/lint-viewer.sh

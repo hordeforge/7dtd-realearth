@@ -72,7 +72,9 @@ provenance and distinguish prototypes from verified in-game behavior.
 
 - [ ] Add in-browser `.rte` streaming for datasets too large for one mosaic
   (the experimental decoder was removed; see CHANGELOG).
-- [ ] Add offline/vendor support for the Three.js dependency.
+- [x] Add offline/vendor support for the Three.js dependency (vendored
+  `viewer/vendor/three/` from node_modules, importmap points at it,
+  `scripts/vendor-three.sh` refreshes + `make viewer-build` checks sync).
 - [x] Add loading/error states, pack schema validation, and clearer source/
   resolution metadata in the UI (viewer + webmod `packMetaFrom` now reject a
   layer-less / degenerate-bbox / non-positive-dimension `viewer.json` with a

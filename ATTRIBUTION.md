@@ -39,7 +39,7 @@ components. Machine-readable inventory: `dist/realearth-deps.spdx.json`
 | Component | Where it ships | License | Upstream |
 |---|---|---|---|
 | Mono.Cecil | `Tools/Mono.Cecil.dll` (YDim expand helper) | MIT | github.com/jbevain/cecil |
-| three.js r0.170.0 | Not bundled: fetched from cdn.jsdelivr.net at runtime by the optional web map viewer (`viewer/index.html` importmap) | MIT | threejs.org |
+| three.js r0.170.0 | Bundled: `viewer/vendor/three/` (three.module.js + OrbitControls), resolved by the `viewer/index.html` importmap for the optional web map viewer | MIT | threejs.org |
 
 The mod DLL itself links only game-shipped assemblies (Assembly-CSharp,
 UnityEngine, 0-Harmony); those remain governed by The Fun Pimps' terms above.
