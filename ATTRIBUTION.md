@@ -19,6 +19,7 @@ See `docs/REALISM_AND_GOOGLE_EARTH.md`.
 | Copernicus DEM GLO-30 | Production elevation | Free access with registration/terms; attribution required |
 | SRTM | Elevation | Public domain (US Government) |
 | AWS Terrain Tiles / Mapzen Terrarium | Web elevation tiles (`--source terrarium`) | AWS Open Data / Terrarium encoding |
+| GEBCO (gridded bathymetry) | Below-sea elevation (`--source gebco`; negative = depth) | gebco.net data portal; free registration, attribution required |
 | ESA WorldCover | Land cover | CC BY 4.0 (attribution) |
 | OpenStreetMap | Roads, water, places | ODbL (share-alike for derived databases) |
 | Natural Earth | Countries, populated places | Public domain |
@@ -27,7 +28,9 @@ See `docs/REALISM_AND_GOOGLE_EARTH.md`.
 
 ## Built-in demo content
 
-- Procedural synthetic elevation (no third-party DEM)
+- Procedural synthetic elevation (no third-party DEM); audited 2026-08-29:
+  the shipped demo pack (`Data/tiles`) declares only synthetic + Natural Earth
+  seed sources in its manifest - no third-party DEM is bundled.
 - Approximate seed city coordinates/populations for testing POI density only
 
 ## Shipped code dependencies

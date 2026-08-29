@@ -149,6 +149,11 @@ flowchart TB
   RTE --> STR[Streamed inject]
 ```
 
+## Tile production and distribution
+
+See [TILE_FARM.md](TILE_FARM.md) for the cache, pack layout, CDN, and
+update plan; [ATTRIBUTION.md](../ATTRIBUTION.md) for license obligations.
+
 ## Related docs
 
 | Doc | Role |

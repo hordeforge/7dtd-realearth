@@ -82,10 +82,13 @@ provenance and distinguish prototypes from verified in-game behavior.
   test_local_window, test_functional_guards; added 2026-08-29: polar-bound
   grid_lonlat, no-data cells fail closed to sea level, mixed-resolution
   sample clamp to ocean).
-- [ ] Define practical regional/planet tile farm, cache, CDN, update, and storage
-  plans.
-- [ ] Review every distributable dataset against `ATTRIBUTION.md` before
-  packaging it.
+- [x] Define practical regional/planet tile farm, cache, CDN, update, and storage
+  plans ([docs/TILE_FARM.md](docs/TILE_FARM.md): producer cache, build.json
+  reproducibility, pack layout, CDN + signed manifests, update discipline).
+- [x] Review every distributable dataset against `ATTRIBUTION.md` before
+  packaging it (2026-08-29: shipped demo pack declared synthetic-only sources
+  in its manifest, matching ATTRIBUTION; GEBCO source row added to ATTRIBUTION;
+  SBOM `dist/realearth-deps.spdx.json` verified current).
 
 ## Viewer
 

@@ -53,6 +53,7 @@ flowchart TB
 | Density → stamps | [`CITIES_AND_DENSITY.md`](CITIES_AND_DENSITY.md) | CITY_MAP (labels only) |
 | Map name discovery | [`CITY_MAP_LABELS.md`](CITY_MAP_LABELS.md) | MODLET (config keys only) |
 | Open data pointers | [`DATA_SOURCES.md`](DATA_SOURCES.md) | REALISM (policy) |
+| Tile farm / CDN / storage plan | [`TILE_FARM.md`](TILE_FARM.md) | DATA_SOURCES |
 | Artifact backup / restore / durability posture (RPO/RTO) | [`BACKUP_RESTORE.md`](BACKUP_RESTORE.md) | DATA_SOURCES (source policy) |
 | Why not Google bulk | [`REALISM_AND_GOOGLE_EARTH.md`](REALISM_AND_GOOGLE_EARTH.md) | DATA_SOURCES |
 | Execution checklist | [`../TODO.md`](../TODO.md) | DESIGN phases |
