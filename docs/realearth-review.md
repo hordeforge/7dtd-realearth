@@ -290,6 +290,7 @@ Do **not** erase these when campaigns report zero open critical/bug offline.
 |---|---|---|
 | **Live Harmony / inject soak** | Med (2026-08-28, 3.2.0 b9) | Dedicated soak bound real `Assembly-CSharp`: heightQ=7 gen=4 chunkIdx=2 playerTick=2 worldReady=1, `injectOk=True`, world load + soak clean. Open: per-chunk column rewrite needs a connected player; Everest run |
 | **Live SharedFixed multi-bot** | Med (2026-08-29) | H500 soak: 6 bots joined/wandered concurrently, SharedFixed active, 4 players, 0 crashes (gentle ramp). 400ms-ramp 8-bot churn hit the STOCK ConnectionManager join-churn race (no RealEarth frames; EfficientServer ClientListSnapshotPatch mitigates on the LAN server) |
+| **Collision/mesh on injected DEM** | Low (2026-08-29) | Bots walked 77-78 steps + jumped 7-11 on Everest surface (gameY 4698-5333), died=False drowns=0; no fall-through. Visual mesh check by a human client still open |
 | **SoloSlide mesh/voxel desync** | High | Mitigated (invalidate + prefetch); full chunk reinject still open |
 | **Tall hollow interiors** | Medium | Intentional crust tradeoff above hardMax |
 | **HasLandClaims freeze** | Medium | Fail-closed if PPL API missing on a build |

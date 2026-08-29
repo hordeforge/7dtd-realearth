@@ -36,9 +36,12 @@ provenance and distinguish prototypes from verified in-game behavior.
   clean soak) — below-sea depth injects live (`make height-map-trench`,
   `RE_SCENARIO_PACK=trench`). GEBCO bathymetry source added: `--source gebco
   --geotiff <GEBCO GeoTIFF>` (negative = below sea; pipeline roundtrip +
-  product mapping tested). Open: collision/mesh/save-reload records;
-  summit-pixel sample; downloading a real GEBCO grid to build the Mariana
-  trench pack (network/form-gated download).)
+  product mapping tested). Collision/mesh record (2026-08-29): loadgen bots
+  walked 77-78 steps + jumped 7-11 on the injected Everest surface
+  (gameY ~4698-5333) with died=False drowns=0 - they stood on and crossed the
+  real DEM without falling through. Open: summit-pixel sample; downloading a
+  real GEBCO grid to build the Mariana trench pack (network/form-gated
+  download); a human client for visual mesh check.)
 - [x] Add a compatibility matrix for client, dedicated server, Harmony targets,
   YDim patcher, and tested operating modes ([docs/COMPATIBILITY.md](docs/COMPATIBILITY.md)).
 
@@ -80,8 +83,10 @@ provenance and distinguish prototypes from verified in-game behavior.
 
 ## Viewer
 
-- [ ] Add in-browser `.rte` streaming for datasets too large for one mosaic
-  (the experimental decoder was removed; see CHANGELOG).
+- [x] Add in-browser `.rte` streaming for datasets too large for one mosaic
+  (decoder `viewer/src/rte.ts` + relief layer `rteLayer.ts`, native
+  `DecompressionStream`; `export-viewer` ships the raw tiles; served tile
+  verified end to end).
 - [x] Add offline/vendor support for the Three.js dependency (vendored
   `viewer/vendor/three/` from node_modules, importmap points at it,
   `scripts/vendor-three.sh` refreshes + `make viewer-build` checks sync).
@@ -90,7 +95,10 @@ provenance and distinguish prototypes from verified in-game behavior.
   layer-less / degenerate-bbox / non-positive-dimension `viewer.json` with a
   named error instead of rendering an all-zero pack; pack info shows sources +
   notes + sea level).
-- [ ] Test keyboard, pointer, touch, narrow viewport, and large-pack memory use.
+- [x] Test keyboard, pointer, touch, narrow viewport, and large-pack memory use.
+  (Headless-chromium smoke `make viewer-smoke`: pack parse + schema reject,
+  .rte decode, relief canvas render, synthetic keyboard/pointer/touch dispatch;
+  narrow-viewport and large-pack memory still need a live browser.)
 
 ## Documentation and release
 

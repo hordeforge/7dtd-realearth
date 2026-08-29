@@ -15,7 +15,7 @@ SHELL := /bin/bash
 	engine-audit engine-expand engine-expand-dry engine-verify engine-restore dedicated-height-test \
 	demo bake bake-height package sbom \
 	artifacts-backup artifacts-restore \
-	viewer viewer-build serve viewer-lint \
+	viewer viewer-build serve viewer-lint viewer-smoke \
 	webmod webmod-export webmod-lint html-lint \
 	lint-shell info check clean clean-build \
 	build-npi
@@ -148,6 +148,7 @@ help:
 	@echo "    make viewer-build       Compile viewer/src TS into viewer/js ES modules"
 	@echo "    make serve              Serve web map viewer (port 8765)"
 	@echo "    make viewer-lint        tsc --strict + oxlint (anti-slop + strict)"
+	@echo "    make viewer-smoke       Headless chromium smoke (pack/rte/render/input)"
 	@echo ""
 	@echo "  WebMod (dashboard webui)"
 	@echo "    make webmod-export      Export demo pack into webmod/build/data/demo"
@@ -407,8 +408,8 @@ coverage:
 
 # Mirrors ci.yml (tools job) as far as a game-less machine allows: build needs
 # the installed game assemblies, everything else here is what CI checks.
-check: setup test-fast lint-python lint-shell build-npi build viewer-build viewer-lint webmod-lint html-lint
-	@echo "OK check (setup + test-fast + lint-python + lint-shell + build-npi + build + viewer-build + viewer-lint + webmod-lint + html-lint)"
+check: setup test-fast lint-python lint-shell build-npi build viewer-build viewer-lint viewer-smoke webmod-lint html-lint
+	@echo "OK check (setup + test-fast + lint-python + lint-shell + build-npi + build + viewer-build + viewer-lint + viewer-smoke + webmod-lint + html-lint)"
 
 # ---------------------------------------------------------------------------
 # Viewer
@@ -423,6 +424,9 @@ viewer-build:
 
 viewer-lint:
 	bash scripts/lint-viewer.sh
+
+viewer-smoke:
+	bash scripts/test-viewer-smoke.sh
 
 serve: viewer-build
 	@$(REEARTH) serve --port 8765
