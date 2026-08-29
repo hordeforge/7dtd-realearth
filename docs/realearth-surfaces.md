@@ -101,7 +101,7 @@ GetTerrainHeight(x,z):  m_TerrainHeight[x + z*16]   // byte
 SetTerrainHeight(x,z,b): same index, stelem.i1
 ```
 
-**Even with YDim=16384, chunk terrain heightmap cannot store heights > 255.** Product must:
+**Even with YDim=32768, chunk terrain heightmap cannot store heights > 255.** Product must:
 
 1. Drive float `GetHeightAt` / generator height for tall surface.  
 2. Write **blocks + density** for tall columns.  

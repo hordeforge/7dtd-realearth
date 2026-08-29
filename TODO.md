@@ -98,8 +98,8 @@ provenance and distinguish prototypes from verified in-game behavior.
   then travel/save, places, MP, UX); update status tags as each slice measures green.
 - [ ] Reconcile status claims across `README.md`, `DESIGN.md`, and research docs
   after each live game-version validation.
-- [ ] Add a first-time operator guide covering backup, install, verification,
-  troubleshooting, rollback, and save compatibility.
+- [x] Add a first-time operator guide covering backup, install, verification,
+  troubleshooting, rollback, and save compatibility ([docs/OPERATOR_GUIDE.md](docs/OPERATOR_GUIDE.md)).
 - [x] Choose and add a code license before public distribution (MIT, [`LICENSE`](LICENSE)).
 - [x] Run Python tests, multiplayer tests, build, package inspection, and a clean
   install smoke test before a release (308 pytest + 32 test-mp + make check green;

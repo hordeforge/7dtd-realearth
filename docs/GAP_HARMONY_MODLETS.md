@@ -540,7 +540,7 @@ Mods/
 | Claim | How to prove |
 |---|---|
 | Height inject works | Walk Streamed pack; `reheight` = sea+elev; no stock noise |
-| Expand works | `engine-audit` YDim=16384; H500 peak; Everest peak |
+| Expand works | `engine-audit` YDim=32768; H500 peak; Everest peak; trench floor |
 | Slide works | Log origin slide; player stays; cities re-pin; no wrong DEM |
 | Save works | Quit/rejoin same lon/lat and builds |
 | MP works | Two clients SharedFixed; shoot; same terrain |

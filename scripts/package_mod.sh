@@ -188,7 +188,7 @@ Raises 7DTD Assembly-CSharp vertical limits for 1:1 RealEarth heights.
   1. Close 7 Days to Die completely.
   2. Run:  ./apply_engine_expand.sh
      or:   mono EngineHeightPatcher.exe --dll "/path/to/Assembly-CSharp.dll" --force
-  3. Restart the game. Log should show: ENGINE EXPANDED / YDim=16384
+  3. Restart the game. Log should show: ENGINE EXPANDED / YDim=32768
 
 Backup: Assembly-CSharp.dll.re_stock_bak next to the game DLL.
 Restore: make engine-restore from the RealEarth repo, or Steam Verify.

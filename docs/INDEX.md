@@ -107,6 +107,7 @@ Never mark Done without live measure (GAP evidence checklist).
 |---|---|
 | [SECURITY](../SECURITY.md) | Reporting channel, scope, supported versions |
 | [MODLET](MODLET.md) | Install, expand, config keys |
+| [OPERATOR_GUIDE](OPERATOR_GUIDE.md) | First-time walkthrough: backup, verify, troubleshooting, rollback, save compat |
 | [PROTON_INSTALL](PROTON_INSTALL.md) | Steam/Proton paths |
 | [GAME_VERSION](GAME_VERSION.md) | Local pins |
 | [HEIGHT_LIMITS](HEIGHT_LIMITS.md) | Real height policy |
