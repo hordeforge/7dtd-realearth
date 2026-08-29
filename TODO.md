@@ -77,8 +77,11 @@ provenance and distinguish prototypes from verified in-game behavior.
   attribution; `realearth verify-build --pack` re-checks the hashes.)
 - [ ] Implement or scope road, river, and settlement/prefab stamping with
   deterministic conflict rules.
-- [ ] Test tile seams, polar bounds, antimeridian regions, no-data DEM cells, and
-  mixed source resolutions.
+- [x] Test tile seams, polar bounds, antimeridian regions, no-data DEM cells, and
+  mixed source resolutions (seams/wrap already covered in test_coords,
+  test_local_window, test_functional_guards; added 2026-08-29: polar-bound
+  grid_lonlat, no-data cells fail closed to sea level, mixed-resolution
+  sample clamp to ocean).
 - [ ] Define practical regional/planet tile farm, cache, CDN, update, and storage
   plans.
 - [ ] Review every distributable dataset against `ATTRIBUTION.md` before

@@ -157,3 +157,29 @@ def test_rte_roundtrip_preserves_sample_for_runtime_layout(demo_pack: Path):
     np.testing.assert_allclose(tile.elevation_m, again.elevation_m, atol=1.0)
     if tile.landcover is not None:
         np.testing.assert_array_equal(tile.landcover, again.landcover)
+
+
+def test_sample_point_clamps_into_smaller_tile(tmp_path: Path):
+    """Mixed source resolutions: a tile with fewer samples than the declared
+    grid must clamp (return ocean) rather than index out of bounds."""
+    import numpy as np
+
+    from realearth.coords import EarthGrid
+    from realearth.streamed_chunk import sample_point
+    from realearth.tile_format import EarthTile, tile_path, write_tile
+
+    # Grid says tile_size 512, but the actual tile is 64x64 (coarser source).
+    grid = EarthGrid(tile_size=512)
+    elev = np.full((64, 64), 300.0, dtype=np.float32)
+    lc = np.full((64, 64), 9, dtype=np.uint8)  # urban
+    write_tile(tile_path(tmp_path, 0, 0), EarthTile(0, 0, elev, landcover=lc))
+
+    # Inside the real 64x64 tile (tx=0, local x<64): sampled normally.
+    inside = sample_point(tmp_path, 30, 30, grid=grid)
+    assert inside[0] == 300.0
+    assert inside[1] == 9
+
+    # Beyond the 64x64 tile but inside the declared 512 grid: clamp to ocean,
+    # never out-of-bounds.
+    outside = sample_point(tmp_path, 400, 400, grid=grid)
+    assert outside == (0.0, 0, 0)

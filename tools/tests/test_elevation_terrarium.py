@@ -251,3 +251,39 @@ def test_terrarium_cache_failed_publish_leaves_no_tmp_orphan(monkeypatch, tmp_pa
 
     leftovers = [p for p in d.iterdir() if p.name.endswith(".tmp")]
     assert not leftovers, f"stranded temp files: {leftovers}"
+
+
+def test_grid_lonlat_polar_bounds_are_finite():
+    """Sampling right up to the poles must not blow up: lat 90/-90 produce
+    finite grids, and a polar row stays inside [-90, 90]."""
+    from realearth.elevation import grid_lonlat
+
+    lon, lat = grid_lonlat(-180.0, 89.5, 180.0, 90.0, 8, 4)
+    assert np.isfinite(lon).all() and np.isfinite(lat).all()
+    assert float(lat.max()) <= 90.0
+    assert float(lat.min()) >= 89.5
+
+    lon2, lat2 = grid_lonlat(-180.0, -90.0, 180.0, -89.5, 8, 4)
+    assert np.isfinite(lon2).all() and np.isfinite(lat2).all()
+    assert float(lat2.min()) >= -90.0
+
+
+def test_region_nodata_cells_fail_closed_to_sea_level():
+    """A DEM with no-data cells must not produce garbage heights: nan flows
+    through compress as 0 m ASL (fail-closed), never negative spikes."""
+    import numpy as np
+
+    from realearth import DEFAULT_SEA_LEVEL_GAME_Y, ENGINE_TARGET_MAX_Y
+    from realearth.height import compress_elevation
+
+    elev = np.array([[np.nan, 100.0], [np.nan, 500.0]], dtype=np.float32)
+    y = compress_elevation(
+        elev,
+        sea_level_y=DEFAULT_SEA_LEVEL_GAME_Y,
+        max_y=ENGINE_TARGET_MAX_Y,
+        profile="one_to_one",
+        regional_exaggeration=1.0,
+    )
+    assert np.isfinite(y).all()
+    assert int(y[0, 0]) == DEFAULT_SEA_LEVEL_GAME_Y  # nan -> 0 m ASL -> sea level
+    assert int(y[0, 1]) == DEFAULT_SEA_LEVEL_GAME_Y + 100
