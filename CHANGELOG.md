@@ -14,6 +14,19 @@ and the release gate requires both to match the tag (`v<version>`).
 
 ### Added
 
+- Biome paint from landcover: the inject writes the per-column biome
+  (`Chunk.SetBiomeId`) from the sampled landcover byte (stock biomemap ids:
+  water=6, snow=1, wasteland=8, desert=5, pine_forest=3), so stock RWG biome
+  noise no longer fights the injected terrain.
+- Runtime prefab stamps fixed for 3.2.0: `PrefabManager` was removed, so city/
+  village prefab stamps now resolve from `World.m_PrefabCache.GetPrefab` and
+  place via `PrefabInstance.CopyIntoWorld` at the real surface Y (live:
+  `placed 'commercial_site_02' for 'Kathmandu'` at y=4698, `farm_11` at 5333).
+- SharedFixed multi-bot soak: 6 loadgen bots joined/wandered concurrently on
+  the H500 world (YDim=32768), 4 players, prefab stamps, 0 crashes. An
+  8-bot/400ms-ramp run hit the STOCK ConnectionManager join-churn race (no
+  RealEarth frames); gentler ramp or the EfficientServer snapshot patch avoids
+  it.
 - GAP_HARMONY_MODLETS status reconciliation after the 3.2.0 live evidence:
   master-gap rows now carry a Status column (height inject, height APIs, byte
   lossiness, expand soak, save absolute session, fail-closed = Done; origin
