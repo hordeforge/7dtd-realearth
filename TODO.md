@@ -99,8 +99,10 @@ provenance and distinguish prototypes from verified in-game behavior.
   (2026-08-29: Slice 1 terrain truth marked measured green; slice 2/4 items with
   live evidence updated in the doc's gap table + slices. Open: biome paint,
   prefab/sleeper Y, origin-slide wrap, multi-bot distance proof.)
-- [ ] Reconcile status claims across `README.md`, `DESIGN.md`, and research docs
-  after each live game-version validation.
+- [x] Reconcile status claims across `README.md`, `DESIGN.md`, and research docs
+  after each live game-version validation (2026-08-29: README/DESIGN/ENGINE_LIMITATIONS/
+  DYNAMIC_CHUNK_HEIGHT/realearth-surfaces updated to the 32768 vertical budget;
+  GAP_HARMONY_MODLETS gap table + slices annotated with live evidence).
 - [x] Add a first-time operator guide covering backup, install, verification,
   troubleshooting, rollback, and save compatibility ([docs/OPERATOR_GUIDE.md](docs/OPERATOR_GUIDE.md)).
 - [x] Choose and add a code license before public distribution (MIT, [`LICENSE`](LICENSE)).
