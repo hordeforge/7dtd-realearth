@@ -85,14 +85,20 @@ namespace RealEarth.EngineHeight
         }
 
         public static bool EngineExpanded =>
-            Probe != null && ExpandProductGuard.IsExpanded(Probe.ChunkBlockYDim);
+            Probe != null
+            && ExpandProductGuard.IsExpanded(Probe.ChunkBlockYDim, RuntimeYDimTranspiler.IsActive);
 
         public static int AllocatableColumnMaxY
         {
             get
             {
                 int content = Policy?.MaxGameY ?? 250;
-                int engine = Probe?.ChunkBlockYDim > 0 ? Probe.ChunkBlockYDim : 256;
+                // Runtime hot-patch: the const still reads 256, but JIT'd methods
+                // allocate TargetYDim columns; use the target so the inject and
+                // AllocatableColumnMaxY agree with the engine's actual capacity.
+                int engine = RuntimeYDimTranspiler.IsActive
+                    ? RuntimeYDimTranspiler.TargetYDim
+                    : Probe?.ChunkBlockYDim > 0 ? Probe.ChunkBlockYDim : 256;
                 int cap = Math.Max(2, engine - 1);
                 return Math.Min(content, cap);
             }

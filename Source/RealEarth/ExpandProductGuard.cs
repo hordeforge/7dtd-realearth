@@ -10,6 +10,15 @@ namespace RealEarth
         public static bool IsExpanded(int chunkBlockYDim) => chunkBlockYDim > 256;
 
         /// <summary>
+        /// True when the runtime hot-patch (Harmony transpilers) is active on a
+        /// stock engine: the probe still reads the const (256) from metadata, but
+        /// the JIT'd methods use the expanded literals, so product logic must treat
+        /// the engine as expanded.
+        /// </summary>
+        public static bool IsExpanded(int chunkBlockYDim, bool runtimePatchActive)
+            => chunkBlockYDim > 256 || runtimePatchActive;
+
+        /// <summary>
         /// Product real-height path requires expand when StockSafe is false.
         /// Returns true if play should refuse tall claims without expand.
         /// </summary>

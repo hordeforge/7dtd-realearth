@@ -63,6 +63,16 @@ namespace RealEarth
                 Session = new WorldSession(Coords, Config);
                 // Height: product is 1:1 real meters after YDim expand (StockSafe is opt-in only)
                 EngineHeight.EngineHeightMod.Init(Config);
+                // Experimental runtime hot-patch: when opted in on a stock engine,
+                // install the Harmony transpilers now (pre-world) so EngineExpanded
+                // below reflects the patched capacity. Disk-patched installs are
+                // left untouched (the engine already reports expanded).
+                if (Config.EnableEngineHeightMod
+                    && Config.EngineHeightRuntimePatch
+                    && !EngineHeight.EngineHeightMod.EngineExpanded)
+                {
+                    TryInstallRuntimePatch();
+                }
                 // Only force Streamed for tall inject when the engine was actually expanded
                 if (Config.EnableEngineHeightMod
                     && EngineHeight.EngineHeightMod.EngineExpanded
@@ -197,6 +207,38 @@ namespace RealEarth
 
         public static void Log(string msg) => Emit(LogLevel.Info, msg);
         public static void LogWarn(string msg) => Emit(LogLevel.Warn, msg);
+
+        /// <summary>
+        /// Experimental runtime YDim hot-patch: create the Harmony instance
+        /// (same recipe as RuntimeHooks) and install the transpiler set, then
+        /// re-init EngineHeightMod so EngineExpanded/allocY reflect IsActive.
+        /// </summary>
+        static void TryInstallRuntimePatch()
+        {
+            try
+            {
+                var harmonyType = EngineReflection.FindType("HarmonyLib.Harmony", "0Harmony");
+                if (harmonyType == null)
+                {
+                    LogWarn("RuntimeYDimTranspiler: 0Harmony not loaded yet; hot patch deferred to RuntimeHooks.");
+                    return;
+                }
+                var harmony = Activator.CreateInstance(harmonyType, "com.realearth.7dtd.runtimeydim");
+                if (harmony == null)
+                    return;
+                RuntimeYDimTranspiler.TryInstall(harmony);
+                if (RuntimeYDimTranspiler.IsActive)
+                {
+                    // Re-evaluate the engine-height policy against the patched capacity.
+                    EngineHeight.EngineHeightMod.Init(Config);
+                    Log("RuntimeYDimTranspiler: engine treated as expanded (hot patch ACTIVE).");
+                }
+            }
+            catch (Exception ex)
+            {
+                LogWarn($"RuntimeYDimTranspiler install failed: {ex.GetType().Name}: {ex.Message}");
+            }
+        }
         public static void LogError(string msg) => Emit(LogLevel.Error, msg);
 
         /// <summary>

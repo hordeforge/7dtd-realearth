@@ -14,6 +14,7 @@
   "DebugRevealFullMap": true,
   "EnableEngineHeightMod": true,
   "EngineHeightStockSafe": false,
+  "EngineHeightRuntimePatch": false,
   "EngineMaxGameY": 29000,
   "EngineHeightOneToOne": true,
   "EngineHeightPreferVanillaCeiling": false,
