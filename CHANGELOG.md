@@ -14,6 +14,11 @@ and the release gate requires both to match the tag (`v<version>`).
 
 ### Added
 
+- GEBCO bathymetry source: `--source gebco --geotiff <GEBCO GeoTIFF>` accepts
+  real below-sea relief (negative elevation = depth below sea). The pipeline
+  stores signed meters and the product sea anchor maps a -10000 m trench to
+  gameY ~6000 (regression test `test_build_region_gebco_bathymetry_negative_flow`).
+  Download from the GEBCO data portal (free registration).
 - Trench depth proof: `realearth height-test-map --trench-game-y 5000` (and
   `make height-map-trench`) builds a synthetic trench pack at the PRODUCT sea
   anchor (floor -11000 m ASL → gameY 5000). Live dedicated soak with

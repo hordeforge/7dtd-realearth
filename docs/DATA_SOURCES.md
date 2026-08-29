@@ -15,7 +15,8 @@ CLI examples assume `cd tools && uv run --locked realearth …` (or `make` targe
 | 1 | **Copernicus DEM GLO-30** | ~30 m | OpenTopography / ESA GeoTIFF → `--source geotiff` |
 | 2 | **AWS Terrain Tiles (Terrarium)** | zoom-dependent | `--source terrarium` (open, not Google) |
 | 3 | **SRTM** / USGS 3DEP | ~30 m where available | GeoTIFF |
-| 4 | **Open-Meteo** elevation API | point/grid | `--source open_meteo` (**small demos only**, rate limits) |
+| 4 | **GEBCO bathymetry** (below-sea depth) | 15 arcsec (~450 m) | GEBCO 2024 GeoTIFF (netCDF → GeoTIFF) → `--source gebco --geotiff gebco.tif`. Negative elevation = below sea; the pipeline stores signed meters and the product sea anchor (16000) maps trenches to positive game Y (e.g. -11000 m → gameY 5000). Download: gebco.net data portal (free registration) |
+| 5 | **Open-Meteo** elevation API | point/grid | `--source open_meteo` (**small demos only**, rate limits) |
 | debug | synthetic | n/a | `demo` / height-test maps |
 
 ```bash
@@ -27,6 +28,12 @@ realearth build-region \
 
 # Your downloaded Copernicus/SRTM GeoTIFF
 realearth build-region ... --source geotiff --geotiff /path/to/copernicus.tif
+
+# GEBCO bathymetry (real below-sea relief, e.g. Mariana trench region)
+realearth build-region \
+  --west 142.0 --south 10.0 --east 143.0 --north 11.0 \
+  --source gebco --geotiff /path/to/gebco_2024.tif --resolution 450 \
+  --out data/samples/mariana
 ```
 
 With GIS extras:

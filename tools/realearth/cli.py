@@ -93,9 +93,9 @@ def lonlat_cmd(lon: float, lat: float) -> None:
 @click.option("--out", "out_dir", type=click.Path(), required=True, help="Output directory")
 @click.option(
     "--source",
-    type=click.Choice(["synthetic", "open_meteo", "terrarium", "geotiff"]),
+    type=click.Choice(["synthetic", "open_meteo", "terrarium", "geotiff", "gebco"]),
     default="synthetic",
-    help="Elevation: synthetic | open_meteo | terrarium (open AWS DEM tiles) | geotiff",
+    help="Elevation: synthetic | open_meteo | terrarium | geotiff | gebco (bathymetry)",
 )
 @click.option(
     "--resolution",
@@ -135,7 +135,7 @@ def lonlat_cmd(lon: float, lat: float) -> None:
     "--geotiff",
     type=click.Path(exists=True),
     default=None,
-    help="DEM GeoTIFF path when --source geotiff (Copernicus/SRTM)",
+    help="DEM/bathymetry GeoTIFF path when --source geotiff|gebco (Copernicus/SRTM/GEBCO)",
 )
 @click.option(
     "--population-geotiff",

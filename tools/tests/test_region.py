@@ -2,6 +2,8 @@ import json
 import unicodedata
 from pathlib import Path
 
+import pytest
+
 from realearth.region import build_region
 from realearth.settlements import decode_poi_blob
 from realearth.tile_format import read_manifest, read_tile, tile_path
@@ -90,3 +92,60 @@ def test_region_tile_pois_stamp_each_place_once(tmp_path: Path):
         tile = read_tile(tile_path(tmp_path, t["tx"], t["tz"]))
         names.extend(p["name"] for p in decode_poi_blob(tile.poi_blob))
     assert names.count("Denver") == 1
+
+
+def test_build_region_gebco_bathymetry_negative_flow(tmp_path: Path):
+    """source=gebco: a negative-elevation (below-sea) GeoTIFF must flow through
+    the pipeline unchanged into .rte tiles and map to real diggable game Y at
+    the product sea anchor (not clamped to 1). Uses a synthetic trench raster;
+    the real GEBCO dataset is the same GeoTIFF shape."""
+    rasterio = pytest.importorskip("rasterio")
+    import numpy as np
+    from rasterio.transform import from_origin
+
+    size = 64
+    yy, xx = np.mgrid[0:size, 0:size]
+    dist = np.sqrt((xx - size / 2) ** 2 + (yy - size / 2) ** 2) / (size / 2)
+    elev = (-200.0 - 9800.0 * np.exp(-((dist / 0.35) ** 2))).astype(np.float32)
+    tif = tmp_path / "bathy.tif"
+    with rasterio.open(
+        tif,
+        "w",
+        driver="GTiff",
+        height=size,
+        width=size,
+        count=1,
+        dtype="float32",
+        crs="EPSG:4326",
+        transform=from_origin(142.0, 11.0, 1.0 / size, 1.0 / size),
+    ) as ds:
+        ds.write(elev, 1)
+
+    m = build_region(
+        142.0,
+        10.0,
+        143.0,
+        11.0,
+        tmp_path / "pack",
+        resolution_m=4000.0,
+        source="gebco",
+        geotiff=tif,
+        name="Trench",
+        max_dim=128,
+    )
+    assert "GEBCO" in m.sources[0]
+    tile = read_tile(tile_path(tmp_path / "pack", m.tiles[0]["tx"], m.tiles[0]["tz"]))
+    assert float(tile.elevation_m.min()) < -5000  # deep floor survived .rte
+    # product mapping at the 16000 sea anchor: floor lands in the diggable band
+    from realearth import DEFAULT_SEA_LEVEL_GAME_Y, ENGINE_TARGET_MAX_Y
+    from realearth.height import compress_elevation
+
+    y = compress_elevation(
+        tile.elevation_m,
+        sea_level_y=DEFAULT_SEA_LEVEL_GAME_Y,
+        max_y=ENGINE_TARGET_MAX_Y,
+        profile="one_to_one",
+        regional_exaggeration=1.0,
+    )
+    assert int(y.min()) > 0 and int(y.min()) < 10000  # not clamped to 1
+    assert int(y.max()) < DEFAULT_SEA_LEVEL_GAME_Y  # whole pack below sea

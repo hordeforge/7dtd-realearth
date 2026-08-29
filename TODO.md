@@ -34,9 +34,11 @@ provenance and distinguish prototypes from verified in-game behavior.
   passed. TRENCH soak PASSED: synthetic trench pack at the product anchor
   (floor -11000 m ASL → spawn sample gameY=5000, seaY=16000, world loaded,
   clean soak) — below-sea depth injects live (`make height-map-trench`,
-  `RE_SCENARIO_PACK=trench`). Open: collision/mesh/save-reload records;
-  summit-pixel sample; a real-bathymetry pack (GEBCO-class source) to replace
-  the synthetic trench.)
+  `RE_SCENARIO_PACK=trench`). GEBCO bathymetry source added: `--source gebco
+  --geotiff <GEBCO GeoTIFF>` (negative = below sea; pipeline roundtrip +
+  product mapping tested). Open: collision/mesh/save-reload records;
+  summit-pixel sample; downloading a real GEBCO grid to build the Mariana
+  trench pack (network/form-gated download).)
 - [x] Add a compatibility matrix for client, dedicated server, Harmony targets,
   YDim patcher, and tested operating modes ([docs/COMPATIBILITY.md](docs/COMPATIBILITY.md)).
 

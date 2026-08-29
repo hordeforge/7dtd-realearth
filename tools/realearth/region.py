@@ -68,8 +68,8 @@ def build_region(
     """Generate tiles covering a bbox and optional vanilla heightmap export.
 
     resolution_m: meters per sample (1.0 = 1:1). Larger = coarser/faster.
-    source: 'synthetic' | 'open_meteo' | 'terrarium' | 'geotiff'
-    geotiff: path required when source='geotiff' (Copernicus/SRTM GeoTIFF)
+    source: 'synthetic' | 'open_meteo' | 'terrarium' | 'geotiff' | 'gebco'
+    geotiff: path required when source='geotiff'|'gebco' (Copernicus/SRTM/GEBCO GeoTIFF)
     """
     out_dir = Path(out_dir)
     out_dir.mkdir(parents=True, exist_ok=True)
@@ -100,11 +100,14 @@ def build_region(
         sources = [
             "AWS Terrain Tiles / Mapzen Terrarium (open data, not Google Earth)",
         ]
-    elif source == "geotiff":
+    elif source in ("geotiff", "gebco"):
         if geotiff is None:
-            raise ValueError("source=geotiff requires geotiff= path to DEM GeoTIFF")
+            raise ValueError(f"source={source} requires geotiff= path to a DEM/bathymetry GeoTIFF")
         elev = fetch_region_geotiff(Path(geotiff), west, south, east, north, width, height)
-        sources = [f"GeoTIFF DEM: {Path(geotiff).name} (e.g. Copernicus GLO-30 / SRTM)"]
+        if source == "gebco":
+            sources = [f"GEBCO bathymetry: {Path(geotiff).name} (negative = below sea)"]
+        else:
+            sources = [f"GeoTIFF DEM: {Path(geotiff).name} (e.g. Copernicus GLO-30 / SRTM)"]
     elif source == "synthetic":
         elev = synthetic_elevation(width, height)
         sources = ["synthetic procedural (offline demo)"]
