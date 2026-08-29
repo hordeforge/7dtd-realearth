@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import json
 import math
+import shutil
 import sys
 from pathlib import Path
 from typing import NamedTuple
@@ -234,6 +235,16 @@ def export_viewer_pack(
             json.dumps(settlements, indent=2, ensure_ascii=False) + "\n",
             encoding="utf-8",
         )
+
+    # Raw .rte tiles: the viewer's "Streamed elevation" layer fetches these on
+    # demand instead of a pre-made mosaic. Copied verbatim (already compressed),
+    # so large packs do not need one giant mosaic.
+    tiles_src = pack_dir / "tiles"
+    if tiles_src.is_dir():
+        tiles_dst = out_dir / "tiles"
+        if tiles_dst.exists():
+            shutil.rmtree(tiles_dst)
+        shutil.copytree(tiles_src, tiles_dst)
 
     bbox = man.bbox or {"west": -180, "south": -90, "east": 180, "north": 90}
     meta = {

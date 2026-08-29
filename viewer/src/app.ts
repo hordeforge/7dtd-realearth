@@ -17,6 +17,9 @@ import type {
 } from "./types.js";
 import type { GlobeView } from "./globe.js";
 import { Map2D } from "./map2d.js";
+import { decodeRteTile } from "./rte.js";
+import { renderRteLayer } from "./rteLayer.js";
+import type { RteLayerMeta } from "./rteLayer.js";
 
 const CATALOG_URL = "data/catalog.json";
 const PLAYER_URL = "data/player.json";
@@ -171,6 +174,14 @@ function fillLayers(meta: PackMeta): void {
     const option = document.createElement("option");
     option.value = layer.id;
     option.textContent = layer.label === "" ? layer.id : layer.label;
+    els.layerSelect.append(option);
+  }
+  // Streamed layer: render raw .rte tiles to the canvas (no pre-made mosaic),
+  // when the pack carries tile files. Shown after the mosaic layers.
+  if (meta.tiles.length > 0) {
+    const option = document.createElement("option");
+    option.value = "rte";
+    option.textContent = "Streamed elevation (.rte)";
     els.layerSelect.append(option);
   }
   const first = meta.layers[0];
@@ -381,6 +392,58 @@ function renderFlat(image: HTMLImageElement, meta: PackMeta): void {
   });
 }
 
+// Streamed .rte layer: fetch the pack's raw tiles and draw elevation relief to
+// the map canvas, bypassing the pre-made PNG mosaic entirely. Used for packs
+// too large for one mosaic; tiles load in parallel and each is placed by its
+// tx/tz header. The map2d overlay (settlements/grid/pan-zoom) stays active.
+async function renderStreamedRte(meta: PackMeta): Promise<void> {
+  const base = els.packSelect.value.replace(/\/$/u, "");
+  const gridW = Math.max(1, Math.ceil(meta.world_width / meta.tile_size));
+  const gridH = Math.max(1, Math.ceil(meta.world_height / meta.tile_size));
+  const layerMeta: RteLayerMeta = {
+    tileSize: meta.tile_size,
+    gridW,
+    gridH,
+    seaLevelGameY: meta.sea_level_game_y,
+    metersPerBlock: meta.meters_per_block,
+  };
+  setStatus(`Streaming ${meta.tiles.length} .rte tile(s)…`);
+  const urls = meta.tiles
+    .map((t) => {
+      const rec = asRecord(t);
+      const tx = Number(rec.tx);
+      const tz = Number(rec.tz);
+      if (!Number.isFinite(tx) || !Number.isFinite(tz)) {
+        return null;
+      }
+      return `${base}/tiles/${tz}/${tx}.rte`;
+    })
+    .filter((u): u is string => u !== null);
+
+  const results = await Promise.all(
+    urls.map(async (url) => {
+      const resp = await fetch(url);
+      if (!resp.ok) {
+        throw new Error(`Cannot load ${url} (${resp.status})`);
+      }
+      const buf = new Uint8Array(await resp.arrayBuffer());
+      return decodeRteTile(buf);
+    })
+  );
+  const canvas = els.mapCanvas;
+  const ctx = canvas.getContext("2d");
+  if (ctx === null) {
+    throw new Error("2D context unavailable");
+  }
+  await renderRteLayer(canvas, ctx, results, layerMeta);
+  // The streamed relief is drawn directly to the map canvas (flat-only);
+  // map2d's pan/zoom overlay is intentionally not engaged for this layer.
+  canvas.hidden = false;
+  canvas.style.width = `${canvas.width}px`;
+  canvas.style.height = `${canvas.height}px`;
+  setStatus(readyStatus());
+}
+
 function setModeButtons(mode: ViewerMode): void {
   els.btnFlat.classList.toggle("active", mode === "flat");
   els.btnGlobe.classList.toggle("active", mode === "globe");
@@ -390,12 +453,34 @@ function setModeButtons(mode: ViewerMode): void {
 }
 
 function applyLayer(): void {
-  const image = state.images[state.layerId] ?? Object.values(state.images)[0];
   const meta = state.meta;
-  if (image === undefined || meta === null) {
+  if (meta === null) {
     return;
   }
   renderLegend(state.layerId);
+
+  if (state.layerId === "rte") {
+    // Streamed .rte layer renders asynchronously; keep the globe/flat split
+    // below for the mosaic layers.
+    if (state.mode === "flat") {
+      renderStreamedRte(meta).catch((error: unknown) => {
+        setStatus(`RTE layer failed: ${errorMessage(error)}`);
+      });
+      return;
+    }
+    // Fall through to the globe path only if a mosaic image exists; otherwise
+    // the streamed layer is flat-only for now.
+    const image = state.images[state.layerId] ?? Object.values(state.images)[0];
+    if (image === undefined) {
+      setStatus("RTE layer is flat-only (no mosaic for globe)");
+      return;
+    }
+  }
+
+  const image = state.images[state.layerId] ?? Object.values(state.images)[0];
+  if (image === undefined) {
+    return;
+  }
 
   if (state.mode === "flat") {
     renderFlat(image, meta);

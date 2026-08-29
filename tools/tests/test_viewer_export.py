@@ -31,6 +31,21 @@ def test_export_viewer(tmp_path: Path):
     assert (out / "population.png").exists()
 
 
+def test_export_viewer_copies_rte_tiles(tmp_path: Path):
+    """The streamed .rte layer needs the raw tiles served next to the mosaics."""
+    pack = _tiny_region(tmp_path)
+    out = tmp_path / "viewer_out"
+    export_viewer_pack(pack, out, max_dim=64, name="Tiny")
+    tiles = out / "tiles"
+    assert tiles.is_dir(), "export must copy pack tiles for the streamed layer"
+    # manifest lists tx/tz pairs; each must exist as tiles/<tz>/<tx>.rte
+    man = json.loads((out / "viewer.json").read_text(encoding="utf-8"))
+    assert len(man.get("tiles") or []) >= 2
+    for entry in man["tiles"]:
+        tile = tiles / str(entry["tz"]) / f'{entry["tx"]}.rte'
+        assert tile.is_file(), f"missing {tile}"
+
+
 def _tiny_region(tmp_path: Path) -> Path:
     pack = tmp_path / "pack"
     build_region(
