@@ -24,7 +24,10 @@ provenance and distinguish prototypes from verified in-game behavior.
 - [ ] Validate the H500 sample before the Everest-scale expanded-height test and
   record collision, mesh, save, and reload results.
   (Live 3.2.0: H500 world loads, spawn sample gameY=500, clean soak.
-  Open: Everest-scale run, collision/mesh/save-reload records.)
+  Everest-scale PASSED 2026-08-29: RealEarth_HeightTest + height_test pack,
+  spawn sample gameY=7767; 6 loadgen bots joined, 28 per-chunk `Height inject`
+  lines up to `maxH=8778 sessionPeak=8778` (matches pack peak), `blocks=True`,
+  zero crashes. Open: collision/mesh/save-reload records; summit-pixel sample.)
 - [x] Add a compatibility matrix for client, dedicated server, Harmony targets,
   YDim patcher, and tested operating modes ([docs/COMPATIBILITY.md](docs/COMPATIBILITY.md)).
 

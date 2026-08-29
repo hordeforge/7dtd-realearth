@@ -56,7 +56,7 @@ Stock terrain and world gen do not know about Earth DEM. Expand alone still yiel
 | Modification | Targets / surface | Status |
 |---|---|---|
 | **Height query override** | All concrete height APIs (see research `terrain-height.md`); never interface-only; **byte returns stay lossy** | **Done** (live 3.2.0 b9: heightQ=7 failed=0) |
-| **Terrain generate rewrite** | `GenerateTerrain` / provider fill → solid+density from RealEarth | **Partial** (bound live gen=4 on 3.2.0; per-chunk inject evidence needs a connected player / loadgen) |
+| **Terrain generate rewrite** | `GenerateTerrain` / provider fill → solid+density from RealEarth | **Done** (live 3.2.0 b9: gen=4 bound; 28 per-chunk `Height inject` lines to `maxH=8778 sessionPeak=8778` `blocks=True` with 6 loadgen bots joined) |
 | **Fail-closed missing tiles** | No fake DEM peaks when `.rte` missing | **Partial** (`TileSamplePolicy` on sampler + EngineHeight product path; live `failClosed=True` on 3.2.0, no missing-tile event yet) |
 | **Expand product guard** | Refuse real-height claims on stock YDim | **Done** (live 3.2.0: `heightMode=ydim-expanded expanded=True`) |
 | **Session origin policy** | SoloSlide / SharedFixed / fold | **Partial** (`SessionOriginPolicy` wired into WorldSession; SharedFixed active live, multi-player proof open) |

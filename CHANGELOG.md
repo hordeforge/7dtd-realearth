@@ -14,6 +14,14 @@ and the release gate requires both to match the tag (`v<version>`).
 
 ### Added
 
+- `start_dedicated_minimal.sh` honors `RE_SCENARIO_PACK=everest` (was
+  hardcoded to the H500 pack, silently overwriting an Everest install at every
+  start); same convention as `run_dedicated_height_test.sh` and the sibling
+  `7dtd-loadgen`. Live Everest soak 2026-08-29: spawn sample gameY=7767,
+  28 per-chunk injects to maxH=8778 with 6 loadgen bots, zero crashes.
+- `run_dedicated_height_test.sh`: `RE_SCENARIO_PACK=everest` forces the
+  Everest `height_test` pack for the dedicated soak (matches the sibling
+  `7dtd-loadgen` `RE_SCENARIO_PACK` convention; default stays H500).
 - 3.2.0 retarget: the engine patcher now detects a Steam update/verify that
   replaced `Assembly-CSharp.dll` (marker sha no longer matches the DLL). It
   refreshes the stale `.re_stock_bak` from the current stock build before

@@ -106,7 +106,13 @@ install_mod() {
   cp -f "$ROOT/ModInfo.xml" "$dest/"
   [[ -f "$ROOT/Config/nav_objects.xml" ]] && cp -f "$ROOT/Config/nav_objects.xml" "$dest/Config/"
   cp -f "$DLL" "$dest/"
+  # Pack selection: RE_SCENARIO_PACK=everest forces the Everest height_test
+  # pack (same convention as run_dedicated_height_test.sh and the sibling
+  # 7dtd-loadgen); default prefers the staged H500 pack.
   local pack="$ROOT/data/samples/height_test_500"
+  if [[ "${RE_SCENARIO_PACK:-}" == "everest" ]]; then
+    pack="$ROOT/data/samples/height_test"
+  fi
   [[ -d "$pack/tiles" ]] || pack="$ROOT/data/samples/height_test"
   if [[ -d "$pack/tiles" ]]; then
     rm -rf "$dest/Data/tiles"
