@@ -14,6 +14,13 @@ and the release gate requires both to match the tag (`v<version>`).
 
 ### Added
 
+- Viewer in-browser `.rte` streaming (decoder `viewer/src/rte.ts` via native
+  `DecompressionStream` + relief layer `rteLayer.ts`; `export-viewer` ships the
+  raw tiles; served tile verified end to end; "Streamed elevation (.rte)" layer
+  option in the UI).
+- Viewer headless smoke test (`make viewer-smoke`): drives the built modules
+  through real chromium - pack parse + schema rejection, .rte decode, relief
+  canvas render, synthetic keyboard/pointer/touch dispatch (8 checks).
 - Biome paint from landcover: the inject writes the per-column biome
   (`Chunk.SetBiomeId`) from the sampled landcover byte (stock biomemap ids:
   water=6, snow=1, wasteland=8, desert=5, pine_forest=3), so stock RWG biome
