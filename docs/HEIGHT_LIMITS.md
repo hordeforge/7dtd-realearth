@@ -120,6 +120,8 @@ make engine-restore
 
 **Stock vs expanded (measured on V3.1.0 b14; values identical to the earlier V3.0.1 measurements):** see workspace [`7dtd-engine-research/docs/terrain-height.md`](../../7dtd-engine-research/docs/terrain-height.md).
 
+**Why a disk patch and not a runtime hot patch:** `WorldConstants.ChunkBlockYDim` is a `const` (inlined `ldc` literals, no field to set). A Harmony-transpiler hot patch is *plausible* on a single-mod install (the main-menu boot path JITs none of the 26 Y-bound methods - measured in the V3.2.0 IL dump), but load order can JIT a site early and there is no verify/rollback. Full analysis: [`7dtd-engine-research/docs/hot-patch-height.md`](../../7dtd-engine-research/docs/hot-patch-height.md).
+
 | Constant | Stock | After RealEarth expand |
 |---|---:|---:|
 | `ChunkBlockYDim` | **256** | **32768** |
