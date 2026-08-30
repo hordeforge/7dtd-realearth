@@ -12,6 +12,8 @@ import json
 import re
 from pathlib import Path
 
+import pytest
+
 from realearth.density import clamp_prefabs_in_chunk, stamp_prefab_root_y
 from realearth.local_window import fold_x, fold_z, wrapped_delta
 
@@ -599,3 +601,44 @@ def test_runtime_ydim_transpiler_mirrors_disk_patcher():
     modapi = _read("ModApi.cs")
     assert "TryInstallRuntimePatch" in modapi
     assert "EngineHeightRuntimePatch" in modapi
+
+
+def test_build_guard_fail_closed_unknown_build():
+    """BuildGuard must block inject on an unreviewed Assembly-CSharp build
+    unless the operator opts in; reviewed hashes are pinned in source."""
+    src = _read("BuildGuard.cs")
+    assert "ReviewedBuilds" in src
+    assert "EngineHeightAllowUnknownBuild" in _read("RealEarthConfig.cs")
+    # fail-closed: unknown -> Blocked unless allowUnknownBuild
+    assert "Blocked = !allowUnknownBuild" in src
+    assert "BLOCKED" in src
+    # gate wiring: EnforceInjectGate forces InjectBlocked when BuildGuard.Blocked
+    hooks = _read("RuntimeHooks.cs")
+    assert "BuildGuard.Blocked" in hooks
+    assert "ChunkTerrainInject.InjectBlocked = true" in hooks
+    # ModApi runs the guard after hooks and re-enforces the gate
+    modapi = _read("ModApi.cs")
+    assert "BuildGuard.Init" in modapi
+    assert "EnforceInjectGate" in modapi
+    # reviewed hashes present (V3.2.0 stock + expanded live installs)
+    assert "V3.2.0 (b9) stock" in src
+    assert "V3.2.0 (b9) live" in src
+    # config default: refuse unknown builds
+    cfg = json.loads((ROOT / "Config" / "realearth.json").read_text(encoding="utf-8"))
+    assert cfg.get("EngineHeightAllowUnknownBuild") is False
+
+
+def test_build_guard_matches_current_install():
+    """The reviewed allowlist must cover the installed Assembly-CSharp (stock or
+    disk-expanded) so a normal install is not falsely blocked. Skips when the
+    game DLL or hashing deps are unavailable."""
+    import hashlib
+
+    from realearth.engine_constants import default_game_dll
+
+    dll = default_game_dll()
+    if not dll.is_file():
+        pytest.skip("game DLL not installed")
+    src = _read("BuildGuard.cs")
+    h = hashlib.sha256(dll.read_bytes()).hexdigest()
+    assert h in src, f"installed Assembly-CSharp hash {h[:16]}... not in reviewed allowlist"

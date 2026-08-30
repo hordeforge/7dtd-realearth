@@ -470,6 +470,13 @@ namespace RealEarth
         {
             var cfg = ModApi.Config;
             if (cfg == null) return;
+            // Fail-closed build guard: an unreviewed Assembly-CSharp (game update)
+            // blocks inject until an operator reviews the build or opts in.
+            if (BuildGuard.Blocked)
+            {
+                ChunkTerrainInject.InjectBlocked = true;
+                return;
+            }
             bool streamed = !string.Equals(cfg.MapMode, "Baked", StringComparison.OrdinalIgnoreCase);
             if (!streamed)
             {

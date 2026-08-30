@@ -32,5 +32,6 @@
   "FailClosedMissingTiles": true,
   "FullSolidBlockFillMaxSurface": 0,
   "EnableRuntimePoiInject": true,
-  "RuntimePoiMaxPerArea": 80
+  "RuntimePoiMaxPerArea": 80,
+  "EngineHeightAllowUnknownBuild": false
 }

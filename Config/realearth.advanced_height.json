@@ -32,5 +32,6 @@
   "ShowCityNamesOnMap": true,
   "CityMapMinPopulation": 0,
   "CityMapMaxLabels": 250,
-  "CityMapDiscoverRadiusScale": 1.0
+  "CityMapDiscoverRadiusScale": 1.0,
+  "EngineHeightAllowUnknownBuild": false
 }

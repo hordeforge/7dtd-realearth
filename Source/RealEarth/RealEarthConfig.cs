@@ -122,6 +122,14 @@ namespace RealEarth
         [DataMember] public bool EngineHeightStockSafe { get; set; } = false;
 
         /// <summary>
+        /// Fail-closed build guard: RealEarth hashes Assembly-CSharp.dll at init and
+        /// compares it against a reviewed allowlist (known game builds). An unknown
+        /// build blocks height inject unless this override is set by an operator who
+        /// reviewed the new build. Product default false: refuse unknown builds.
+        /// </summary>
+        [DataMember] public bool EngineHeightAllowUnknownBuild { get; set; } = false;
+
+        /// <summary>
         /// Hot-patch the YDim expand at runtime via Harmony transpilers instead
         /// of the disk patcher (EngineHeightPatcher.exe). Product default true:
         /// applied automatically when the engine is still stock (YDim=256); a

@@ -140,6 +140,22 @@ namespace RealEarth
                 {
                     LogWarn($"RuntimeHooks skipped: {rex.GetType().Name}: {rex.Message}");
                 }
+
+                // Fail-closed build guard: hash Assembly-CSharp and compare against
+                // the reviewed list; an unknown build (game update) blocks inject
+                // unless the operator opts in. Runs after hooks so the log order is
+                // init -> hooks -> guard verdict.
+                try
+                {
+                    bool guardOk = BuildGuard.Init(Config.EngineHeightAllowUnknownBuild);
+                    if (!guardOk)
+                        LogWarn("BuildGuard: inject BLOCKED on unknown Assembly-CSharp build.");
+                    RuntimeHooks.EnforceInjectGate();
+                }
+                catch (Exception gex)
+                {
+                    LogWarn($"BuildGuard skipped: {gex.GetType().Name}: {gex.Message}");
+                }
             }
             catch (Exception ex)
             {
