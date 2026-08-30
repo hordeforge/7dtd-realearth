@@ -21,6 +21,7 @@ and the release gate requires both to match the tag (`v<version>`).
   local-window slide incl. the antimeridian wrap, chunk sampling after slide,
   and missing-tile fail-closed (ocean, never a fake peak). Pins the offline
   half of the live Streamed chain.
+- **Fail-closed build guard** for unknown `Assembly-CSharp.dll` builds (`Source/RealEarth/BuildGuard.cs`): hashes the DLL at init and compares against a reviewed allowlist (V3.2.0 b9 stock + disk-expanded + live installs). An unknown build (game update before re-verify) blocks height inject unless the operator explicitly sets `EngineHeightAllowUnknownBuild=true` (default `false` in all config JSONs). `tools/scripts/refresh_build_guard.py` regenerates the allowlist after verifying a new build. Wired at `ModApi` + `RuntimeHooks.EnforceInjectGate` (when `BuildGuard.Blocked`, forces `InjectBlocked`).
 - DYNAMIC_CHUNK_HEIGHT audit: H2 updated for the hot-patch default; clarified
   that the engine's full 16×16×32768 column allocation is the RAM cost, while
   the inject writes only bedrock plug + 48-block crust + air above
