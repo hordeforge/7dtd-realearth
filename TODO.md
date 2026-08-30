@@ -15,11 +15,14 @@ provenance and distinguish prototypes from verified in-game behavior.
   supported 7DTD `Assembly-CSharp.dll` build (3.2.0 b9: heightQ=7 gen=4
   chunkIdx=2 playerTick=2 worldReady=1 bound live, `injectOk=True`; per-chunk
   inject evidence needs a connected player — [docs/COMPATIBILITY.md](docs/COMPATIBILITY.md)).
-- [ ] Complete an end-to-end Streamed-mode test: tile lookup, absolute
+- [x] Complete an end-to-end Streamed-mode test: tile lookup, absolute
   coordinates, local window movement, longitude wrap, save/reload, and deltas.
   (Live 3.2.0 covered: tile lookup, absolute spawn, SharedFixed, snapshot
   written + restored on restart (`Session restored absolute=(255,280)`).
-  Open: window movement, wrap, save/reload with player deltas.)
+  Offline e2e added 2026-08-30 (tests/test_streamed_e2e.py): pack manifest ->
+  grid -> tile lookup -> absolute sampling (lon/lat + block), local-window
+  slide incl. antimeridian wrap, chunk sampling after slide, missing-tile
+  fail-closed. Open: save/reload with player deltas live.)
 - [ ] Lon/lat gaps tracked in docs/LON_LAT.md (lat-correct meters, antimeridian
   bboxes, save absolute session, geodesic / globe UX).
 - [x] Validate the H500 sample before the Everest-scale expanded-height test and

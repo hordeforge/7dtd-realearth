@@ -14,6 +14,11 @@ and the release gate requires both to match the tag (`v<version>`).
 
 ### Added
 
+- Streamed-mode e2e offline tests (tests/test_streamed_e2e.py): pack manifest
+  -> EarthGrid -> tile lookup -> absolute sampling (lon/lat + block),
+  local-window slide incl. the antimeridian wrap, chunk sampling after slide,
+  and missing-tile fail-closed (ocean, never a fake peak). Pins the offline
+  half of the live Streamed chain.
 - DYNAMIC_CHUNK_HEIGHT audit: H2 updated for the hot-patch default; clarified
   that the engine's full 16×16×32768 column allocation is the RAM cost, while
   the inject writes only bedrock plug + 48-block crust + air above
