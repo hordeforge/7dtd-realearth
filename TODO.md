@@ -61,8 +61,11 @@ provenance and distinguish prototypes from verified in-game behavior.
 
 ## Height expansion
 
-- [ ] Audit all relevant static height assumptions described in
+- [x] Audit all relevant static height assumptions described in
   [`docs/DYNAMIC_CHUNK_HEIGHT.md`](docs/DYNAMIC_CHUNK_HEIGHT.md).
+  (2026-08-30: H2 updated for the hot-patch default; noted the engine's full
+  column allocation is the RAM cost while the inject writes only bedrock
+  plug + 48-block crust + air above FullSolidBlockFillMaxSurface.)
 - [x] Test engine patch, backup, idempotent reapply, restore, and Steam-update
   recovery for both client and dedicated server.
   (tests/test_engine_expand_lifecycle.py: full Managed-dir copy in temp,

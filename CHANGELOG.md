@@ -14,6 +14,10 @@ and the release gate requires both to match the tag (`v<version>`).
 
 ### Added
 
+- DYNAMIC_CHUNK_HEIGHT audit: H2 updated for the hot-patch default; clarified
+  that the engine's full 16×16×32768 column allocation is the RAM cost, while
+  the inject writes only bedrock plug + 48-block crust + air above
+  FullSolidBlockFillMaxSurface (interior untouched).
 - Disk-patch lifecycle tests (tests/test_engine_expand_lifecycle.py): run the
   real EngineHeightPatcher.exe against a temp copy of the full Managed dir -
   expand, verify, Steam-update stale-marker backup refresh, restore, fresh

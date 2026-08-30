@@ -111,12 +111,21 @@ Keep **meters in `.rte`** either way.
 |---|---|---|
 | **H0** | Product: real meters + YDim expand (not global compress) | **Product path** ([HEIGHT_LIMITS](HEIGHT_LIMITS.md)) |
 | **H1** | Research: Chunk arrays, Y clamps, light/mesh 255 sites on 3.0.1 | **Closed** in research + [realearth-surfaces](realearth-surfaces.md) |
-| **H2** | Static expand at full product YDim (32768) soak | **Done** (2026-08-29 live: H500/Everest/trench soaks at YDim=32768) |
+| **H2** | Expand to full product YDim (32768) soak | **Done** (2026-08-29/30 live: H500/Everest/trench soaks at YDim=32768; runtime hot patch is now the default, disk patcher fallback) |
 | **H3** | Sparse sections: only allocate used Y bands | **Later** (this doc) |
 | **H4** | Stream sections with player Y (dig deep / fly high) | **Later** |
 | **H5** | Multiplayer section sync | **Later** |
 
-**H2** is the near-term engine work (expand + inject). **H3-H4** is the real dynamic RAM design.
+**H2** is the near-term engine work (hot-patch or disk expand + inject). **H3-H4** is the real dynamic RAM design.
+
+**Audit 2026-08-30:** the static full-column claim is accurate for the *engine*
+(`Chunk` allocates 16×16×32768 cells per chunk when expanded/hot-patched - the
+documented RAM cost). The inject itself avoids writing the whole column:
+above `FullSolidBlockFillMaxSurface` (default 520) it writes a bedrock plug +
+48-block surface crust + air clear and intentionally leaves the interior
+untouched (`ChunkTerrainInject.TallCrustDepth`, `dualFull`), so the mod does
+not add full-column write cost on top of the engine allocation. Sparse
+sections (H3) remain the fix for the engine-side allocation.
 
 
 ## Why static raised height alone is not enough
