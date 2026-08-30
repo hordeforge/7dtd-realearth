@@ -53,8 +53,8 @@ provenance and distinguish prototypes from verified in-game behavior.
 - [ ] Verify `SoloSlide` behavior across window shifts and antimeridian wrap.
 - [ ] Verify `SharedFixed` with multiple players near window/tile boundaries and
   at maximum intended separation.
-- [ ] Define authoritative persistence rules for terrain changes and player
-  deltas as tiles unload and reload.
+- [x] Define authoritative persistence rules for terrain changes and player
+  deltas as tiles unload and reload. ([`docs/TERRAIN_PERSISTENCE.md`](docs/TERRAIN_PERSISTENCE.md): RealEarth stateless; vanilla region files own build deltas; `TileStreamer._hot` eviction touches only cached `.rte`, never region/`.rte` on disk.)
 - [x] Add failure handling for missing, corrupt, mismatched, and unavailable CDN
   tiles without silently generating incorrect terrain. (C# CdnTilePolicy +
   TileStreamer enforce https-only, size caps, redirect guards; fail-closed

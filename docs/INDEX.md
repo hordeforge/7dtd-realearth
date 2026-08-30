@@ -50,6 +50,7 @@ flowchart TB
 | Streamed host window + install steps | [`HostWorld.md`](HostWorld.md) | ABSOLUTE (inject detail) |
 | Absolute Earth → inject path | [`ABSOLUTE_STREAMING.md`](ABSOLUTE_STREAMING.md) | SINGLE (mode choice) |
 | MP origin / bubbles | [`MULTIPLAYER_STREAMING.md`](MULTIPLAYER_STREAMING.md) | ABSOLUTE (one-line link) |
+| Terrain deltas + build persistence | [`TERRAIN_PERSISTENCE.md`](TERRAIN_PERSISTENCE.md) | MODIFICATIONS §F (status only) |
 | Density → stamps | [`CITIES_AND_DENSITY.md`](CITIES_AND_DENSITY.md) | CITY_MAP (labels only) |
 | Map name discovery | [`CITY_MAP_LABELS.md`](CITY_MAP_LABELS.md) | MODLET (config keys only) |
 | Open data pointers | [`DATA_SOURCES.md`](DATA_SOURCES.md) | REALISM (policy) |

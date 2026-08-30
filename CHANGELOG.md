@@ -12,6 +12,8 @@ and the release gate requires both to match the tag (`v<version>`).
 
 ## [Unreleased]
 
+- **Persistence authoritative rule:** [`docs/TERRAIN_PERSISTENCE.md`](docs/TERRAIN_PERSISTENCE.md) + [`docs/INDEX.md`](docs/INDEX.md): RealEarth is stateless about terrain deltas (vanilla region files own builds); `TileStreamer` eviction drops only cached `.rte` tiles, never region/`.rte` on disk — wrap-aware (`EnableLongitudeWrap` → `Math.Min(dx, ntx - dx)`) and multi-focus.
+
 ### Added
 
 - Streamed-mode e2e offline tests (tests/test_streamed_e2e.py): pack manifest

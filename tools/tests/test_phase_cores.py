@@ -447,6 +447,15 @@ def test_remove_focus_clears_hot_when_empty():
     assert "_hot.Clear()" in ts
 
 
+def test_streamer_eviction_respects_longitude_wrap():
+    """Eviction must keep antimeridian-neighbor tiles when longitude wrap is on."""
+    ts = _read("TileStreamer.cs")
+    assert "EnableLongitudeWrap" in ts
+    assert "Math.Min(dx, ntx - dx)" in ts
+    assert "IsWithinAnyFocus" in ts
+    assert "EvictOutsideAllFoci" in ts
+
+
 def test_height_float_args_use_floor():
     hooks = _read("RuntimeHooks.cs")
     assert "Math.Floor(__0)" in hooks or "Math.Floor(__0)" in hooks.replace(" ", "")
