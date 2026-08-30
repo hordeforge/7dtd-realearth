@@ -12,7 +12,7 @@
 |---|---|
 | Mapping | `gameY = seaLevelGameY + elev_m` (1 m real ≈ 1 block) |
 | Data | `.rte` stores real elevation meters |
-| Engine | YDim expand required (`make engine-expand` / `make install-full`) |
+| Engine | YDim expand required - hot-patched at runtime by default (`EngineHeightRuntimePatch=true`); disk patcher fallback (`make engine-expand` / `make install-full`) |
 | Compress | Opt-in only via `EngineHeightStockSafe=true` (experiments, not ship) |
 
 ## The hard facts (stock engine without expand)
@@ -75,13 +75,15 @@ There is no mature “just set MaxHeight=4096” mod that is known-good for full
 **Real height + YDim expand.** No global compress.
 
 ```bash
-make install-full   # expand + install (product)
-# or:
-make engine-expand  # client + dedicated Assembly-CSharp (YDim=32768)
-make install
+make install       # product: mod hot-patches the YDim expand at boot (default)
+# fallback (pre-boot disk patch, e.g. for load-order-sensitive hosts):
+make install-full  # engine-expand (disk) + install
+make engine-expand # client + dedicated Assembly-CSharp (YDim=32768)
 ```
 
-Config defaults: `EngineHeightOneToOne=true`, `EngineHeightStockSafe=false`, `EngineMaxGameY=29000`.
+Config defaults: `EngineHeightOneToOne=true`, `EngineHeightStockSafe=false`,
+`EngineHeightRuntimePatch=true` (hot patch), `EngineMaxGameY=29000`.
+The disk patcher ships in `Mods/RealEarth/Tools/` as the fallback.
 
 ### Tier 1: optional gameplay feel (after real height works)
 
@@ -95,7 +97,7 @@ Does not replace expand or invent compress curves for the planet.
 
 **Purpose:** change the **game engine** so columns can be taller than 256, enabling true **1 m = 1 block** relief both ways: mountains up to ~12 km (airliner cruise) and real depth below sea (trenches to -11 km). Remapping data alone is not enough.
 
-Tall 1:1 columns are a **RealEarth feature**, not a third-party tool. The patcher ships in `Mods/RealEarth/Tools/` and as `make engine-expand`.
+Tall 1:1 columns are a **RealEarth feature**, not a third-party tool. The product hot-patches the expand at boot via Harmony transpilers; the disk patcher ships in `Mods/RealEarth/Tools/` and as `make engine-expand` as the fallback.
 
 ```bash
 make install-full
@@ -120,7 +122,7 @@ make engine-restore
 
 **Stock vs expanded (measured on V3.1.0 b14; values identical to the earlier V3.0.1 measurements):** see workspace [`7dtd-engine-research/docs/terrain-height.md`](../../7dtd-engine-research/docs/terrain-height.md).
 
-**Why a disk patch and not a runtime hot patch:** `WorldConstants.ChunkBlockYDim` is a `const` (inlined `ldc` literals, no field to set). A Harmony-transpiler hot patch is *plausible* on a single-mod install (the main-menu boot path JITs none of the 26 Y-bound methods - measured in the V3.2.0 IL dump), but load order can JIT a site early and there is no verify/rollback. Full analysis: [`7dtd-engine-research/docs/hot-patch-height.md`](../../7dtd-engine-research/docs/hot-patch-height.md).
+**Why the hot patch is the default now:** `WorldConstants.ChunkBlockYDim` is a `const` (inlined `ldc` literals, no field to set). A Harmony-transpiler hot patch rewrites those literals at JIT time, and **was validated live on a stock dedicated server** (2026-08-30): 342 method transpilers, `expanded=True allocY=29000`, H500 peak injected, 0 crashes. It is the product default (`EngineHeightRuntimePatch=true`); the disk patcher (`EngineHeightPatcher.exe`, `make engine-expand`) stays in the repo as the fallback for load orders where a pre-boot patch is safer. Full analysis: [`7dtd-engine-research/docs/hot-patch-height.md`](../../7dtd-engine-research/docs/hot-patch-height.md).
 
 | Constant | Stock | After RealEarth expand |
 |---|---:|---:|

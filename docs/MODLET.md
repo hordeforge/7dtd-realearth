@@ -22,12 +22,18 @@ Requires game **`0_TFP_Harmony`**. Do not ship a second Harmony.
 Game **closed**. From repo:
 
 ```bash
+make install  # product: hot-patches the YDim expand at boot (default)
+# fallback (pre-boot disk patch for load-order-sensitive hosts):
 make install-full # engine-expand + build + install (Streamed)
 # or step by step:
-make engine-expand # patches client + dedicated Assembly-CSharp
+make engine-expand # patches client + dedicated Assembly-CSharp (disk fallback)
 make install
 ./scripts/install_height_pack.sh h500 # or everest
 ```
+
+The default `EngineHeightRuntimePatch=true` rewrites the YDim literals at
+runtime via Harmony transpilers when the engine is stock (validated live); the
+disk patcher stays in `Tools/` as the fallback.
 
 From an installed mod folder (after `make package`):
 
@@ -51,7 +57,7 @@ Restore stock DLLs: `make engine-restore` or Steam Verify (then re-run expand af
 
 ## Without expand (not product)
 
-Default config keeps **real-height mode** (`EngineHeightStockSafe=false`, `EngineHeightOneToOne=true`). On a stock engine the log tells you to run expand; tall columns are not playable until YDim is raised.
+Default config keeps **real-height mode** (`EngineHeightStockSafe=false`, `EngineHeightOneToOne=true`, `EngineHeightRuntimePatch=true`). On a stock engine the mod hot-patches the YDim expand at boot; if that is disabled (or the host is load-order sensitive), the log tells you to run the disk patcher instead.
 
 Optional experiment only: set `EngineHeightStockSafe=true` to compress into ~0-250 so the world loads without expand. That is **not** the product path and is off by default.
 

@@ -29,11 +29,30 @@ namespace RealEarth
             return !IsExpanded(chunkBlockYDim);
         }
 
+        /// <summary>Runtime-aware variant: the hot patch makes a stock engine expanded.</summary>
+        public static bool RequiresExpandForRealHeight(
+            bool stockSafe, bool oneToOne, int chunkBlockYDim, bool runtimePatchActive)
+        {
+            if (stockSafe) return false;
+            if (!oneToOne) return false;
+            return !IsExpanded(chunkBlockYDim, runtimePatchActive);
+        }
+
         /// <summary>Human-readable mode string for logs / loadgen gates.</summary>
         public static string DescribeHeightMode(bool enableEngineHeight, bool stockSafe, int chunkBlockYDim)
         {
             if (!enableEngineHeight) return "off";
             if (IsExpanded(chunkBlockYDim)) return "ydim-expanded";
+            if (stockSafe) return "stock-safe-compress";
+            return "needs-expand";
+        }
+
+        /// <summary>Runtime-aware variant: hot patch counts as expanded.</summary>
+        public static string DescribeHeightMode(
+            bool enableEngineHeight, bool stockSafe, int chunkBlockYDim, bool runtimePatchActive)
+        {
+            if (!enableEngineHeight) return "off";
+            if (IsExpanded(chunkBlockYDim, runtimePatchActive)) return "ydim-expanded";
             if (stockSafe) return "stock-safe-compress";
             return "needs-expand";
         }

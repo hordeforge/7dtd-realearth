@@ -590,9 +590,10 @@ def test_runtime_ydim_transpiler_mirrors_disk_patcher():
     assert "TargetLayers = TargetYDim / 4" in transpiler
     assert "TargetVolumeBits" in transpiler
     assert "IsUnsafeChunkData" in transpiler or "UnsafeChunkData" in transpiler
-    # Config gate: hot patch is opt-in, product default stays the disk patcher.
+    # Config gate: hot patch is the product default; the disk patcher stays as
+    # a fallback (Tools/EngineHeightPatcher.exe, make engine-expand).
     cfg = json.loads((ROOT / "Config" / "realearth.json").read_text(encoding="utf-8"))
-    assert cfg.get("EngineHeightRuntimePatch") is False
+    assert cfg.get("EngineHeightRuntimePatch") is True
     assert "EngineHeightRuntimePatch" in _read("RealEarthConfig.cs")
     # ModApi wires it before the engine-height gate, gated on stock engine.
     modapi = _read("ModApi.cs")

@@ -54,8 +54,14 @@ namespace RealEarth.EngineHeight
 
             if (EngineExpanded)
             {
+                // Effective YDim: the hot patch rewrites literals at JIT, so the
+                // probe still reads 256 on a stock engine while it runs 32768.
+                int effectiveYDim = RuntimeYDimTranspiler.IsActive
+                    ? RuntimeYDimTranspiler.TargetYDim
+                    : Probe?.ChunkBlockYDim ?? 256;
                 ModApi.Log(
-                    $"EngineHeightMod: RealEarth YDim expand active YDim={Probe!.ChunkBlockYDim} - " +
+                    $"EngineHeightMod: RealEarth YDim expand active YDim={effectiveYDim} " +
+                    $"({(RuntimeYDimTranspiler.IsActive ? "runtime hot patch" : "disk patch")}) - " +
                     $"real height 1:1 up to content maxY={Policy.MaxGameY}. " +
                     "Restore stock: make engine-restore (or Steam Verify).");
             }

@@ -39,17 +39,24 @@ Expand raises the engine column to YDim=32768 so real relief fits both ways:
 ## 3. Install (product path)
 
 ```bash
-make install-full        # YDim expand (client + dedicated) + mod install
+make install   # product: mod hot-patches the YDim expand at boot (default)
 ```
 
-Step by step, the same thing:
+The mod rewrites the YDim literals at runtime via Harmony transpilers
+(`EngineHeightRuntimePatch=true` default, validated live). No DLL is edited;
+Steam Verify does not undo it, and there is nothing to restore.
+
+**Fallback (disk patch)**: for hosts where a pre-boot patch is safer
+(load-order-sensitive), keep `make install-full`:
 
 ```bash
+make install-full        # YDim expand (client + dedicated) + mod install
+# step by step:
 make engine-expand       # client + dedicated Assembly-CSharp, YDim=32768
 make install             # mod + worlds into the game Mods/GeneratedWorlds
 ```
 
-The expand writes `.re_stock_bak` (stock DLL) and `.re_height_expanded`
+The disk expand writes `.re_stock_bak` (stock DLL) and `.re_height_expanded`
 (marker) next to each `Assembly-CSharp.dll`; both installs get patched. If a
 Steam update already replaced the DLL, the patcher detects the stale marker
 and refreshes the stock backup from the current build before re-patching, so a
@@ -116,7 +123,7 @@ does not cover those, because Steam Verify or a re-expand regenerates them.
 
 | Symptom | Cause | Fix |
 |---|---|---|
-| `RealEarth init OK` but `heightMode=stock` / peaks clamp ~250 | Expand missing or undone (Steam Verify) | `make engine-expand`, restart |
+| `RealEarth init OK` but `heightMode=stock` / peaks clamp ~250 | Expand missing (hot patch disabled or failed) | Set `EngineHeightRuntimePatch=true`, or `make engine-expand` + restart |
 | `HEIGHT CAPPED to allocY=...` in log | Config ceiling above engine YDim | Re-expand, or lower `EngineMaxGameY` |
 | World shows ocean everywhere | `.rte` tiles missing / pack not copied | Re-run `make install`; check `Mods/RealEarth/Data/tiles/earth.manifest.json` exists |
 | `MISSING TARGET: <patch>` in log | A Harmony target renamed by a game update | Rebuild against the new DLL (`make build`), confirm game version in [GAME_VERSION.md](GAME_VERSION.md) |

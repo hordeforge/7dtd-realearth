@@ -88,18 +88,26 @@ namespace RealEarth
                 Session.SpawnAtLonLat(spawnLon, spawnLat);
 
                 int yDim = EngineHeight.EngineHeightMod.Probe?.ChunkBlockYDim ?? 256;
+                // Runtime-aware: the hot patch (RuntimeYDimTranspiler) rewrites
+                // literals at JIT, so the probe still reads 256 on a stock engine
+                // while the engine actually runs 32768. Use EngineExpanded (which
+                // honors IsActive) for the mode label and the expand guard.
+                bool runtimeHotPatch = RuntimeYDimTranspiler.IsActive;
                 string heightMode = ExpandProductGuard.DescribeHeightMode(
                     Config.EnableEngineHeightMod,
                     Config.EngineHeightStockSafe,
-                    yDim);
+                    yDim,
+                    runtimeHotPatch);
                 if (ExpandProductGuard.RequiresExpandForRealHeight(
                         Config.EngineHeightStockSafe,
                         Config.EngineHeightOneToOne,
-                        yDim))
+                        yDim,
+                        runtimeHotPatch))
                 {
                     LogWarn(
                         "P0 ExpandProductGuard: real-height product path needs YDim expand " +
-                        $"(YDim={yDim}, StockSafe=false). Run make engine-expand.");
+                        $"(YDim={yDim}, StockSafe=false). Run make engine-expand " +
+                        "or enable EngineHeightRuntimePatch.");
                 }
                 Log(
                     $"RealEarth init OK. mode={Config.MapMode} heightMode={heightMode} " +

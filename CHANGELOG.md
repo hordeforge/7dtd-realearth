@@ -14,14 +14,16 @@ and the release gate requires both to match the tag (`v<version>`).
 
 ### Added
 
-- Experimental runtime YDim hot patch: `RuntimeYDimTranspiler.cs` rewrites the
+- Runtime YDim hot patch is now the **product default**
+  (`EngineHeightRuntimePatch=true`): `RuntimeYDimTranspiler.cs` rewrites the
   inlined Y-bound literals (256→32768, 255→32767, 64→8192, 65536→volume bits)
-  via Harmony transpilers at JIT time instead of the disk patcher. Opt-in
-  (`EngineHeightRuntimePatch`, default false); only applies to a stock engine
-  (disk-patched installs are never double-rewritten). **Validated live on a
-  stock dedicated server**: 342 method transpilers, `expanded=True
-  allocY=29000`, H500 peak injected (sessionPeak=500), 0 crashes. Product
-  default stays the disk patcher; research:
+  via Harmony transpilers at JIT time instead of the disk patcher. Only
+  applies to a stock engine (disk-patched installs are never
+  double-rewritten). **Validated live on a stock dedicated server**: 342
+  method transpilers, `expanded=True allocY=29000`, H500 peak injected
+  (sessionPeak=500), 0 crashes. The disk patcher stays in the repo
+  (`Tools/EngineHeightPatcher.exe`, `make engine-expand`) as the fallback for
+  load-order-sensitive hosts; research:
   7dtd-engine-research/docs/hot-patch-height.md.
 - CDN tile policy test suite (tests/test_cdn_policy.py): pins the https-only
   URL building/validation contract (injection, userinfo, host-smuggling

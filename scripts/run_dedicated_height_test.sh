@@ -69,8 +69,14 @@ sleep 2
 # Patch both client + dedicated Assembly-CSharp (Everest-scale YDim)
 export SEVENDTD_GAME_DIR="$GAME_DIR"
 export SEVENDTD_SERVER_DIR="$DS_DIR"
-chmod +x "$ROOT/scripts/patch_engine_height.sh"
-"$ROOT/scripts/patch_engine_height.sh" --force
+# Default: hot-patch the YDim expand at runtime (product path). The disk
+# patcher only runs when RE_SKIP_EXPAND != 1 (fallback / older harness).
+if [[ "${RE_SKIP_EXPAND:-}" != "1" ]]; then
+  chmod +x "$ROOT/scripts/patch_engine_height.sh"
+  "$ROOT/scripts/patch_engine_height.sh" --force
+else
+  echo "RE_SKIP_EXPAND=1: leaving engine stock (hot patch applies at boot)"
+fi
 
 # Build + install mod to client and dedicated
 dotnet build "$ROOT/Source/RealEarth/RealEarth.csproj" -c Release -p:GameDir="$GAME_DIR" -v q

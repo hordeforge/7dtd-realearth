@@ -122,14 +122,15 @@ namespace RealEarth
         [DataMember] public bool EngineHeightStockSafe { get; set; } = false;
 
         /// <summary>
-        /// Experimental: hot-patch the YDim expand at runtime via Harmony
-        /// transpilers instead of the disk patcher (EngineHeightPatcher.exe).
-        /// Only applied when the engine is still stock (YDim=256); a
-        /// disk-patched install is never double-rewritten. Research:
-        /// 7dtd-engine-research/docs/hot-patch-height.md. Default false: the
-        /// disk patcher stays the product path.
+        /// Hot-patch the YDim expand at runtime via Harmony transpilers instead
+        /// of the disk patcher (EngineHeightPatcher.exe). Product default true:
+        /// applied automatically when the engine is still stock (YDim=256); a
+        /// disk-patched install is never double-rewritten. The disk patcher
+        /// stays in the repo (Tools/EngineHeightPatcher.exe, make engine-expand)
+        /// as the fallback for load orders where a pre-boot patch is safer.
+        /// Research: 7dtd-engine-research/docs/hot-patch-height.md.
         /// </summary>
-        [DataMember] public bool EngineHeightRuntimePatch { get; set; } = false;
+        [DataMember] public bool EngineHeightRuntimePatch { get; set; } = true;
 
         /// <summary>
         /// Target game-Y ceiling for 1:1 mapping (sea + airliner cruise + headroom).
