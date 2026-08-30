@@ -63,8 +63,11 @@ provenance and distinguish prototypes from verified in-game behavior.
 
 - [ ] Audit all relevant static height assumptions described in
   [`docs/DYNAMIC_CHUNK_HEIGHT.md`](docs/DYNAMIC_CHUNK_HEIGHT.md).
-- [ ] Test engine patch, backup, idempotent reapply, restore, and Steam-update
+- [x] Test engine patch, backup, idempotent reapply, restore, and Steam-update
   recovery for both client and dedicated server.
+  (tests/test_engine_expand_lifecycle.py: full Managed-dir copy in temp,
+  real EngineHeightPatcher.exe - expand, verify, stale-marker backup
+  refresh, restore, fresh re-expand, idempotent no-op reapply.)
 - [ ] Validate physics, pathing, zombies, prefabs, weather, rendering, and saves
   above the stock height ceiling.
 - [ ] Add automated inspection that refuses an unknown assembly build unless the

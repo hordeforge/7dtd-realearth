@@ -14,6 +14,10 @@ and the release gate requires both to match the tag (`v<version>`).
 
 ### Added
 
+- Disk-patch lifecycle tests (tests/test_engine_expand_lifecycle.py): run the
+  real EngineHeightPatcher.exe against a temp copy of the full Managed dir -
+  expand, verify, Steam-update stale-marker backup refresh, restore, fresh
+  re-expand, and idempotent reapply (no live install touched).
 - Runtime YDim hot patch is now the **product default**
   (`EngineHeightRuntimePatch=true`): `RuntimeYDimTranspiler.cs` rewrites the
   inlined Y-bound literals (256→32768, 255→32767, 64→8192, 65536→volume bits)
