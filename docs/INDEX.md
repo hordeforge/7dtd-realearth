@@ -53,6 +53,7 @@ flowchart TB
 | Terrain deltas + build persistence | [`TERRAIN_PERSISTENCE.md`](TERRAIN_PERSISTENCE.md) | MODIFICATIONS §F (status only) |
 | Density → stamps | [`CITIES_AND_DENSITY.md`](CITIES_AND_DENSITY.md) | CITY_MAP (labels only) |
 | Map name discovery | [`CITY_MAP_LABELS.md`](CITY_MAP_LABELS.md) | MODLET (config keys only) |
+| Real streets/buildings → 7DTD (research) | [`CITY_MAPDATA_TO_7DTD.md`](CITY_MAPDATA_TO_7DTD.md) | CITIES_AND_DENSITY (stamps), REALISM (policy), DATA_SOURCES (downloads) |
 | Open data pointers | [`DATA_SOURCES.md`](DATA_SOURCES.md) | REALISM (policy) |
 | Tile farm / CDN / storage plan | [`TILE_FARM.md`](TILE_FARM.md) | DATA_SOURCES |
 | Artifact backup / restore / durability posture (RPO/RTO) | [`BACKUP_RESTORE.md`](BACKUP_RESTORE.md) | DATA_SOURCES (source policy) |

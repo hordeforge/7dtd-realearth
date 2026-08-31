@@ -414,7 +414,7 @@ def detect_city_cores(
     for peak, y, x in chosen:
         lon = west + (x + 0.5) / w * (east - west)
         lat = north - (y + 0.5) / h * (north - south)
-        name = f"settlement_{len(cores)+1}"
+        name = f"settlement_{len(cores) + 1}"
         pop_est = int(peak * 4.0)  # rough people from density peak
         best = None
         best_d = 1e9

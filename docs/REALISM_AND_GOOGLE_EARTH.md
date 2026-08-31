@@ -1,6 +1,6 @@
 # Realism data: Google Earth vs what we can use
 
-**Owns:** legal/policy “what we may use.” Download lists: [DATA_SOURCES](DATA_SOURCES.md). Hub: [INDEX](INDEX.md).
+**Owns:** legal/policy “what we may use.” Download lists: [DATA_SOURCES](DATA_SOURCES.md). Streets/buildings conversion research: [CITY_MAPDATA_TO_7DTD](CITY_MAPDATA_TO_7DTD.md). Hub: [INDEX](INDEX.md).
 
 ## Short answer
 
