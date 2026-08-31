@@ -19,7 +19,7 @@ namespace RealEarth
             new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase)
             {
                 {"70c669bec3cb11d1d8fabd2cc4f871d1eca21e27d3a185afe3efa71e571cabd6", "V3.2.0 (b9) stock (dedi bak)"},
-                {"4ca8d6490f34f134a952b1a3547131a8c536610ec28bede0d35cbfe93f09715d", "V3.2.0 (b9) live client"},
+                {"feff12e779d5939a2b06a637f12e820ddc28c60da5aa3630733cc7ce5252badb", "V3.2.0 (b9) live client"},
                 {"a01a95393b24b75adf1e4b3ee1391ba19fa61e6bad79271fa95d8df721720837", "V3.2.0 (b9) live dedi"},
             };
 

@@ -1,7 +1,7 @@
 # Cities from population & building density
 
 **Owns:** density → stamp bands and offline pipeline.  
-**Not:** map name discovery ([CITY_MAP_LABELS](CITY_MAP_LABELS.md)), legal policy ([REALISM_AND_GOOGLE_EARTH](REALISM_AND_GOOGLE_EARTH.md)), product status ([MODIFICATIONS](MODIFICATIONS.md) section E).  
+**Not:** map name discovery ([CITY_MAP_LABELS](CITY_MAP_LABELS.md)), legal policy ([REALISM_AND_GOOGLE_EARTH](REALISM_AND_GOOGLE_EARTH.md)), OSM streets/buildings conversion research ([CITY_MAPDATA_TO_7DTD](CITY_MAPDATA_TO_7DTD.md)), product status ([MODIFICATIONS](MODIFICATIONS.md) section E).  
 **Sources:** [DATA_SOURCES](DATA_SOURCES.md). **Ideas:** [DESIGN §18](../DESIGN.md). **Hub:** [INDEX](INDEX.md).
 
 RealEarth places settlements from **open density data**, not Google building footprints. Population 1:1 means **where humans concentrate**, not a cadastral rebuild of every building.

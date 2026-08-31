@@ -1,7 +1,7 @@
 # Production data sources
 
 **Owns:** which open products to download and how to point the CLI at them.  
-**Not:** legal policy narrative ([REALISM_AND_GOOGLE_EARTH](REALISM_AND_GOOGLE_EARTH.md)), density stamp bands ([CITIES_AND_DENSITY](CITIES_AND_DENSITY.md)), product status.  
+**Not:** legal policy narrative ([REALISM_AND_GOOGLE_EARTH](REALISM_AND_GOOGLE_EARTH.md)), density stamp bands ([CITIES_AND_DENSITY](CITIES_AND_DENSITY.md)), streets/buildings conversion research ([CITY_MAPDATA_TO_7DTD](CITY_MAPDATA_TO_7DTD.md)), product status.  
 **Hub:** [INDEX](INDEX.md).
 
 CLI examples assume `cd tools && uv run --locked realearth …` (or `make` targets from repo root).

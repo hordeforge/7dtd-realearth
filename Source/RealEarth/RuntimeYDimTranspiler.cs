@@ -20,6 +20,12 @@ namespace RealEarth
     /// NOT the product default: the disk patcher stays primary. This activates
     /// only when config EngineHeightRuntimePatch=true and the engine is still
     /// stock (YDim=256), so a disk-patched install is never double-rewritten.
+    ///
+    /// Known gap (sandbox H500 soak 2026-08-31): method-only rewrites leave
+    /// layer-array ctors at stock len=64 (GetBlockNoDamage fails for y>=256).
+    /// Patching .ctor alone crashes GenerateChunks in ChunkBlockChannel.fillSameValue
+    /// (IndexOutOfRange). Use make engine-expand / apply_engine_expand.sh for
+    /// playable tall columns; do not treat this hot-patch as product-complete.
     /// </summary>
     public static class RuntimeYDimTranspiler
     {
@@ -108,8 +114,8 @@ namespace RealEarth
 
         /// <summary>
         /// Harmony transpiler for a Y-bound method. Rewrites the same literals as
-        /// the disk patcher (64 -&gt; layers in storage types, 65536 -&gt; volume bits
-        /// in WaterDataHandle, 256 -&gt; YDim and 255 -&gt; YMask where the pattern
+        /// the disk patcher (64 -> layers in storage types, 65536 -> volume bits
+        /// in WaterDataHandle, 256 -> YDim and 255 -> YMask where the pattern
         /// matches), keyed by the method this transpiler is attached to (injected
         /// __originalMethod), so no cross-method context guessing is needed.
         /// </summary>
@@ -243,14 +249,15 @@ namespace RealEarth
                     bool isLayer = IsLayerStorageName(tname);
                     if (!isLayer && !IsTypeWithYBoundMethods(tname))
                         continue;
+                    // Y-bound accessors / loops (ctors intentionally skipped; see class summary).
                     foreach (var method in type.GetMethods(
-                        BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic))
+                        BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Static))
                     {
                         if (method == null || method.IsAbstract || method.ContainsGenericParameters)
                             continue;
                         if (!isLayer && !IsYBoundMethodName(method.Name))
                             continue;
-                        string key = type.FullName + "." + method.Name;
+                        string key = type.FullName + "." + method.Name + "#" + method.MetadataToken;
                         if (!seen.Add(key))
                             continue;
                         try
@@ -263,6 +270,11 @@ namespace RealEarth
                             // skip methods that cannot be patched
                         }
                     }
+                    // Intentionally do NOT patch constructors here.
+                    // Layer-array ctors still allocate stock len=64 under a method-only
+                    // hot-patch (GetBlockNoDamage fails for y>=256). Patching .ctor
+                    // alone crashes GenerateChunks in ChunkBlockChannel.fillSameValue
+                    // (IndexOutOfRange). Disk expand remains the product path.
                 }
                 PatchCount = attached;
                 IsActive = attached > 0;

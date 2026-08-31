@@ -84,6 +84,7 @@ install_one() {
     EngineMaxGameY="$ENGINE_MAX" \
     EngineHeightOneToOne=true \
     "EngineHeightPreferVanillaCeiling=false" \
+    FailClosedMissingTiles=true \
     TilePackPath=Data/tiles \
     WorldWidth=512 \
     WorldHeight=512 \

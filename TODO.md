@@ -23,8 +23,9 @@ provenance and distinguish prototypes from verified in-game behavior.
   grid -> tile lookup -> absolute sampling (lon/lat + block), local-window
   slide incl. antimeridian wrap, chunk sampling after slide, missing-tile
   fail-closed. Open: save/reload with player deltas live.)
-- [ ] Lon/lat gaps tracked in docs/LON_LAT.md (lat-correct meters, antimeridian
+- [x] Lon/lat gaps tracked in docs/LON_LAT.md (lat-correct meters, antimeridian
   bboxes, save absolute session, geodesic / globe UX).
+  (docs/LON_LAT.md §6 gaps + §4.3-4.4 poles/antimeridian + §6.2 save/absolute + §6.1 geodesic/globe; offline coverage tests/test_coords.py (wrap O(1) + fold) + tests/test_streamed_e2e.py slide/wrap; live proofs still open.)
 - [x] Validate the H500 sample before the Everest-scale expanded-height test and
   record collision, mesh, save, and reload results.
   (Live 3.2.0: H500 world loads, spawn sample gameY=500, clean soak.
@@ -74,6 +75,12 @@ provenance and distinguish prototypes from verified in-game behavior.
   (tests/test_engine_expand_lifecycle.py: full Managed-dir copy in temp,
   real EngineHeightPatcher.exe - expand, verify, stale-marker backup
   refresh, restore, fresh re-expand, idempotent no-op reapply.)
+- [x] Sandbox H500 dedicated soak under disk YDim expand (srv-a, SharedFixed,
+  6 loadgen wander bots): `sessionPeak=500`, `GetBlockNoDamage` count=0,
+  no GenerateChunks crash, `JOIN_SUMMARY pass=6 fail=0` (EXIT=0). Runtime
+  hot-patch alone is not product-complete (method-only leaves len=64;
+  ctor rewrite crashes fillSameValue). Evidence:
+  `.scratch/sandbox_h500_disk_join.log`, srv-a `server.log`.
 - [ ] Validate physics, pathing, zombies, prefabs, weather, rendering, and saves
   above the stock height ceiling.
 - [x] Add automated inspection that refuses an unknown assembly build unless the
@@ -126,9 +133,8 @@ provenance and distinguish prototypes from verified in-game behavior.
 
 - [ ] Work the priority slices in docs/GAP_HARMONY_MODLETS.md (terrain inject first,
   then travel/save, places, MP, UX); update status tags as each slice measures green.
-  (2026-08-29: Slice 1 terrain truth marked measured green; slice 2/4 items with
-  live evidence updated in the doc's gap table + slices. Open: biome paint,
-  prefab/sleeper Y, origin-slide wrap, multi-bot distance proof.)
+  (2026-08-31: Slice 1 terrain truth measured green; slice 2/4 items with
+  live evidence updated in the doc's gap table + slices. LON_LAT §6 + offline wrap/slide coverage landed (tests/test_coords.py + tests/test_streamed_e2e.py). Open: biome paint decoration/sleeper live soak, origin-slide wrap + multi-bot distance live soak.)
 - [x] Reconcile status claims across `README.md`, `DESIGN.md`, and research docs
   after each live game-version validation (2026-08-29: README/DESIGN/ENGINE_LIMITATIONS/
   DYNAMIC_CHUNK_HEIGHT/realearth-surfaces updated to the 32768 vertical budget;
