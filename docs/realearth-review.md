@@ -93,8 +93,8 @@ Status tags:
 | **Symptom** | Cap never applied; stamp floods |
 | **Root cause** | Budget type unused in planner |
 | **Fix pattern** | Wire `clamp_prefabs_in_chunk` / budget into stamp planner; unit tests for cap |
-| **Anchors** | `DensityBudget`, density stamp planner |
-| **Status** | Fixed offline |
+| **Anchors** | `DensityBudget`, density stamp planner, `RuntimePoiInject` |
+| **Status** | Fixed offline and live inject: `RuntimePoiInject` clamps per chunk (4) and session area (80). Distance LODs / sleeper weights still open (see MODIFICATIONS). |
 
 ### 2.5 EngineHeight fail-closed bypass
 
@@ -276,7 +276,7 @@ These shaped P0-P8 offline cores:
 |---|---|
 | EngineHeight fail-closed not wired | Product could claim 1:1 without expand or tiles |
 | Stamp uint8 | Density stamps unusable above 255 |
-| Dead DensityBudget | Cap theater |
+| Dead DensityBudget (historical) | Cap theater until wired; now clamped in `RuntimePoiInject` (4/chunk, 80/area); LODs still open |
 | Offline pure modules first | ExpandProductGuard, HeightInjectMath, SessionOriginPolicy, StampSurfaceY, SessionStateStore, DensityBudget, CdnTilePolicy, SparseYScaffold (later removed as dead; AbsoluteHeightStore keeps the sparse cache) |
 | Live inject not Done | Status discipline: offline green ≠ live soak |
 

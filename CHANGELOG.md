@@ -16,6 +16,25 @@ and the release gate requires both to match the tag (`v<version>`).
 
 ### Added
 
+- **City discovery persist-on-discover (gap 32 Partial):** `CityMapLabels` calls `SessionStateStore.TrySave` when a place is newly discovered so dedicated/shared session files pick up names without waiting for logout. Wire MP package sync still open; live soak open.
+- **XUi lon/lat HUD (gap 31 Partial):** `Config/XUi_InGame/windows.xml` + `xui.xml` bind `_re_lon`/`_re_lat` via `{cvar(...)}` on `windowRealEarthLonLat` (toolbelt group). Packaging/install copy `Config/XUi_InGame`. Map grid still open; live soak open.
+- **Sleeper Y re-pin after inject (gap 16 Partial):** `TryRepinSleeperVolumesNear` is public and also runs from `ChunkTerrainInject.OnChunkGenerated` after a successful height apply (not only after POI stamps). Decoration still open; live soak open.
+- **Heat bands (gap 24 Partial):** `AltitudeClimate.HeatBand` (≥35/≥45 °C) + `buffAltitudeHeat01/02` via `AltitudeClimateTick` (`_re_heat_band`). Stock weather system still open; live soak open.
+- **Trader stamp guarantee (gap 23 Partial):** `PreferTraderStamp` (default true) + `TraderPools` make metro/large_city/town stamps always pick `trader_*` (hash among traders). Quest XML / live soak still open.
+- **Gamestage soft nudge (gap 22 Partial):** `Config/gamestages.xml` sets stock `difficultyBonus` 1.2→1.35 (packaging/install copy it). Spawning.xml still owns commercial/downtown maxcount; live soak open.
+- **Kill-plane rescue (gap 35 Partial):** `FallSpawnRetune.TryKillPlaneRescue` snaps local player to surface+1 when Y is more than `KillPlaneDepthBlocks` (default 64) below sampled surface; gated by `KillPlaneRescue` (default true). Live soak open.
+- **City discovery save (gap 32 Partial):** `discoveredCities` in `realearth.session.v1` via `CityMapLabels.ExportDiscoveredNames` / `RestoreDiscoveredNames`; WorldReady keeps names across Reset. MP sync still open.
+- **Lon/lat HUD cvars (gap 31 Partial):** `LonLatHudTick` publishes `_re_lon` / `_re_lat` EntityBuffs custom vars ~1 Hz (gated by `ShowLonLatHud`, default true). Console `relonlat` / `rll` unchanged; XUi HUD/grid still open.
+- **Landcover weather offset (gap 24 Partial):** `AltitudeClimate.LandcoverTempOffsetC` (desert +6 °C, snow/ice −8 °C, urban +2 °C, …) applied in `AltitudeClimateTick` via `ChunkTerrainSampler.SampleLandcover`. Stock biome weather still open; live soak open.
+- **Vehicle surface snap (gap 36 Partial):** `FallSpawnRetune.TrySnapVehiclesToSurface` one-shot snaps `VehicleManager` vehicles to sampled surface+1 when Y is clearly wrong; `SnapVehicleToSurface` (default true). Deeper physics / live soak open.
+- **Trader geography (gap 23 Partial):** `RuntimePoiInject` PrefabPools add stock `trader_jen`/`trader_bob` (metro), `trader_joel`/`trader_hugh` (large_city), `trader_rekt` (town) so city stamps can host traders. Quest XML / live soak still open.
+- **Production FOW (gap 33 Partial):** `MapExploreRevealRadiusChunks` (default 8) uncovers map FOW around the local player without `DebugRevealFullMap`. `DebugMapRevealRadiusChunks` still wins when set. Live soak open.
+- **Radiation / barren mapping (gap 25 Partial):** `LandcoverToBiomeId` / `LandcoverToBiomeName` map BARREN (code 3) to stock `wasteland` (id 8). Biomemap-only `radiated` (id 7) has no biome body/spawn; wasteland carries `buffWasteland_Hazard` and spawning.xml pressure. Live soak open.
+- **Fall / spawn Y soft retune (gap 35 Partial):** `FallSpawnRetune` one-shot `SnapSpawnToSurface` (default true) snaps local player to sampled surface+1 when Y is clearly wrong; `FallDamageModifierScale` (default 0.35) scales static `EntityPlayer.FallDamageModifier` once per session. `FindSpawnPointAtXZ` already rides YDim expand. Kill-plane / live soak still open.
+- **`relonlat` / `rll` console:** local XZ → Earth blocks → lon/lat degrees (optional `<x> <z>`; prints elev/hypoxia band when sampling the player). Gap 31 Partial (XUi HUD/grid still open).
+- **Altitude climate (hypoxia + cold):** `AltitudeClimate` ISA lapse + lat base temp; `AltitudeClimateTick` on local player tick applies `Config/buffs.xml` hypoxia (≥2500/5500/8000 m) and cold (≤0/−20 °C) buffs. Packaging copies `buffs.xml`. Offline pins in `tests/test_altitude_climate.py`. Landcover weather and live soak still open (gap 24 Partial).
+- **Spawn pressure modlet:** `Config/spawning.xml` raises commercial/downtown zombie `maxcount` for pine/burnt/desert/wasteland (Sandbox Enemy Density = Default). Animals untouched. Packaging/install scripts copy it. Live soak still open.
+
 - Streamed-mode e2e offline tests (tests/test_streamed_e2e.py): pack manifest
   -> EarthGrid -> tile lookup -> absolute sampling (lon/lat + block),
   local-window slide incl. the antimeridian wrap, chunk sampling after slide,

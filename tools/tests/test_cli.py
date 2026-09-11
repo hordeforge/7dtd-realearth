@@ -177,7 +177,7 @@ def test_planet_tiles_valid_bbox() -> None:
         int(tz)
 
 
-def test_planet_tiles_rejects_inverted_bbox() -> None:
+def test_planet_tiles_rejects_north_le_south() -> None:
     result = CliRunner().invoke(
         main,
         [
@@ -187,14 +187,41 @@ def test_planet_tiles_rejects_inverted_bbox() -> None:
             "--south",
             "50",
             "--east",
-            "5",
+            "20",
             "--north",
             "40",
         ],
     )
     assert result.exit_code == 2
-    assert "east>west" in result.stderr
+    assert "north>south" in result.stderr
     assert "Traceback" not in result.stderr
+
+
+def test_planet_tiles_accepts_dateline_west_gt_east() -> None:
+    """Pacific west>east bbox splits; planner must succeed without hang."""
+    result = CliRunner().invoke(
+        main,
+        [
+            "planet-tiles",
+            "--west",
+            "170",
+            "--south",
+            "-5",
+            "--east",
+            "-170",
+            "--north",
+            "5",
+        ],
+    )
+    assert result.exit_code == 0
+    assert "Traceback" not in result.stderr
+    match = re.search(r"^(\d+) tiles$", result.stderr, flags=re.MULTILINE)
+    assert match
+    assert int(match.group(1)) >= 1
+    for line in result.stdout.splitlines():
+        tx, tz = line.split()
+        int(tx)
+        int(tz)
 
 
 @pytest.mark.parametrize("flag", ["west", "south", "east", "north"])

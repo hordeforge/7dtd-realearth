@@ -27,6 +27,12 @@ namespace RealEarth
         /// </summary>
         public string Scope = "";
 
+        /// <summary>
+        /// Soft gap 32: city names discovered this world (session-scoped). Empty when
+        /// none or legacy snapshots. Names are catalog keys; markers re-place on tick.
+        /// </summary>
+        public List<string> DiscoveredCities = new List<string>();
+
         public string ToJson()
         {
             var sb = new StringBuilder(256);
@@ -41,6 +47,16 @@ namespace RealEarth
             sb.Append("\"spawnLon\":").Append(SpawnLon.ToString(CultureInfo.InvariantCulture)).Append(',');
             sb.Append("\"spawnLat\":").Append(SpawnLat.ToString(CultureInfo.InvariantCulture)).Append(',');
             sb.Append("\"scope\":\"").Append(Escape(Scope)).Append('"');
+            if (DiscoveredCities != null && DiscoveredCities.Count > 0)
+            {
+                sb.Append(",\"discoveredCities\":[");
+                for (int i = 0; i < DiscoveredCities.Count; i++)
+                {
+                    if (i > 0) sb.Append(',');
+                    sb.Append('"').Append(Escape(DiscoveredCities[i] ?? "")).Append('"');
+                }
+                sb.Append(']');
+            }
             sb.Append('}');
             return sb.ToString();
         }
@@ -67,6 +83,9 @@ namespace RealEarth
                     snap.SpawnLon = slon;
                 if (TryReadDouble(json, "spawnLat", out var slat))
                     snap.SpawnLat = slat;
+                // Optional; legacy snapshots omit the key.
+                if (TryReadStringArray(json, "discoveredCities", out var cities))
+                    snap.DiscoveredCities = cities;
                 return true;
             }
             catch
@@ -144,6 +163,33 @@ namespace RealEarth
             value = json.Substring(q1 + 1, q2 - q1 - 1);
             return true;
         }
+
+        /// <summary>Optional string array; returns false when key absent.</summary>
+        static bool TryReadStringArray(string json, string key, out List<string> values)
+        {
+            values = new List<string>();
+            int j = KeyColonIndex(json, key);
+            if (j < 0) return false;
+            while (j < json.Length && (json[j] == ' ' || json[j] == '\t')) j++;
+            if (j >= json.Length || json[j] != '[') return false;
+            j++;
+            while (j < json.Length)
+            {
+                while (j < json.Length && (json[j] == ' ' || json[j] == '\t' || json[j] == ',' || json[j] == '\n' || json[j] == '\r'))
+                    j++;
+                if (j >= json.Length) return false;
+                if (json[j] == ']') return true;
+                if (json[j] != '"') return false;
+                int q1 = j;
+                int q2 = json.IndexOf('"', q1 + 1);
+                if (q2 < 0) return false;
+                string s = json.Substring(q1 + 1, q2 - q1 - 1);
+                if (s.Length > 0)
+                    values.Add(s);
+                j = q2 + 1;
+            }
+            return false;
+        }
     }
 
     public static class SessionStateStore
@@ -180,6 +226,7 @@ namespace RealEarth
                 SpawnLon = lon,
                 SpawnLat = lat,
                 Scope = SessionSnapshot.ScopeForCurrentWorld(),
+                DiscoveredCities = CityMapLabels.ExportDiscoveredNames(),
             };
         }
 
@@ -272,6 +319,10 @@ namespace RealEarth
                     }
                     if (TryApply(session, snap))
                     {
+                        // Soft gap 32: re-seed city discoveries (markers re-place on tick).
+                        int n = CityMapLabels.RestoreDiscoveredNames(snap.DiscoveredCities);
+                        if (n > 0)
+                            ModApi.Log("SessionStateStore restored " + n + " discovered cities");
                         ModApi.Log("SessionStateStore loaded from " + p);
                         return true;
                     }

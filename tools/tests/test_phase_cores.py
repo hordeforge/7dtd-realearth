@@ -180,24 +180,32 @@ def test_p4_session_snapshot_roundtrip():
     assert "realearth.session.v1" in src
     assert "ToJson" in src and "TryParse" in src
     assert "TrySave" in src and "TryLoad" in src
+    assert "discoveredCities" in src
+    assert "ExportDiscoveredNames" in src or "ExportDiscoveredNames" in _read("CityMapLabels.cs")
+    city = _read("CityMapLabels.cs")
+    assert "RestoreDiscoveredNames" in city
+    assert "SessionStateStore.TrySave" in city
     assert "RestoreSnapshot" in src or "RestoreSnapshot" in _read("WorldSession.cs")
     # exercise pure JSON shape expected by C# TryParse
     js = (
         '{"schema":"realearth.session.v1","originEarthX":10,"originEarthZ":20,'
         '"absoluteX":100,"absoluteZ":200,"mapMode":"Streamed",'
-        '"multiplayerOriginMode":"SharedFixed","spawnLon":-104.99,"spawnLat":39.74}'
+        '"multiplayerOriginMode":"SharedFixed","spawnLon":-104.99,"spawnLat":39.74,'
+        '"discoveredCities":["Denver","Singapore"]}'
     )
     # Python parse of same fields
     d = json.loads(js)
     assert d["originEarthX"] == 10
     assert d["absoluteZ"] == 200
     assert d["multiplayerOriginMode"] == "SharedFixed"
+    assert d["discoveredCities"] == ["Denver", "Singapore"]
     # Product entrypoints (not dead code)
     assert (SRC / "ConsoleCmdReSession.cs").is_file()
     hooks = _read("RuntimeHooks.cs")
     assert "SessionStateStore.Capture" in hooks
     assert "SessionStateStore.TryLoad" in hooks
     assert "SessionStateStore.TrySave" in hooks
+    assert "RestoreDiscoveredNames" in hooks
     assert "EnsureHotAround" in hooks  # WorldReady must not stomp focus
 
 
@@ -292,12 +300,62 @@ def test_review_fixes_wired():
     assert "HasProductInjectBinding" in _read("InjectPatchStats.cs")
     reheight = _read("ConsoleCmdReHeight.cs")
     assert "EnsureHotAround" in reheight
+    relonlat = _read("ConsoleCmdReLonLat.cs")
+    assert "relonlat" in relonlat
+    assert "EarthToLonLat" in relonlat
+    lonlat_hud = _read("LonLatHudTick.cs")
+    assert "_re_lon" in lonlat_hud
+    assert "_re_lat" in lonlat_hud
+    assert "ShowLonLatHud" in _read("RealEarthConfig.cs")
+    assert "LonLatHudTick.TickPlayer" in _read("RuntimeHooks.cs")
+    xui_windows = (ROOT / "Config" / "XUi_InGame" / "windows.xml").read_text(encoding="utf-8")
+    xui_root = (ROOT / "Config" / "XUi_InGame" / "xui.xml").read_text(encoding="utf-8")
+    assert "windowRealEarthLonLat" in xui_windows
+    assert "{cvar(_re_lon)" in xui_windows
+    assert "{cvar(_re_lat)" in xui_windows
+    assert "windowRealEarthLonLat" in xui_root
+
+    sampler = _read("ChunkTerrainSampler.cs")
+    assert "LandcoverToBiomeId" in sampler
+    assert "return 8; // wasteland" in sampler
+    assert "MapExploreRevealRadiusChunks" in _read("RealEarthConfig.cs")
+    assert "MapExploreRevealRadiusChunks" in _read("MapReveal.cs")
+    assert "LandcoverTempOffsetC" in _read("AltitudeClimate.cs")
+    assert "SampleLandcover" in _read("AltitudeClimateTick.cs")
+    assert 'return "wasteland"' in sampler
+    fall = _read("FallSpawnRetune.cs")
+    assert "SnapSpawnToSurface" in fall
+    assert "FallDamageModifierScale" in fall or "EnsureFallDamageScale" in fall
+    assert "TrySnapSpawnToSurface" in fall
+    hooks = _read("RuntimeHooks.cs")
+    assert "FallSpawnRetune.EnsureFallDamageScale" in hooks
+    assert "FallSpawnRetune.TrySnapSpawnToSurface" in hooks
+    assert "FallSpawnRetune.ResetSession" in hooks
+    assert "TrySnapVehiclesToSurface" in _read("FallSpawnRetune.cs")
+    assert "TryKillPlaneRescue" in _read("FallSpawnRetune.cs")
+    assert "SnapVehicleToSurface" in _read("RealEarthConfig.cs")
+    assert "KillPlaneRescue" in _read("RealEarthConfig.cs")
+    assert "FallSpawnRetune.TryKillPlaneRescue" in _read("RuntimeHooks.cs")
+    cfg = json.loads((ROOT / "Config" / "realearth.json").read_text(encoding="utf-8"))
+    assert cfg.get("SnapSpawnToSurface") is True
+    assert cfg.get("SnapVehicleToSurface") is True
+    assert cfg.get("ShowLonLatHud") is True
+    assert cfg.get("KillPlaneRescue") is True
+    assert int(cfg.get("KillPlaneDepthBlocks") or 0) >= 8
+    assert int(cfg.get("MapExploreRevealRadiusChunks") or 0) > 0
+    assert 0 < float(cfg.get("FallDamageModifierScale") or 0) <= 2
     ts = _read("TileStreamer.cs")
     assert "allowSyncLoad" in ts
     assert "LoadTileFireAndForget" in ts
     assert ".tmp" in _read("AtomicPublish.cs")  # atomic CDN write (shared publish helper)
     poi = _read("RuntimePoiInject.cs")
     assert "MaxPlaceFails" in poi or "_failCount" in poi
+    assert "trader_jen" in poi
+    assert "trader_bob" in poi
+    assert "trader_rekt" in poi
+    assert "TraderPools" in poi
+    assert "PickPrefab" in poi
+    assert "PreferTraderStamp" in _read("RealEarthConfig.cs")
     assert "return placed" in poi
     # Stock placement path: PrefabInstance.CopyIntoWorld (verified against V3.2.0
     # IL); the old World.*Prefab*Spawn scan alone never matched on 3.x. Prefabs
@@ -310,6 +368,7 @@ def test_review_fixes_wired():
     assert cfg.get("DebugRevealFullMap") is False
     assert int(cfg.get("DebugMapRevealRadiusChunks") or 0) == 0
     assert cfg.get("EnableRuntimePoiInject") is True
+    assert cfg.get("PreferTraderStamp") is True
 
 
 def test_origin_slide_remap_module():
@@ -338,6 +397,10 @@ def test_runtime_poi_inject():
     assert "EnableRuntimePoiInject" in _read("RealEarthConfig.cs")
     inject = _read("ChunkTerrainInject.cs")
     assert "RuntimePoiInject.OnChunkGenerated" in inject
+    assert "TryRepinSleeperVolumesNear" in inject
+    assert "StampSurfaceY.SleeperRootY" in inject
+    poi = _read("RuntimePoiInject.cs")
+    assert "public static void TryRepinSleeperVolumesNear" in poi
 
 
 def test_sample_game_height_int_never_byte_path():

@@ -87,7 +87,7 @@ The disk patcher ships in `Mods/RealEarth/Tools/` as the fallback.
 
 ### Tier 1: optional gameplay feel (after real height works)
 
-- Fall damage / stamina at altitude
+- Fall damage / stamina at altitude (hypoxia/cold via `AltitudeClimateTick` + `Config/buffs.xml`; soft fall scale + spawn surface snap + `KillPlaneRescue` via `FallSpawnRetune`; live soak open)
 - Fog / snow biomes at high real Y
 - Map FOW for peaks
 

@@ -94,7 +94,7 @@ Prefer the **shallowest** API (workspace [MODDING_BEST_PRACTICES](../../MODDING_
 | **Strengths** | Fast debug; no UI; works dedicated |
 | **Weaknesses** | Not player UX; not a data plane |
 | **RealEarth now** | `reheight`, `rereveal`, `recities`, `reinject`, `resession` |
-| **Later** | `relonlat`, tile cache stats |
+| **Later** | tile cache stats (`relonlat` / `rll` shipped) |
 | **Vs others** | TFP_CommandExtensions stock sample; ServerTools dozens of cmds |
 
 #### Harmony (via stock 0_TFP_Harmony)
@@ -278,27 +278,27 @@ Legend for **Primary layer**: A binary · B Harmony · C XML · D world data · 
 | 13 | **Net package Y/XZ range validation** | Tall/wide desync | B + F | A | **Hard** |
 | 14 | **Landcover → biome at runtime** | Recognizable Earth biomes | B | C, E | **Hard** | **Partial** (SetBiomeId written from landcover; decor/sleeper open) |
 | 15 | **Density stamp POIs on real surface Y** | Cities not floating/buried | B + D | E | **Hard** | **Done** (live 3.2.0: prefabs placed at real surface Y via PrefabCache + CopyIntoWorld) |
-| 16 | **Sleeper / decoration Y after inject** | POI interiors work | B | C | **Hard** |
+| 16 | **Sleeper / decoration Y after inject** | POI interiors work | B | C | **Hard** | **Partial** (best-effort `TryRepinSleeperVolumesNear` after POI stamp and after chunk inject; decoration layer open; live soak open) |
 | 17 | **Pathfinding / A\* on cliffs** | Zombies on real DEM | B (budget) | F optim | **Hard** |
 | 18 | **Water / coast fill** | Oceans and lakes | B + E | C | **Hard** |
 | 19 | **Sunlight / light loops above 255** | Dark tall columns | A + B | RE | **Hard** |
 | 20 | **Stability / collapse on tall fills** | Physics after inject | B | F | **Hard** |
-| 21 | **Prefab/sleeper budgets by density** | Tokyo does not melt sim | C + B | F | **Hard** |
-| 22 | **Spawn/gamestage by biome+density** | Difficulty geography | C | B | **Medium** |
-| 23 | **Trader / quest geography** | Traders in real cities | D + C | B | **Medium** |
-| 24 | **Weather / temp by latitude+landcover** | Climate feel | C + B | E | **Medium** |
-| 25 | **Radiation / barren mapping** | Wasteland bands | C + E | | **Soft** |
+| 21 | **Prefab/sleeper budgets by density** | Tokyo does not melt sim | C + B | F | **Hard** | **Partial** (4/chunk, 80/area; near/mid/far LOD + `SleeperWeight` + TickPlayer far-band drop; live soak open) |
+| 22 | **Spawn/gamestage by biome+density** | Difficulty geography | C | B | **Medium** | **Partial** (`Config/spawning.xml` commercial/downtown maxcount + `Config/gamestages.xml` `difficultyBonus` 1.2→1.35; live soak open) |
+| 23 | **Trader / quest geography** | Traders in real cities | D + C | B | **Medium** | **Partial** (`PreferTraderStamp` + `TraderPools` guarantee trader_* for metro/large_city/town; quest XML still open; live soak open) |
+| 24 | **Weather / temp by latitude+landcover** | Climate feel | C + B | E | **Medium** | **Partial** (`AltitudeClimate` ISA+lat + `LandcoverTempOffsetC` + `HeatBand`/`HeatOnsetC`/`HeatSevereC`; hypoxia/cold/heat via `Config/buffs.xml`; stock weather system still open; live soak open) |
+| 25 | **Radiation / barren mapping** | Wasteland bands | C + E | | **Soft** | **Partial** (BARREN → stock `wasteland` id 8 via `LandcoverToBiomeId`/`Name`; stock hazards/spawn exist for wasteland, not biomemap-only `radiated`; live soak open) |
 | 26 | **Roads (OSM corridors)** | Highways | E + D | B stamp | **Later** |
 | 27 | **Rivers / hydrology** | Recognizable waterways | E + B | | **Later** |
 | 28 | **Lat-correct horizontal meters** | True km / city edges | Sys | E | **Medium** |
 | 29 | **Antimeridian packs** | Pacific | E + Sys | | **Medium** |
 | 30 | **Globe / atlas XUi** | Planet context | C (XUi) + B | Sys | **Medium** |
-| 31 | **Map lon/lat HUD + grid** | Orientation | B + C | | **Soft** |
-| 32 | **City discovery save/MP sync** | Sticky names across join | Sys + B | | **Medium** |
-| 33 | **Production FOW** (not debug full map) | Explore real places | B | config | **Soft** |
+| 31 | **Map lon/lat HUD + grid** | Orientation | B + C | | **Soft** | **Partial** (`relonlat` / `rll` + `_re_lon`/`_re_lat` via `LonLatHudTick`; `Config/XUi_InGame` `{cvar(_re_lon)}`/`{cvar(_re_lat)}` window; map grid still open; live soak open) |
+| 32 | **City discovery save/MP sync** | Sticky names across join | Sys + B | | **Medium** | **Partial** (`discoveredCities` in `realearth.session.v1`; export/restore + `TrySave` on each discover; wire MP package sync still open; live soak open) |
+| 33 | **Production FOW** (not debug full map) | Explore real places | B | config | **Soft** | **Partial** (`MapExploreRevealRadiusChunks` default 8 via `MapReveal`; debug full-map knobs unchanged; live soak open) |
 | 34 | **Sparse Y sections** | RAM at planet+tall | A deep | B | **Later** |
-| 35 | **Fall damage / kill plane / spawn Y retune** | Peaks playable | C + B | | **Soft** |
-| 36 | **Vehicle / physics at extreme Y** | Edge cases | F playtest | B if broken | **Soft** |
+| 35 | **Fall damage / kill plane / spawn Y retune** | Peaks playable | C + B | | **Soft** | **Partial** (`FallSpawnRetune`: `SnapSpawnToSurface` + `FallDamageModifierScale` + `KillPlaneRescue`/`KillPlaneDepthBlocks`; `FindSpawnPointAtXZ` YDim-expanded; live soak open) |
+| 36 | **Vehicle / physics at extreme Y** | Edge cases | F playtest | B if broken | **Soft** | **Partial** (`FallSpawnRetune.TrySnapVehiclesToSurface` + `SnapVehicleToSurface`; live soak / deeper physics open) |
 | 37 | **Compatibility matrix / refuse bad DLL** | Silent break after update | B + F | A | **Ops** |
 | 38 | **Reproducible pack manifests** | Auditable 1:1 claim | E | | **Ops** |
 | 39 | **Planet tile farm** | Full coverage | E + F | | **Ops** |
@@ -368,7 +368,7 @@ Targets are **names from V3.1.0 research dumps**; always rediscover after TFP pa
 | Map UI / XUi | map window controllers, NCalc bindings | Lon/lat, discovered cities list |
 | NavObject | already reflection register | Keep; class via XML |
 | Compass | optional | Direction to city |
-| Console | `ConsoleCmd*` already | Add `relonlat`, session dump |
+| Console | `ConsoleCmd*` already | `relonlat` / `rll` shipped; session dump still open |
 
 ### 3.6 Multiplayer (P2+)
 
@@ -488,8 +488,8 @@ No Harmony required for pure pack quality; **runtime still needs inject** to sho
 ### Slice 3: Places feel real
 
 1. Density stamps with surface Y (B prefab + D prefabs.xml / runtime stamps).  
-2. Sleeper Y validation (B).  
-3. XML spawn/gamestage scales by biome (C).  
+2. Sleeper Y validation (B): **Partial** (best-effort re-pin after stamp; live soak open).  
+3. XML spawn/gamestage scales by biome (C): **Partial** (`Config/spawning.xml` commercial/downtown maxcount + `Config/gamestages.xml` `difficultyBonus` 1.2→1.35; live soak open).  
 4. City labels edge from pack density (done path; more map data E).
 
 **Modlets:** `spawning` / `gamestages` / denser `nav_objects` optional; `rwgmixer` only for Baked hybrid.

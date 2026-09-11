@@ -2,7 +2,14 @@
 // and settlement markers, and reports cursor probes. Ported from the
 // standalone viewer (viewer/src/map2d.ts) with the same interaction model:
 // drag to pan, scroll wheel to zoom around the cursor, hover settlements.
+// Full-planet bboxes tile horizontally so pan crosses ±180 (Google Maps style).
 
+import {
+  imageToLonLat,
+  isFullPlanetLonBbox,
+  lonLatToUV,
+  wrapTileRange,
+} from "./lonWrap";
 import type { Bbox, ProbePoint, Settlement } from "./types";
 
 const MAX_DEVICE_PIXEL_RATIO = 2;
@@ -188,18 +195,29 @@ export class Map2D {
     if (this.image === null) {
       return;
     }
+    const wrap = isFullPlanetLonBbox(this.bbox.west, this.bbox.east);
+    const range = wrap
+      ? wrapTileRange({
+          tx: this.tx,
+          scale: this.scale,
+          imageWidth: this.image.naturalWidth,
+          viewportWidth: parent.clientWidth,
+        })
+      : { start: 0, end: 0 };
     this.ctx.save();
     this.ctx.translate(this.tx, this.ty);
     this.ctx.scale(this.scale, this.scale);
     this.ctx.globalAlpha = this.opacity;
     this.ctx.imageSmoothingEnabled = this.scale < SMOOTH_SCALE_MAX;
-    this.ctx.drawImage(this.image, 0, 0);
+    for (let tile = range.start; tile <= range.end; tile++) {
+      this.ctx.drawImage(this.image, tile * this.image.naturalWidth, 0);
+    }
     this.ctx.globalAlpha = 1;
     if (this.showGrid && this.tileSize > 0) {
-      this.drawGrid(this.image);
+      this.drawGrid(this.image, range.start, range.end);
     }
     if (this.showSettlements) {
-      this.drawSettlements(this.image);
+      this.drawSettlements(this.image, range.start, range.end);
     }
     this.ctx.restore();
   }
@@ -210,7 +228,7 @@ export class Map2D {
     this.ctx.fillRect(0, 0, width, height);
   }
 
-  private drawGrid(image: HTMLImageElement): void {
+  private drawGrid(image: HTMLImageElement, tileStart: number, tileEnd: number): void {
     const vw = image.naturalWidth;
     const vh = image.naturalHeight;
     const scaleX = vw / Math.max(1, this.sampleWidth);
@@ -224,22 +242,35 @@ export class Map2D {
     this.ctx.strokeStyle = GRID_LINE_STYLE;
     this.ctx.lineWidth = 1 / this.scale;
     this.ctx.beginPath();
-    for (let x = 0; x <= vw; x += stepX) {
-      this.ctx.moveTo(x, 0);
-      this.ctx.lineTo(x, vh);
-    }
-    for (let z = 0; z <= vh; z += stepZ) {
-      this.ctx.moveTo(0, z);
-      this.ctx.lineTo(vw, z);
+    for (let tile = tileStart; tile <= tileEnd; tile++) {
+      const ox = tile * vw;
+      for (let x = 0; x <= vw; x += stepX) {
+        this.ctx.moveTo(ox + x, 0);
+        this.ctx.lineTo(ox + x, vh);
+      }
+      for (let z = 0; z <= vh; z += stepZ) {
+        this.ctx.moveTo(ox, z);
+        this.ctx.lineTo(ox + vw, z);
+      }
     }
     this.ctx.stroke();
   }
 
-  private drawSettlements(image: HTMLImageElement): void {
+  private drawSettlements(
+    image: HTMLImageElement,
+    tileStart: number,
+    tileEnd: number
+  ): void {
     for (const settlement of this.settlements) {
       const point = this.lonLatToImage(settlement.lon, settlement.lat, image);
-      if (point !== null) {
-        this.drawSettlementMarker(settlement, point);
+      if (point === null) {
+        continue;
+      }
+      for (let tile = tileStart; tile <= tileEnd; tile++) {
+        this.drawSettlementMarker(settlement, {
+          x: point.x + tile * image.naturalWidth,
+          y: point.y,
+        });
       }
     }
   }
@@ -269,24 +300,31 @@ export class Map2D {
     lat: number,
     image: HTMLImageElement
   ): { x: number; y: number } | null {
-    const { west, south, east, north } = this.bbox;
-    if (east <= west || north <= south) {
+    const uv = lonLatToUV(lon, lat, this.bbox);
+    if (uv === null) {
       return null;
     }
-    const u = (lon - west) / (east - west);
-    const v = (north - lat) / (north - south);
-    return { x: u * image.naturalWidth, y: v * image.naturalHeight };
+    return { x: uv.u * image.naturalWidth, y: uv.v * image.naturalHeight };
   }
 
-  probeAt(ix: number, iy: number, image: HTMLImageElement): ProbePoint {
-    const { west, south, east, north } = this.bbox;
-    const u = ix / image.naturalWidth;
-    const v = iy / image.naturalHeight;
+  probeAt(ix: number, iy: number, image: HTMLImageElement): ProbePoint | null {
+    const mapped = imageToLonLat(
+      {
+        ix,
+        iy,
+        width: image.naturalWidth,
+        height: image.naturalHeight,
+      },
+      this.bbox
+    );
+    if (mapped === null) {
+      return null;
+    }
     return {
-      lon: west + u * (east - west),
-      lat: north - v * (north - south),
-      u,
-      v,
+      lon: mapped.lon,
+      lat: mapped.lat,
+      u: mapped.u,
+      v: mapped.v,
       ix,
       iy,
     };
@@ -320,14 +358,24 @@ export class Map2D {
       return;
     }
     const { ix, iy } = this.screenToImage(sx, sy);
-    const inside =
-      ix >= 0 && iy >= 0 && ix <= this.image.naturalWidth && iy <= this.image.naturalHeight;
+    const wrap = isFullPlanetLonBbox(this.bbox.west, this.bbox.east);
+    const w = this.image.naturalWidth;
+    const h = this.image.naturalHeight;
+    const inside = wrap
+      ? iy >= 0 && iy <= h
+      : ix >= 0 && iy >= 0 && ix <= w && iy <= h;
     if (!inside) {
       this.emitProbe(null);
       this.emitHover(null, sx, sy);
       return;
     }
-    this.emitProbe(this.probeAt(ix, iy, this.image));
+    const probe = this.probeAt(ix, iy, this.image);
+    if (probe === null) {
+      this.emitProbe(null);
+      this.emitHover(null, sx, sy);
+      return;
+    }
+    this.emitProbe(probe);
     this.emitHover(this.settlementHit(ix, iy), sx, sy);
   }
 
@@ -340,9 +388,12 @@ export class Map2D {
       return null;
     }
     const threshold = SETTLEMENT_HIT_RADIUS_PX / this.scale;
+    const w = this.image.naturalWidth;
+    const wrap = isFullPlanetLonBbox(this.bbox.west, this.bbox.east);
+    const localX = wrap ? (((ix % w) + w) % w) : ix;
     for (const settlement of this.settlements) {
       const point = this.lonLatToImage(settlement.lon, settlement.lat, this.image);
-      if (point !== null && Math.hypot(point.x - ix, point.y - iy) < threshold) {
+      if (point !== null && Math.hypot(point.x - localX, point.y - iy) < threshold) {
         return settlement;
       }
     }

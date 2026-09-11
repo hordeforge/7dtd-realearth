@@ -121,6 +121,47 @@ namespace RealEarth
         }
 
         /// <summary>
+        /// Soft gap 32: copy discovered place names for session persist.
+        /// </summary>
+        public static List<string> ExportDiscoveredNames()
+        {
+            lock (_cityGate)
+            {
+                if (_discovered.Count == 0)
+                    return new List<string>();
+                var list = new List<string>(_discovered.Count);
+                foreach (var n in _discovered)
+                {
+                    if (!string.IsNullOrEmpty(n))
+                        list.Add(n);
+                }
+                list.Sort(StringComparer.OrdinalIgnoreCase);
+                return list;
+            }
+        }
+
+        /// <summary>
+        /// Soft gap 32: re-seed discovered set after Reset/load. Markers re-place on tick.
+        /// </summary>
+        public static int RestoreDiscoveredNames(IEnumerable<string>? names)
+        {
+            if (names == null) return 0;
+            int added = 0;
+            lock (_cityGate)
+            {
+                foreach (var raw in names)
+                {
+                    if (string.IsNullOrWhiteSpace(raw)) continue;
+                    string n = NormalizePlaceName(raw);
+                    if (n.Length == 0) continue;
+                    if (_discovered.Add(n))
+                        added++;
+                }
+            }
+            return added;
+        }
+
+        /// <summary>
         /// Session-local coords for a place, computed once and memoized on the Place.
         /// Callers must InvalidateLocalCache() when the session origin moves (slide).
         /// </summary>
@@ -237,6 +278,17 @@ namespace RealEarth
                                 ModApi.Log(
                                     $"CityMapLabels: discovered '{p.Name}' " +
                                     $"(dist={(int)Math.Sqrt(distSq):0} edge={edge} center=({cx},{cz})).");
+                                // Soft gap 32: persist immediately so dedicated/shared
+                                // session files pick up discoveries without waiting for
+                                // logout/origin-slide. Wire MP package sync still open.
+                                try
+                                {
+                                    SessionStateStore.TrySave(session, ModApi.Config);
+                                }
+                                catch
+                                {
+                                    // never break discovery tick
+                                }
                             }
                         }
                     }
@@ -625,7 +677,7 @@ namespace RealEarth
                 && TryReadDouble(obj, "south", out var south)
                 && TryReadDouble(obj, "east", out var east)
                 && TryReadDouble(obj, "north", out var north)
-                && east > west && north > south)
+                && east != west && north > south)
             {
                 place.EdgeRadiusM = EdgeMetersFromBbox(west, south, east, north, place.Lon, place.Lat);
                 place.EdgeSource = "map";
@@ -636,17 +688,30 @@ namespace RealEarth
             double west, double south, double east, double north,
             double centerLon, double centerLat)
         {
+            double lonSpan = east > west
+                ? east - west
+                : (180.0 - west) + (east - (-180.0));
             if (centerLon == 0 && centerLat == 0)
             {
-                centerLon = 0.5 * (west + east);
+                if (east > west)
+                    centerLon = 0.5 * (west + east);
+                else
+                {
+                    centerLon = west + lonSpan * 0.5;
+                    if (centerLon > 180.0) centerLon -= 360.0;
+                }
                 centerLat = 0.5 * (south + north);
             }
             double mLat = 110_540.0;
             double mLon = 111_320.0 * Math.Max(0.01, Math.Abs(Math.Cos(centerLat * Math.PI / 180.0)));
-            double halfW = 0.5 * Math.Abs(east - west) * mLon;
+            double halfW = 0.5 * lonSpan * mLon;
             double halfH = 0.5 * Math.Abs(north - south) * mLat;
+            // Shortest lon delta to east edge (handles wrap).
+            double dLonEast = east - centerLon;
+            while (dLonEast > 180.0) dLonEast -= 360.0;
+            while (dLonEast < -180.0) dLonEast += 360.0;
             double corner = Math.Sqrt(
-                Math.Pow((east - centerLon) * mLon, 2) +
+                Math.Pow(dLonEast * mLon, 2) +
                 Math.Pow((north - centerLat) * mLat, 2));
             return Math.Max(halfW, Math.Max(halfH, corner * 0.85));
         }
@@ -820,7 +885,7 @@ namespace RealEarth
             {
                 if (hasBbox)
                 {
-                    if (s.lon < cfg!.BboxWest || s.lon > cfg.BboxEast) continue;
+                    if (!cfg!.LonInRegionalBbox(s.lon)) continue;
                     if (s.lat < cfg.BboxSouth || s.lat > cfg.BboxNorth) continue;
                 }
                 into.Add(new Place

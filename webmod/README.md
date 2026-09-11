@@ -83,6 +83,9 @@ The demo pack ships by default; larger packs are regenerated with
   replacing files under the packaged mod's `WebMod/data` applies on refresh.
 - The bundle is a plain IIFE: no top-level await, no external imports, no
   CDN dependencies, so the dashboard can load it offline once assets exist.
+- **Map wrap:** full-planet packs (`west≈-180`, `east≈180`) tile horizontally so
+  pan crosses ±180 (`src/lonWrap.ts`, mirrored from `viewer/src/lonWrap.ts`).
+  Regional packs stay non-wrapping.
 - Out of scope for v1: globe view (see the standalone `viewer/`), stock-map
   overlays (`mapComponents`/`iconOverrides` need lon/lat <-> game-coord
   conversion), and in-browser `.rte` streaming.

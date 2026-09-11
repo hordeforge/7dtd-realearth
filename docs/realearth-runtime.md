@@ -302,7 +302,7 @@ Stock save hook is still incomplete (product **Partial**). Snapshot format is th
 | Concern | Lesson |
 |---|---|
 | Surface Y for stamps | **int32** (`StampSurfaceY` / density planner); uint8 wraps at 256 and buries H500+ |
-| DensityBudget | Real cap in planner (`clamp_prefabs_in_chunk`); dead budget code is a silent product hole |
+| DensityBudget | Live caps in `RuntimePoiInject` (4/chunk, 80/area via `ClampPrefabsInChunk` / `ClampPrefabsInArea`); offline planner mirrors. Distance LODs still open |
 | City labels | Discover at **edge** from map data (`edge_radius_m`); pin at geographic **center** |
 | Label clamp | Hard max count (e.g. 500); identity clamp is not a budget |
 | POI place | Void place must not count as success |
@@ -398,7 +398,7 @@ Streaming slides (3) while (1)/(2) stay continuous. Confusing any two layers pro
 | Lon wrap (optional) | Full-planet circle on X only when packs + config enable wrap |
 | Regional bbox stretch | Demo packs distort scale to fit small world_width/height |
 | Missing geodesic | Great-circle distance / true km at high lat **not** implemented |
-| Missing antimeridian bbox | Pacific packs need split or specialized fold |
+| Antimeridian bbox | Offline: `split_bbox_at_antimeridian` + `planet-tiles` accept west>east. C# `HasRegionalBbox` accepts west>east; `LonLatToEarth` / city filter use wrap-aware span |
 
 These are **documented product gaps**, not temporary bugs. See product `LON_LAT.md`.
 

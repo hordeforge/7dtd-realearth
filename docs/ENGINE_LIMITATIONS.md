@@ -33,7 +33,7 @@ Those still bind RealEarth (metro density, tall inject, MP soak) but are not Ear
 | Layer storage **64 layers × 4** must stay consistent | Alloc/free of layer arrays | Mismatched layer count → Unity.Collections Free crashes | **Hard** | Rewrite alloc + free layer counts together |
 | Static full-column RAM O(YDim) per column | Engine design | Tall static columns everywhere = huge RAM | **Hard** | Near term: accept expand cost near players only; long term: **sparse Y sections** ([`DYNAMIC_CHUNK_HEIGHT.md`](DYNAMIC_CHUNK_HEIGHT.md)) |
 | Mesh / light / stability / density loops assume short Y | Method list in patcher (`GetBlock`, `SetDensity`, sunlight, …) | Tall columns crash or clip if loops still use 255/256 | **Hard** | Expand Y-bound methods; validate H500 → Everest soak |
-| Fall damage / kill planes / spawn Y | Spawn and physics | Extreme falls, bad spawn on peaks, water at wrong band | **Soft→Hard** | Re-tune after expand; spawn on real surface |
+| Fall damage / kill planes / spawn Y | Spawn and physics | Extreme falls, bad spawn on peaks, water at wrong band | **Soft→Hard** | **Partial**: `FallSpawnRetune` (`SnapSpawnToSurface` + `FallDamageModifierScale` + `KillPlaneRescue`/`KillPlaneDepthBlocks`); `FindSpawnPointAtXZ` YDim-expanded; live soak open |
 | Prefabs authored for ~255 roofs | POI library | Tall mountains + short prefabs look wrong; paste Y may clip | **Soft** | Stamp relative to surface; optional tall-aware packs later |
 | Saves (`.7rg`) may assume stock packing | Region format | Tall worlds may bloat, fail, or desync clients | **Hard** | Expand client+dedicated identically; test save/reload; watch region size |
 | Client/server YDim mismatch | Two installs | Desync / crash | **Ops** | Always expand **both** game trees after Verify |
@@ -92,7 +92,7 @@ Combat across chunks already works if coords are shared. RealEarth’s MP proble
 | Water table / rivers | Stock water is shallow systems | **Hard** | Column water fill from DEM; river overlays phased |
 | Zombie / sleeper density | Real metro density can melt sim | **Hard** | Population channel caps; LOD (EfficientServer is separate) |
 | Trader / quest / prefab rules | Expect RWG layout | **Soft** | Stamp packs by density band; do not claim full quest parity |
-| Vehicles / physics at extreme Y | Edge cases on cliffs | **Soft** | Playtest Everest approaches; clamp bad spawns |
+| Vehicles / physics at extreme Y | Edge cases on cliffs | **Soft** | **Partial**: `FallSpawnRetune.TrySnapVehiclesToSurface` + `SnapVehicleToSurface`; live soak / deeper physics open |
 
 ---
 

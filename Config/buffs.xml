@@ -1,0 +1,88 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+  RealEarth: altitude hypoxia + cold + heat (gap 24 / HEIGHT_LIMITS altitude feel).
+
+  Driven by AltitudeClimateTick from player tick (elev ASL + lat ISA lapse).
+  Hypoxia reuses the stock oxygen icon; damage types match drowning/cold.
+  Live soak at Everest / trench still open.
+-->
+<configs>
+	<append xpath="/buffs">
+		<!-- Mild hypoxia ≥2500 m ASL: oxygen UI, no HP loss yet. -->
+		<buff name="buffAltitudeHypoxia01" name_key="buffAltitudeHypoxia01Name" description_key="buffAltitudeHypoxia01Desc" tooltip_key="buffAltitudeHypoxia01Desc" icon="ui_game_symbol_oxygen">
+			<damage_type value="Suffocation"/>
+			<stack_type value="replace"/>
+			<duration value="0"/>
+			<effect_group>
+				<passive_effect name="BuffBlink" operation="base_set" value="2" duration="0,3" tags="buffAltitudeHypoxia01"/>
+				<passive_effect name="StaminaChangeOT" operation="base_subtract" value="0.5"/>
+			</effect_group>
+		</buff>
+
+		<!-- Severe hypoxia ≥5500 m ASL: faster stamina drain + slow HP. -->
+		<buff name="buffAltitudeHypoxia02" name_key="buffAltitudeHypoxia02Name" description_key="buffAltitudeHypoxia02Desc" tooltip_key="buffAltitudeHypoxia02Desc" icon="ui_game_symbol_oxygen" icon_color="255,165,0">
+			<damage_type value="Suffocation"/>
+			<stack_type value="replace"/>
+			<duration value="0"/>
+			<effect_group>
+				<passive_effect name="BuffBlink" operation="base_set" value="2" duration="0,3" tags="buffAltitudeHypoxia02"/>
+				<passive_effect name="StaminaChangeOT" operation="base_subtract" value="1.5"/>
+				<passive_effect name="HealthChangeOT" operation="base_subtract" value="0.5"/>
+			</effect_group>
+		</buff>
+
+		<!-- Critical hypoxia ≥8000 m ASL: rapid HP loss (death zone). -->
+		<buff name="buffAltitudeHypoxia03" name_key="buffAltitudeHypoxia03Name" description_key="buffAltitudeHypoxia03Desc" tooltip_key="buffAltitudeHypoxia03Desc" icon="ui_game_symbol_oxygen" icon_color="255,0,0">
+			<damage_type value="Suffocation"/>
+			<stack_type value="replace"/>
+			<duration value="0"/>
+			<effect_group>
+				<passive_effect name="BuffBlink" operation="base_set" value="2" duration="0,3" tags="buffAltitudeHypoxia03"/>
+				<passive_effect name="StaminaChangeOT" operation="base_subtract" value="3"/>
+				<passive_effect name="HealthChangeOT" operation="base_subtract" value="2"/>
+			</effect_group>
+		</buff>
+
+		<!-- Mild cold ≤0 °C ambient (ISA + lat). -->
+		<buff name="buffAltitudeCold01" name_key="buffAltitudeCold01Name" description_key="buffAltitudeCold01Desc" tooltip_key="buffAltitudeCold01Desc" icon="ui_game_symbol_cold">
+			<stack_type value="replace"/>
+			<duration value="0"/>
+			<effect_group>
+				<passive_effect name="BuffBlink" operation="base_set" value="2" duration="0,3" tags="buffAltitudeCold01"/>
+				<passive_effect name="StaminaChangeOT" operation="base_subtract" value="0.25"/>
+			</effect_group>
+		</buff>
+
+		<!-- Severe cold ≤-20 °C ambient. -->
+		<buff name="buffAltitudeCold02" name_key="buffAltitudeCold02Name" description_key="buffAltitudeCold02Desc" tooltip_key="buffAltitudeCold02Desc" icon="ui_game_symbol_cold" icon_color="100,180,255">
+			<stack_type value="replace"/>
+			<duration value="0"/>
+			<effect_group>
+				<passive_effect name="BuffBlink" operation="base_set" value="2" duration="0,3" tags="buffAltitudeCold02"/>
+				<passive_effect name="StaminaChangeOT" operation="base_subtract" value="1"/>
+				<passive_effect name="HealthChangeOT" operation="base_subtract" value="0.25"/>
+			</effect_group>
+		</buff>
+
+		<!-- Mild heat ≥35 °C ambient (desert/hot landcover, soft gap 24). -->
+		<buff name="buffAltitudeHeat01" name_key="buffAltitudeHeat01Name" description_key="buffAltitudeHeat01Desc" tooltip_key="buffAltitudeHeat01Desc" icon="ui_game_symbol_hot">
+			<stack_type value="replace"/>
+			<duration value="0"/>
+			<effect_group>
+				<passive_effect name="BuffBlink" operation="base_set" value="2" duration="0,3" tags="buffAltitudeHeat01"/>
+				<passive_effect name="StaminaChangeOT" operation="base_subtract" value="0.25"/>
+			</effect_group>
+		</buff>
+
+		<!-- Severe heat ≥45 °C ambient. -->
+		<buff name="buffAltitudeHeat02" name_key="buffAltitudeHeat02Name" description_key="buffAltitudeHeat02Desc" tooltip_key="buffAltitudeHeat02Desc" icon="ui_game_symbol_hot" icon_color="255,140,0">
+			<stack_type value="replace"/>
+			<duration value="0"/>
+			<effect_group>
+				<passive_effect name="BuffBlink" operation="base_set" value="2" duration="0,3" tags="buffAltitudeHeat02"/>
+				<passive_effect name="StaminaChangeOT" operation="base_subtract" value="1"/>
+				<passive_effect name="HealthChangeOT" operation="base_subtract" value="0.25"/>
+			</effect_group>
+		</buff>
+	</append>
+</configs>

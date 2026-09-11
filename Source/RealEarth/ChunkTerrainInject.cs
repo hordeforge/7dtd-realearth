@@ -178,6 +178,22 @@ namespace RealEarth
             }
             catch { /* never break inject */ }
 
+            // Soft gap 16: re-pin sleeper volumes onto injected surface Y even when
+            // no POI stamp ran in this chunk (stock POIs / prior stamps).
+            try
+            {
+                if (applied)
+                {
+                    int localX = chunkX * ChunkTerrainSampler.VanillaChunkSize + ChunkTerrainSampler.VanillaChunkSize / 2;
+                    int localZ = chunkZ * ChunkTerrainSampler.VanillaChunkSize + ChunkTerrainSampler.VanillaChunkSize / 2;
+                    int surface = ChunkTerrainSampler.SampleGameHeightInt(localX, localZ);
+                    if (surface > 0)
+                        RuntimePoiInject.TryRepinSleeperVolumesNear(
+                            localX, localZ, StampSurfaceY.SleeperRootY(surface));
+                }
+            }
+            catch { /* never break inject */ }
+
             // Only count successful column rewrites (null chunk / apply miss do not inflate gates).
             int maxH = 0;
             for (int i = 0; i < heights.Length; i++)

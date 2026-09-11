@@ -87,7 +87,7 @@ Most demos and height-test packs are **not** full-planet indices. Manifest has a
 When `HasRegionalBbox` is true:
 
 ```text
-fx = (lon - west) / (east - west)     # clamp lon into bbox first
+fx = LonOffsetFromWest(lon) / BboxLonSpanDegrees  # continuous or dateline wrap
 fz = (north - lat) / (north - south)
 earthX = fx * (WorldWidth - 1)
 earthZ = fz * (WorldHeight - 1)
@@ -142,8 +142,9 @@ There is **no** WGS84 geodesic, UTM zone, or Web Mercator path in the runtime.
 | Issue | Detail |
 |---|---|
 | Point lon wrap | `LonLatToBlock` normalizes lon into [-180, 180] |
-| Regional bbox | Assumes `east > west` continuous; cannot express a dateline-straddling region without a custom pack |
-| Settlements | Places near ±180 work as points; area queries and pack bboxes that cross the dateline do not |
+| Offline tile indices | `split_bbox_at_antimeridian` + `world_tile_indices_for_bbox` accept west>east Pacific packs (split to [west,180] and [-180,east], then union) |
+| Regional pack bbox (C#) | `HasRegionalBbox` accepts continuous (`east > west`) and dateline wrap (`west > east`); `LonLatToEarth` / `EarthToLonLat` / city seed filter use `BboxLonSpanDegrees` + `LonInRegionalBbox` |
+| Settlements | Places near ±180 work as points; area queries across a single dateline pack bbox still need the split packs above |
 
 ### 4.5 Engine-local vs lon/lat (origin slide)
 
@@ -153,7 +154,10 @@ There is **no** WGS84 geodesic, UTM zone, or Web Mercator path in the runtime.
 | `SoloSlide` | Recenters host on absolute Earth; **remaps** player local XZ |
 | Stock UI / saves | Think in engine coords; RealEarth must re-derive lon/lat via session |
 | NavObjects / claims / vehicles after slide | Re-pin labels implemented for cities; **claims/vehicles/POI permanence across slide** not fully proven |
-| Debug FOW | Reveals host chunks, not “all lon/lat on Earth” |
+| Debug FOW | Host chunks only (not “all lon/lat on Earth”). On origin slide, `MapReveal.RefreshAfterOriginSlide` re-paints when debug FOW is on so wrap/circle stays continuous |
+| Stock in-game map UI | Flat `LocalWindowSize` rectangle + FOW chunk keys. Walking Earth X wraps in data; stock FOW does not continuous-pan across ±180 |
+| Infinite lon map scroll (Phase B) | When `EnableLongitudeWrap` is on, Harmony postfix on `World.ClampToValidWorldPosForMap` restores unclamped input X so `XUiC_MapArea.DragMap` / `PositionMapAt` can scroll past the stock extent edge; Z stays stock-clamped. Wired in `RuntimeHooks.TryPatchMapLonScroll` |
+| Custom wrap map (web) | Viewer + webmod `Map2D` tile full-planet packs horizontally (`lonWrap.ts`) so pan crosses ±180. Regional packs stay non-wrapping |
 
 ### 4.6 What `BlockToLonLat` is not
 
@@ -248,15 +252,15 @@ Product slogan is **1 m = 1 block** after Y expand for **height**, and for **hor
 | **Server-authoritative absolute Earth** for distant groups | True multi-region MP | Needed / hard |
 | **Identical expand + pack + bbox on all peers** | Desync | Ops |
 | **Loadgen soak across wrap and slide** | Prove net + inject | Needed (`7dtd-loadgen`) |
-| **Documented player-facing lon/lat debug** | Support (`recities` / future `relonlat`) | Soft |
+| **Documented player-facing lon/lat debug** | Support (`relonlat` / `rll` + `_re_lon`/`_re_lat` + `Config/XUi_InGame` `{cvar(...)}` HUD; map grid still open) | Soft |
 
 ### 6.5 Product UX
 
 | Gap | Why it matters | Severity |
 |---|---|---|
-| HUD / F1: print player lon/lat | Orientation on real Earth | Easy win, not shipped as first-class |
+| HUD / F1: print player lon/lat | Orientation on real Earth | **Partial** (`relonlat` / `rll` + `_re_lon`/`_re_lat` + `Config/XUi_InGame` `{cvar(...)}` HUD; map grid still open; live soak open) |
 | Map grid in degrees | Real atlas feel | Later |
-| Discovery persistence by lon/lat across saves | Cities stay found | Missing (session-only labels) |
+| Discovery persistence by lon/lat across saves | Cities stay found | **Partial** (`discoveredCities` in session snapshot; MP sync still open) |
 
 ---
 

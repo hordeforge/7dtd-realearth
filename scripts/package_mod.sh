@@ -58,6 +58,14 @@ mkdir -p "$OUT/Config" "$OUT/Data" "$OUT"
 cp "$ROOT/ModInfo.xml" "$OUT/"
 cp "$ROOT/Config/realearth.json" "$OUT/Config/"
 [[ -f "$ROOT/Config/nav_objects.xml" ]] && cp -f "$ROOT/Config/nav_objects.xml" "$OUT/Config/"
+[[ -f "$ROOT/Config/spawning.xml" ]] && cp -f "$ROOT/Config/spawning.xml" "$OUT/Config/"
+[[ -f "$ROOT/Config/gamestages.xml" ]] && cp -f "$ROOT/Config/gamestages.xml" "$OUT/Config/"
+[[ -f "$ROOT/Config/buffs.xml" ]] && cp -f "$ROOT/Config/buffs.xml" "$OUT/Config/"
+# Soft gap 31: XUi lon/lat HUD (cvar bind to LonLatHudTick).
+if [[ -d "$ROOT/Config/XUi_InGame" ]]; then
+  mkdir -p "$OUT/Config/XUi_InGame"
+  cp -f "$ROOT/Config/XUi_InGame/"*.xml "$OUT/Config/XUi_InGame/" 2>/dev/null || true
+fi
 # The mod folder is redistributed standalone (mod sites, server packs); MIT
 # requires the license text to travel with it.
 cp "$ROOT/LICENSE" "$OUT/" 2>/dev/null || true

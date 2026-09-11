@@ -1,0 +1,21 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+  RealEarth: soft gap 31 lon/lat HUD.
+
+  Binds EntityBuffs cvars published by LonLatHudTick (_re_lon / _re_lat)
+  via stock XUi BindingItemCvar syntax {cvar(...)}. Shown above the stock
+  location window when ShowLonLatHud is on (cvars stay 0 / unset when off).
+  Map grid overlay still open; live soak open.
+-->
+<configs>
+	<!-- Compact lon/lat readout near BottomLeft HUD (above location chip). -->
+	<append xpath="/windows">
+		<window name="windowRealEarthLonLat" anchor="BottomLeft">
+			<rect name="hud" pos="9,210" width="220" height="28">
+				<sprite depth="1" name="border" color="0,0,0,140" type="sliced" width="220" height="28"/>
+				<label depth="2" name="LonLatText" pos="8,-4" font_size="20" color="[white]" justify="left" pivot="topleft"
+					text="{cvar(_re_lon):0.00}, {cvar(_re_lat):0.00}" width="204" height="24"/>
+			</rect>
+		</window>
+	</append>
+</configs>

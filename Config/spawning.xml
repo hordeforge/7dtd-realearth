@@ -1,0 +1,34 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+  RealEarth: density-linked biome spawn pressure (Slice 3 / gap 22).
+
+  Urban underlay (landcover → pine_forest) gets higher downtown/commercial
+  maxcount so metro stamps feel denser than plains. Wasteland rural stays
+  stock-hard; plains rural is left alone. Animals are not scaled.
+  Snow commercial/downtown already at stock 4: left unchanged.
+
+  Applies only when Sandbox Enemy Density is Default (stock rule).
+  Live soak of metro vs plains pressure remains open.
+-->
+<configs>
+	<!-- pine_forest: urban underlay + default land. Raise commercial + downtown caps. -->
+	<set xpath="/spawning/biome[@name='pine_forest']/spawn[@id='dz02']/@maxcount">3</set>
+	<set xpath="/spawning/biome[@name='pine_forest']/spawn[@id='nz02']/@maxcount">4</set>
+	<set xpath="/spawning/biome[@name='pine_forest']/spawn[@id='dz03']/@maxcount">4</set>
+	<set xpath="/spawning/biome[@name='pine_forest']/spawn[@id='nz03']/@maxcount">4</set>
+
+	<!-- burnt_forest: slightly denser commercial/downtown (scarred metro fringe). -->
+	<set xpath="/spawning/biome[@name='burnt_forest']/spawn[@id='dz02']/@maxcount">4</set>
+	<set xpath="/spawning/biome[@name='burnt_forest']/spawn[@id='nz02']/@maxcount">5</set>
+	<set xpath="/spawning/biome[@name='burnt_forest']/spawn[@id='dz03']/@maxcount">4</set>
+	<set xpath="/spawning/biome[@name='burnt_forest']/spawn[@id='nz03']/@maxcount">5</set>
+
+	<!-- desert: nudge commercial + downtown day. -->
+	<set xpath="/spawning/biome[@name='desert']/spawn[@id='dz02']/@maxcount">4</set>
+	<set xpath="/spawning/biome[@name='desert']/spawn[@id='nz02']/@maxcount">4</set>
+	<set xpath="/spawning/biome[@name='desert']/spawn[@id='dz03']/@maxcount">4</set>
+
+	<!-- wasteland: already the hard biome; leave rural, nudge downtown only. -->
+	<set xpath="/spawning/biome[@name='wasteland']/spawn[@id='dz03']/@maxcount">5</set>
+	<set xpath="/spawning/biome[@name='wasteland']/spawn[@id='nz03']/@maxcount">5</set>
+</configs>

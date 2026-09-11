@@ -4,8 +4,8 @@ Pins:
 - compress_elevation never returns NaN-derived garbage (non-finite -> 0 m ASL)
 - lonlat_to_block rejects non-finite input on BOTH axes (was: lon raised,
   lat silently mapped to the north pole)
-- world_tile_indices_for_bbox rejects inverted/non-finite bboxes instead of
-  expanding an antimeridian pair into a near-full-planet tile list
+- world_tile_indices_for_bbox rejects non-finite / empty bboxes; west>east
+  dateline packs split via split_bbox_at_antimeridian (no planet-scale hang)
 """
 
 from __future__ import annotations
@@ -18,7 +18,7 @@ import pytest
 from realearth import DEFAULT_SEA_LEVEL_GAME_Y, DEFAULT_TILE_SIZE
 from realearth.coords import EarthGrid, block_to_lonlat, lonlat_to_block
 from realearth.height import compress_elevation
-from realearth.region import world_tile_indices_for_bbox
+from realearth.region import split_bbox_at_antimeridian, world_tile_indices_for_bbox
 
 
 @pytest.mark.parametrize("profile", ["relative", "local_stretch", "linear_clamp", "one_to_one"])
@@ -54,11 +54,12 @@ def test_lonlat_to_block_rejects_nonfinite():
 
 
 def test_world_tile_indices_for_bbox_rejects_bad_bbox():
-    # Antimeridian-straddling bbox given naively would hang/OOM.
-    with pytest.raises(ValueError):
-        world_tile_indices_for_bbox(170.0, -5.0, -170.0, 5.0)
     with pytest.raises(ValueError):
         world_tile_indices_for_bbox(float("nan"), 0.0, 10.0, 10.0)
+    with pytest.raises(ValueError):
+        world_tile_indices_for_bbox(10.0, 0.0, 10.0, 5.0)  # east == west
+    with pytest.raises(ValueError):
+        world_tile_indices_for_bbox(0.0, 10.0, 5.0, 0.0)  # north <= south
     # Sanity: tile count matches the block span covered by the bbox.
     g = EarthGrid()
     west, south, east, north = -105.3, 39.5, -104.7, 40.0
@@ -70,6 +71,26 @@ def test_world_tile_indices_for_bbox_rejects_bad_bbox():
     expect_tx = max(x0, x1) // DEFAULT_TILE_SIZE - min(x0, x1) // DEFAULT_TILE_SIZE + 1
     expect_tz = max(zn, zs) // DEFAULT_TILE_SIZE - min(zn, zs) // DEFAULT_TILE_SIZE + 1
     assert len(tiles) == expect_tx * expect_tz
+
+
+def test_split_bbox_at_antimeridian_continuous():
+    assert split_bbox_at_antimeridian(-105.3, 39.5, -104.7, 40.0) == [(-105.3, 39.5, -104.7, 40.0)]
+
+
+def test_split_bbox_at_antimeridian_dateline():
+    pieces = split_bbox_at_antimeridian(170.0, -5.0, -170.0, 5.0)
+    assert pieces == [(170.0, -5.0, 180.0, 5.0), (-180.0, -5.0, -170.0, 5.0)]
+
+
+def test_world_tile_indices_west_gt_east_splits_not_planet():
+    """Pacific west>east bbox must union the two strips, not hang/OOM."""
+    tiles = world_tile_indices_for_bbox(170.0, -5.0, -170.0, 5.0)
+    left = set(world_tile_indices_for_bbox(170.0, -5.0, 180.0, 5.0))
+    right = set(world_tile_indices_for_bbox(-180.0, -5.0, -170.0, 5.0))
+    assert set(tiles) == left | right
+    g = EarthGrid()
+    # Far smaller than a full-planet column count.
+    assert len({tx for tx, _ in tiles}) < g.tiles_x // 2
 
 
 def test_world_tile_indices_uses_default_grid():

@@ -100,8 +100,8 @@ Then re-export each pack and refresh the page.
 
 ## Keyboard / mouse
 
-- **Flat:** drag pan, scroll zoom, hover settlements
-- **Globe:** drag orbit, scroll dolly
+- **Flat:** drag pan, scroll zoom, hover settlements. Full-planet packs (`west≈-180`, `east≈180`) tile horizontally so pan crosses ±180 without a hard edge (`lonWrap.ts` / `Map2D`). Regional packs stay non-wrapping.
+- **Globe:** drag orbit, scroll dolly. Sphere QA only; continuous wrap UX lives on the flat map.
 
 ## Pack selection and hosting
 

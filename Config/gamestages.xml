@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+  RealEarth: soft gamestage pressure (gap 22).
+
+  Stock difficultyBonus is 1.2. Nudge to 1.35 so metro density stamps and
+  taller 1:1 columns feel slightly harder without rewriting sleeper lists.
+  Spawning.xml still owns commercial/downtown maxcount by biome.
+
+  Live soak of metro vs plains pressure remains open.
+-->
+<configs>
+	<set xpath="/gamestages/config/@difficultyBonus">1.35</set>
+</configs>

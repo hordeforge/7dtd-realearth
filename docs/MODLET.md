@@ -111,7 +111,7 @@ All optional; defaults shown. Scripts fail fast when numeric values are invalid.
 | `TileSize` | `512` | `.rte` tile edge in blocks |
 | `StreamRadiusTiles` / `UnloadRadiusTiles` | `2` / `4` | Per-player tile bubble; unload must exceed stream radius |
 | `LocalWindowSize` | `1024` | Finite host window; clamped to pack extent at init |
-| `EnableLongitudeWrap` | `false` | Antimeridian wrap on full-planet canvases only |
+| `EnableLongitudeWrap` | `false` (auto `true`) | Antimeridian wrap. `Validate()` auto-enables for Streamed + `WorldWidth>=40000000` + no regional bbox; keep false for Baked / regional packs |
 | `SeaLevelGameY` | `16000` | Game Y of sea surface (anchored for real depth below sea) |
 | `FailClosedMissingTiles` | `true` | Log (and refuse to invent) missing DEM tiles |
 | `EnableEngineHeightMod` | `true` | Height sampling/inject for Streamed packs |
@@ -142,6 +142,16 @@ Behavior and data: **[CITY_MAP_LABELS.md](CITY_MAP_LABELS.md)** (edge unlock, ce
 | `CityMapDiscoverRadiusScale` | `1.0` | Multiplier on map-derived edge radius |
 
 F1: `recities` / `recities reset` / `recities here`. XML: `Config/nav_objects.xml` class `realearth_city`.
+
+Spawn pressure: `Config/spawning.xml` raises commercial/downtown `maxcount` for pine/burnt/desert/wasteland (Sandbox Enemy Density = Default only). Gamestage soft nudge: `Config/gamestages.xml` sets `difficultyBonus` 1.2→1.35.
+
+Altitude climate (`LandcoverTempOffsetC` on ambient): `Config/buffs.xml` hypoxia/cold buffs driven by player-tick elev ASL + lat ISA lapse (`AltitudeClimate` / `AltitudeClimateTick`).
+
+F1 lon/lat: `relonlat` / `rll` (optional `<x> <z>`) prints local XZ → Earth blocks → lon/lat.
+
+Fall / spawn Y (soft): `SnapSpawnToSurface` (default true) + `FallDamageModifierScale` (default 0.35) via `FallSpawnRetune`.
+
+Production FOW (soft): `MapExploreRevealRadiusChunks` (default 8) via `MapReveal`; debug full-map knobs unchanged.
 
 ## Related docs
 

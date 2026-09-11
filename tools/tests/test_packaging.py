@@ -49,6 +49,16 @@ def test_package_mod_ships_license_text():
     assert 'cp "$ROOT/LICENSE"' in src
 
 
+def test_package_mod_ships_optional_config_modlets():
+    """spawning/buffs/nav_objects copy when present (spawn pressure, altitude, cities)."""
+    src = _read("scripts/package_mod.sh")
+    assert "Config/spawning.xml" in src
+    assert "Config/gamestages.xml" in src
+    assert "Config/buffs.xml" in src
+    assert "Config/nav_objects.xml" in src
+    assert "Config/XUi_InGame" in src
+
+
 def test_package_mod_does_not_ship_repo_hub_docs():
     """docs/INDEX.md is maintainer navigation: its links target sibling repos,
     workspace files, and repo-root docs that do not exist inside the shipped

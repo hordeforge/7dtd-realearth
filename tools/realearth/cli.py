@@ -363,8 +363,9 @@ def inspect_tile_cmd(pack_dir: str, tx: int, tz: int) -> None:
 def planet_tiles_cmd(west: float, south: float, east: float, north: float, tile_size: int) -> None:
     """List absolute Earth tile indices covering a bbox (planning full planet builds).
 
-    Stdout carries only "tx tz" lines (pipeable); counts and truncation notes
-    go to stderr.
+    Accepts continuous east>west bboxes and dateline-straddling west>east
+    (Pacific) packs; those split via split_bbox_at_antimeridian. Stdout carries
+    only "tx tz" lines (pipeable); counts and truncation notes go to stderr.
     """
     for flag, value in (
         ("--west", west),
@@ -373,11 +374,10 @@ def planet_tiles_cmd(west: float, south: float, east: float, north: float, tile_
         ("--north", north),
     ):
         _require_finite(flag, value)
-    if east <= west or north <= south:
-        raise click.BadParameter(
-            "bbox must have east>west and north>south", param_hint="--west/--east"
-        )
-    tiles = world_tile_indices_for_bbox(west, south, east, north, tile_size=tile_size)
+    try:
+        tiles = world_tile_indices_for_bbox(west, south, east, north, tile_size=tile_size)
+    except ValueError as exc:
+        raise click.BadParameter(str(exc), param_hint="--west/--east/--south/--north") from exc
     # Status on stderr so piped stdout stays pure "tx tz" data lines.
     click.echo(f"{len(tiles)} tiles", err=True)
     for tx, tz in tiles[:50]:

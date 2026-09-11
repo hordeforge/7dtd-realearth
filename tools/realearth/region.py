@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import hashlib
 import json
+import math
 from pathlib import Path
 from typing import Any
 
@@ -376,19 +377,49 @@ def build_region(
     return manifest
 
 
-def world_tile_indices_for_bbox(
+def split_bbox_at_antimeridian(
     west: float,
     south: float,
     east: float,
     north: float,
-    tile_size: int = DEFAULT_TILE_SIZE,
-) -> list[tuple[int, int]]:
-    """Absolute Earth tile indices for a bbox (for full-planet pipelines).
+) -> list[tuple[float, float, float, float]]:
+    """Split a lon/lat bbox into continuous east>west pieces.
 
-    Raises ValueError on non-finite or inverted bounds (east>west, north>south),
-    mirroring the `planet-tiles` CLI. An antimeridian-straddling bbox given as
-    west > east would otherwise expand to a near-full-planet span and hang.
+    A Pacific pack may be written as west>east (e.g. 170,-5,-170,5). A naive
+    min/max tile walk would hang or mis-plan; C# HasRegionalBbox accepts that
+    form. Split into [west,180] and [-180,east] so each piece has east>west.
+
+    Raises ValueError on non-finite coords or north<=south.
     """
+    for name, value in (
+        ("west", west),
+        ("south", south),
+        ("east", east),
+        ("north", north),
+    ):
+        if not math.isfinite(value):
+            raise ValueError(f"bbox {name} must be finite, got {value!r}")
+    if north <= south:
+        raise ValueError(f"bbox must have north>south, got {west},{south} -> {east},{north}")
+    if east > west:
+        return [(west, south, east, north)]
+    if east == west:
+        raise ValueError(
+            f"bbox must have east!=west (empty or full-planet ambiguous), "
+            f"got {west},{south} -> {east},{north}"
+        )
+    # west > east: dateline-straddling. Two continuous strips.
+    return [(west, south, 180.0, north), (-180.0, south, east, north)]
+
+
+def _world_tile_indices_continuous(
+    west: float,
+    south: float,
+    east: float,
+    north: float,
+    tile_size: int,
+) -> list[tuple[int, int]]:
+    """Tile indices for one continuous east>west bbox (may still wrap at +180)."""
     if east <= west or north <= south:
         raise ValueError(
             f"bbox must have east>west and north>south, got {west},{south} -> {east},{north}"
@@ -404,8 +435,32 @@ def world_tile_indices_for_bbox(
         # Block X wraps at the antimeridian (lon +180 maps to block 0), so an
         # ordinary east>west bbox can still straddle it (west=179, east=180).
         # Cover x0..last-tile then 0..x1 instead of min/max expanding to the
-        # near-full-planet span the guard above documents.
+        # near-full-planet span.
         last_tx = g.tiles_x - 1
         hi0, lo1 = x0 // tile_size, x1 // tile_size
         txs = list(range(hi0, last_tx + 1)) + list(range(lo1 + 1))
     return [(tx, tz) for tz in range(tz0, tz1 + 1) for tx in txs]
+
+
+def world_tile_indices_for_bbox(
+    west: float,
+    south: float,
+    east: float,
+    north: float,
+    tile_size: int = DEFAULT_TILE_SIZE,
+) -> list[tuple[int, int]]:
+    """Absolute Earth tile indices for a bbox (for full-planet pipelines).
+
+    Accepts continuous east>west bboxes and dateline-straddling west>east
+    bboxes (split via split_bbox_at_antimeridian, then unioned). Raises
+    ValueError on non-finite coords, north<=south, or east==west.
+    """
+    pieces = split_bbox_at_antimeridian(west, south, east, north)
+    seen: set[tuple[int, int]] = set()
+    out: list[tuple[int, int]] = []
+    for w, s, e, n in pieces:
+        for tile in _world_tile_indices_continuous(w, s, e, n, tile_size):
+            if tile not in seen:
+                seen.add(tile)
+                out.append(tile)
+    return out
