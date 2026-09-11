@@ -346,7 +346,7 @@ Offline tests:
 | Doc | Role |
 |---|---|
 | [`realearth-runtime.md`](realearth-runtime.md) | Architecture lessons |
-| [`terrain-height.md`](../../7dtd-engine-research/docs/terrain-height.md) | Height API / YDim RE |
+| [`terrain-height.md`](../../7dtd-engine-research/docs/world/terrain-height.md) | Height API / YDim RE |
 | [`../../7dtd-realearth/docs/IMPLEMENTATION_PLAN.md`](../../7dtd-realearth/docs/IMPLEMENTATION_PLAN.md) | Priority + isolation bar |
 | [`../../7dtd-realearth/docs/ENGINE_LIMITATIONS.md`](../../7dtd-realearth/docs/ENGINE_LIMITATIONS.md) | Stock limits + residual risk §10 |
 | [`../../7dtd-realearth/docs/GAP_HARMONY_MODLETS.md`](../../7dtd-realearth/docs/GAP_HARMONY_MODLETS.md) | Gap × API matrix |

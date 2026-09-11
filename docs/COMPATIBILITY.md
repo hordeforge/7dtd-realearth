@@ -77,7 +77,7 @@ Startup verdict logged on 3.2.0: `injectOk=True productOk=True` with
 ## Research cross-check (V3.2.0 b9)
 
 Cross-referenced against the engine-research exact-diff changelog
-([`changelog-3.2.0.md`](../../7dtd-engine-research/docs/changelog-3.2.0.md),
+([`changelog-3.2.0.md`](../../7dtd-engine-research/docs/releases/changelog-3.2.0.md),
 IL-verified 2026-08-28):
 
 - **Unchanged (verified by IL diff, consistent with our live results):**

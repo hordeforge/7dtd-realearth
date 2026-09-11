@@ -40,7 +40,7 @@ and the release gate requires both to match the tag (`v<version>`).
   (sessionPeak=500), 0 crashes. The disk patcher stays in the repo
   (`Tools/EngineHeightPatcher.exe`, `make engine-expand`) as the fallback for
   load-order-sensitive hosts; research:
-  7dtd-engine-research/docs/hot-patch-height.md.
+  7dtd-engine-research/docs/world/hot-patch-height.md.
 - CDN tile policy test suite (tests/test_cdn_policy.py): pins the https-only
   URL building/validation contract (injection, userinfo, host-smuggling
   rejection) and the TileStreamer fetch failure contract (size caps,

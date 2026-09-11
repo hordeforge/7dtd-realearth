@@ -11,7 +11,7 @@ namespace RealEarth
     /// inlined Y-bound literals the disk patcher (EngineHeightPatcher.exe)
     /// changes, but via Harmony transpilers at JIT time instead of a file edit.
     ///
-    /// Feasibility (see 7dtd-engine-research/docs/hot-patch-height.md): the main
+    /// Feasibility (see 7dtd-engine-research/docs/world/hot-patch-height.md): the main
     /// menu JITs none of the 26 Y-bound methods / 6 layer-storage types, so a
     /// transpiler installed from InitMod (pre-world) should catch all sites
     /// before first use. Residual risks: other mods / load order can JIT a site

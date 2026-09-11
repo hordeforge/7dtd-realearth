@@ -91,7 +91,7 @@ Vanilla remains a **finite flat world**. Planetary 1:1 requires streaming + wrap
   - `realearth-runtime.md` (dual coords, inject gate, tile readiness, tall crust, slide/claims, verification bar)
   - `realearth-review.md` (failure class catalog, residual risks, module map)
   - `realearth-runtime.md` (stream bubble, origin slide checklist, city edge geometry)
-- Linked from `7dtd-engine-research/docs/INDEX.md`, `7dtd-engine-research/docs/terrain-height.md`, and this product `INDEX.md`.
+- Linked from `7dtd-engine-research/docs/INDEX.md`, `7dtd-engine-research/docs/world/terrain-height.md`, and this product `INDEX.md`.
 
 ### Key conclusions locked into research
 
