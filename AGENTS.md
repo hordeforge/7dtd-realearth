@@ -116,4 +116,4 @@ narratives (`docs/`), the Mono.Cecil dump tooling (`tools/`), wire/protocol
 analysis, and engine cost/loop RE. This repo owns the RealEarth terrain/streaming product;
 it does not host stock-game RE docs or dumpers. When RE is needed, add it
 under `../7dtd-engine-research/` and link back. How to RE:
-[`../7dtd-engine-research/docs/re-methodology.md`](../7dtd-engine-research/docs/re-methodology.md).
+[`../7dtd-engine-research/docs/meta/re-methodology.md`](../7dtd-engine-research/docs/meta/re-methodology.md).

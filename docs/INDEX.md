@@ -40,7 +40,7 @@ flowchart TB
 | Product architecture / phases / ideas | [`../DESIGN.md`](../DESIGN.md) | README ideas lists |
 | Prioritized implement order P0-P8 | [`IMPLEMENTATION_PLAN.md`](IMPLEMENTATION_PLAN.md) | chat-only plans |
 | Stock engine limits (1:1 Earth) | [`ENGINE_LIMITATIONS.md`](ENGINE_LIMITATIONS.md) | HEIGHT (policy only) |
-| Generic dedi ceilings (any server) | [`../../7dtd-engine-research/docs/engine-limitations.md`](../../7dtd-engine-research/docs/engine-limitations.md) | product status / RealEarth attack paths |
+| Generic dedi ceilings (any server) | [`../../7dtd-engine-research/docs/meta/engine-limitations.md`](../../7dtd-engine-research/docs/meta/engine-limitations.md) | product status / RealEarth attack paths |
 | Vertical product policy + expand | [`HEIGHT_LIMITS.md`](HEIGHT_LIMITS.md) | ENGINE (limits only) |
 | Future sparse Y | [`DYNAMIC_CHUNK_HEIGHT.md`](DYNAMIC_CHUNK_HEIGHT.md) | HEIGHT |
 | **Status of each product surface** | [`MODIFICATIONS.md`](MODIFICATIONS.md) | GAP (implementation how) |
@@ -64,7 +64,7 @@ flowchart TB
 | Engine surfaces used by RealEarth | [`realearth-surfaces.md`](realearth-surfaces.md) | research terrain-height / save-region |
 | Adversarial review catalog | [`realearth-review.md`](realearth-review.md) | MODIFICATIONS (status only) |
 | Attack surface / threat model + security policy | [`THREAT_MODEL.md`](THREAT_MODEL.md) + [`../SECURITY.md`](../SECURITY.md) | realearth-review (robustness only), MODIFICATIONS (status) |
-| Height YDim / stock APIs (generic RE) | [`../../7dtd-engine-research/docs/terrain-height.md`](../../7dtd-engine-research/docs/terrain-height.md) | HEIGHT_LIMITS (product policy) |
+| Height YDim / stock APIs (generic RE) | [`../../7dtd-engine-research/docs/world/terrain-height.md`](../../7dtd-engine-research/docs/world/terrain-height.md) | HEIGHT_LIMITS (product policy) |
 
 **Status tags** (MODIFICATIONS + TODO only): **Done** · **Partial** · **Needed** · **Later** · **Ops**.  
 Never mark Done without live measure (GAP evidence checklist).
@@ -92,7 +92,7 @@ Never mark Done without live measure (GAP evidence checklist).
 
 **Implement / retarget:** [GAP_HARMONY_MODLETS](GAP_HARMONY_MODLETS.md) → [research INDEX](../../7dtd-engine-research/docs/INDEX.md) → [realearth-runtime](realearth-runtime.md) → [realearth-surfaces](realearth-surfaces.md) → [TODO](../TODO.md)
 
-**Generic engine RE:** [research INDEX](../../7dtd-engine-research/docs/INDEX.md) → [coverage](../../7dtd-engine-research/docs/coverage.md)
+**Generic engine RE:** [research INDEX](../../7dtd-engine-research/docs/INDEX.md) → [coverage](../../7dtd-engine-research/docs/meta/coverage.md)
 
 **Streamed product deep-dive:** [realearth-runtime](realearth-runtime.md) → [realearth-surfaces](realearth-surfaces.md) → [realearth-review](realearth-review.md)
 
@@ -115,7 +115,7 @@ Never mark Done without live measure (GAP evidence checklist).
 | [GAME_VERSION](GAME_VERSION.md) | Local pins |
 | [HEIGHT_LIMITS](HEIGHT_LIMITS.md) | Real height policy |
 | [ENGINE_LIMITATIONS](ENGINE_LIMITATIONS.md) | Stock blockers for 1:1 Earth (+ §7b other) |
-| [research engine-limitations](../../7dtd-engine-research/docs/engine-limitations.md) | Generic dedi ceilings |
+| [research engine-limitations](../../7dtd-engine-research/docs/meta/engine-limitations.md) | Generic dedi ceilings |
 | [MODIFICATIONS](MODIFICATIONS.md) | Product surface status A-H |
 | [COMPATIBILITY](COMPATIBILITY.md) | Build/install/hook/mode matrix + re-verify steps |
 | [IMPLEMENTATION_PLAN](IMPLEMENTATION_PLAN.md) | P0-P8 order, outcomes, test gates |

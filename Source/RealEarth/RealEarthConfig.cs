@@ -136,7 +136,7 @@ namespace RealEarth
         /// disk-patched install is never double-rewritten. The disk patcher
         /// stays in the repo (Tools/EngineHeightPatcher.exe, make engine-expand)
         /// as the fallback for load orders where a pre-boot patch is safer.
-        /// Research: 7dtd-engine-research/docs/hot-patch-height.md.
+        /// Research: 7dtd-engine-research/docs/world/hot-patch-height.md.
         /// </summary>
         [DataMember] public bool EngineHeightRuntimePatch { get; set; } = true;
 
