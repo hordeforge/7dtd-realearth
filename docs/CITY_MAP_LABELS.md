@@ -15,6 +15,7 @@ Behavior is intentionally close to **traders**: nothing until you get close; onc
 | **No pre-fill** | World load does **not** dump all city names onto the map. |
 | **Discover at edge** | Unlock when player distance to city center ≤ **edge radius**. |
 | **Pin at center** | NavObject position is always lon/lat center → local block, never player position. |
+| **Local client only** | FOW debug + city NavObject ticks run only for the local player entity (`IsLocalPlayerEntity`); remote ticks on listen/dedicated hosts must not discover cities or fill the local map FOW. |
 | **Sticky** | Once discovered in the session, the name stays until `recities reset` or world unload. |
 | **Origin slide** | Discovery set is kept; markers are re-registered at new local coords after a window slide. |
 

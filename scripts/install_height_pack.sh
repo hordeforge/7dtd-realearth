@@ -63,6 +63,13 @@ install_one() {
   local dest="$target/Mods/RealEarth"
   mkdir -p "$dest/Config" "$dest/Data/tiles"
   [[ -f "$ROOT/Config/nav_objects.xml" ]] && cp -f "$ROOT/Config/nav_objects.xml" "$dest/Config/"
+  [[ -f "$ROOT/Config/spawning.xml" ]] && cp -f "$ROOT/Config/spawning.xml" "$dest/Config/"
+  [[ -f "$ROOT/Config/gamestages.xml" ]] && cp -f "$ROOT/Config/gamestages.xml" "$dest/Config/"
+  [[ -f "$ROOT/Config/buffs.xml" ]] && cp -f "$ROOT/Config/buffs.xml" "$dest/Config/"
+  if [[ -d "$ROOT/Config/XUi_InGame" ]]; then
+    mkdir -p "$dest/Config/XUi_InGame"
+    cp -f "$ROOT/Config/XUi_InGame/"*.xml "$dest/Config/XUi_InGame/" 2>/dev/null || true
+  fi
   cp -f "$ROOT/ModInfo.xml" "$dest/"
   cp -f "$DLL" "$dest/"
   rm -rf "$dest/Data/tiles"

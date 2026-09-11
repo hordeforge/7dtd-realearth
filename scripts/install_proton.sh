@@ -78,6 +78,8 @@ install_mod() {
   cp "$DLL" "$dest/"
   cp "$ROOT/Config/realearth.json" "$dest/Config/"
   [[ -f "$ROOT/Config/nav_objects.xml" ]] && cp -f "$ROOT/Config/nav_objects.xml" "$dest/Config/"
+  [[ -f "$ROOT/Config/spawning.xml" ]] && cp -f "$ROOT/Config/spawning.xml" "$dest/Config/"
+  [[ -f "$ROOT/Config/buffs.xml" ]] && cp -f "$ROOT/Config/buffs.xml" "$dest/Config/"
   # RealEarth YDim expand tools (part of this mod)
   mkdir -p "$dest/Tools"
   if [[ -f "$ROOT/tools/engine_patcher/bin/Release/EngineHeightPatcher.exe" ]]; then

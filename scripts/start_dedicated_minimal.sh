@@ -111,6 +111,8 @@ install_mod() {
   mkdir -p "$dest/Config" "$dest/Data/tiles"
   cp -f "$ROOT/ModInfo.xml" "$dest/"
   [[ -f "$ROOT/Config/nav_objects.xml" ]] && cp -f "$ROOT/Config/nav_objects.xml" "$dest/Config/"
+  [[ -f "$ROOT/Config/spawning.xml" ]] && cp -f "$ROOT/Config/spawning.xml" "$dest/Config/"
+  [[ -f "$ROOT/Config/buffs.xml" ]] && cp -f "$ROOT/Config/buffs.xml" "$dest/Config/"
   cp -f "$DLL" "$dest/"
   # Pack selection: RE_SCENARIO_PACK=everest forces the Everest height_test
   # pack (same convention as run_dedicated_height_test.sh and the sibling

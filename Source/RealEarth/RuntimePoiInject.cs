@@ -16,14 +16,25 @@ namespace RealEarth
     {
         static readonly HashSet<string> _placed = new HashSet<string>(StringComparer.Ordinal);
         static readonly Dictionary<string, int> _failCount = new Dictionary<string, int>(StringComparer.Ordinal);
+        // Soft gap 23: stock trader_* prefabs in city/town pools so real settlements
+        // can host traders (quest geography still open; placement is best-effort).
+        // TraderPools guarantee a trader stamp for metro/large_city/town; PrefabPools
+        // still supply non-trader filler when PreferTraderStamp is off.
         static readonly Dictionary<string, string[]> PrefabPools = new Dictionary<string, string[]>(StringComparer.OrdinalIgnoreCase)
         {
-            ["metro"] = new[] { "downtown_building_04", "commercial_strip_08", "gas_station_05", "house_modern_15" },
-            ["large_city"] = new[] { "downtown_strip_06", "commercial_site_02", "gas_station_03", "house_modern_10" },
-            ["town"] = new[] { "commercial_strip_10", "gas_station_01", "house_modern_05", "church_01" },
+            ["metro"] = new[] { "trader_jen", "trader_bob", "downtown_building_04", "commercial_strip_08", "gas_station_05", "house_modern_15" },
+            ["large_city"] = new[] { "trader_joel", "trader_hugh", "downtown_strip_06", "commercial_site_02", "gas_station_03", "house_modern_10" },
+            ["town"] = new[] { "trader_rekt", "commercial_strip_10", "gas_station_01", "house_modern_05", "church_01" },
             ["village"] = new[] { "gas_station_01", "house_country_01", "cabin_01", "farm_11" },
             ["hamlet"] = new[] { "cabin_02", "house_old_cottage_01", "barn_01", "abandoned_house_01" },
             ["rural_scatter"] = new[] { "cabin_06", "farm_19", "abandoned_house_03" },
+        };
+
+        static readonly Dictionary<string, string[]> TraderPools = new Dictionary<string, string[]>(StringComparer.OrdinalIgnoreCase)
+        {
+            ["metro"] = new[] { "trader_jen", "trader_bob" },
+            ["large_city"] = new[] { "trader_joel", "trader_hugh" },
+            ["town"] = new[] { "trader_rekt" },
         };
 
         const int MaxPlaceFails = 5;
@@ -141,7 +152,7 @@ namespace RealEarth
 
                         string chunkKey = EngineReflection.FloorDiv(cx, 16).ToString(CultureInfo.InvariantCulture) + ":" +
                                           EngineReflection.FloorDiv(cz, 16).ToString(CultureInfo.InvariantCulture);
-                        StampWithBudget(session, p, cx, cz, chunkKey);
+                        StampWithBudget(session, p, cx, cz, chunkKey, playerLocalX, playerLocalZ);
                     }
                 }
             }
@@ -210,14 +221,31 @@ namespace RealEarth
 
         /// <summary>
         /// Shared stamp tail for TickPlayer / OnChunkGenerated (caller holds _stampGate):
-        /// chunk-budget gate, place attempt, and success/fail accounting.
+        /// distance-LOD gate, chunk-budget gate, place attempt, sleeper Y re-pin, accounting.
+        /// playerLocalX/Z &lt; int.MinValue/2 means "no player distance" (chunk path): skip LOD drop.
         /// </summary>
-        static void StampWithBudget(WorldSession session, CityMapLabels.Place p, int cx, int cz, string chunkKey)
+        static void StampWithBudget(
+            WorldSession session,
+            CityMapLabels.Place p,
+            int cx,
+            int cz,
+            string chunkKey,
+            int playerLocalX = int.MinValue / 2,
+            int playerLocalZ = int.MinValue / 2)
         {
+            int distBlocks = -1;
+            bool hasPlayer = playerLocalX > int.MinValue / 4;
+            if (hasPlayer)
+            {
+                distBlocks = DensityBudget.DistanceBlocks(playerLocalX, playerLocalZ, cx, cz);
+                if (!DensityBudget.AllowStampAtDistance(distBlocks))
+                    return;
+            }
+
             int inChunk = _chunkCounts.TryGetValue(chunkKey, out int c) ? c : 0;
             if (DensityBudget.ClampPrefabsInChunk(inChunk + 1) <= inChunk)
                 return;
-            if (TryStampPlace(session, p, cx, cz))
+            if (TryStampPlace(session, p, cx, cz, distBlocks))
             {
                 _placed.Add(p.Name);
                 _chunkCounts[chunkKey] = inChunk + 1;
@@ -229,24 +257,214 @@ namespace RealEarth
             }
         }
 
-        static bool TryStampPlace(WorldSession session, CityMapLabels.Place p, int localX, int localZ)
+        static bool TryStampPlace(WorldSession session, CityMapLabels.Place p, int localX, int localZ, int distBlocks = -1)
         {
             int surface = ChunkTerrainSampler.SampleGameHeightInt(localX, localZ);
             int y = StampSurfaceY.PrefabRootY(surface, foundationOffsetBlocks: 0);
             string band = string.IsNullOrEmpty(p.Band) ? BandFromPop(p.Population) : p.Band;
-            if (!PrefabPools.TryGetValue(band, out var pool) || pool.Length == 0)
-                pool = PrefabPools["town"];
-            int idx = unchecked((int)((uint)p.Name.GetHashCode() % (uint)pool.Length));
-            string prefabName = pool[idx];
+            string prefabName = PickPrefab(band, p.Name);
 
             bool placed = TryPlacePrefabReflection(prefabName, localX, y, localZ);
+            if (placed)
+            {
+                float weight = distBlocks < 0 ? 1f : DensityBudget.SleeperWeight(distBlocks);
+                if (weight > 0f)
+                    TryRepinSleeperVolumesNear(localX, localZ, StampSurfaceY.SleeperRootY(surface));
+            }
             if (ConsumeLogBudget())
             {
                 ModApi.Log(
                     $"RuntimePoiInject: {(placed ? "placed" : "retry-later")} '{prefabName}' " +
-                    $"for '{p.Name}' band={band} local=({localX},{y},{localZ}) surface={surface}");
+                    $"for '{p.Name}' band={band} local=({localX},{y},{localZ}) surface={surface}" +
+                    (distBlocks >= 0 ? $" dist={distBlocks}" : ""));
             }
             return placed;
+        }
+
+        /// <summary>
+        /// Soft gap 16: best-effort re-pin nearby World sleeper volumes onto real
+        /// surface Y. Called after POI stamps and after chunk inject. Fail soft if
+        /// SleeperVolume API is missing or fields differ; never break inject/stamp.
+        /// </summary>
+        public static void TryRepinSleeperVolumesNear(int localX, int localZ, int sleeperY)
+        {
+            try
+            {
+                object? world = ReflectCache.GetEngineWorld();
+                if (world == null) return;
+
+                MethodInfo? getAll = null;
+                foreach (var m in world.GetType().GetMethods(BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic))
+                {
+                    if (m.Name != "GetAllSleeperVolumes") continue;
+                    var ps = m.GetParameters();
+                    if (ps.Length == 1) { getAll = m; break; }
+                }
+                if (getAll == null) return;
+
+                // Prefer List&lt;(int,SleeperVolume)&gt; or List&lt;KeyValuePair&lt;int,SleeperVolume&gt;&gt; or List&lt;SleeperVolume&gt;.
+                Type listArg = getAll.GetParameters()[0].ParameterType;
+                object? list = Activator.CreateInstance(listArg);
+                if (list == null) return;
+                getAll.Invoke(world, new object[] { list });
+
+                PropertyInfo? countProp = listArg.GetProperty("Count");
+                PropertyInfo? itemProp = listArg.GetProperty("Item");
+                if (countProp == null || itemProp == null) return;
+                int count = (int)(countProp.GetValue(list) ?? 0);
+                if (count <= 0) return;
+
+                const int radius = 48;
+                int pinned = 0;
+                for (int i = 0; i < count; i++)
+                {
+                    object? entry = itemProp.GetValue(list, new object[] { i });
+                    if (entry == null) continue;
+                    object? vol = entry;
+                    // Tuple / KVP: take Item2 or Value if present.
+                    var t = entry.GetType();
+                    FieldInfo? item2 = t.GetField("Item2") ?? t.GetField("value") ?? t.GetField("Value");
+                    PropertyInfo? item2p = t.GetProperty("Item2") ?? t.GetProperty("Value");
+                    if (item2 != null) vol = item2.GetValue(entry);
+                    else if (item2p != null) vol = item2p.GetValue(entry);
+                    if (vol == null) continue;
+
+                    if (!TryGetSleeperBox(vol, out int minX, out int minY, out int minZ, out int maxX, out int maxY, out int maxZ))
+                        continue;
+                    int cx = (minX + maxX) / 2;
+                    int cz = (minZ + maxZ) / 2;
+                    long dx = (long)cx - localX;
+                    long dz = (long)cz - localZ;
+                    if (dx * dx + dz * dz > (long)radius * radius) continue;
+
+                    int dy = sleeperY - minY;
+                    if (dy == 0) continue;
+                    if (!TrySetSleeperBox(vol, minX, minY + dy, minZ, maxX, maxY + dy, maxZ))
+                        continue;
+                    pinned++;
+                }
+                if (pinned > 0 && ConsumeLogBudget())
+                    ModApi.Log($"RuntimePoiInject: sleeper Y re-pin count={pinned} near=({localX},{localZ}) y={sleeperY}");
+            }
+            catch (Exception ex)
+            {
+                if (ConsumeLogBudget())
+                    ModApi.Log($"RuntimePoiInject: sleeper Y skip ({ex.GetType().Name}: {ex.Message})");
+            }
+        }
+
+        static bool TryGetSleeperBox(object vol, out int minX, out int minY, out int minZ, out int maxX, out int maxY, out int maxZ)
+        {
+            minX = minY = minZ = maxX = maxY = maxZ = 0;
+            object? boxMin = GetMember(vol, "BoxMin") ?? GetMember(vol, "boxMin");
+            object? boxMax = GetMember(vol, "BoxMax") ?? GetMember(vol, "boxMax");
+            if (boxMin == null || boxMax == null) return false;
+            if (!TryReadVec3i(boxMin, out minX, out minY, out minZ)) return false;
+            if (!TryReadVec3i(boxMax, out maxX, out maxY, out maxZ)) return false;
+            return true;
+        }
+
+        static bool TrySetSleeperBox(object vol, int minX, int minY, int minZ, int maxX, int maxY, int maxZ)
+        {
+            // Prefer SetMinMax(boxMin, boxMax) when present.
+            MethodInfo? setMinMax = null;
+            foreach (var m in vol.GetType().GetMethods(BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic))
+            {
+                if (m.Name != "SetMinMax") continue;
+                if (m.GetParameters().Length == 2) { setMinMax = m; break; }
+            }
+            if (setMinMax != null)
+            {
+                Type p0 = setMinMax.GetParameters()[0].ParameterType;
+                Type p1 = setMinMax.GetParameters()[1].ParameterType;
+                object? bmin = MakeVec3i(p0, minX, minY, minZ);
+                object? bmax = MakeVec3i(p1, maxX, maxY, maxZ);
+                if (bmin == null || bmax == null) return false;
+                setMinMax.Invoke(vol, new object[] { bmin, bmax });
+                return true;
+            }
+
+            object? boxMin = GetMember(vol, "BoxMin") ?? GetMember(vol, "boxMin");
+            object? boxMax = GetMember(vol, "BoxMax") ?? GetMember(vol, "boxMax");
+            if (boxMin == null || boxMax == null) return false;
+            if (!TryWriteVec3i(boxMin, minX, minY, minZ)) return false;
+            if (!TryWriteVec3i(boxMax, maxX, maxY, maxZ)) return false;
+            return true;
+        }
+
+        static object? GetMember(object obj, string name)
+        {
+            var t = obj.GetType();
+            return t.GetField(name, BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic)?.GetValue(obj)
+                ?? t.GetProperty(name, BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic)?.GetValue(obj);
+        }
+
+        static bool TryReadVec3i(object v, out int x, out int y, out int z)
+        {
+            x = y = z = 0;
+            try
+            {
+                object? xv = GetMember(v, "x") ?? GetMember(v, "X");
+                object? yv = GetMember(v, "y") ?? GetMember(v, "Y");
+                object? zv = GetMember(v, "z") ?? GetMember(v, "Z");
+                if (xv == null || yv == null || zv == null) return false;
+                x = Convert.ToInt32(xv);
+                y = Convert.ToInt32(yv);
+                z = Convert.ToInt32(zv);
+                return true;
+            }
+            catch { return false; }
+        }
+
+        static bool TryWriteVec3i(object v, int x, int y, int z)
+        {
+            try
+            {
+                var t = v.GetType();
+                var fx = t.GetField("x", BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic)
+                    ?? t.GetField("X", BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic);
+                var fy = t.GetField("y", BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic)
+                    ?? t.GetField("Y", BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic);
+                var fz = t.GetField("z", BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic)
+                    ?? t.GetField("Z", BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic);
+                if (fx != null && fy != null && fz != null)
+                {
+                    fx.SetValue(v, x);
+                    fy.SetValue(v, y);
+                    fz.SetValue(v, z);
+                    return true;
+                }
+                var px = t.GetProperty("x", BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic)
+                    ?? t.GetProperty("X", BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic);
+                var py = t.GetProperty("y", BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic)
+                    ?? t.GetProperty("Y", BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic);
+                var pz = t.GetProperty("z", BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic)
+                    ?? t.GetProperty("Z", BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic);
+                if (px != null && py != null && pz != null && px.CanWrite && py.CanWrite && pz.CanWrite)
+                {
+                    px.SetValue(v, x);
+                    py.SetValue(v, y);
+                    pz.SetValue(v, z);
+                    return true;
+                }
+            }
+            catch { /* fail soft */ }
+            return false;
+        }
+
+        static object? MakeVec3i(Type v3iType, int x, int y, int z)
+        {
+            try
+            {
+                foreach (var c in v3iType.GetConstructors())
+                {
+                    var ps = c.GetParameters();
+                    if (ps.Length == 3 && ps[0].ParameterType == typeof(int))
+                        return c.Invoke(new object[] { x, y, z });
+                }
+            }
+            catch { /* fail soft */ }
+            return null;
         }
 
         /// <summary>
@@ -263,6 +481,29 @@ namespace RealEarth
             if (pop >= 1_000) return "village";
             if (pop >= 100) return "hamlet";
             return "rural_scatter";
+        }
+
+        /// <summary>
+        /// Soft gap 23: metro/large_city/town always pick from TraderPools when
+        /// PreferTraderStamp is on (default). Other bands stay on PrefabPools hash.
+        /// </summary>
+        static string PickPrefab(string band, string placeName)
+        {
+            var cfg = ModApi.Config;
+            bool preferTrader = cfg == null || cfg.PreferTraderStamp;
+            if (preferTrader
+                && TraderPools.TryGetValue(band, out var traders)
+                && traders != null
+                && traders.Length > 0)
+            {
+                int tIdx = unchecked((int)((uint)placeName.GetHashCode() % (uint)traders.Length));
+                return traders[tIdx];
+            }
+
+            if (!PrefabPools.TryGetValue(band, out var pool) || pool.Length == 0)
+                pool = PrefabPools["town"];
+            int idx = unchecked((int)((uint)placeName.GetHashCode() % (uint)pool.Length));
+            return pool[idx];
         }
 
         static bool TryPlacePrefabReflection(string prefabName, int x, int y, int z)

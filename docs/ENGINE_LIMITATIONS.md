@@ -1,14 +1,14 @@
 # Engine limitations RealEarth must overcome
 
 **Owns:** stock engine blockers for **1:1 Earth** (severity + RealEarth attack path).  
-**Not:** generic dedicated ceilings that apply to any server ([research engine-limitations](../../7dtd-engine-research/docs/engine-limitations.md)), product surface status ([MODIFICATIONS](MODIFICATIONS.md)), vertical product policy ([HEIGHT_LIMITS](HEIGHT_LIMITS.md)), Streamed lessons ([realearth-runtime](realearth-runtime.md)).  
+**Not:** generic dedicated ceilings that apply to any server ([research engine-limitations](../../7dtd-engine-research/docs/meta/engine-limitations.md)), product surface status ([MODIFICATIONS](MODIFICATIONS.md)), vertical product policy ([HEIGHT_LIMITS](HEIGHT_LIMITS.md)), Streamed lessons ([realearth-runtime](realearth-runtime.md)).  
 **Game:** 7 Days to Die V3.1.0 (Unity Mono, stock dedicated/client).  
 **Product goal:** 1:1 real Earth geography + population density (see [`../DESIGN.md`](../DESIGN.md)). **Hub:** [INDEX](INDEX.md).
 
 This is a **limitation map**, not a build plan. Each row: what the stock engine assumes, why it blocks 1:1 Earth, how hard it is, and how RealEarth attacks it.
 
 **Also read:** generic dedicated limits (single-thread sim, player O(N²) net, AI volume, Boehm GC, save/YDim, EAC) live in  
-[`../../7dtd-engine-research/docs/engine-limitations.md`](../../7dtd-engine-research/docs/engine-limitations.md).  
+[`../../7dtd-engine-research/docs/meta/engine-limitations.md`](../../7dtd-engine-research/docs/meta/engine-limitations.md).  
 Those still bind RealEarth (metro density, tall inject, MP soak) but are not Earth-specific.
 
 **Severity**
@@ -33,7 +33,7 @@ Those still bind RealEarth (metro density, tall inject, MP soak) but are not Ear
 | Layer storage **64 layers × 4** must stay consistent | Alloc/free of layer arrays | Mismatched layer count → Unity.Collections Free crashes | **Hard** | Rewrite alloc + free layer counts together |
 | Static full-column RAM O(YDim) per column | Engine design | Tall static columns everywhere = huge RAM | **Hard** | Near term: accept expand cost near players only; long term: **sparse Y sections** ([`DYNAMIC_CHUNK_HEIGHT.md`](DYNAMIC_CHUNK_HEIGHT.md)) |
 | Mesh / light / stability / density loops assume short Y | Method list in patcher (`GetBlock`, `SetDensity`, sunlight, …) | Tall columns crash or clip if loops still use 255/256 | **Hard** | Expand Y-bound methods; validate H500 → Everest soak |
-| Fall damage / kill planes / spawn Y | Spawn and physics | Extreme falls, bad spawn on peaks, water at wrong band | **Soft→Hard** | Re-tune after expand; spawn on real surface |
+| Fall damage / kill planes / spawn Y | Spawn and physics | Extreme falls, bad spawn on peaks, water at wrong band | **Soft→Hard** | **Partial**: `FallSpawnRetune` (`SnapSpawnToSurface` + `FallDamageModifierScale` + `KillPlaneRescue`/`KillPlaneDepthBlocks`); `FindSpawnPointAtXZ` YDim-expanded; live soak open |
 | Prefabs authored for ~255 roofs | POI library | Tall mountains + short prefabs look wrong; paste Y may clip | **Soft** | Stamp relative to surface; optional tall-aware packs later |
 | Saves (`.7rg`) may assume stock packing | Region format | Tall worlds may bloat, fail, or desync clients | **Hard** | Expand client+dedicated identically; test save/reload; watch region size |
 | Client/server YDim mismatch | Two installs | Desync / crash | **Ops** | Always expand **both** game trees after Verify |
@@ -92,7 +92,7 @@ Combat across chunks already works if coords are shared. RealEarth’s MP proble
 | Water table / rivers | Stock water is shallow systems | **Hard** | Column water fill from DEM; river overlays phased |
 | Zombie / sleeper density | Real metro density can melt sim | **Hard** | Population channel caps; LOD (EfficientServer is separate) |
 | Trader / quest / prefab rules | Expect RWG layout | **Soft** | Stamp packs by density band; do not claim full quest parity |
-| Vehicles / physics at extreme Y | Edge cases on cliffs | **Soft** | Playtest Everest approaches; clamp bad spawns |
+| Vehicles / physics at extreme Y | Edge cases on cliffs | **Soft** | **Partial**: `FallSpawnRetune.TrySnapVehiclesToSurface` + `SnapVehicleToSurface`; live soak / deeper physics open |
 
 ---
 
@@ -123,7 +123,7 @@ These are **engine + content** limits, not DEM bugs:
 
 ## 7b. Other stock limits that still hit RealEarth (not Earth-specific)
 
-Full generic map: [`../../7dtd-engine-research/docs/engine-limitations.md`](../../7dtd-engine-research/docs/engine-limitations.md). Short list for product readers:
+Full generic map: [`../../7dtd-engine-research/docs/meta/engine-limitations.md`](../../7dtd-engine-research/docs/meta/engine-limitations.md). Short list for product readers:
 
 | Limit (stock) | Why RealEarth cares | Severity | Product stance |
 |---|---|---|---|
@@ -217,9 +217,9 @@ Even after expand + stream + inject:
 | [realearth-runtime](realearth-runtime.md) | Streamed architecture lessons |
 | [realearth-surfaces](realearth-surfaces.md) | Expand / Origin / save surfaces |
 | [realearth-review](realearth-review.md) | Residual failure set (§4) |
-| **[research engine-limitations](../../7dtd-engine-research/docs/engine-limitations.md)** | **Generic** dedi ceilings (sim, net, AI, GC, save) |
+| **[research engine-limitations](../../7dtd-engine-research/docs/meta/engine-limitations.md)** | **Generic** dedi ceilings (sim, net, AI, GC, save) |
 | [research INDEX](../../7dtd-engine-research/docs/INDEX.md) | Generic engine RE hub |
-| [terrain-height](../../7dtd-engine-research/docs/terrain-height.md) | Stock vs expand height APIs |
+| [terrain-height](../../7dtd-engine-research/docs/world/terrain-height.md) | Stock vs expand height APIs |
 | [measured-scaling](../../7dtd-server-optimizer/docs/measured-scaling.md) | Live player/entity walls |
 | [HOST_TUNING](../../7dtd-server-optimizer/docs/HOST_TUNING.md) | Host hardware for dense sim |
 

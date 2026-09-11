@@ -1,7 +1,7 @@
 # Height limits: real height product, stock 255 constraint
 
 **Owns:** product vertical policy (1 m = 1 block, expand required, compress opt-in only).  
-**Not:** product surface status ([MODIFICATIONS](MODIFICATIONS.md)), Streamed inject lessons ([realearth-runtime](realearth-runtime.md)), generic stock height IL ([research terrain-height](../../7dtd-engine-research/docs/terrain-height.md)).  
+**Not:** product surface status ([MODIFICATIONS](MODIFICATIONS.md)), Streamed inject lessons ([realearth-runtime](realearth-runtime.md)), generic stock height IL ([research terrain-height](../../7dtd-engine-research/docs/world/terrain-height.md)).  
 **Stock limit map:** [ENGINE_LIMITATIONS](ENGINE_LIMITATIONS.md). **Install:** [MODLET](MODLET.md). **Hub:** [INDEX](INDEX.md).
 
 ## Product policy
@@ -87,7 +87,7 @@ The disk patcher ships in `Mods/RealEarth/Tools/` as the fallback.
 
 ### Tier 1: optional gameplay feel (after real height works)
 
-- Fall damage / stamina at altitude
+- Fall damage / stamina at altitude (hypoxia/cold via `AltitudeClimateTick` + `Config/buffs.xml`; soft fall scale + spawn surface snap + `KillPlaneRescue` via `FallSpawnRetune`; live soak open)
 - Fog / snow biomes at high real Y
 - Map FOW for peaks
 
@@ -120,9 +120,9 @@ make engine-restore
 
 ### Tier 2b: data / policy foundation (always on with the mod)
 
-**Stock vs expanded (measured on V3.1.0 b14; values identical to the earlier V3.0.1 measurements):** see workspace [`7dtd-engine-research/docs/terrain-height.md`](../../7dtd-engine-research/docs/terrain-height.md).
+**Stock vs expanded (measured on V3.1.0 b14; values identical to the earlier V3.0.1 measurements):** see workspace [`7dtd-engine-research/docs/world/terrain-height.md`](../../7dtd-engine-research/docs/world/terrain-height.md).
 
-**Why the hot patch is the default now:** `WorldConstants.ChunkBlockYDim` is a `const` (inlined `ldc` literals, no field to set). A Harmony-transpiler hot patch rewrites those literals at JIT time, and **was validated live on a stock dedicated server** (2026-08-30): 342 method transpilers, `expanded=True allocY=29000`, H500 peak injected, 0 crashes. It is the product default (`EngineHeightRuntimePatch=true`); the disk patcher (`EngineHeightPatcher.exe`, `make engine-expand`) stays in the repo as the fallback for load orders where a pre-boot patch is safer. Full analysis: [`7dtd-engine-research/docs/hot-patch-height.md`](../../7dtd-engine-research/docs/hot-patch-height.md).
+**Why the hot patch is the default now:** `WorldConstants.ChunkBlockYDim` is a `const` (inlined `ldc` literals, no field to set). A Harmony-transpiler hot patch rewrites those literals at JIT time, and **was validated live on a stock dedicated server** (2026-08-30): 342 method transpilers, `expanded=True allocY=29000`, H500 peak injected, 0 crashes. It is the product default (`EngineHeightRuntimePatch=true`); the disk patcher (`EngineHeightPatcher.exe`, `make engine-expand`) stays in the repo as the fallback for load orders where a pre-boot patch is safer. Full analysis: [`7dtd-engine-research/docs/world/hot-patch-height.md`](../../7dtd-engine-research/docs/world/hot-patch-height.md).
 
 | Constant | Stock | After RealEarth expand |
 |---|---:|---:|
@@ -221,7 +221,7 @@ Full design: **[`DYNAMIC_CHUNK_HEIGHT.md`](DYNAMIC_CHUNK_HEIGHT.md)**.
 | Planet-scale RAM for tall columns | Near term: accept expand cost near players; long term: sparse Y ([DYNAMIC_CHUNK_HEIGHT](DYNAMIC_CHUNK_HEIGHT.md)) |
 | Horizontal continuous Earth | Absolute XZ stream ([ABSOLUTE_STREAMING](ABSOLUTE_STREAMING.md)); orthogonal to vertical expand |
 
-**Product rule:** keep **true meters in tiles**; expand is **required** for 1:1 height, not optional. Horizontal Streamed work still needs expand if mountains claim real elev_m. Status of inject/expand: [MODIFICATIONS](MODIFICATIONS.md). Engine sites: [realearth-surfaces](realearth-surfaces.md) §7. Generic constants: [research terrain-height](../../7dtd-engine-research/docs/terrain-height.md).
+**Product rule:** keep **true meters in tiles**; expand is **required** for 1:1 height, not optional. Horizontal Streamed work still needs expand if mountains claim real elev_m. Status of inject/expand: [MODIFICATIONS](MODIFICATIONS.md). Engine sites: [realearth-surfaces](realearth-surfaces.md) §7. Generic constants: [research terrain-height](../../7dtd-engine-research/docs/world/terrain-height.md).
 
 ## Related docs
 
@@ -232,7 +232,7 @@ Full design: **[`DYNAMIC_CHUNK_HEIGHT.md`](DYNAMIC_CHUNK_HEIGHT.md)**.
 | [realearth-surfaces](realearth-surfaces.md) | Save-64, light 255, GetBlock index |
 | [realearth-runtime](realearth-runtime.md) | Tall crust / inject gate lessons |
 | [DYNAMIC_CHUNK_HEIGHT](DYNAMIC_CHUNK_HEIGHT.md) | Sparse Y future |
-| [research terrain-height](../../7dtd-engine-research/docs/terrain-height.md) | Stock vs expand IL constants |
+| [research terrain-height](../../7dtd-engine-research/docs/world/terrain-height.md) | Stock vs expand IL constants |
 
 ## Changelog
 

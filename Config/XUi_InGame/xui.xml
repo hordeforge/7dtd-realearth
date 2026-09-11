@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+  RealEarth: register lon/lat HUD window in the toolbelt group (gap 31).
+-->
+<configs>
+	<append xpath="/xui/ruleset/window_group[@name='toolbelt']">
+		<window name="windowRealEarthLonLat"/>
+	</append>
+</configs>

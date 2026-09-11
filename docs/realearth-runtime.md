@@ -5,7 +5,7 @@
 **Engine surfaces (product RE):** [`realearth-surfaces.md`](realearth-surfaces.md).  
 **Adversarial catalog:** [`realearth-review.md`](realearth-review.md).  
 **Lon/lat policy:** [`LON_LAT.md`](LON_LAT.md).  
-**Generic height/loop RE:** [`../../7dtd-engine-research/docs/terrain-height.md`](../../7dtd-engine-research/docs/terrain-height.md), [`../../7dtd-engine-research/docs/loop.md`](../../7dtd-engine-research/docs/loop.md).  
+**Generic height/loop RE:** [`../../7dtd-engine-research/docs/world/terrain-height.md`](../../7dtd-engine-research/docs/world/terrain-height.md), [`../../7dtd-engine-research/docs/loop/loop.md`](../../7dtd-engine-research/docs/loop/loop.md).  
 **Hubs:** product [`INDEX.md`](INDEX.md) · engine [`../../7dtd-engine-research/docs/INDEX.md`](../../7dtd-engine-research/docs/INDEX.md).
 
 Target game: **7DTD V3.1.0**.
@@ -208,7 +208,7 @@ stateDiagram-v2
 
 | Lesson | Detail |
 |---|---|
-| Interfaces unpatchable | Patch implementors only ([`terrain-height.md`](../../7dtd-engine-research/docs/terrain-height.md)) |
+| Interfaces unpatchable | Patch implementors only ([`terrain-height.md`](../../7dtd-engine-research/docs/world/terrain-height.md)) |
 | Product inject gate | `HasProductInjectBinding`: when expand required, **gen bind is mandatory** |
 | `_applied` | Only when useful binds exist (do not claim success on empty) |
 | Idempotent retry | `_patchedMethods` set; `TryRetryApply` retries when gen count is 0 |
@@ -302,7 +302,7 @@ Stock save hook is still incomplete (product **Partial**). Snapshot format is th
 | Concern | Lesson |
 |---|---|
 | Surface Y for stamps | **int32** (`StampSurfaceY` / density planner); uint8 wraps at 256 and buries H500+ |
-| DensityBudget | Real cap in planner (`clamp_prefabs_in_chunk`); dead budget code is a silent product hole |
+| DensityBudget | Live caps in `RuntimePoiInject` (4/chunk, 80/area via `ClampPrefabsInChunk` / `ClampPrefabsInArea`); offline planner mirrors. Distance LODs still open |
 | City labels | Discover at **edge** from map data (`edge_radius_m`); pin at geographic **center** |
 | Label clamp | Hard max count (e.g. 500); identity clamp is not a budget |
 | POI place | Void place must not count as success |
@@ -362,8 +362,8 @@ Build note (this machine): `DOTNET_ROOT=~/.cache/dotnet-sdk` for RealEarth Relea
 | [`LON_LAT.md`](LON_LAT.md) | Dual coords policy (product) |
 | [`ABSOLUTE_STREAMING.md`](ABSOLUTE_STREAMING.md) | Absolute → sample → inject path |
 | [`IMPLEMENTATION_PLAN.md`](IMPLEMENTATION_PLAN.md) | P0-P8 order |
-| [`../../7dtd-engine-research/docs/terrain-height.md`](../../7dtd-engine-research/docs/terrain-height.md) | Stock vs expand height APIs (generic RE) |
-| [`../../7dtd-engine-research/docs/loop.md`](../../7dtd-engine-research/docs/loop.md) | Dedicated frame/sim loop (generic RE) |
+| [`../../7dtd-engine-research/docs/world/terrain-height.md`](../../7dtd-engine-research/docs/world/terrain-height.md) | Stock vs expand height APIs (generic RE) |
+| [`../../7dtd-engine-research/docs/loop/loop.md`](../../7dtd-engine-research/docs/loop/loop.md) | Dedicated frame/sim loop (generic RE) |
 | [`INDEX.md`](INDEX.md) | Product hub |
 
 ## Changelog
@@ -398,7 +398,7 @@ Streaming slides (3) while (1)/(2) stay continuous. Confusing any two layers pro
 | Lon wrap (optional) | Full-planet circle on X only when packs + config enable wrap |
 | Regional bbox stretch | Demo packs distort scale to fit small world_width/height |
 | Missing geodesic | Great-circle distance / true km at high lat **not** implemented |
-| Missing antimeridian bbox | Pacific packs need split or specialized fold |
+| Antimeridian bbox | Offline: `split_bbox_at_antimeridian` + `planet-tiles` accept west>east. C# `HasRegionalBbox` accepts west>east; `LonLatToEarth` / city filter use wrap-aware span |
 
 These are **documented product gaps**, not temporary bugs. See product `LON_LAT.md`.
 
@@ -477,7 +477,7 @@ Same hubs as §12. Prefer the main Related docs table for navigation; this appen
 | [LON_LAT](LON_LAT.md) | Lon/lat policy (canonical) |
 | [ABSOLUTE_STREAMING](ABSOLUTE_STREAMING.md) | Absolute → inject short path |
 | [realearth-review](realearth-review.md) | Failure catalog |
-| [research terrain-height](../../7dtd-engine-research/docs/terrain-height.md) | Vertical engine limits |
+| [research terrain-height](../../7dtd-engine-research/docs/world/terrain-height.md) | Vertical engine limits |
 
 ## Changelog (appendix source)
 

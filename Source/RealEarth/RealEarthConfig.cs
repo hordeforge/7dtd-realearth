@@ -39,6 +39,11 @@ namespace RealEarth
         /// </summary>
         [DataMember] public string MultiplayerOriginMode { get; set; } = "SoloSlide";
 
+        /// <summary>
+        /// Circle the planet on X (antimeridian). Required for Streamed full-planet travel.
+        /// Default false until Validate() auto-enables it for Streamed + full-planet width
+        /// with no regional bbox. Keep false for Baked / regional packs.
+        /// </summary>
         [DataMember] public bool EnableLongitudeWrap { get; set; } = false;
         [DataMember] public int SeaLevelGameY { get; set; } = 16000;
         [DataMember] public string TileCdnBaseUrl { get; set; } = "";
@@ -63,6 +68,13 @@ namespace RealEarth
         /// 0 = off (default). Dev may set 128 (≈ 2048 m).
         /// </summary>
         [DataMember] public int DebugMapRevealRadiusChunks { get; set; } = 0;
+
+        /// <summary>
+        /// Soft gap 33: production FOW explore radius around the local player
+        /// (chunk units). Uncovers map FOW without DebugRevealFullMap. Default 8
+        /// (≈ 128 m); 0 = off. DebugMapRevealRadiusChunks wins when both set.
+        /// </summary>
+        [DataMember] public int MapExploreRevealRadiusChunks { get; set; } = 8;
 
         /// <summary>
         /// City names on the map: unlock when the player reaches the city edge,
@@ -102,6 +114,13 @@ namespace RealEarth
         [DataMember] public bool EnableRuntimePoiInject { get; set; } = true;
 
         /// <summary>
+        /// Soft gap 23: metro/large_city/town stamps always pick trader_* from
+        /// TraderPools (hash among traders). When false, PrefabPools hash can miss
+        /// traders. Quest XML still open. Default true.
+        /// </summary>
+        [DataMember] public bool PreferTraderStamp { get; set; } = true;
+
+        /// <summary>
         /// Max runtime POI stamps per session (area budget). Values above the hard
         /// budget cap (DensityBudget.DefaultMaxPrefabsPerKm2 = 80) clamp to 80.
         /// </summary>
@@ -136,7 +155,7 @@ namespace RealEarth
         /// disk-patched install is never double-rewritten. The disk patcher
         /// stays in the repo (Tools/EngineHeightPatcher.exe, make engine-expand)
         /// as the fallback for load orders where a pre-boot patch is safer.
-        /// Research: 7dtd-engine-research/docs/hot-patch-height.md.
+        /// Research: 7dtd-engine-research/docs/world/hot-patch-height.md.
         /// </summary>
         [DataMember] public bool EngineHeightRuntimePatch { get; set; } = true;
 
@@ -145,6 +164,42 @@ namespace RealEarth
         /// Default 29000: sea(16000) + airliner(12000) + headroom(1000).
         /// </summary>
         [DataMember] public int EngineMaxGameY { get; set; } = 29000;
+
+        /// <summary>
+        /// Soft gap 35: snap local player to sampled surface Y once after world ready
+        /// (avoids stock spawn Y burying/floating on tall DEM). Default on for Streamed.
+        /// </summary>
+        [DataMember] public bool SnapSpawnToSurface { get; set; } = true;
+
+        /// <summary>
+        /// Soft gap 36: one-shot snap VehicleManager vehicles to sampled surface+1
+        /// when Y is clearly wrong (buried/floating on tall 1:1 height). Default true.
+        /// </summary>
+        [DataMember] public bool SnapVehicleToSurface { get; set; } = true;
+
+        /// <summary>
+        /// Soft gap 31: publish Earth lon/lat as EntityBuffs cvars (_re_lon / _re_lat)
+        /// ~1 Hz for HUD/XUi bindings. Console relonlat/rll still works when false.
+        /// </summary>
+        [DataMember] public bool ShowLonLatHud { get; set; } = true;
+
+        /// <summary>
+        /// Soft gap 35: scale EntityPlayer.FallDamageModifier (stock ~1). Values &lt; 1
+        /// reduce lethal peak falls; clamp to (0, 2]. Default 0.35 for tall 1:1 height.
+        /// </summary>
+        [DataMember] public float FallDamageModifierScale { get; set; } = 0.35f;
+
+        /// <summary>
+        /// Soft gap 35: when local player Y is more than KillPlaneDepthBlocks below
+        /// sampled surface, snap to surface+1 (fallen through / void). Default true.
+        /// </summary>
+        [DataMember] public bool KillPlaneRescue { get; set; } = true;
+
+        /// <summary>
+        /// Soft gap 35: depth below sampled surface that triggers KillPlaneRescue.
+        /// Clamp 8..512; default 64.
+        /// </summary>
+        [DataMember] public int KillPlaneDepthBlocks { get; set; } = 64;
 
         /// <summary>
         /// Product default: 1 m real elevation ≈ 1 game block (seaLevelY + elev_m).
@@ -167,8 +222,54 @@ namespace RealEarth
         [DataMember] public double BboxEast { get; set; }
         [DataMember] public double BboxNorth { get; set; }
 
+        /// <summary>
+        /// True when north&gt;south and east!=west. east&gt;west is continuous;
+        /// west&gt;east is a dateline-straddling Pacific pack (same as offline
+        /// <c>split_bbox_at_antimeridian</c>).
+        /// </summary>
         public bool HasRegionalBbox =>
-            BboxEast > BboxWest && BboxNorth > BboxSouth;
+            BboxNorth > BboxSouth && BboxEast != BboxWest;
+
+        /// <summary>True when west&gt;east (dateline-straddling regional pack).</summary>
+        public bool BboxCrossesAntimeridian =>
+            HasRegionalBbox && BboxWest > BboxEast;
+
+        /// <summary>
+        /// Lon span in degrees: continuous east-west, or wrapped across ±180.
+        /// </summary>
+        public double BboxLonSpanDegrees
+        {
+            get
+            {
+                if (!HasRegionalBbox) return 0;
+                if (BboxEast > BboxWest) return BboxEast - BboxWest;
+                return (180.0 - BboxWest) + (BboxEast - (-180.0));
+            }
+        }
+
+        /// <summary>
+        /// Lon inside regional bbox (handles dateline wrap). Continuous packs
+        /// use west&lt;=lon&lt;=east; wrapped packs use lon&gt;=west || lon&lt;=east.
+        /// </summary>
+        public bool LonInRegionalBbox(double lon)
+        {
+            if (!HasRegionalBbox) return false;
+            if (BboxEast > BboxWest)
+                return lon >= BboxWest && lon <= BboxEast;
+            return lon >= BboxWest || lon <= BboxEast;
+        }
+
+        /// <summary>
+        /// Degrees east of BboxWest along the pack, wrapping across ±180 when needed.
+        /// </summary>
+        public double LonOffsetFromWest(double lon)
+        {
+            if (BboxEast > BboxWest)
+                return lon - BboxWest;
+            if (lon >= BboxWest)
+                return lon - BboxWest;
+            return (180.0 - BboxWest) + (lon - (-180.0));
+        }
 
         /// <summary>
         /// Explicit Spawn* when either is non-zero; else DefaultSpawn*.
@@ -257,6 +358,34 @@ namespace RealEarth
                     $"EngineMaxGameY ({EngineMaxGameY}) <= SeaLevelGameY ({SeaLevelGameY}); " +
                     "height mapping collapses, raise EngineMaxGameY.");
 
+            if (FallDamageModifierScale <= 0f || FallDamageModifierScale > 2f)
+            {
+                FallDamageModifierScale = 0.35f;
+                warnings.Add("FallDamageModifierScale out of (0, 2]; reset to 0.35.");
+            }
+
+            if (KillPlaneDepthBlocks < 8)
+            {
+                KillPlaneDepthBlocks = 64;
+                warnings.Add("KillPlaneDepthBlocks < 8; reset to 64.");
+            }
+            if (KillPlaneDepthBlocks > 512)
+            {
+                KillPlaneDepthBlocks = 512;
+                warnings.Add("KillPlaneDepthBlocks > 512; clamp to 512.");
+            }
+
+            if (MapExploreRevealRadiusChunks < 0)
+            {
+                MapExploreRevealRadiusChunks = 8;
+                warnings.Add("MapExploreRevealRadiusChunks < 0; reset to 8.");
+            }
+            if (MapExploreRevealRadiusChunks > 64)
+            {
+                MapExploreRevealRadiusChunks = 64;
+                warnings.Add("MapExploreRevealRadiusChunks > 64; clamp to 64.");
+            }
+
             if (CityMapMinPopulation < 0)
             {
                 CityMapMinPopulation = 0;
@@ -326,6 +455,18 @@ namespace RealEarth
                 warnings.Add(
                     "EnableLongitudeWrap=true is contradictory with MapMode=Baked: a finite host " +
                     "world cannot wrap at the antimeridian. Disable EnableLongitudeWrap for Baked.");
+            // Streamed full-planet (no regional bbox) needs antimeridian wrap.
+            // Auto-enable so default config circles Earth without an operator toggle.
+            else if (!EnableLongitudeWrap
+                && MapMode.Equals("Streamed", StringComparison.OrdinalIgnoreCase)
+                && !HasRegionalBbox
+                && WorldWidth >= 40_000_000)
+            {
+                EnableLongitudeWrap = true;
+                warnings.Add(
+                    "EnableLongitudeWrap auto-enabled for Streamed full-planet " +
+                    "(WorldWidth>=40000000, no regional bbox). Set false only for non-wrapping packs.");
+            }
             if (RuntimePoiMaxPerArea > 80)
                 warnings.Add(
                     $"RuntimePoiMaxPerArea ({RuntimePoiMaxPerArea}) exceeds the hard cap " +

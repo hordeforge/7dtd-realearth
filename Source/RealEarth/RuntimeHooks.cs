@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Reflection;
 using System.Threading;
+using UnityEngine;
 namespace RealEarth
 {
     /// <summary>
@@ -74,6 +75,8 @@ namespace RealEarth
                 n += hq;
                 int gen = TryPatchChunkTerrainGenerate();
                 n += gen > 0 ? 1 : 0;
+                int mapScroll = TryPatchMapLonScroll();
+                n += mapScroll > 0 ? 1 : 0;
                 // Only mark applied when something useful bound; else leave false so Apply can re-run.
                 _applied = HasUsefulBinding;
                 EnforceInjectGate();
@@ -135,6 +138,8 @@ namespace RealEarth
                     InjectPatchStats.AddPlayerTick(TryPatchPlayerTick());
                 if (InjectPatchStats.WorldReadyPatches == 0)
                     InjectPatchStats.AddWorldReady(TryPatchWorldSpawn());
+                // Idempotent: safe to re-call; _patchedMethods skips if already bound.
+                TryPatchMapLonScroll();
                 _applied = HasUsefulBinding;
             }
             catch (Exception ex)
@@ -282,6 +287,23 @@ namespace RealEarth
                 }
             }
             return n > 0 ? 1 : 0;
+        }
+
+        /// <summary>
+        /// When EnableLongitudeWrap is on, stock World.ClampToValidWorldPosForMap hard-clamps
+        /// map X to GetWorldExtent and blocks infinite lon scroll. Postfix restores the
+        /// unclamped input X; Z stays stock-clamped (poles have no wrap).
+        /// </summary>
+        static int TryPatchMapLonScroll()
+        {
+            var wt = EngineReflection.FindType("World");
+            if (wt == null) return 0;
+            var m = FindMethod(wt, "ClampToValidWorldPosForMap");
+            if (m == null) return 0;
+            if (!PatchPostfix(m, typeof(HooksImpl).GetMethod(nameof(HooksImpl.ClampToValidWorldPosForMapPostfix))!))
+                return 0;
+            ModApi.Log("Patched World.ClampToValidWorldPosForMap for longitude wrap scroll");
+            return 1;
         }
 
         /// <summary>
@@ -611,19 +633,32 @@ namespace RealEarth
             {
                 RuntimeHooks.TryRetryApply();
 
+                // Local client only for map UI (FOW debug + city NavObjects). Remote
+                // EntityPlayer ticks on a listen/dedicated host must not discover cities
+                // or fill the local player's map FOW from foreign positions.
+                bool isPrimary = IsLocalPlayerEntity(__instance);
+
                 // Read player block pos once: FOW debug, city discovery, and the stream
                 // tick all need it (a second TryGetPos here doubled per-frame reflection
                 // boxing for every player).
                 bool hasPos = EngineReflection.TryGetPos(__instance, out int x, out int y, out int z);
 
-                // FOW debug + city discover-on-approach need player block pos
-                if (hasPos)
+                if (isPrimary)
                 {
-                    MapReveal.TryRevealIfConfigured(x, z);
-                    CityMapLabels.TickPlayer(x, z);
+                    if (hasPos)
+                    {
+                        MapReveal.TryRevealIfConfigured(x, z);
+                        CityMapLabels.TickPlayer(x, z);
+                        FallSpawnRetune.EnsureFallDamageScale();
+                        FallSpawnRetune.TrySnapSpawnToSurface(__instance, x, y, z);
+                        FallSpawnRetune.TrySnapVehiclesToSurface();
+                        FallSpawnRetune.TryKillPlaneRescue(__instance, x, y, z);
+                        AltitudeClimateTick.TickPlayer(__instance, x, y, z);
+                        LonLatHudTick.TickPlayer(__instance, x, z);
+                    }
+                    else
+                        MapReveal.TryRevealIfConfigured();
                 }
-                else
-                    MapReveal.TryRevealIfConfigured();
 
                 if (ModApi.Session == null || !ModApi.Session.IsStreamed)
                     return;
@@ -633,7 +668,6 @@ namespace RealEarth
 
                 // Stable focus id: real entityId only (no identity-hash merge of MP bubbles).
                 int focusId = TryGetEntityId(__instance);
-                bool isPrimary = IsLocalPlayerEntity(__instance);
                 // Dedicated solo: no EntityPlayerLocal; still must advance session absolute when count≤1.
                 bool updateAbs = WorldSession.ShouldUpdateSessionAbsolute(isPrimary);
                 // Without entityId, remotes must not all stomp focus 0; only primary/solo uses 0.
@@ -694,6 +728,10 @@ namespace RealEarth
                         $"dOrigin=({dOx},{dOz})");
                     CityMapLabels.RefreshAfterOriginSlide();
                     CityMapLabels.TickPlayer(nx, nz);
+                    // FOW chunk keys are host-local; after slide LocalToEarth remaps them.
+                    // Re-paint when debug FOW is on so wrap/circle stays continuous on the stock map.
+                    if (isPrimary)
+                        MapReveal.RefreshAfterOriginSlide(nx, nz);
                     RuntimePoiInject.TickPlayer(nx, nz);
                     try
                     {
@@ -855,7 +893,12 @@ namespace RealEarth
 
                 MapReveal.Reset();
                 MapReveal.TryRevealIfConfigured();
+                // Soft gap 32: TryLoad may have re-seeded discoveries; keep them across Reset.
+                var restoredCities = CityMapLabels.ExportDiscoveredNames();
                 CityMapLabels.Reset();
+                if (restoredCities.Count > 0)
+                    CityMapLabels.RestoreDiscoveredNames(restoredCities);
+                FallSpawnRetune.ResetSession();
                 RuntimePoiInject.Reset();
                 ChunkTerrainInject.ResetSessionCounters();
                 ResetBudget(ref _tickErrLogBudget, 8);
@@ -905,6 +948,24 @@ namespace RealEarth
             catch
             {
                 // never break save path
+            }
+        }
+
+        /// <summary>
+        /// Stock clamp pins map X to GetWorldExtent. With longitude wrap, restore the
+        /// unclamped input X so DragMap / PositionMapAt can scroll past the seam; Z stays clamped.
+        /// </summary>
+        public static void ClampToValidWorldPosForMapPostfix(Vector2 position, ref Vector3 __result)
+        {
+            try
+            {
+                if (ModApi.Config == null || !ModApi.Config.EnableLongitudeWrap)
+                    return;
+                __result = new Vector3(position.x, __result.y, __result.z);
+            }
+            catch
+            {
+                // never break map drag
             }
         }
 

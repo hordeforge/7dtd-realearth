@@ -62,17 +62,23 @@ Stock terrain and world gen do not know about Earth DEM. Expand alone still yiel
 | **Session origin policy** | SoloSlide / SharedFixed / fold | **Partial** (`SessionOriginPolicy` wired into WorldSession; SharedFixed active live, multi-player proof open) |
 | **Surface-Y stamps** | Prefab Y on real DEM surface | **Done** (live 3.2.0: `RuntimePoiInject` places prefabs via `PrefabCache`/`PrefabInstance.CopyIntoWorld` at real surface Y, e.g. farm_11 at y=4698) |
 | **Session snapshot** | Absolute origin save/reload JSON | **Done** (live 3.2.0: snapshot written; restart restored `absolute=(255,280)` via `SessionStateStore loaded`; same scope re-saved) |
-| **Density budgets** | Cap stamps / sleeper weights | **Partial** (`DensityBudget`) |
+| **Density budgets** | Cap stamps / sleeper weights | **Partial** (hard caps live: 4/chunk, 80/area; distance LOD near/mid/far + `SleeperWeight` in `DensityBudget`; TickPlayer far-band drop; live soak open) |
 | **CDN tile URL + fail-closed** | Optional CDN; miss → sample policy | **Partial** (`CdnTilePolicy`) |
 | **Sparse Y scaffold** | Section index math for tall columns | **Removed** (dead scaffold; AbsoluteHeightStore keeps the sparse surface cache) |
 | **Chunk load / index hooks** | Stream tiles when chunks enter range | **Partial** (`ChunkIndexPostfix`, streamer) |
 | **World ready / player tick** | Center origin, refresh stream bubble, session | **Partial** (`WorldReadyPostfix`, `PlayerTickPostfix`) |
 | **RWG generator types** | `TerrainGeneratorWithBiomeResource` etc. still sample stock | **Needed** (retarget if missed on live DLL) |
 | **Decoration / biome paint from landcover** | After height, paint biomes / density underlay | **Partial** (live: inject writes `Chunk.SetBiomeId` from landcover; decoration/sleeper layers open) |
-| **Prefab / sleeper Y after surface known** | Avoid float/bury on real DEM | **Partial** (prefab stamps on real surface Y live; sleeper Y open) |
+| **Prefab / sleeper Y after surface known** | Avoid float/bury on real DEM | **Partial** (prefab stamps on real surface Y live; `TryRepinSleeperVolumesNear` after stamp and after chunk inject; decoration layer open; live soak open) |
 | **Water fill from DEM / masks** | Coasts, lakes (not deep trench product) | **Later** |
+| **Altitude climate (temp + hypoxia)** | Peaks feel thin/cold | **Partial** (`AltitudeClimate` ISA+lat + `LandcoverTempOffsetC` + `HeatBand`; `AltitudeClimateTick` + `Config/buffs.xml` hypoxia/cold/heat; stock weather still open; live soak open) |
+| **Trader geography (city POI)** | Traders in real cities | **Partial** (`PreferTraderStamp` + `TraderPools` guarantee trader_* for metro/large_city/town; quest XML open; live soak open) |
+| **Production FOW explore** | Explore without debug full-map | **Partial** (`MapExploreRevealRadiusChunks` default 8; `DebugRevealFullMap` stays off; live soak open) |
+| **Radiation / barren bands** | Barren feels radiated | **Partial** (`LandcoverToBiomeId`/`Name`: BARREN→wasteland id 8; stock hazards/spawn; live soak open) |
+| **Vehicle surface snap (extreme Y)** | Vehicles playable on peaks | **Partial** (`FallSpawnRetune.TrySnapVehiclesToSurface` + `SnapVehicleToSurface`; deeper physics open; live soak open) |
+| **Fall damage / spawn Y** | Peaks playable | **Partial** (`FallSpawnRetune`: `SnapSpawnToSurface` + `FallDamageModifierScale` + `KillPlaneRescue`/`KillPlaneDepthBlocks`; `FindSpawnPointAtXZ` YDim-expanded; live soak open) |
 | **Stability / light / mesh fallout** | After tall inject, fix breakage | **Needed** (validate under expand) |
-| **Console diagnostics** | `reheight` for sea+elev proof | **Done** |
+| **Console diagnostics** | `reheight` for sea+elev proof; `relonlat` / `rll` for lon/lat; `_re_lon`/`_re_lat` cvars (`ShowLonLatHud`) + `Config/XUi_InGame` `{cvar(...)}` HUD | **Partial** (map grid still open; live soak open) |
 | **Fail soft per hook** | Missing target → log, do not kill mod | **Done** pattern; keep it |
 
 **Rule:** Y-expand without complete height+gen inject = tall empty columns or stock noise. Inject without expand = clamp/clip (product rejects compress).
@@ -87,9 +93,9 @@ Stock terrain and world gen do not know about Earth DEM. Expand alone still yiel
 | **Regional bbox mapping** | Demo packs in finite width | **Done** (manifest override; linear stretch) |
 | **WorldSession origin** | Local host ↔ absolute Earth | **Done** scaffold |
 | **LocalWindowSize host canvas** | Keep engine coords bounded (~1024) | **Done** config; **Needed** live SoloSlide proof |
-| **Longitude wrap** | Circle planet on X | **Partial** (config; full-planet packs; soak open) |
+| **Longitude wrap** | Circle planet on X | **Partial** (`Validate()` auto-enables for Streamed full-planet width + no regional bbox; live soak open) |
 | **Lat-correct horizontal meters / geodesic** | True km at high lat | **Missing** |
-| **Antimeridian-safe bboxes** | Pacific / dateline packs | **Missing** |
+| **Antimeridian-safe bboxes** | Pacific / dateline packs | **Done** (offline `split_bbox_at_antimeridian` + `planet-tiles`; C# `HasRegionalBbox` accepts west>east; `LonLatToEarth` / city filter use wrap-aware span) |
 | **TileStreamer bubble** | Load/unload `.rte` by radius | **Partial** |
 | **CDN / missing tile policy** | Fetch or fail closed | **Partial** (`CdnTilePolicy` + streamer fetch; farm/CDN ops open) |
 | **Baked vs Streamed modes** | Finite GeneratedWorld vs inject | **Partial** (Baked path stronger today) |
@@ -128,10 +134,10 @@ Geography without people is empty wilderness. Separate from height.
 | **Density → stamp bands** (metro…hamlet) | City intensity without OSM meshes | **Partial** |
 | **Named places / settlements.json** | Discovery labels, seed peaks | **Partial** (data + seeds) |
 | **City map labels (discover-on-approach)** | Edge unlock from map data, pin at center | **Done** (session; `edge_radius_m`; see `CITY_MAP_LABELS.md`) |
-| **Prefab placement on real surface Y** | After inject | **Needed** |
+| **Prefab placement on real surface Y** | After inject | **Done** (same path as Surface-Y stamps / `RuntimePoiInject`) |
 | **Road snap (OSM)** | Highways as corridors | **Later** |
-| **Sim pressure weights** (zombies/sleepers by density) | Metro harder than plains | **Later** (cap or melt) |
-| **Density caps / LODs** | Engine cannot sim true Tokyo entity count | **Needed** for scale |
+| **Sim pressure weights** (zombies/sleepers by density) | Metro harder than plains | **Partial** (`Config/spawning.xml` raises commercial/downtown maxcount for pine/burnt/desert/wasteland; animals untouched; live soak open) |
+| **Density caps / LODs** | Engine cannot sim true Tokyo entity count | **Partial** (hard caps 4/chunk, 80/area; near/mid/far LOD + far-band drop in `DensityBudget` / TickPlayer; live soak open) |
 
 ---
 
@@ -153,8 +159,8 @@ Geography without people is empty wilderness. Separate from height.
 | Modification | Purpose | Status |
 |---|---|---|
 | **XML modlet** (biomes, spawns, rwg helpers) | Support role | **Partial** |
-| **Globe / world map UI** | Planet context | **Viewer only** (offline web viewer; in-game scaffold removed) |
-| **Map FOW / discovery** | Explore real places | **Partial** (FOW debug + city edge discovery) |
+| **Globe / world map UI** | Planet context | **Partial** (viewer + webmod Map2D continuous lon wrap; in-game infinite lon scroll via `ClampToValidWorldPosForMap` when wrap on; 3D globe stays viewer QA) |
+| **Map FOW / discovery** | Explore real places | **Partial** (FOW debug + city edge discovery; `discoveredCities` persist on discover via `SessionStateStore.TrySave`; wrap-on-slide re-paint; wire MP package sync still open; live soak open) |
 | **Climate / weather refinement** | Beyond landcover | **Later** |
 | **Rivers / hydrology overlays** | Recognizable waterways | **Later** |
 | **View distance / stream radius tuning** | FPS under dense DEM+city | **Needed** (measure) |
@@ -187,7 +193,7 @@ P4  Save/reload + build deltas (F)
 P5  SharedFixed co-located MP proof (F)
 P6  Density/sim budgets + net soak (G)
 P7  Planet farm + CDN (D)
-P8  Sparse Y / roads / climate (Later)
+P8  Sparse Y / roads / climate (Later; altitude hypoxia/cold Partial)
 ```
 
 Implementation how-to and API choice: [GAP_HARMONY_MODLETS](GAP_HARMONY_MODLETS.md). Tickets: [TODO](../TODO.md).

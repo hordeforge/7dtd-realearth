@@ -6,7 +6,9 @@ using System.Threading;
 namespace RealEarth
 {
     /// <summary>
-    /// Debug FOW: uncover a wide area of the in-game map (not only visited chunks).
+    /// Map FOW reveal: debug full-map fill and/or a radius around the local player.
+    /// Production path uses MapExploreRevealRadiusChunks (soft gap 33); debug knobs
+    /// remain DebugRevealFullMap / DebugMapRevealRadiusChunks.
     /// Uses GameManager.fowDatabaseForLocalPlayer / MapChunkDatabase.Add.
     /// </summary>
     public static class MapReveal
@@ -36,7 +38,11 @@ namespace RealEarth
             var cfg = ModApi.Config;
             if (cfg == null)
                 return;
-            if (!cfg.DebugRevealFullMap && cfg.DebugMapRevealRadiusChunks <= 0)
+            int exploreRadius = Math.Max(0, cfg.MapExploreRevealRadiusChunks);
+            int debugRadius = Math.Max(0, cfg.DebugMapRevealRadiusChunks);
+            // Debug radius wins when both are set; production explore is the soft default.
+            int radius = debugRadius > 0 ? debugRadius : exploreRadius;
+            if (!cfg.DebugRevealFullMap && radius <= 0)
                 return;
 
             try
@@ -57,7 +63,6 @@ namespace RealEarth
                     }
                 }
 
-                int radius = Math.Max(0, cfg.DebugMapRevealRadiusChunks);
                 if (radius > 0 && playerLocalX.HasValue && playerLocalZ.HasValue)
                     RevealRadiusAroundPlayer(playerLocalX.Value, playerLocalZ.Value, radius);
             }
@@ -77,6 +82,27 @@ namespace RealEarth
             _lastCx = int.MinValue;
             _lastCz = int.MinValue;
             Volatile.Write(ref _uncoveredCapRaised, 0);
+        }
+
+        /// <summary>
+        /// After origin slide the host FOW chunk keys still point at old local cells
+        /// while LocalToEarth now maps those cells to different Earth lon. Re-paint
+        /// so the stock map stays continuous when EnableLongitudeWrap circles X.
+        /// Stock UI remains a flat LocalWindowSize rectangle (not Google Maps pan).
+        /// </summary>
+        public static void RefreshAfterOriginSlide(int? playerLocalX = null, int? playerLocalZ = null)
+        {
+            var cfg = ModApi.Config;
+            if (cfg == null)
+                return;
+            int exploreRadius = Math.Max(0, cfg.MapExploreRevealRadiusChunks);
+            int debugRadius = Math.Max(0, cfg.DebugMapRevealRadiusChunks);
+            int radius = debugRadius > 0 ? debugRadius : exploreRadius;
+            if (!cfg.DebugRevealFullMap && radius <= 0)
+                return;
+
+            Reset();
+            TryRevealIfConfigured(playerLocalX, playerLocalZ);
         }
 
         public static bool RevealFullMap()

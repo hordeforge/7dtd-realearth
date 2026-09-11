@@ -41,8 +41,6 @@ namespace RealEarth
                 }
 
                 Config = RealEarthConfig.Load(Path.Combine(ModPath, "Config", "realearth.json"));
-                foreach (var warning in Config.Validate())
-                    LogWarn($"config: {warning}");
 
                 var tileRoot = Path.IsPathRooted(Config.TilePackPath)
                     ? Config.TilePackPath
@@ -50,7 +48,11 @@ namespace RealEarth
 
                 // Regional packs (demo): earth.manifest.json overrides world size so
                 // local 0-based .rte tiles sample correctly in Streamed mode.
+                // Validate runs after the manifest so wrap auto-enable sees final
+                // WorldWidth / regional bbox (not the shipped demo placeholders).
                 TryApplyPackManifest(tileRoot, Config);
+                foreach (var warning in Config.Validate())
+                    LogWarn($"config: {warning}");
 
                 Coords = new EarthCoords(Config.WorldWidth, Config.WorldHeight, Config.TileSize);
                 // Host canvas cannot exceed pack extent
@@ -73,16 +75,10 @@ namespace RealEarth
                 {
                     TryInstallRuntimePatch();
                 }
-                // Only force Streamed for tall inject when the engine was actually expanded
-                if (Config.EnableEngineHeightMod
-                    && EngineHeight.EngineHeightMod.EngineExpanded
-                    && string.Equals(Config.MapMode, "Baked", StringComparison.OrdinalIgnoreCase)
-                    && Directory.Exists(Path.Combine(tileRoot, "tiles")))
-                {
-                    Config.MapMode = "Streamed";
-                    Log("EngineHeightMod: Baked→Streamed (expanded engine + .rte tiles for tall inject).");
-                    Session = new WorldSession(Coords, Config);
-                }
+                // Respect MapMode. Do not auto-promote Baked→Streamed when .rte tiles
+                // exist: that overrides a continuous baked world and can inject
+                // at the wrong earth origin (water columns, missing land, floating
+                // decorations). Tall inject is Streamed when the operator chooses it.
                 // Prefer explicit Spawn* when either is non-zero; else DefaultSpawn*.
                 Config.ResolveSpawnLonLat(out double spawnLon, out double spawnLat);
                 Session.SpawnAtLonLat(spawnLon, spawnLat);
@@ -296,9 +292,10 @@ namespace RealEarth
                 double south = ReadJsonDouble(json, "south");
                 double east = ReadJsonDouble(json, "east");
                 double north = ReadJsonDouble(json, "north");
+                // east!=west: continuous (east>west) or dateline wrap (west>east).
                 if (!double.IsNaN(west) && !double.IsNaN(south)
                     && !double.IsNaN(east) && !double.IsNaN(north)
-                    && east > west && north > south)
+                    && east != west && north > south)
                 {
                     cfg.BboxWest = west;
                     cfg.BboxSouth = south;
@@ -306,7 +303,16 @@ namespace RealEarth
                     cfg.BboxNorth = north;
                     if (cfg.SpawnLongitude == 0 && cfg.SpawnLatitude == 0)
                     {
-                        cfg.DefaultSpawnLon = (west + east) * 0.5;
+                        if (east > west)
+                            cfg.DefaultSpawnLon = (west + east) * 0.5;
+                        else
+                        {
+                            // Midpoint along wrapped span (same as LonOffsetFromWest / span).
+                            double span = (180.0 - west) + (east - (-180.0));
+                            double mid = west + span * 0.5;
+                            if (mid > 180.0) mid -= 360.0;
+                            cfg.DefaultSpawnLon = mid;
+                        }
                         cfg.DefaultSpawnLat = (south + north) * 0.5;
                     }
                 }

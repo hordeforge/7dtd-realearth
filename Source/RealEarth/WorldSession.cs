@@ -205,11 +205,27 @@ namespace RealEarth
                 double south = _cfg.BboxSouth;
                 double east = _cfg.BboxEast;
                 double north = _cfg.BboxNorth;
-                if (lon < west) lon = west;
-                if (lon > east) lon = east;
+                double lonSpan = _cfg.BboxLonSpanDegrees;
                 if (lat < south) lat = south;
                 if (lat > north) lat = north;
-                double fx = (lon - west) / (east - west);
+                if (!_cfg.LonInRegionalBbox(lon))
+                {
+                    // Clamp to nearest edge along the pack (continuous or wrapped).
+                    if (_cfg.BboxCrossesAntimeridian)
+                    {
+                        double dWest = Math.Abs(NormalizeLonDelta(lon, west));
+                        double dEast = Math.Abs(NormalizeLonDelta(lon, east));
+                        lon = dWest <= dEast ? west : east;
+                    }
+                    else
+                    {
+                        if (lon < west) lon = west;
+                        if (lon > east) lon = east;
+                    }
+                }
+                double fx = lonSpan > 0 ? _cfg.LonOffsetFromWest(lon) / lonSpan : 0;
+                if (fx < 0) fx = 0;
+                if (fx > 1) fx = 1;
                 double fz = (north - lat) / (north - south);
                 earthX = (int)(fx * Math.Max(1, _coords.WorldWidth - 1));
                 earthZ = (int)(fz * Math.Max(1, _coords.WorldHeight - 1));
@@ -229,15 +245,32 @@ namespace RealEarth
             {
                 double west = _cfg.BboxWest;
                 double south = _cfg.BboxSouth;
-                double east = _cfg.BboxEast;
                 double north = _cfg.BboxNorth;
+                double lonSpan = _cfg.BboxLonSpanDegrees;
                 double fx = earthX / (double)Math.Max(1, _coords.WorldWidth - 1);
                 double fz = earthZ / (double)Math.Max(1, _coords.WorldHeight - 1);
-                lon = west + fx * (east - west);
+                if (_cfg.BboxCrossesAntimeridian)
+                {
+                    double offset = fx * lonSpan;
+                    lon = west + offset;
+                    if (lon > 180.0) lon -= 360.0;
+                }
+                else
+                {
+                    lon = west + fx * lonSpan;
+                }
                 lat = north - fz * (north - south);
                 return;
             }
             _coords.BlockToLonLat(earthX, earthZ, out lon, out lat);
+        }
+
+        static double NormalizeLonDelta(double a, double b)
+        {
+            double d = a - b;
+            while (d > 180.0) d -= 360.0;
+            while (d < -180.0) d += 360.0;
+            return d;
         }
 
         /// <summary>

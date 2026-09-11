@@ -262,7 +262,7 @@ namespace RealEarth
                 case 1: return "water";
                 case 2:
                 case 10: return "snow";
-                case 3: return "wasteland";
+                case 3: return "wasteland"; // barren → wasteland (gap 25 soft)
                 case 5:
                 case 11: return "desert";
                 case 9: return "pine_forest"; // urban underlay
@@ -276,6 +276,10 @@ namespace RealEarth
         /// burnt_forest=9). Writes the per-column biome so the stock RWG biome
         /// noise does not fight the injected terrain. Water stays water only
         /// under sea; every land code falls back to pine_forest (never water).
+        /// Soft gap 25: BARREN (3) → wasteland (8). Stock only fully defines
+        /// wasteland hazards/spawn (`buffWasteland_Hazard`, spawning.xml block);
+        /// biomemap id 07 "radiated" has no biome body, so barren used to miss
+        /// radiation feel and spawn pressure.
         /// </summary>
         public static int LandcoverToBiomeId(byte lc)
         {
@@ -285,7 +289,7 @@ namespace RealEarth
                 case 1: return 6; // water
                 case 2:
                 case 10: return 1; // snow
-                case 3: return 8; // wasteland
+                case 3: return 8; // wasteland (barren)
                 case 5:
                 case 11: return 5; // desert
                 default: return 3; // pine_forest (also urban underlay)
