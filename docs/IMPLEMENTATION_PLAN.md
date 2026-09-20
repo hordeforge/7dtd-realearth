@@ -12,7 +12,7 @@
 
 | Pri | Layer | Outcome | Dependencies | Isolation / test |
 |---:|---|---|---|---|
-| **P0** | A Binary | Expand correct on client+dedicated; audit/refuse stock when product path demands 1:1 | None | `make engine-expand-dry`, `engine-audit`; expand scripts |
+| **P0** | A Binary | Expand correct on client+dedicated; audit/refuse stock when product path demands 1:1 | None | `engine-audit`; runtime-transpiler structural tests |
 | **P1** | B Inject | Live height queries + GenerateTerrain rewrite DEM; fail-closed missing tiles; patch stats | P0 for tall peaks | Unit: `HeightInjectMath` / sample policy; C# build; loadgen self-test gates |
 | **P2** | C Stream | SoloSlide proof, tile bubble, no silent fake DEM | P1 | Session fold unit tests; offline streamer logic |
 | **P3** | E Density | Stamps + biome on real surface Y | P1 | Pipeline density tests; stamp Y = sample height |

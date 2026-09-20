@@ -7,25 +7,18 @@ using HarmonyLib;
 namespace RealEarth
 {
     /// <summary>
-    /// Experimental runtime hot-patch of the YDim expand: rewrites the same
-    /// inlined Y-bound literals the disk patcher (EngineHeightPatcher.exe)
-    /// changes, but via Harmony transpilers at JIT time instead of a file edit.
+    /// Runtime hot-patch of the YDim expand: rewrites the inlined Y-bound
+    /// literals via Harmony transpilers at JIT time instead of a file edit.
     ///
     /// Feasibility (see 7dtd-engine-research/docs/world/hot-patch-height.md): the main
     /// menu JITs none of the 26 Y-bound methods / 6 layer-storage types, so a
     /// transpiler installed from InitMod (pre-world) should catch all sites
-    /// before first use. Residual risks: other mods / load order can JIT a site
-    /// early (half-patched engine), and there is no --verify equivalent.
+    /// before first use. Residual risk: other mods / load order can JIT a site
+    /// early (half-patched engine).
     ///
-    /// NOT the product default: the disk patcher stays primary. This activates
-    /// only when config EngineHeightRuntimePatch=true and the engine is still
-    /// stock (YDim=256), so a disk-patched install is never double-rewritten.
-    ///
-    /// Known gap (sandbox H500 soak 2026-08-31): method-only rewrites leave
-    /// layer-array ctors at stock len=64 (GetBlockNoDamage fails for y>=256).
-    /// Patching .ctor alone crashes GenerateChunks in ChunkBlockChannel.fillSameValue
-    /// (IndexOutOfRange). Use make engine-expand / apply_engine_expand.sh for
-    /// playable tall columns; do not treat this hot-patch as product-complete.
+    /// The product default: activates when config EngineHeightRuntimePatch=true
+    /// and the engine is still stock (YDim=256); an already-expanded install is
+    /// never double-rewritten.
     /// </summary>
     public static class RuntimeYDimTranspiler
     {
@@ -274,7 +267,7 @@ namespace RealEarth
                     // Layer-array ctors still allocate stock len=64 under a method-only
                     // hot-patch (GetBlockNoDamage fails for y>=256). Patching .ctor
                     // alone crashes GenerateChunks in ChunkBlockChannel.fillSameValue
-                    // (IndexOutOfRange). Disk expand remains the product path.
+                    // (IndexOutOfRange). The runtime transpiler is the product path.
                 }
                 PatchCount = attached;
                 IsActive = attached > 0;

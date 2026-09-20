@@ -1,5 +1,5 @@
 {
-  "_comment": "DEV TEMPLATE: after RealEarth YDim expand (Tools/apply_engine_expand or make engine-expand). Ships debug FOW ON (DebugRevealFullMap=true, DebugMapRevealRadiusChunks=128) and Everest spawn; do NOT use as a production server profile. Expand is part of this mod.",
+  "_comment": "DEV TEMPLATE: RealEarth YDim expand is hot-patched at boot (EngineHeightRuntimePatch=true). Ships debug FOW ON (DebugRevealFullMap=true, DebugMapRevealRadiusChunks=128) and Everest spawn; do NOT use as a production server profile. Expand is part of this mod.",
   "MapMode": "Streamed",
   "SingleWorldSession": true,
   "TilePackPath": "Data/tiles",

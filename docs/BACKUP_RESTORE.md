@@ -34,7 +34,7 @@ disappears. Without it, rebuilds depend on a third party staying alive.
 | Repo disk dies | Total loss of all worlds and packs; RPO infinite | RPO = last archive copied off-host; RTO = minutes (`artifacts-restore`) |
 | AWS Terrarium dataset vanishes | Packs unreproducible; every future rebuild silently degrades to synthetic fallback | No impact while `data/cache/terrarium` is present (and archived) |
 | Bad bake overwrites a good world | Gone; `worlds/` has no history | Bakes never overwrite in place: the previous tree is renamed `<world>.pre-bake-<UTC stamp>` next to it (delete it once happy). Fallback: last archive or re-bake offline from pack + cache |
-| Engine expand corrupts the game DLL | Game will not start | `make engine-restore` (or Steam Verify); RTO = minutes |
+| Game update breaks the runtime YDim patch | `heightMode=stock`, peaks clamp ~250 | Rebuild against the new DLL (`make install`/`make build`); no backup to restore because no DLL is edited |
 | Harness run pointed at real userdata deletes saves | Permanent loss | `Saves_trash/<timestamp>` window, 7 days default (`RE_SAVE_TRASH_DAYS`) |
 
 RPO statement: unbounded until an operator runs `make artifacts-backup`. The
@@ -78,9 +78,10 @@ forced restore moves the old tree aside instead of deleting it, and a corrupt
 archive is refused with nothing extracted. CI runs it on every change to keep
 the claim current (`scripts/artifacts_drill.sh`).
 
-Engine DLL recovery is separate and already scripted: `make engine-restore`,
-`make engine-verify` (drift detection against the sha256 recorded at expand
-time). See [HEIGHT_LIMITS](HEIGHT_LIMITS.md) and [THREAT_MODEL](THREAT_MODEL.md).
+Engine DLL recovery is no longer needed for height: the YDim expand is
+hot-patched at boot (no DLL is edited), so a game update at worst needs
+`make install` to re-apply the mod. See [HEIGHT_LIMITS](HEIGHT_LIMITS.md) and
+[THREAT_MODEL](THREAT_MODEL.md).
 
 ## Operating rules
 

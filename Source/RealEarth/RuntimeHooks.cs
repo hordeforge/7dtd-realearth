@@ -928,7 +928,7 @@ namespace RealEarth
                         "PRODUCT HEIGHT CAPPED: YDim expand required for true real-height columns. " +
                         $"Heights clamp to allocY={EngineHeight.EngineHeightMod.AllocatableColumnMaxY} " +
                         "(inject still samples RealEarth, not stock RWG). " +
-                        "Run make engine-expand or set EngineHeightStockSafe=true.");
+                        "Enable EngineHeightRuntimePatch (runtime YDim transpiler) or set EngineHeightStockSafe=true.");
                 }
             }
             catch (Exception ex)

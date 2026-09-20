@@ -156,7 +156,7 @@ Vanilla remains a **finite flat world**. Planetary 1:1 requires streaming + wrap
 - **`Chunk.RefreshSunlight`** walks y from 255 down.
 - RegionFileRaw: 8×8 chunks/region, sectorsStartOffset=779.
 - `Entity.OriginChanged`: physicsPos/physicsTargetPos + emodel only.
-- Product `engine_patcher` already targets 64/256/255 in Y-bound methods; RE list is the audit checklist.
+- Product runtime transpiler targets 64/256/255 in Y-bound methods; RE list is the audit checklist.
 
 ## Related docs
 

@@ -114,7 +114,7 @@ Recommended research direction: **E**, with A as the default ship path. Do not p
 ```bash
 realearth bake-world --pack data/samples/city_pack --size 4096 \
   --out worlds/RealEarth --generated
-# then install / expand per MODLET / make install-full
+# then install per MODLET (make install; the runtime transpiler expands at boot)
 ```
 
 Outputs that matter for “real city” QA: `dtm` / height export, `biomes.png`, `population.png`, `cities.json`, `prefabs.xml`, optional corridor-burned landcover.

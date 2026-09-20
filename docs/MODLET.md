@@ -12,7 +12,7 @@ RealEarth is a **C# mod** (`IModApi` + Harmony) **plus** engine **YDim expand** 
 |--------|------|
 | `RealEarth.dll` + `IModApi` | Config, tiles, streamer, session |
 | Harmony hooks | Height queries, terrain inject |
-| **YDim expand** (`EngineHeightPatcher`) | Raises `Assembly-CSharp` vertical limits (YDim=32768) |
+| **YDim expand** (runtime transpiler) | Raises `Assembly-CSharp` vertical limits at boot (YDim=32768) |
 | `.rte` / bake data | Real elevation packs |
 
 Requires game **`0_TFP_Harmony`**. Do not ship a second Harmony.
@@ -23,17 +23,12 @@ Game **closed**. From repo:
 
 ```bash
 make install  # product: hot-patches the YDim expand at boot (default)
-# fallback (pre-boot disk patch for load-order-sensitive hosts):
-make install-full # engine-expand + build + install (Streamed)
-# or step by step:
-make engine-expand # patches client + dedicated Assembly-CSharp (disk fallback)
-make install
 ./scripts/install_height_pack.sh h500 # or everest
 ```
 
 The default `EngineHeightRuntimePatch=true` rewrites the YDim literals at
-runtime via Harmony transpilers when the engine is stock (validated live); the
-disk patcher stays in `Tools/` as the fallback.
+runtime via Harmony transpilers when the engine is stock (validated live). No
+DLL is edited and nothing needs re-applying after Steam Verify.
 
 From an installed mod folder (after `make package`):
 
@@ -41,23 +36,14 @@ From an installed mod folder (after `make package`):
 Mods/RealEarth/
  RealEarth.dll
  Config/realearth.json
- Tools/
- EngineHeightPatcher.exe
- Mono.Cecil.dll
- apply_engine_expand.sh # patches client (+ dedicated if present)
 ```
 
-```bash
-# Close 7DTD first
-Mods/RealEarth/Tools/apply_engine_expand.sh
-# restart game - log should show YDim=32768 / ENGINE EXPANDED
-```
-
-Restore stock DLLs: `make engine-restore` or Steam Verify (then re-run expand after updates).
+The mod hot-patches the YDim expand at boot; no Tools/ step is needed. The
+log should show `YDim=32768 / ENGINE EXPANDED`.
 
 ## Without expand (not product)
 
-Default config keeps **real-height mode** (`EngineHeightStockSafe=false`, `EngineHeightOneToOne=true`, `EngineHeightRuntimePatch=true`). On a stock engine the mod hot-patches the YDim expand at boot; if that is disabled (or the host is load-order sensitive), the log tells you to run the disk patcher instead.
+Default config keeps **real-height mode** (`EngineHeightStockSafe=false`, `EngineHeightOneToOne=true`, `EngineHeightRuntimePatch=true`). On a stock engine the mod hot-patches the YDim expand at boot; if that is disabled, the log says so.
 
 Optional experiment only: set `EngineHeightStockSafe=true` to compress into ~0-250 so the world loads without expand. That is **not** the product path and is off by default.
 
@@ -69,7 +55,7 @@ Optional experiment only: set `EngineHeightStockSafe=true` to compress into ~0-2
 
 ## Config
 
-- Default `Config/realearth.json`: real height (`EngineHeightStockSafe=false`, `EngineHeightOneToOne=true`). Use `make install-full`.
+- Default `Config/realearth.json`: real height (`EngineHeightStockSafe=false`, `EngineHeightOneToOne=true`). `make install` keeps the shipped defaults.
 - `Config/realearth.advanced_height.json`: tall-profile template (Everest spawn; dev FOW on).
 
 At init the mod validates the config and logs one `[RealEarth] config:` line per issue,
@@ -94,8 +80,6 @@ All optional; defaults shown. Scripts fail fast when numeric values are invalid.
 | `RE_SERVER_MAX_PLAYERS` | `1024` (height test) / `64` (prefab) | serverconfig injection |
 | `RE_SERVER_WAIT` / `RE_SERVER_SOAK` | `180` / `35` seconds | `run_dedicated_height_test.sh` |
 | `RE_SCRATCH` / `RE_LOADTEST_ROOT` | unset / `../7dtd-loadgen` | load-test wiring |
-| `RE_YDIM` | `32768` | `apply_engine_expand.sh` |
-| `HARMONY_DIR` | `<GAME_DIR>/Mods/0_TFP_Harmony` | `apply_engine_expand.sh` Harmony ref dir |
 | `RE_TERRARIUM_CACHE` | unset (no caching) / `<repo>/data/cache/terrarium` via make | offline tile cache for the Python pipeline (`tools`) |
 | `RE_SAVE_TRASH_DAYS` | `7` | `run_dedicated_height_test.sh` save-trash window |
 | `STEAM_DIR` | auto-detect | `tools/` Proton path resolution |
@@ -105,7 +89,7 @@ All optional; defaults shown. Scripts fail fast when numeric values are invalid.
 | Key | Default | Valid values / meaning |
 |---|---|---|
 | `MapMode` | `Streamed` | `Streamed` (sliding window over full Earth) or `Baked` (one finite DTM world) |
-| `MultiplayerOriginMode` | `SoloSlide` | `SoloSlide`, `SharedFixed` (MP combat), `SharedSlide` (accepted alias; slides only when solo today, same as SoloSlide) |
+| `MultiplayerOriginMode` | `SoloSlide` | `SoloSlide` (planetary travel), `SharedFixed` (co-located MP combat); `SharedSlide` is accepted and normalizes to `SoloSlide` |
 | `TilePackPath` | `Data/tiles` | Pack dir with `.rte` tiles (+ optional `earth.manifest.json`) |
 | `WorldWidth` / `WorldHeight` | full planet | Host canvas extent; regional packs override via manifest |
 | `TileSize` | `512` | `.rte` tile edge in blocks |

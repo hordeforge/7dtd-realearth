@@ -640,12 +640,11 @@ def test_hooks_log_budgets_are_interlocked():
     assert "Interlocked.Exchange(ref budget, value)" in hooks
 
 
-def test_runtime_ydim_transpiler_mirrors_disk_patcher():
-    """The runtime hot-patch (Harmony transpilers) must mirror the disk
-    patcher's Y-bound site lists so both paths rewrite the same literals."""
+def test_runtime_ydim_transpiler_site_coverage():
+    """The run Time hot-patch (Harmony transpilers) must cover the Y-bound
+    sites so 1:1 height rewrite the same literals everywhere."""
     transpiler = _read("RuntimeYDimTranspiler.cs")
-    patcher = (ROOT / "tools" / "engine_patcher" / "Program.cs").read_text(encoding="utf-8")
-    # Transpiler carries the same target method names + storage types.
+    # Transpiler carries the target method names + storage types.
     for name in (
         "SetBlockRaw",
         "GetDensity",
@@ -657,15 +656,13 @@ def test_runtime_ydim_transpiler_mirrors_disk_patcher():
         "UnsafeChunkData",
     ):
         assert name in transpiler, f"transpiler missing site {name}"
-        assert name in patcher, f"disk patcher missing site {name}"
     # Rewrite rules: 256->YDim, 255->YMask, 64->layers, 65536->volume bits.
     assert "TargetYDim = 32768" in transpiler
     assert "TargetYDimM1 = 32767" in transpiler
     assert "TargetLayers = TargetYDim / 4" in transpiler
     assert "TargetVolumeBits" in transpiler
     assert "IsUnsafeChunkData" in transpiler or "UnsafeChunkData" in transpiler
-    # Config gate: hot patch is the product default; the disk patcher stays as
-    # a fallback (Tools/EngineHeightPatcher.exe, make engine-expand).
+    # Config gate: hot patch is the product default.
     cfg = json.loads((ROOT / "Config" / "realearth.json").read_text(encoding="utf-8"))
     assert cfg.get("EngineHeightRuntimePatch") is True
     assert "EngineHeightRuntimePatch" in _read("RealEarthConfig.cs")

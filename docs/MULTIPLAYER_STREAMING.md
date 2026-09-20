@@ -152,11 +152,10 @@ Key fields:
 | `StreamRadiusTiles` | `3` | ~3.5 km Earth data per player (tile 512) |
 | `UnloadRadiusTiles` | `5` | Hysteresis so multi-center eviction is stable |
 | `LocalWindowSize` | pack size (e.g. 512) or ≤2048 | Host mesh bound, not Earth extent |
-| `EnableEngineHeightMod` | `true` | Tall columns; apply RealEarth YDim expand on **server + every client** |
+| `EnableEngineHeightMod` | `true` | Tall columns; the runtime YDim transpiler expands on **server + every client** at boot |
 
 ```bash
-# Expand Assembly-CSharp (server + client), install H500 pack, soak empty dedicated
-make engine-expand
+# Install H500 pack, soak empty dedicated
 make dedicated-height-test
 
 # Multiplayer model unit tests

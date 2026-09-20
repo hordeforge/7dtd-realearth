@@ -9,16 +9,15 @@ SHELL := /bin/bash
 	setup tools-sync \
 	test test-one test-fast test-height test-python test-mp coverage \
 	build build-mod dll \
-	install install-full install-baked install-streamed install-height install-height-500 \
+	install install-baked install-streamed install-height install-height-500 \
 	install-height-pack-everest \
 	height-test height-map height-map-500 height-map-trench height-map-install height-map-500-install \
-	engine-audit engine-expand engine-expand-dry engine-verify engine-restore dedicated-height-test \
+	engine-audit dedicated-height-test \
 	demo bake bake-height package sbom \
 	artifacts-backup artifacts-restore \
 	viewer viewer-build serve viewer-lint viewer-smoke \
 	webmod webmod-export webmod-lint html-lint \
 	lint-shell info check clean clean-build \
-	build-npi
 
 # ---------------------------------------------------------------------------
 # Paths / knobs (override on the command line: make install GAME_DIR=...)
@@ -101,7 +100,6 @@ help:
 	@echo "  Build / install (Steam Proton client)"
 	@echo "    make build              Build RealEarth.dll"
 	@echo "    make install            Build + install mod+worlds (hot-patches YDim expand at boot; MAP_MODE=$(MAP_MODE))"
-	@echo "    make install-full       Disk YDim expand + install (fallback)"
 	@echo "    make install-baked      Same with MAP_MODE=Baked"
 	@echo "    make install-streamed   Same with MAP_MODE=Streamed"
 	@echo "    make install-height     Height-test map + install (Everest DEM)"
@@ -115,10 +113,6 @@ help:
 	@echo "    make height-map-trench   Generate staged below-sea trench pack + world (product anchor)"
 	@echo "    make height-map-install Generate Everest + install for Proton New Game"
 	@echo "    make engine-audit       Print Assembly-CSharp YDim / cMaxHeight"
-	@echo "    make engine-expand      RealEarth YDim expand (part of this mod)"
-	@echo "    make engine-expand-dry  Preview IL patches without writing"
-	@echo "    make engine-verify      Check the DLL against the expand-time sha256"
-	@echo "    make engine-restore     Restore stock Assembly-CSharp from backup"
 	@echo ""
 	@echo "  Data / worlds"
 	@echo "    make demo               Synthetic demo region pack"
@@ -137,11 +131,9 @@ help:
 	@echo "    Single test: cd tools && uv run --locked --extra dev pytest tests/test_coords.py -k name"
 	@echo "    make lint               Ruff + black --check + mypy over tools/ and scripts/"
 	@echo "    make lint-shell         ShellCheck over scripts/*.sh (CI gate)"
-	@echo "    make build-npi          Compile tools/network_protocol_inspector (CI C# gate)"
 	@echo ""
 	@echo "  CI parity (what .github/workflows/ci.yml runs beyond the targets above)"
 	@echo "    make shellcheck         Lint scripts/*.sh"
-	@echo "    make build-npi          Build NetworkProtocolInspector (C# analysis gate)"
 	@echo ""
 	@echo "  Viewer"
 	@echo "    make viewer             Export demo pack into viewer/data/demo"
@@ -201,17 +193,6 @@ install: build
 	@echo "Installing (MAP_MODE=$(MAP_MODE)) → $(GAME_DIR)"
 	MAP_MODE="$(MAP_MODE)" "$(SCRIPTS)/install_proton.sh"
 
-# C# analysis gate CI compiles standalone (NuGet Mono.Cecil; no game DLLs
-# needed, unlike the mod DLL). Run before committing changes under
-# tools/network_protocol_inspector/.
-build-npi:
-	@command -v dotnet >/dev/null || { echo "ERROR: dotnet not on PATH (set DOTNET_ROOT=...)" >&2; exit 1; }
-	dotnet build "$(TOOLS)/network_protocol_inspector/NetworkProtocolInspector.csproj" -c Release
-
-# Full RealEarth: YDim expand (part of this mod) + mod DLL + worlds
-install-full: engine-expand install
-	@echo "OK install-full (YDim expand + RealEarth mod). Restart 7DTD."
-
 install-baked:
 	@$(MAKE) install MAP_MODE=Baked
 
@@ -221,10 +202,9 @@ install-streamed:
 install-height: height-map-install
 
 package: build webmod sbom
-	@chmod +x "$(SCRIPTS)/apply_engine_expand.sh" 2>/dev/null || true
 	@GAME_DIR="$(GAME_DIR)" "$(SCRIPTS)/package_mod.sh" "$(ROOT)/dist/RealEarth"
 	@"$(SCRIPTS)/package_zip.sh" "$(ROOT)/dist/RealEarth"
-	@echo "OK package → $(ROOT)/dist/RealEarth (+ RealEarth-v*.zip, sha256 + buildinfo sidecars, dist/realearth-deps.spdx.json; includes Tools/ YDim expand + WebMod webui)"
+	@echo "OK package → $(ROOT)/dist/RealEarth (+ RealEarth-v*.zip, sha256 + buildinfo sidecars, dist/realearth-deps.spdx.json; includes WebMod webui)"
 
 # SPDX 2.3 dependency inventory from the committed lock/pin files
 # (uv.lock, packages.lock.json, toolchain-versions.env). Written beside the
@@ -270,39 +250,6 @@ install-height-pack-everest: build
 
 engine-audit:
 	@$(REEARTH) engine-audit
-
-# RealEarth YDim expand (part of this mod, not a third-party tool).
-# Close the game first. Re-run after Steam verify/updates.
-engine-expand:
-	@chmod +x "$(SCRIPTS)/apply_engine_expand.sh" "$(SCRIPTS)/patch_engine_height.sh"
-	@"$(SCRIPTS)/patch_engine_height.sh" --force
-	@echo "Rebuilding RealEarth.dll..."
-	@$(MAKE) build
-	@echo "OK RealEarth YDim expand. Restart 7DTD. (Also: Mods/RealEarth/Tools/ after make package)"
-
-engine-expand-dry:
-	@chmod +x "$(SCRIPTS)/patch_engine_height.sh"
-	@"$(SCRIPTS)/patch_engine_height.sh" --dry-run
-
-# Detect post-expand drift of the patched DLL (Steam verify, a second mod
-# overwriting Assembly-CSharp.dll, tampering): compares current bytes against
-# the sha256 recorded in the marker at expand time. Exit 1 = mismatch.
-engine-verify:
-	@chmod +x "$(SCRIPTS)/patch_engine_height.sh"
-	@"$(SCRIPTS)/patch_engine_height.sh" --verify
-
-engine-restore:
-	@set -e; \
-	DLL="$(GAME_DIR)/7DaysToDie_Data/Managed/Assembly-CSharp.dll"; \
-	BAK="$$DLL.re_stock_bak"; \
-	if [[ ! -f "$$BAK" ]]; then echo "No backup at $$BAK"; exit 1; fi; \
-	cp -a "$$BAK" "$$DLL"; \
-	rm -f "$$DLL.re_height_expanded"; \
-	echo "Restored stock: $$DLL"; \
-	DS_DIR="$(if $(SEVENDTD_SERVER_DIR),$(SEVENDTD_SERVER_DIR),$(HOME)/.local/share/Steam/steamapps/common/7 Days to Die Dedicated Server)"; \
-	DS="$$DS_DIR/7DaysToDieServer_Data/Managed/Assembly-CSharp.dll"; \
-	if [[ -f "$$DS.re_stock_bak" ]]; then cp -a "$$DS.re_stock_bak" "$$DS"; rm -f "$$DS.re_height_expanded"; echo "Restored stock: $$DS"; fi; \
-	$(MAKE) build
 
 # Headless dedicated load test (Everest-scale YDim). Does not pause when empty.
 # Installs SharedFixed multiplayer config from Config/realearth.mp.json.
@@ -408,8 +355,8 @@ coverage:
 
 # Mirrors ci.yml (tools job) as far as a game-less machine allows: build needs
 # the installed game assemblies, everything else here is what CI checks.
-check: setup test-fast lint-python lint-shell build-npi build viewer-build viewer-lint viewer-smoke webmod-lint html-lint
-	@echo "OK check (setup + test-fast + lint-python + lint-shell + build-npi + build + viewer-build + viewer-lint + viewer-smoke + webmod-lint + html-lint)"
+check: setup test-fast lint-python lint-shell build viewer-build viewer-lint viewer-smoke webmod-lint html-lint
+	@echo "OK check (setup + test-fast + lint-python + lint-shell + build + viewer-build + viewer-lint + viewer-smoke + webmod-lint + html-lint)"
 
 # ---------------------------------------------------------------------------
 # Viewer

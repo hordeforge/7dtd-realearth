@@ -341,7 +341,7 @@ def build_height_test_pack(
         "sources": sources,
         "no_compression": True,
         "how_to_play": {
-            "engine": "make engine-expand  # YDim=32768",
+            "engine": "EngineHeightRuntimePatch=true  # runtime YDim transpiler, YDim=32768",
             "install": ("make install-height-500" if pg == 500 else "make install-height"),
             "streamed": "MapMode=Streamed + Data/tiles (this pack), host ~512",
             "baked": f"New Game → {world_name} (DTM 1:1 clamped ~250 at peak)",

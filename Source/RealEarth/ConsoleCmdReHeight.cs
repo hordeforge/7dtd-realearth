@@ -89,8 +89,8 @@ namespace RealEarth
                             $"hotTiles={ModApi.Streamer.HotTileCount}");
                         if (!EngineHeight.EngineHeightMod.EngineExpanded && modY > 255)
                             Out(
-                                "[RealEarth] YDim expand not applied: run Mods/RealEarth/Tools/apply_engine_expand.sh " +
-                                "(or make engine-expand), then restart.");
+                                "[RealEarth] YDim not expanded: the runtime transpiler " +
+                                "(EngineHeightRuntimePatch=true) is off or failed; enable it and restart.");
                         return;
                     }
                 }

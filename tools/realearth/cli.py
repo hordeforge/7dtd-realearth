@@ -564,7 +564,7 @@ def _install_height_test(
         click.echo(f"Installed tile pack → {dest_tiles}")
         click.echo(
             f"Config MapMode=Streamed world={world_name} EngineMaxGameY={engine_max_game_y}. "
-            "Requires: make engine-expand (YDim=16384)."
+            "Requires: EngineHeightRuntimePatch=true (runtime YDim transpiler, YDim=32768)."
         )
 
     for gw in client_generated_worlds_targets(prefer_proton=True, also_native=True):

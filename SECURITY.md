@@ -17,7 +17,7 @@ lists the known surfaces (tile decoder, CDN fetch path, viewer, install tooling)
 - The web viewer and WebMod bundle (`viewer/src`, `viewer/index.html`, `webmod/src`),
   including its pinned runtime CDN dependency (`three.js` via cdn.jsdelivr.net)
 - Pipeline CLI input handling (`tools/realearth`)
-- Install and engine-expand tooling (`scripts/`, `tools/engine_patcher`)
+- Install tooling and the runtime YDim transpiler (`scripts/`, `Source/RealEarth/RuntimeYDimTranspiler.cs`)
 
 ## Out of scope
 

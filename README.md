@@ -40,11 +40,9 @@ make help # list targets
 make setup # uv sync tools + check game path
 make test # Python tests
 make build # RealEarth.dll
-make install-full # YDim expand (part of RealEarth) + mod install
-make install # mod only (still need expand for real height)
+make install # build + install mod (hot-patches YDim expand at boot)
 make package # dist/RealEarth folder + deterministic RealEarth-v*.zip
 make install-height-500 # staged H500 pack
-make engine-expand # YDim expand alone (client + dedicated)
 make dedicated-height-test # SharedFixed MP config + YDim soak
 make test-mp # multiplayer origin/bubble unit tests
 make check
@@ -246,9 +244,9 @@ by a stale/missing exported pack. Serve it over HTTP and re-run `make viewer`.
 Tile packs, viewer mosaics, baked worlds, build output, and packaged mods are
 generated artifacts and may be large. Retain their manifest/export metadata so
 the source bounds, resolution, coordinate assumptions, and elevation provider
-remain traceable. Before `make engine-expand`, close both client and dedicated
-server and preserve the stock assembly backup. Steam updates or verification
-can replace patched assemblies, so audit and reapply deliberately afterward.
+remain traceable. The YDim expand is a runtime hot-patch (no DLL write), so a
+Steam update or verification does not undo it; still re-run `make install`
+after updates and game-version changes to keep the built mod current.
 
 ## Contributing
 

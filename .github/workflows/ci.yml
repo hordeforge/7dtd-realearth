@@ -45,11 +45,6 @@ jobs:
       # game DLLs (Assembly-CSharp / UnityEngine.CoreModule) as references and
       # can only be built on a machine with the game installed (see
       # AGENTS.md "Build / install"); stubs would manufacture false confidence.
-      # NetworkProtocolInspector builds standalone against NuGet Mono.Cecil and
-      # runs with TreatWarningsAsErrors + analyzers on, so CI still compiles
-      # and analyzer-gates what can be compiled here.
-      - uses: actions/setup-dotnet@a98b56852c35b8e3190ac28c8c2271da59106c68 # v6.0.0
-      - run: dotnet build tools/network_protocol_inspector/NetworkProtocolInspector.csproj -c Release
       - run: shellcheck scripts/*.sh
       # Restore is only a backup if it has been proven: roundtrip drill on
       # synthetic state (sandboxed, no game install needed).

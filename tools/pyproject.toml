@@ -45,10 +45,7 @@ path = "realearth/__init__.py"
 packages = ["realearth"]
 
 [tool.hatch.build.targets.sdist]
-# The C# patcher projects ship inside the mod package (Tools/) via
-# scripts/package_mod.sh; they are not Python sources, so keep them out of the
-# sdist.
-exclude = ["engine_patcher", "network_protocol_inspector"]
+exclude = []
 
 [tool.ruff]
 line-length = 100

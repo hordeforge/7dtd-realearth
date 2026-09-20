@@ -80,17 +80,6 @@ install_mod() {
   [[ -f "$ROOT/Config/nav_objects.xml" ]] && cp -f "$ROOT/Config/nav_objects.xml" "$dest/Config/"
   [[ -f "$ROOT/Config/spawning.xml" ]] && cp -f "$ROOT/Config/spawning.xml" "$dest/Config/"
   [[ -f "$ROOT/Config/buffs.xml" ]] && cp -f "$ROOT/Config/buffs.xml" "$dest/Config/"
-  # RealEarth YDim expand tools (part of this mod)
-  mkdir -p "$dest/Tools"
-  if [[ -f "$ROOT/tools/engine_patcher/bin/Release/EngineHeightPatcher.exe" ]]; then
-    cp -f "$ROOT/tools/engine_patcher/bin/Release/EngineHeightPatcher.exe" "$dest/Tools/"
-    [[ -f "$ROOT/tools/engine_patcher/bin/Release/Mono.Cecil.dll" ]] && \
-      cp -f "$ROOT/tools/engine_patcher/bin/Release/Mono.Cecil.dll" "$dest/Tools/"
-  fi
-  if [[ -f "$ROOT/scripts/apply_engine_expand.sh" ]]; then
-    cp -f "$ROOT/scripts/apply_engine_expand.sh" "$dest/Tools/"
-    chmod +x "$dest/Tools/apply_engine_expand.sh"
-  fi
   [[ -f "$ROOT/Config/realearth.advanced_height.json" ]] && \
     cp -f "$ROOT/Config/realearth.advanced_height.json" "$dest/Config/"
 
@@ -112,8 +101,9 @@ install_mod() {
   if [[ "${map_mode,,}" == "streamed" ]]; then
     canvas=(--sync-manifest --sync-bbox --spawn-from-bbox --max-window "$LOCAL_WINDOW_SIZE")
   fi
-  # Height: RealEarth YDim expand is part of this mod (Tools/). StockSafe is a
-  # fallback only, never the product path (docs/HEIGHT_LIMITS.md).
+  # Height: RealEarth YDim expands at boot via the runtime Harmony transpiler
+  # (EngineHeightRuntimePatch). StockSafe is a fallback only, never the
+  # product path (docs/HEIGHT_LIMITS.md).
   PYTHONPATH="$ROOT/tools" python3 -m realearth.mod_config write "$dest" "$ROOT" \
     --template "$ROOT/Config/realearth.json" \
     "${canvas[@]}" \

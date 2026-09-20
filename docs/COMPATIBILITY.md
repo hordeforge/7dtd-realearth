@@ -28,13 +28,13 @@ expected to differ; this is stated as untested until a client boot is run.
 
 | Install | Path | Engine expand | Mod |
 |---|---|---|---|
-| Client (Proton 10/11) | `…/Steam/steamapps/common/7 Days To Die` | YDim=32768 (marker verified) | `Mods/RealEarth` |
-| Dedicated (native Linux) | `…/7 Days to Die Dedicated Server` | YDim=32768 (marker verified) | `Mods/RealEarth` |
+| Client (Proton 10/11) | `…/Steam/steamapps/common/7 Days To Die` | YDim=32768 (runtime hot-patch) | `Mods/RealEarth` |
+| Dedicated (native Linux) | `…/7 Days to Die Dedicated Server` | YDim=32768 (runtime hot-patch) | `Mods/RealEarth` |
 | Proton userdata | `…/compatdata/251570/pfx/…/Roaming/7DaysToDie` | n/a | World install target |
 
-Both `Assembly-CSharp.dll` files carry `.re_stock_bak` + `.re_height_expanded`
-markers; `make engine-verify` checks the patched hash, `make engine-restore`
-restores the stock backup.
+The YDim expand is hot-patched at boot by the runtime transpiler
+(`EngineHeightRuntimePatch=true`); no DLL is edited, so there is no marker,
+backup or restore step.
 
 ## Harmony targets (V3.2.0 b9, live dedicated)
 
@@ -51,16 +51,14 @@ Bound with fail-soft reflection (missing target logs, does not kill the mod):
 Startup verdict logged on 3.2.0: `injectOk=True productOk=True` with
 `heightMode=ydim-expanded expanded=True`.
 
-## Engine patcher (YDim expand)
+## Engine height expand (runtime YDim transpiler)
 
 | Aspect | Value |
 |---|---|
-| Tool | `tools/engine_patcher` (`EngineHeightPatcher`, Mono.Cecil) |
-| Target | YDim 256→32768, YPow 8→15, Layers 64→8192, masks 255→32767, `cMaxHeight`→32767 |
-| Rewrites on 3.2.0 | 9 constant-table + 76 IL Ldc per install |
-| Re-run safety | `--force` restores stock from `.re_stock_bak` first |
-| Steam update | Stale marker (`sha256` mismatch) auto-refreshes the backup from the current stock build before re-patching |
-| Verify / restore | `make engine-verify` / `make engine-restore` |
+| Mechanism | Harmony transpilers at boot (`EngineHeightRuntimePatch=true`) |
+| Target | YDim 256→32768, YPow 8→15, Layers 64→8192, masks 255→32767 |
+| Steam update | No DLL is edited; the transpiler binds against the new build at boot |
+| Re-apply | `make install` after a TFP patch |
 
 ## Operating modes
 
@@ -92,9 +90,7 @@ IL-verified 2026-08-28):
   (`NetPackagePOIAround` removed → Request/Response), `NetPackageConfirmSpawnEntity`
   + `EntityCreationData` tail, `ItemValue` flags, `EntityBuffs` kill-XP call
   sites, deco suppression (`DesignatedAreaStore` / `DynamicPrefabDecorator`).
-  RealEarth's C# references none of these; the network inspector
-  (`tools/network_protocol_inspector`) dumps the live DLL rather than hardcoding
-  layouts, so it tracks any build automatically. LiteNetLib bot clients
+  RealEarth's C# references none of these. LiteNetLib bot clients
   (sibling `7dtd-loadgen`) are the consumers that must track the damage/entity
   wire changes.
 - **Note:** third-party mods compiled against 3.1.0 can break on 3.2.0
@@ -117,11 +113,10 @@ IL-verified 2026-08-28):
 ## Re-verify after a TFP patch
 
 1. `make build` (compiles against the live Managed dir).
-2. `make engine-expand` (re-applies YDim; auto-refreshes stale backup).
-3. `make engine-verify`.
-4. `RE_SERVER_WAIT=480 RE_SERVER_SOAK=60 bash scripts/run_dedicated_height_test.sh`
+2. `make install` (re-applies the mod; the runtime transpiler binds at boot).
+3. `RE_SERVER_WAIT=480 RE_SERVER_SOAK=60 bash scripts/run_dedicated_height_test.sh`
    (expect `PASS: dedicated server loaded + soaked cleanly`).
-5. Client: Steam → New Game → RealEarth → check `[RealEarth] RealEarth init OK`.
+4. Client: Steam → New Game → RealEarth → check `[RealEarth] RealEarth init OK`.
 
 ## Related docs
 

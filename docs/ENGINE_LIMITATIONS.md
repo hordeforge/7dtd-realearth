@@ -26,9 +26,9 @@ Those still bind RealEarth (metro density, tall inject, MP soak) but are not Ear
 
 | Limit (stock) | Evidence | Why it matters | Severity | Overcome with |
 |---|---|---|---|---|
-| Column height fixed **YDim = 256** (`ChunkBlockYDim`) | `WorldConstants` literals; `engine-audit` | Everest ≈ 8.8 km at 1 m/block cannot fit | **Blocker** | YDim expand IL patch (`make engine-expand`, default **32768**) |
+| Column height fixed **YDim = 256** (`ChunkBlockYDim`) | `WorldConstants` literals; `engine-audit` | Everest ≈ 8.8 km at 1 m/block cannot fit | **Blocker** | Runtime YDim transpiler (`EngineHeightRuntimePatch=true`), default **32768** |
 | `cMaxHeight` / surface byte paths **255** | DTM / heightmap APIs | Byte terrain maps cannot store tall peaks | **Blocker** | Bypass byte DTM for Streamed: inject int heights; expand vertical loops |
-| Literals **inlined in IL** (`ldc`) | Probe: `SetValue` cannot raise ceiling | Runtime field rewrite is insufficient | **Blocker** | Selective Mono.Cecil rewrites; re-apply after every Steam update |
+| Literals **inlined in IL** (`ldc`) | Probe: `SetValue` cannot raise ceiling | Runtime field rewrite is insufficient | **Blocker** | Runtime Harmony transpilers rewrite the `ldc` literals at JIT time |
 | **256 means two things**: vertical dim **and** 16×16 XZ map area | Patcher notes | Blind 256→32768 corrupts heightmaps and slows load ~128× | **Hard** | Vertical-only site list; never expand XZ map fields |
 | Layer storage **64 layers × 4** must stay consistent | Alloc/free of layer arrays | Mismatched layer count → Unity.Collections Free crashes | **Hard** | Rewrite alloc + free layer counts together |
 | Static full-column RAM O(YDim) per column | Engine design | Tall static columns everywhere = huge RAM | **Hard** | Near term: accept expand cost near players only; long term: **sparse Y sections** ([`DYNAMIC_CHUNK_HEIGHT.md`](DYNAMIC_CHUNK_HEIGHT.md)) |
@@ -138,7 +138,6 @@ Full generic map: [`../../7dtd-engine-research/docs/meta/engine-limitations.md`]
 | **`toBlockY` / light/mesh 255 sites** | Tall columns wrong without full Y-bound expand | **Hard** | Expand checklist in [realearth-surfaces](realearth-surfaces.md) |
 | **Origin FixedUpdate dedi no-op** | Stock will not slide host on pure dedi | **Soft** | Product owns SoloSlide/SharedFixed; claim remap staged |
 | **EAC off for C# + expand** | Product is not console-crossplay | **Ops** | Document; loadgen needs EAC off |
-| **Steam Verify undoes expand** | 1:1 height silently becomes stock 256 | **Ops** | `make engine-expand` after every update |
 | **Unity script order residual** | Cannot assume absolute CM vs GM order | **Residual** | Peer-safe design |
 | **No safe full MT sim** | Cannot “thread RealEarth inject” out of main | **Hard** | Sync load only on gen path; keep work bounded |
 

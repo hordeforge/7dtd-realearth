@@ -170,43 +170,6 @@ else
   echo "NOTE: no webmod/build output, run make webmod-export + make webmod to include the dashboard webui."
 fi
 
-# RealEarth YDim expand tools (part of this mod)
-mkdir -p "$OUT/Tools"
-PATCHER_SRC="$ROOT/tools/engine_patcher/bin/Release"
-if [[ ! -f "$PATCHER_SRC/EngineHeightPatcher.exe" && -n "${GAME_DIR:-}" ]]; then
-  HARMONY="${GAME_DIR}/Mods/0_TFP_Harmony"
-  if [[ -d "$HARMONY" ]] && command -v dotnet >/dev/null; then
-    echo "Building RealEarth EngineHeightPatcher into package..."
-    dotnet build "$ROOT/tools/engine_patcher/EngineHeightPatcher.csproj" -c Release \
-      -p:HarmonyDir="$HARMONY" -v q
-  fi
-fi
-if [[ -f "$PATCHER_SRC/EngineHeightPatcher.exe" ]]; then
-  cp -f "$PATCHER_SRC/EngineHeightPatcher.exe" "$OUT/Tools/"
-  [[ -f "$PATCHER_SRC/Mono.Cecil.dll" ]] && cp -f "$PATCHER_SRC/Mono.Cecil.dll" "$OUT/Tools/"
-  if [[ -f "$ROOT/scripts/apply_engine_expand.sh" ]]; then
-    cp -f "$ROOT/scripts/apply_engine_expand.sh" "$OUT/Tools/"
-    chmod +x "$OUT/Tools/apply_engine_expand.sh"
-  fi
-  cat > "$OUT/Tools/README.txt" <<'EOF'
-RealEarth YDim expand (part of this mod)
-----------------------------------------
-Raises 7DTD Assembly-CSharp vertical limits for 1:1 RealEarth heights.
-
-  1. Close 7 Days to Die completely.
-  2. Run:  ./apply_engine_expand.sh
-     or:   mono EngineHeightPatcher.exe --dll "/path/to/Assembly-CSharp.dll" --force
-  3. Restart the game. Log should show: ENGINE EXPANDED / YDim=32768
-
-Backup: Assembly-CSharp.dll.re_stock_bak next to the game DLL.
-Restore: make engine-restore from the RealEarth repo, or Steam Verify.
-EOF
-  echo "Packaged RealEarth Tools/ (YDim expand)"
-else
-  echo "NOTE: EngineHeightPatcher not built, run make engine-expand from the repo after install."
-fi
-
 echo "Packaged → $OUT"
 echo "Copy into: <7DaysToDie>/Mods/RealEarth/"
-echo "Full RealEarth: run Tools/apply_engine_expand.sh (YDim expand is part of this mod)."
 echo "See Docs/MODLET.md"

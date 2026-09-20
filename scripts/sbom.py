@@ -5,11 +5,10 @@ Reads the lock/pin sources this repository builds against and writes one
 deterministic SPDX document (same inputs, same bytes modulo the timestamp):
 
   tools/uv.lock                                        Python pipeline packages
-  tools/network_protocol_inspector/packages.lock.json  NuGet Mono.Cecil
   scripts/toolchain-versions.env                       JS build/lint toolchain pins
 
-No third-party libraries here: uv.lock is TOML (stdlib tomllib),
-packages.lock.json is JSON (stdlib json), the pins file is KEY=VALUE shell.
+No third-party libraries here: uv.lock is TOML (stdlib tomllib), the pins
+file is KEY=VALUE shell.
 
 Usage: sbom.py OUTPUT.spdx.json  (or - for stdout)
 """
@@ -72,34 +71,6 @@ def python_packages() -> list[dict[str, Any]]:
     return out
 
 
-def nuget_packages() -> list[dict[str, Any]]:
-    """NuGet locks with content hashes (RestorePackagesWithLockFile)."""
-    path = REPO / "tools" / "network_protocol_inspector" / "packages.lock.json"
-    data = json.loads(path.read_text(encoding="utf-8"))
-    out: list[dict[str, Any]] = []
-    for tfm, deps in data.get("dependencies", {}).items():
-        for name, info in sorted(deps.items()):
-            content_hash_b64 = str(info.get("contentHash", ""))
-            digest = hashlib.sha256(content_hash_b64.encode("utf-8")).hexdigest()
-            resolved = str(info.get("resolved", ""))
-            out.append(
-                {
-                    "SPDXID": None,
-                    "name": f"nuget:{name}",
-                    "versionInfo": resolved,
-                    "downloadLocation": f"https://www.nuget.org/packages/{name}/",
-                    "licenseConcluded": "NOASSERTION",
-                    "comment": (
-                        f"target framework {tfm}; checksum is SHA256 over the "
-                        "packages.lock.json contentHash string"
-                    ),
-                    "checksums": [{"algorithm": "SHA256", "checksumValue": digest}],
-                    "externalRefs": [_purl_ref(f"pkg:nuget/{name}@{resolved}")],
-                }
-            )
-    return out
-
-
 def toolchain_packages() -> list[dict[str, Any]]:
     """Pinned JS build/lint toolchain (bunx-fetched npm packages)."""
     env_text = (REPO / "scripts" / "toolchain-versions.env").read_text(encoding="utf-8")
@@ -138,7 +109,7 @@ def toolchain_packages() -> list[dict[str, Any]]:
 
 
 def build() -> dict[str, Any]:
-    entries = nuget_packages() + toolchain_packages() + python_packages()
+    entries = toolchain_packages() + python_packages()
     entries.sort(key=lambda p: (str(p["name"]), str(p["versionInfo"])))
     identity = ";".join(f"{p['name']}@{p['versionInfo']}" for p in entries)
     namespace = f"{NAMESPACE_BASE}/sbom/{hashlib.sha256(identity.encode()).hexdigest()}"

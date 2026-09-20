@@ -86,5 +86,5 @@ the pack at runtime.
 ## Relation to the mod
 
 This package is offline tooling. The in-game product is `Source/RealEarth` plus
-optional YDim expand (`make engine-expand`). Load-test bots live in sibling
+runtime YDim transpiler (EngineHeightRuntimePatch=true). Load-test bots live in sibling
 `../7dtd-loadgen`, not here.

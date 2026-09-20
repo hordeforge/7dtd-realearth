@@ -21,7 +21,7 @@ Workspace root guide: [`hordeforge/.github` MODDING_BEST_PRACTICES.md](https://g
 
 ## Critical rules
 
-1. **Prefer Harmony over disk-patching `Assembly-CSharp`.** Engine expand is an explicit, exceptional path with backup/restore (`make engine-expand`, `make engine-restore`). Dry-run before write.
+1. **Expand via Harmony, never disk-patching `Assembly-CSharp`.** YDim expand is the runtime transpiler (`EngineHeightRuntimePatch=true`, `RuntimeYDimTranspiler`); no game DLL is edited, so there is no backup/restore/dry-run step.
 2. **Keep expand logic in RealEarth**, never in EfficientServer or APM.
 3. **Data sources:** Copernicus / Terrarium / OSM-class sources only. Google Earth bulk data is not allowed (`docs/REALISM_AND_GOOGLE_EARTH.md`).
 4. **Product height is real meters (1 m = 1 block).** YDim expand is required. Do not treat global compress (`EngineHeightStockSafe`) as the product path. See `docs/HEIGHT_LIMITS.md`.
@@ -41,12 +41,8 @@ make test                  # Python tests
 make lint                  # Ruff + black --check (tools/, scripts/) + mypy (tools/realearth, scripts/)
 make test-mp               # multiplayer origin/bubble unit tests
 make build                 # RealEarth.dll
-make install               # mod only (still needs expand for real height)
-make install-full          # YDim expand + mod install (product path)
-make package               # dist/RealEarth (+ Tools/ expand)
-make engine-expand         # YDim expand alone (client + dedicated)
-make engine-expand-dry     # preview IL patches
-make engine-restore        # restore stock Assembly-CSharp from backup
+make install               # build + install mod (hot-patches YDim expand at boot)
+make package               # dist/RealEarth (+ WebMod webui)
 make demo                  # synthetic demo region pack
 make viewer && make viewer-build && make serve  # web map viewer (TS sources)
 make check

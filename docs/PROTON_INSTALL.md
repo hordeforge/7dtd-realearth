@@ -50,7 +50,8 @@ export SEVENDTD_GAME_DIR="$HOME/.local/share/Steam/steamapps/common/7 Days To Di
 ./scripts/install_proton.sh
 ```
 
-If product height is required, also `make engine-expand` (Verify restores stock YDim).
+If product height is required, the mod hot-patches the YDim expand at boot
+(`EngineHeightRuntimePatch=true`), so no extra expand step is needed.
 
 Earlier verification (before the current V3.1.0 pin, see [GAME_VERSION](GAME_VERSION.md)): dedicated **V 3.0.1 (b4)** loaded RealEarth + `World.Load: RealEarth`.
 

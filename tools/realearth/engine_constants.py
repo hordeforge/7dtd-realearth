@@ -105,8 +105,9 @@ def audit_engine_height(dll: Path | None = None) -> dict[str, Any]:
     if ydim <= 256:
         result["needs_engine_mod_for_taller"] = True
         result["notes"].append(
-            f"ChunkBlockYDim={ydim}: stock column height, run `make engine-expand` "
-            "to patch Assembly-CSharp for 1:1 tall columns"
+            f"ChunkBlockYDim={ydim}: stock column height, enable the runtime YDim "
+            "transpiler (EngineHeightRuntimePatch=true) to patch Assembly-CSharp "
+            "for 1:1 tall columns"
         )
     else:
         result["needs_engine_mod_for_taller"] = False

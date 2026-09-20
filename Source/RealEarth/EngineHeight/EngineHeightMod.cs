@@ -5,7 +5,7 @@ namespace RealEarth.EngineHeight
     /// <summary>
     /// Height module for RealEarth (YDim expand is part of this mod).
     /// <list type="bullet">
-    /// <item><b>Product:</b> real elevation, 1 m = 1 block after YDim expand (Tools/apply_engine_expand or make engine-expand).</item>
+    /// <item><b>Product:</b> real elevation, 1 m = 1 block via the runtime YDim transpiler (EngineHeightRuntimePatch=true).</item>
     /// <item><b>Opt-in only:</b> EngineHeightStockSafe compresses into ~0–250 on stock engines. Not the product path.</item>
     /// </list>
     /// </summary>
@@ -61,16 +61,15 @@ namespace RealEarth.EngineHeight
                     : Probe?.ChunkBlockYDim ?? 256;
                 ModApi.Log(
                     $"EngineHeightMod: RealEarth YDim expand active YDim={effectiveYDim} " +
-                    $"({(RuntimeYDimTranspiler.IsActive ? "runtime hot patch" : "disk patch")}) - " +
-                    $"real height 1:1 up to content maxY={Policy.MaxGameY}. " +
-                    "Restore stock: make engine-restore (or Steam Verify).");
+                    "(runtime hot patch) - " +
+                    $"real height 1:1 up to content maxY={Policy.MaxGameY}.");
             }
             else if (cfg.EngineHeightStockSafe)
             {
                 ModApi.LogWarn(
                     $"EngineHeightMod: OPT-IN compress on stock YDim={Probe?.ChunkBlockYDim ?? 256} " +
-                    "(~0-250). Product path is real height: make engine-expand, set " +
-                    "EngineHeightStockSafe=false, restart.");
+                    "(~0-250). Product path is real height: enable EngineHeightRuntimePatch " +
+                    "(runtime YDim transpiler), set EngineHeightStockSafe=false, restart.");
             }
             else
             {
@@ -81,8 +80,8 @@ namespace RealEarth.EngineHeight
                     Probe?.ChunkBlockYDim ?? 256);
                 ModApi.LogWarn(
                     $"EngineHeightMod: stock YDim={Probe?.ChunkBlockYDim ?? 256}, real-height mode - " +
-                    "apply RealEarth YDim expand (Tools/apply_engine_expand.sh or make engine-expand) " +
-                    "before playable tall columns. " +
+                    "the runtime YDim transpiler (EngineHeightRuntimePatch=true) is off or failed; " +
+                    "enable it or the height inject runs clamped. " +
                     (ProductHeightBlocked
                         ? $"HEIGHT CAPPED to allocY={AllocatableColumnMaxY} until expand " +
                           "(inject still runs clamped; not Everest-scale). Or set EngineHeightStockSafe=true."

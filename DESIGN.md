@@ -72,7 +72,7 @@ Implications:
 3. **Density over cadastral truth.** Population grids and built-up rasters drive how “city-like” a place is; prefabs are 7DTD stamps, not OSM building meshes.
 4. **Stream by need.** Absolute Earth is virtual; only nearby `.rte` tiles and vanilla view/sim chunks are hot.
 5. **One world session.** Baked region or Streamed Earth, still one continuous play space.
-6. **Expand is part of the product.** YDim expand lives in this mod (`Tools/`, `make engine-expand`), not in EfficientServer/APM.
+6. **Expand is part of the product.** YDim expand lives in this mod (runtime Harmony transpiler), not in EfficientServer/APM.
 7. **Legal sources only.** No Google Earth / Maps bulk scrape. See [`docs/REALISM_AND_GOOGLE_EARTH.md`](docs/REALISM_AND_GOOGLE_EARTH.md) and [`ATTRIBUTION.md`](ATTRIBUTION.md).
 
 ---
@@ -339,7 +339,7 @@ Config product defaults (see `Config/realearth.json`):
 
 Shipped regional packs keep `EnableLongitudeWrap=false` until a full-planet pack is installed. Code and config share stream radii **2/4** with the default JSON.
 
-Install path for product height: **`make install-full`** (expand + mod), not “mod only + compress.”
+Install path for product height: **`make install`** (the mod hot-patches the YDim expand at boot), not “mod only + compress.”
 
 ---
 

@@ -24,14 +24,15 @@ That rebuilds `RealEarth.dll` against the new Managed assemblies and reinstalls:
 - `Mods/RealEarth/` (client + dedicated)
 - `GeneratedWorlds/RealEarth` under **Proton** Roaming (and native for server tests)
 
-Also re-apply expand if product height is required: `make engine-expand` (Steam Verify restores stock YDim=256).
+The runtime YDim transpiler (`EngineHeightRuntimePatch=true`) hot-patches the
+expand at boot, so Steam Verify does not undo it; re-running `make install`
+after an update re-applies the mod.
 
 **3.2.0 retarget note (2026-08-28):** the update replaced `Assembly-CSharp.dll` on both
-installs and left the old expand marker/backup stale. The patcher now detects this
-(`marker sha != current DLL sha` → current build is stock → refreshes
-`.re_stock_bak` from the current build before re-patching), so a plain
-`make engine-expand` re-run converges instead of restoring the previous build's
-stock backup. Live dedicated boot on 3.2.0 (b9) binds all hooks: heightQ=7 gen=4
+installs. The runtime transpiler binds against the new build (see `BuildGuard`
+in [THREAT_MODEL](THREAT_MODEL.md)); rebuild the mod against the new DLL after
+each game update (`make build` / `make install`). Live dedicated boot on 3.2.0 (b9)
+binds all hooks: heightQ=7 gen=4
 chunkIdx=2 playerTick=2 worldReady=1 `injectOk=True productOk=True` (see
 `docs/realearth-runtime.md` status).
 
@@ -54,9 +55,11 @@ chunkIdx=2 playerTick=2 worldReady=1 `injectOk=True productOk=True` (see
 
 ## Height expand state (this machine)
 
-Live client and dedicated `Assembly-CSharp` may already have RealEarth YDim expand applied (`ChunkBlockYDim=32768`). Stock backups live next to the DLL as `Assembly-CSharp.dll.re_stock_bak` (`YDim=256`).
+With the mod installed (`EngineHeightRuntimePatch=true`), the YDim expand is
+hot-patched at boot on both client and dedicated (`ChunkBlockYDim=32768`). No
+DLL is edited and no stock backup exists.
 
-Probe with `realearth engine-audit` or regenerate dumps via `DumpTerrain` (see workspace [`7dtd-engine-research/docs/world/terrain-height.md`](../../7dtd-engine-research/docs/world/terrain-height.md)). After Steam Verify, re-run `make engine-expand`.
+Probe with `realearth engine-audit` or regenerate dumps via `DumpTerrain` (see workspace [`7dtd-engine-research/docs/world/terrain-height.md`](../../7dtd-engine-research/docs/world/terrain-height.md)). After a Steam Verify, re-run `make install` to re-apply the mod.
 
 ## Related docs
 

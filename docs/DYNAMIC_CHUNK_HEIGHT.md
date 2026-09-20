@@ -167,7 +167,7 @@ flowchart TB
   STOCK[Stock static YDim 256]
   EXP[Product expand YDim 32768 static tall]
   SPA[Sparse Y sections target]
-  STOCK -->|make engine-expand| EXP
+  STOCK -->|runtime YDim transpiler (boot)| EXP
   EXP -->|H3-H4| SPA
 ```
 

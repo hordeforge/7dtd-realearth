@@ -102,8 +102,8 @@ namespace RealEarth
                 {
                     LogWarn(
                         "P0 ExpandProductGuard: real-height product path needs YDim expand " +
-                        $"(YDim={yDim}, StockSafe=false). Run make engine-expand " +
-                        "or enable EngineHeightRuntimePatch.");
+                        $"(YDim={yDim}, StockSafe=false, runtimeHotPatch={runtimeHotPatch}). " +
+                        "Enable EngineHeightRuntimePatch (runtime YDim transpiler).");
                 }
                 Log(
                     $"RealEarth init OK. mode={Config.MapMode} heightMode={heightMode} " +

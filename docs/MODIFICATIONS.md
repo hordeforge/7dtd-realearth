@@ -38,10 +38,10 @@ Y-expand is only **A (vertical)**. Everything below is the rest of the product s
 
 | Modification | Purpose | Status |
 |---|---|---|
-| **YDim + layer count + Y-bound IL** | Tall columns (YDim=32768, layers 8192), consistent alloc/free | **Done** (live dedicated soak on V3.2.0 b9 at YDim=32768; stale marker/backup refresh after Steam updates) |
-| **Do not rewrite XZ map size 256** | Avoid corrupting 16×16 height/biome maps | **Done** (patcher design) |
-| **Expand client + dedicated** | Same ceiling both ends | **Done** this machine (3.2.0 b9, both installs); re-apply after every update (`make engine-expand` now auto-refreshes the stock backup) |
-| **Backup / restore / re-apply after Verify** | Steam undoes expand | **Done** scripts + refresh on update; **Needed** operator habit |
+| **YDim + layer count + Y-bound IL** | Tall columns (YDim=32768, layers 8192), consistent alloc/free | **Done** (live dedicated soak on V3.2.0 b9 at YDim=32768, runtime transpiler) |
+| **Do not rewrite XZ map size 256** | Avoid corrupting 16×16 height/biome maps | **Done** (transpiler targets Y-bound sites only) |
+| **Expand client + dedicated** | Same ceiling both ends | **Done** this machine (3.2.0 b9, both installs via runtime hot-patch); re-apply `make install` after every update |
+| **Expansion survives Steam Verify** | Runtime hot-patch edits no DLL | **Done** (transpiler binds at boot); re-apply `make install` after updates |
 | **Optional: sparse column storage** | RAM at planet scale with tall Y | **Later** ([`DYNAMIC_CHUNK_HEIGHT.md`](DYNAMIC_CHUNK_HEIGHT.md)) |
 | **Optional: save-format awareness** | `.7rg` / region packing with tall Y | **Needed** (validate; may need more IL or sidecar) |
 
