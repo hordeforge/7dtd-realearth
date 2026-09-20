@@ -34,8 +34,6 @@ namespace RealEarth
         /// <summary>
         /// SoloSlide (default for planetary travel): host window recenters on absolute pos.
         /// SharedFixed: freeze window origin (co-located multiplayer combat).
-        /// SharedSlide: accepted alias, but currently slides only when solo (player count ≤ 1),
-        /// same as SoloSlide; co-located group sliding is not implemented yet.
         /// </summary>
         [DataMember] public string MultiplayerOriginMode { get; set; } = "SoloSlide";
 
@@ -136,7 +134,7 @@ namespace RealEarth
         /// Opt-in only: if true and the engine is still stock (YDim ≤ 256), compress real meters
         /// into ~0–250 so the world loads without expand. Product default is false: require
         /// YDim expand and keep true elevation. Expand is part of this mod
-        /// (Mods/RealEarth/Tools or make engine-expand).
+        /// (runtime Harmony transpiler, engine height patch).
         /// </summary>
         [DataMember] public bool EngineHeightStockSafe { get; set; } = false;
 
@@ -149,12 +147,9 @@ namespace RealEarth
         [DataMember] public bool EngineHeightAllowUnknownBuild { get; set; } = false;
 
         /// <summary>
-        /// Hot-patch the YDim expand at runtime via Harmony transpilers instead
-        /// of the disk patcher (EngineHeightPatcher.exe). Product default true:
-        /// applied automatically when the engine is still stock (YDim=256); a
-        /// disk-patched install is never double-rewritten. The disk patcher
-        /// stays in the repo (Tools/EngineHeightPatcher.exe, make engine-expand)
-        /// as the fallback for load orders where a pre-boot patch is safer.
+        /// Hot-patch the YDim expand at runtime via Harmony transpilers. Product
+        /// default true: applied automatically when the engine is still stock
+        /// (YDim=256); an already-expanded install is never double-rewritten.
         /// Research: 7dtd-engine-research/docs/world/hot-patch-height.md.
         /// </summary>
         [DataMember] public bool EngineHeightRuntimePatch { get; set; } = true;
@@ -298,17 +293,18 @@ namespace RealEarth
                     $"MapMode '{MapMode}' is not Streamed|Baked; treated as Streamed (anything but Baked).");
 
             var origin = (MultiplayerOriginMode ?? "").Trim();
+            // SharedSlide is a retired alias of SoloSlide (both slide only when the
+            // player count is ≤ 1); normalize so downstream only handles SoloSlide.
+            if (origin.Equals("SharedSlide", StringComparison.OrdinalIgnoreCase))
+            {
+                origin = "SoloSlide";
+                MultiplayerOriginMode = "SoloSlide";
+            }
             if (!origin.Equals("SoloSlide", StringComparison.OrdinalIgnoreCase)
-                && !origin.Equals("SharedFixed", StringComparison.OrdinalIgnoreCase)
-                && !origin.Equals("SharedSlide", StringComparison.OrdinalIgnoreCase))
+                && !origin.Equals("SharedFixed", StringComparison.OrdinalIgnoreCase))
                 warnings.Add(
                     $"MultiplayerOriginMode '{MultiplayerOriginMode}' is not " +
-                    "SoloSlide|SharedFixed|SharedSlide; unknown modes slide only when clearly solo.");
-            if (origin.Equals("SharedSlide", StringComparison.OrdinalIgnoreCase))
-                warnings.Add(
-                    "MultiplayerOriginMode 'SharedSlide' currently slides only when the player " +
-                    "count is 1 (same as SoloSlide); co-located group sliding is not implemented. " +
-                    "Use SharedFixed for multiplayer combat coords.");
+                    "SoloSlide|SharedFixed; unknown modes slide only when clearly solo.");
 
             if (WorldWidth <= 0)
             {

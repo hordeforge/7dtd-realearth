@@ -41,7 +41,7 @@ namespace RealEarth
 
         /// <summary>
         /// SharedFixed never slides.
-        /// SoloSlide / SharedSlide only when player count is known and ≤ 1.
+        /// SoloSlide only when player count is known and ≤ 1.
         /// Unknown count (&lt; 0) fails closed (no slide) so MP cannot desync on bad reflection.
         /// </summary>
         public static bool AllowOriginSlide(
@@ -60,8 +60,6 @@ namespace RealEarth
             if (estimatedPlayerCount < 0)
                 return false;
             if (mode.Equals("SoloSlide", StringComparison.OrdinalIgnoreCase))
-                return estimatedPlayerCount <= 1;
-            if (mode.Equals("SharedSlide", StringComparison.OrdinalIgnoreCase))
                 return estimatedPlayerCount <= 1;
             // Unknown mode: only slide when clearly solo.
             return estimatedPlayerCount <= 1;
