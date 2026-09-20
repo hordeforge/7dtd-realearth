@@ -12,6 +12,39 @@ and the release gate requires both to match the tag (`v<version>`).
 
 ## [Unreleased]
 
+## [0.5.0] - 2026-09-20
+
+### Changed
+
+- **YDim expand is runtime-only.** The Harmony runtime transpiler
+  (`EngineHeightRuntimePatch=true`, default on) is now the single product
+  expand path. No game DLL is ever edited on disk, so there is no
+  backup/restore/dry-run step to run. Nothing to do for a normal install:
+  `make install` already applies the expand at boot.
+
+### Removed
+
+- **Disk engine expand tooling.** `tools/engine_patcher`,
+  `tools/network_protocol_inspector`, `scripts/apply_engine_expand.sh`,
+  `scripts/patch_engine_height.sh`, the `make engine-expand` /
+  `engine-expand-dry` / `engine-verify` / `engine-restore` / `install-full` /
+  `build-npi` targets, and the CI C# analysis gate for the inspector are gone.
+  If you scripted `make engine-expand`, switch to `make install` (or any
+  install target): the mod hot-patches the YDim limits at boot.
+- **`SharedSlide` multiplayer origin mode.** It always behaved exactly like
+  `SoloSlide` (slides only when the player count is 1). Configs containing
+  `SharedSlide` now load it as `SoloSlide` with no warning; use `SharedFixed`
+  for co-located multiplayer combat coords.
+- **`HeightCompress.Compress`** (stock-safe byte helper). Expanded compress is
+  the only supported height path; no caller remained.
+
+### Changed (internal)
+
+- The webmod dashboard webui now re-exports the shared pack modules
+  (types, coerce, lonWrap, map2d, pack) from `viewer/src` instead of keeping
+  drifted copies. Pack parsing gains ordered layers, load warnings, and an
+  explicit elev-raw scale fallback; no config or pack format changes.
+
 ## [0.4.0] - 2026-09-11
 
 - **Persistence authoritative rule:** [`docs/TERRAIN_PERSISTENCE.md`](docs/TERRAIN_PERSISTENCE.md) + [`docs/INDEX.md`](docs/INDEX.md): RealEarth is stateless about terrain deltas (vanilla region files own builds); `TileStreamer` eviction drops only cached `.rte` tiles, never region/`.rte` on disk — wrap-aware (`EnableLongitudeWrap` → `Math.Min(dx, ntx - dx)`) and multi-focus.
