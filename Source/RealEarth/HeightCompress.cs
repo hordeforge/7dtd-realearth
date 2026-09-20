@@ -26,12 +26,6 @@ namespace RealEarth
         public const int EngineTargetMaxY =
             HeightInjectMath.DefaultSeaLevelGameY + AirlinerCruiseM + FlyOverHeadroomM; // 29000
 
-        public static byte Compress(float elevM, int seaLevelY = 100, int maxY = 250, int minY = 1)
-        {
-            int y = MetersToGameY(elevM, seaLevelY, Math.Min(maxY, 255), minY, oneToOne: false);
-            return (byte)y;
-        }
-
         /// <summary>
         /// Expanded compress (int game Y). Supports maxY up to <see cref="EngineTargetMaxY"/>.
         /// </summary>
