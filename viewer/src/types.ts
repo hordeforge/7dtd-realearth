@@ -1,10 +1,10 @@
-// Shared types for the standalone map viewer.
+// Shared types for the standalone map viewer and the webmod dashboard webui.
 //
 // Data shapes (Bbox, PackMeta, Settlement, ...) describe the output of
 // `realearth export-viewer`; optional or missing JSON fields are coerced to
 // concrete defaults at parse time in pack.ts so consumers never handle
-// undefined. Mirrors ../webmod/src/types.ts; keep both in sync when the
-// export format changes.
+// undefined. The webmod-specific types (ReactApi, WebModExports, ...) describe
+// the small slice of the stock 7dtd dashboard API the webui relies on.
 
 export type Bbox = {
   west: number;
@@ -83,3 +83,46 @@ export type CatalogEntry = {
 export type PlayerFix = LonLatPoint & {
   name: string;
 };
+
+export type KeyValueEntry = {
+  name: string;
+  type: string;
+  value: string;
+};
+
+// --- stock dashboard injection (webmod) ---
+
+// Minimal typed view of the dashboard's React instance. The dashboard renders
+// each registered component with its own React plus helpers (styled, HTTP,
+// tables, forms); this webmod only uses React and builds the UI with
+// createElement, so the remaining props are intentionally left untyped.
+export type ReactApi = {
+  createElement: (
+    type: unknown,
+    props: Record<string, unknown> | null,
+    ...children: Array<unknown>
+  ) => unknown;
+  useState: <T>(initial: T | (() => T)) => [T, (next: T | ((prev: T) => T)) => void];
+  useEffect: (effect: () => unknown, deps?: ReadonlyArray<unknown>) => void;
+  useRef: <T>(initial: T) => { current: T };
+};
+
+export type WebModComponentProps = {
+  React: ReactApi;
+};
+
+export type WebModExports = {
+  routes: Record<string, (props: WebModComponentProps) => unknown>;
+  settings: Record<string, (props: WebModComponentProps) => unknown>;
+};
+
+export type ElementFactory = (
+  type: string,
+  props: Record<string, unknown> | null,
+  ...children: Array<unknown>
+) => unknown;
+
+export function makeElement(react: ReactApi): ElementFactory {
+  return (type, props, ...children) => react.createElement(type, props, ...children);
+}
+

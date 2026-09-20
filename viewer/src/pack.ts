@@ -1,11 +1,11 @@
-// Pack loading for the standalone viewer. A pack is the output of
-// `realearth export-viewer`: viewer.json metadata plus one PNG per layer, an
-// optional settlements.json, and an optional raw elevation PNG for the cursor
-// probe. Missing optional artifacts degrade gracefully; a missing or
-// layer-less viewer.json is a hard error because there is nothing to render.
-// All artifacts are fetched in parallel (viewer packs can be large).
+// Pack loading for the standalone viewer and the webmod dashboard webui. A
+// pack is the output of `realearth export-viewer`: viewer.json metadata plus
+// one PNG per layer, an optional settlements.json, and an optional raw
+// elevation PNG for the cursor probe. Missing optional artifacts degrade
+// gracefully; a missing or layer-less viewer.json is a hard error because
+// there is nothing to render.
 
-import { asNumber, asNumberOr, asRecord, asString } from "./coerce.js";
+import { asNumber, asNumberOr, asRecord, asString, errorMessage } from "./coerce.js";
 import type { Bbox, ElevRawMeta, LayerInfo, PackMeta, Settlement } from "./types.js";
 
 export const DEFAULT_ELEV_SCALE_M = 4500;
@@ -15,7 +15,7 @@ export const DEFAULT_ELEV_SCALE_M = 4500;
 // tree: no absolute paths, no scheme (cross-origin pack injection), no
 // backslashes, no dot-dot traversal. Checks run against the decoded form so
 // %2e%2e cannot smuggle a traversal segment past a literal ".." test; a
-// malformed escape fails closed. Same guard as ../webmod/src/pack.ts.
+// malformed escape fails closed.
 export function isSafePackPath(path: string): boolean {
   let decoded: string;
   try {
@@ -39,11 +39,22 @@ export type ElevRawCanvas = {
   height: number;
 };
 
+export type LoadedLayer = {
+  id: string;
+  image: HTMLImageElement;
+};
+
 export type LoadedPack = {
   meta: PackMeta;
+  // Viewer: layers keyed by id for on-demand image lookup.
   images: Record<string, HTMLImageElement>;
+  // Webmod: ordered layer list (find / first).
+  layers: Array<LoadedLayer>;
   settlements: Array<Settlement>;
   elevRaw: ElevRawCanvas | null;
+  elevMeta: ElevRawMeta | null;
+  warnings: Array<string>;
+  path: string;
 };
 
 function bboxFrom(candidate: unknown): Bbox {
@@ -64,10 +75,13 @@ function elevRawFrom(candidate: unknown): ElevRawMeta | null {
   if (file === "" || !isSafePackPath(file)) {
     return null;
   }
+  const scaleM = asNumberOr(record.scale_m, DEFAULT_ELEV_SCALE_M);
   return {
     file,
     offset_m: asNumber(record.offset_m),
-    scale_m: asNumberOr(record.scale_m, DEFAULT_ELEV_SCALE_M),
+    // An explicit 0 (finite, so asNumberOr keeps it) would flatten every
+    // probe to the constant offset; fall back instead.
+    scale_m: scaleM > 0 ? scaleM : DEFAULT_ELEV_SCALE_M,
   };
 }
 
@@ -94,8 +108,8 @@ function layerListFrom(candidate: unknown): Array<LayerInfo> {
     const record = asRecord(entry);
     const id = asString(record.id);
     const file = asString(record.file);
-    // Same path rules as the pack path: layer files are joined onto
-    // `${base}/` for every fetch (see isSafePackPath above).
+    // Same path rules as the pack path: layer files are joined onto the pack
+    // base URL for every fetch (see isSafePackPath above).
     if (id !== "" && isSafePackPath(file)) {
       layers.push({ id, file, label: asString(record.label) });
     }
@@ -181,7 +195,7 @@ export function packMetaFrom(candidate: unknown): PackMeta {
 async function fetchJson(url: string): Promise<unknown> {
   const response = await fetch(url);
   if (!response.ok) {
-    throw new Error(`Cannot load ${url} (${response.status})`);
+    throw new Error(`Cannot load ${url} (HTTP ${response.status})`);
   }
   return response.json();
 }
@@ -199,21 +213,23 @@ function loadImage(url: string): Promise<HTMLImageElement> {
 async function loadLayerImages(
   base: string,
   layers: ReadonlyArray<LayerInfo>
-): Promise<Record<string, HTMLImageElement>> {
+): Promise<{ images: Record<string, HTMLImageElement>; layers: Array<LoadedLayer> }> {
   const loaded = await Promise.all(
     layers.map(async (layer) => ({ id: layer.id, image: await loadImage(`${base}/${layer.file}`) }))
   );
   const images: Record<string, HTMLImageElement> = {};
+  const ordered: Array<LoadedLayer> = [];
   for (const pair of loaded) {
     images[pair.id] = pair.image;
+    ordered.push(pair);
   }
-  return images;
+  return { images, layers: ordered };
 }
 
 async function loadSettlements(url: string): Promise<Array<Settlement>> {
   // Optional artifact: transport failure or an unparsable body degrades to
   // "no settlements" exactly like a non-2xx status, instead of failing the
-  // whole pack whose layers already loaded. Same as ../webmod/src/pack.ts.
+  // whole pack whose layers already loaded.
   const response = await fetch(url).catch(() => null);
   if (response === null || !response.ok) {
     return [];
@@ -221,13 +237,20 @@ async function loadSettlements(url: string): Promise<Array<Settlement>> {
   return response.json().then(settlementListFrom).catch(() => []);
 }
 
-async function loadElevRaw(base: string, elevMeta: ElevRawMeta | null): Promise<ElevRawCanvas | null> {
+async function loadElevRaw(
+  base: string,
+  elevMeta: ElevRawMeta | null,
+  warnings: Array<string>
+): Promise<ElevRawCanvas | null> {
   // Missing or undecodable raw elevation degrades the cursor probe to
   // "no data"; it never fails the pack.
   if (elevMeta === null) {
     return null;
   }
-  const image = await loadImage(`${base}/${elevMeta.file}`).catch(() => null);
+  const image = await loadImage(`${base}/${elevMeta.file}`).catch((error: unknown) => {
+    warnings.push(errorMessage(error));
+    return null;
+  });
   if (image === null) {
     return null;
   }
@@ -242,18 +265,31 @@ async function loadElevRaw(base: string, elevMeta: ElevRawMeta | null): Promise<
   return { ctx, width: canvas.width, height: canvas.height };
 }
 
-export async function loadPack(baseUrl: string): Promise<LoadedPack> {
-  if (!isSafePackPath(baseUrl)) {
-    throw new Error(`Refusing unsafe pack path: ${baseUrl}`);
+// path is optional: the standalone viewer passes a full relative base like
+// "data/demo"; the webmod passes MOD_BASE_URL plus a pack path.
+export async function loadPack(baseUrl: string, path?: string): Promise<LoadedPack> {
+  const safe = path === undefined ? baseUrl : path;
+  if (!isSafePackPath(safe)) {
+    throw new Error(`Refusing unsafe pack path: ${safe}`);
   }
-  const base = baseUrl.replace(/\/$/u, "");
+  const base = path === undefined ? baseUrl.replace(/\/$/u, "") : `${baseUrl}${path}/`;
   // packMetaFrom validates the schema (layers present, sane bbox, positive
   // sample dims and meters_per_block); a broken viewer.json throws here.
-  const meta = packMetaFrom(await fetchJson(`${base}/viewer.json`));
-  const [settlements, images, elevRaw] = await Promise.all([
-    loadSettlements(`${base}/settlements.json`),
+  const meta = packMetaFrom(await fetchJson(`${base}viewer.json`));
+  const warnings: Array<string> = [];
+  const [settlements, { images, layers }, elevRaw] = await Promise.all([
+    loadSettlements(`${base}settlements.json`),
     loadLayerImages(base, meta.layers),
-    loadElevRaw(base, meta.elev_raw),
+    loadElevRaw(base, meta.elev_raw, warnings),
   ]);
-  return { meta, images, settlements, elevRaw };
+  return {
+    meta,
+    images,
+    layers,
+    settlements,
+    elevRaw,
+    elevMeta: meta.elev_raw,
+    warnings,
+    path: safe,
+  };
 }
