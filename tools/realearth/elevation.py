@@ -194,13 +194,19 @@ def _decode_tile_png(data: bytes) -> np.ndarray | None:
     return decode_terrarium_png(np.asarray(img)).astype(np.float32)
 
 
+def merc_y(lat: float, z: int) -> float:
+    """Normalized Web Mercator y (0 = north edge) for lat at zoom z."""
+    lat = max(min(lat, 85.05112878), -85.05112878)
+    lat_rad = math.radians(lat)
+    return (1.0 - math.asinh(math.tan(lat_rad)) / math.pi) / 2.0 * (2**z)
+
+
 def _lonlat_to_tile(lon: float, lat: float, z: int) -> tuple[int, int]:
     """Web Mercator tile indices for lon/lat at zoom z."""
     lat = max(min(lat, 85.05112878), -85.05112878)
     n = 2**z
     x = int((lon + 180.0) / 360.0 * n)
-    lat_rad = math.radians(lat)
-    y = int((1.0 - math.asinh(math.tan(lat_rad)) / math.pi) / 2.0 * n)
+    y = int(merc_y(lat, z))
     x = max(0, min(n - 1, x))
     y = max(0, min(n - 1, y))
     return x, y
@@ -287,10 +293,7 @@ def fetch_region_terrarium(
         return (lon + 180.0) / 360.0 * n * tile_px - x0 * tile_px
 
     def lat_to_py(lat: float) -> float:
-        lat = max(min(lat, 85.05112878), -85.05112878)
-        lat_rad = math.radians(lat)
-        merc_y = (1.0 - math.asinh(math.tan(lat_rad)) / math.pi) / 2.0
-        return merc_y * n * tile_px - y0 * tile_px
+        return merc_y(lat, zoom) * tile_px - y0 * tile_px
 
     left = max(0, int(lon_to_px(west)))
     right = min(mosaic_w, int(math.ceil(lon_to_px(east))))

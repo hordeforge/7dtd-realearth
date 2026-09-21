@@ -12,6 +12,21 @@ and the release gate requires both to match the tag (`v<version>`).
 
 ## [Unreleased]
 
+## [0.5.1] - 2026-09-21
+
+### Removed
+
+- **`AbsoluteHeightStore.SetSurfaceMeters`** (world-coords wrapper). Callers
+  use `SetSurfaceMetersEarth` (already-resolved Earth coords) directly.
+- **`EngineHeightPolicy.ToStockByte`**. Callers use
+  `HeightInjectMath.ToByteHeight(policy.MapMetersToGameY(elevM))`.
+
+### Changed
+
+- **Viewer lint no longer depends on an ambient ancestor `package.json`**:
+  the Web-Mercator y formula in `tools/realearth/elevation.py` is unified in
+  one `merc_y(lat, z)` helper (`_lonlat_to_tile`, crop `lat_to_py`).
+
 ## [0.5.0] - 2026-09-20
 
 ### Changed

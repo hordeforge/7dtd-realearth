@@ -28,16 +28,6 @@ namespace RealEarth.EngineHeight
         static long Key(int chunkX, int chunkZ) => ((long)chunkX << 32) ^ (uint)chunkZ;
 
         /// <summary>
-        /// Store surface meters keyed by absolute Earth block XZ when a session is available
-        /// (survives origin slide). Falls back to raw coords if no session.
-        /// </summary>
-        public void SetSurfaceMeters(int worldBlockX, int worldBlockZ, float elevM)
-        {
-            ToEarthKey(worldBlockX, worldBlockZ, out int ex, out int ez);
-            SetSurfaceMetersEarth(ex, ez, elevM);
-        }
-
-        /// <summary>
         /// Store surface meters by already-resolved absolute Earth coords. Avoids a
         /// second LocalToEarth remap when the caller (the per-block sample hot path)
         /// already holds the Earth block position.

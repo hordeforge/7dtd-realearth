@@ -53,9 +53,6 @@ namespace RealEarth.EngineHeight
             return HeightCompress.CompressExpanded(elevM, SeaLevelGameY, MaxGameY, minY: 1);
         }
 
-        public byte ToStockByte(float elevM)
-            => HeightInjectMath.ToByteHeight(MapMetersToGameY(elevM));
-
         public string Describe()
         {
             string mode = !Enabled
