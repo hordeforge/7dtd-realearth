@@ -606,9 +606,13 @@ namespace RealEarth
                         Directory.CreateDirectory(dir);
                     cfg.Save(path);
                 }
-                catch
+                catch (Exception ex)
                 {
                     written = false;
+                    // The session runs on defaults from here, so say so: a silent
+                    // failure reads as "the operator configured it" when nothing was
+                    // written and the next boot re-reads nothing.
+                    ModApi.LogWarn($"config: could not write defaults to '{path}'", ex);
                 }
                 return new LoadResult(cfg, true, !written);
             }

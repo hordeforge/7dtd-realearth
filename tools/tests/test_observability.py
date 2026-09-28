@@ -90,7 +90,47 @@ def test_init_failures_carry_the_stack():
         assert needle in _read(rel), f"{rel} must log the full exception: {needle}"
 
 
-def test_budgeted_tick_paths_keep_the_compact_form():
+def test_every_log_budget_counts_what_it_refuses_to_print():
+    """A budgeted line that is dropped without a count is a silent gap.
+
+    The inject, POI-stamp and YDim-rewrite paths fire per chunk and per pass, so
+    they cap their log volume; a bare `Interlocked.Decrement` cap makes the
+    overflow disappear, and the operator sees a log that says nothing went wrong
+    while `reinject` reports no suppressed count either.
+    """
+    for rel in (
+        "ChunkTerrainInject.cs",
+        "RuntimePoiInject.cs",
+        "RuntimeYDimTranspiler.cs",
+    ):
+        src = _read(rel)
+        assert "ConsumeLogBudget" not in src, (
+            f"{rel} still caps its log lines with a bare counter: "
+            "use LogBudget so refused lines stay countable"
+        )
+        assert "Interlocked.Decrement(ref _logBudget)" not in src, (
+            f"{rel} drops refused log lines without counting them; use LogBudget"
+        )
+    hooks = _read("RuntimeHooks.cs")
+    for budget in (
+        "ChunkTerrainInject.SuppressedInjectLogLines",
+        "RuntimePoiInject.SuppressedLogLines",
+        "RuntimeYDimTranspiler.SuppressedLogLines",
+    ):
+        assert budget in hooks, f"reinject must report {budget}"
+
+
+def test_config_write_failure_is_not_silent():
+    """A config that cannot be written leaves the session on stock defaults."""
+    src = _read("RealEarthConfig.cs")
+    assert "could not write defaults" in src
+    assert re.search(
+        r"catch\s*\(\s*Exception \w+\s*\)[^{]*\{\s*(?://[^\n]*\n\s*)*ModApi\.LogWarn\(",
+        src,
+    ), "a failed default-config write must reach the log, not be ignored"
+
+
+
     """A per-tick failure must stay one short line: no stack frames at volume."""
     src = _read("RuntimeHooks.cs")
     for m in re.finditer(r"Log(?:Error|Warn)\((.*?)\);", src, re.S):

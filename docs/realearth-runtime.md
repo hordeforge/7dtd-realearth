@@ -255,7 +255,7 @@ Full-column Reflect to ~8849 hangs gen and is not a product requirement for play
 | `TileLoadStats` disk/cdn ok/fail | Tile load outcomes; `badPayload` = CDN serving wrong bytes, `existsErr` = unreadable tile root (streamer blind) |
 | `TileLoadStats` per-source ms | Avg / last / max wall time of a successful disk or CDN load, so a slow CDN is distinguishable from a fast failing one; `n/a` before the first success |
 | `suppressedErr` (in `reinject`) | Load failures counted but not logged because the budget was spent. Nonzero means the log understates the rate, not that failures stopped |
-| `suppressedLogLines(...)` (in `reinject`) | Same, for the tick / inject / unload / peak / tile log budgets |
+| `suppressedLogLines(...)` (in `reinject`) | Same, for the tick / inject / unload / peak / tile / chunk-inject / poi-stamp / ydim-rewrite log budgets |
 | Player tick stats | Count **Update** path only (unload success must not mask missing tick) |
 | `reinject` / `reheight` | Console: force sync load + sample proof |
 | `InjectPatchStats` | Bind counts, blocked flag |

@@ -204,13 +204,20 @@ namespace RealEarth
                 list[i] = ins;
                 rewritten++;
             }
-            if (rewritten > 0 && ConsumeLogBudget())
+            if (rewritten > 0 && _logBudget.Allow())
                 ModApi.Log($"RuntimeYDimTranspiler: rewrote {rewritten} literal(s) in {typeName}.{methodName}");
             return list;
         }
 
-        static int _logBudget = 12;
-        static bool ConsumeLogBudget() => System.Threading.Interlocked.Decrement(ref _logBudget) >= 0;
+        /// <summary>
+        /// Log slots for the rewrite lines. LogBudget, not a bare counter: a refused line
+        /// is counted, and `reinject` reports that count, so a patch that rewrote nothing
+        /// because the budget was spent cannot read as a patch that found nothing to do.
+        /// </summary>
+        static readonly LogBudget _logBudget = new LogBudget(12);
+
+        /// <summary>Log slots the rewrite path refused to print; `reinject` prints it.</summary>
+        public static long SuppressedLogLines => _logBudget.Suppressed;
 
         /// <summary>
         /// Enumerate the target types/methods from Assembly-CSharp and attach the

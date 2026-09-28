@@ -119,7 +119,12 @@ namespace RealEarth
             }
         }
 
-        static int _injectLogBudget = 24;
+        /// <summary>
+        /// Log slots for the per-chunk inject path. LogBudget, not a bare counter: a
+        /// refused line is counted, and `reinject` reports that count, so a truncated
+        /// log cannot read as a failure that stopped happening.
+        /// </summary>
+        static readonly LogBudget _injectLogBudget = new LogBudget(24);
         static object? _airBlock;
         static object? _solidBlock;
         static object? _dirtBlock;
@@ -170,7 +175,7 @@ namespace RealEarth
             Interlocked.Exchange(ref _sessionInjectCount, 0);
             Interlocked.Exchange(ref _sessionBlocksApplied, 0);
             Interlocked.Exchange(ref _sessionReinjectedChunks, 0);
-            Volatile.Write(ref _injectLogBudget, 24);
+            _injectLogBudget.Reset(24);
         }
 
         /// <summary>Atomic max for the session peak (gen thread only writer, reset races WorldReady).</summary>
@@ -186,11 +191,10 @@ namespace RealEarth
         }
 
         /// <summary>
-        /// Consume one log-budget slot. Interlocked because the gen thread (OnChunkGenerated)
-        /// and the main thread (origin-slide reinject) share the budget; a plain check-then-
-        /// decrement can both pass and over-log.
+        /// Log slots the inject path refused to print since the last reset; `reinject`
+        /// prints it next to the sample counters.
         /// </summary>
-        static bool ConsumeInjectLogBudget() => Interlocked.Decrement(ref _injectLogBudget) >= 0;
+        public static long SuppressedInjectLogLines => _injectLogBudget.Suppressed;
 
         /// <summary>
         /// When true, product real-height inject is refused (needs expand or patches missing).
@@ -323,7 +327,7 @@ namespace RealEarth
             }
             int mid = heights[heights.Length / 2];
 
-            if (ConsumeInjectLogBudget())
+            if (_injectLogBudget.Allow())
             {
                 byte lc = landcover[landcover.Length / 2];
                 ModApi.Log(
@@ -625,7 +629,7 @@ namespace RealEarth
                 if (reinjected > 0)
                 {
                     Interlocked.Add(ref _sessionReinjectedChunks, reinjected);
-                    if (ConsumeInjectLogBudget())
+                    if (_injectLogBudget.Allow())
                     {
                         ModApi.Log(
                             $"Origin slide reinject: {reinjected}/{candidates.Count} loaded chunks " +
@@ -636,7 +640,7 @@ namespace RealEarth
             }
             catch (Exception ex)
             {
-                if (ConsumeInjectLogBudget())
+                if (_injectLogBudget.Allow())
                 {
                     ModApi.LogWarn("ReinjectLoadedChunksAround failed (non-fatal): " + ex.GetType().Name + ": " + ex.Message);
                 }

@@ -58,13 +58,18 @@ namespace RealEarth
         static int _tickThrottle;
         /// <summary>Ticks between player-tick stamp passes.</summary>
         const int TickThrottleTicks = 40;
-        static int _logBudget = 12;
+        /// <summary>
+        /// Log slots for the stamp path. LogBudget, not a bare counter: a refused line
+        /// is counted, and `reinject` reports that count, so a missing "no prefab
+        /// manager" line cannot read as a city pass that never had a problem.
+        /// </summary>
+        static readonly LogBudget _logBudget = new LogBudget(12);
         static int _sessionStamps;
         static List<CityMapLabels.Place>? _placesCache;
         static readonly Dictionary<string, int> _chunkCounts = new Dictionary<string, int>(StringComparer.Ordinal);
 
-        /// <summary>Consume one log-budget slot (shared across threads; see _stampGate).</summary>
-        static bool ConsumeLogBudget() => Interlocked.Decrement(ref _logBudget) >= 0;
+        /// <summary>Log slots the stamp path refused to print; `reinject` prints it.</summary>
+        public static long SuppressedLogLines => _logBudget.Suppressed;
 
         /// <summary>
         /// True when this call owns the next stamp pass. Kept off _stampGate so the
@@ -98,7 +103,7 @@ namespace RealEarth
                 _placesCache = null;
                 _tickThrottle = 0;
                 _sessionStamps = 0;
-                Volatile.Write(ref _logBudget, 24);
+                _logBudget.Reset(24);
             }
         }
 
@@ -200,7 +205,7 @@ namespace RealEarth
             }
             catch (Exception ex)
             {
-                if (ConsumeLogBudget())
+                if (_logBudget.Allow())
                 {
                     ModApi.LogError("RuntimePoiInject: " + ex.GetType().Name + ": " + ex.Message);
                 }
@@ -254,7 +259,7 @@ namespace RealEarth
             }
             catch (Exception ex)
             {
-                if (ConsumeLogBudget())
+                if (_logBudget.Allow())
                 {
                     ModApi.LogError("RuntimePoiInject chunk: " + ex.GetType().Name + ": " + ex.Message);
                 }
@@ -313,7 +318,7 @@ namespace RealEarth
                 if (weight > 0f)
                     TryRepinSleeperVolumesNear(localX, localZ, StampSurfaceY.PrefabRootY(surface));
             }
-            if (ConsumeLogBudget())
+            if (_logBudget.Allow())
             {
                 ModApi.Log(
                     $"RuntimePoiInject: {(placed ? "placed" : "retry-later")} '{prefabName}' " +
@@ -385,12 +390,12 @@ namespace RealEarth
                         continue;
                     pinned++;
                 }
-                if (pinned > 0 && ConsumeLogBudget())
+                if (pinned > 0 && _logBudget.Allow())
                     ModApi.Log($"RuntimePoiInject: sleeper Y re-pin count={pinned} near=({localX},{localZ}) y={sleeperY}");
             }
             catch (Exception ex)
             {
-                if (ConsumeLogBudget())
+                if (_logBudget.Allow())
                     ModApi.Log($"RuntimePoiInject: sleeper Y skip ({ex.GetType().Name}: {ex.Message})");
             }
         }
@@ -566,7 +571,7 @@ namespace RealEarth
                 object? cache = null;
                 if (world == null)
                 {
-                    if (ConsumeLogBudget()) ModApi.Log("RuntimePoiInject: GameManager.Instance.World null");
+                    if (_logBudget.Allow()) ModApi.Log("RuntimePoiInject: GameManager.Instance.World null");
                 }
                 else
                 {
@@ -582,7 +587,7 @@ namespace RealEarth
                     }
                     else
                     {
-                        if (ConsumeLogBudget()) ModApi.Log("RuntimePoiInject: World.m_PrefabCache field not found");
+                        if (_logBudget.Allow()) ModApi.Log("RuntimePoiInject: World.m_PrefabCache field not found");
                     }
                 }
 
@@ -605,21 +610,21 @@ namespace RealEarth
                         object? cachePrefab = cacheGet.Invoke(cache, new object[] { prefabName, true, true, true, false });
                         if (cachePrefab != null)
                             return PlaceResolvedPrefab(prefabName, cachePrefab, world, x, y, z);
-                        if (ConsumeLogBudget()) ModApi.Log($"RuntimePoiInject: PrefabCache.GetPrefab('{prefabName}') null");
+                        if (_logBudget.Allow()) ModApi.Log($"RuntimePoiInject: PrefabCache.GetPrefab('{prefabName}') null");
                         return false;
                     }
-                    if (ConsumeLogBudget()) ModApi.Log($"RuntimePoiInject: no PrefabCache.GetPrefab(string,..) on {cacheType.Name}");
+                    if (_logBudget.Allow()) ModApi.Log($"RuntimePoiInject: no PrefabCache.GetPrefab(string,..) on {cacheType.Name}");
                     return false;
                 }
 
                 if (pmType == null)
                 {
-                    if (ConsumeLogBudget()) ModApi.Log("RuntimePoiInject: no PrefabManager (3.0.x) and no World.m_PrefabCache (3.2.0)");
+                    if (_logBudget.Allow()) ModApi.Log("RuntimePoiInject: no PrefabManager (3.0.x) and no World.m_PrefabCache (3.2.0)");
                     return false;
                 }
                 if (pm == null)
                 {
-                    if (ConsumeLogBudget()) ModApi.Log("RuntimePoiInject: PrefabManager.Instance null");
+                    if (_logBudget.Allow()) ModApi.Log("RuntimePoiInject: PrefabManager.Instance null");
                     return false;
                 }
 
@@ -634,20 +639,20 @@ namespace RealEarth
                         break;
                     }
                 }
-                if (getPrefab == null) { if (ConsumeLogBudget()) ModApi.Log($"RuntimePoiInject: no GetPrefab method on {pmType.Name}"); return false; }
+                if (getPrefab == null) { if (_logBudget.Allow()) ModApi.Log($"RuntimePoiInject: no GetPrefab method on {pmType.Name}"); return false; }
                 object? prefab = getPrefab.GetParameters().Length == 1
                     ? getPrefab.Invoke(pm, new object[] { prefabName })
                     : getPrefab.Invoke(pm, new object[] { prefabName, true });
                 if (prefab == null)
                 {
-                    if (ConsumeLogBudget()) ModApi.Log($"RuntimePoiInject: GetPrefab('{prefabName}') returned null");
+                    if (_logBudget.Allow()) ModApi.Log($"RuntimePoiInject: GetPrefab('{prefabName}') returned null");
                     return false;
                 }
                 return PlaceResolvedPrefab(prefabName, prefab, ReflectCache.GetEngineWorld(), x, y, z);
             }
             catch (Exception ex)
             {
-                if (ConsumeLogBudget())
+                if (_logBudget.Allow())
                     ModApi.Log($"RuntimePoiInject: prefab resolve failed '{prefabName}' ({ex.GetType().Name}: {ex.Message})");
             }
             return false;
@@ -665,7 +670,7 @@ namespace RealEarth
             if (TryPlaceViaPrefabInstance(prefabName, prefab, world, x, y, z, out string? piFail))
                 return true;
             if (piFail != null)
-                if (ConsumeLogBudget()) ModApi.Log($"RuntimePoiInject: prefab path '{prefabName}' ({piFail})");
+                if (_logBudget.Allow()) ModApi.Log($"RuntimePoiInject: prefab path '{prefabName}' ({piFail})");
             foreach (var m in world.GetType().GetMethods(BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic))
             {
                 if (m.Name.IndexOf("Prefab", StringComparison.OrdinalIgnoreCase) < 0) continue;
@@ -803,7 +808,7 @@ namespace RealEarth
             catch (Exception ex)
             {
                 // Visible, not silent: every retry-later stamp hides one of these.
-                if (ConsumeLogBudget())
+                if (_logBudget.Allow())
                     ModApi.Log($"RuntimePoiInject: CopyIntoWorld failed '{prefabName}' ({ex.GetType().Name}: {ex.Message})");
             }
             return false;

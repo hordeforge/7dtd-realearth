@@ -628,7 +628,10 @@ namespace RealEarth
         public static string SuppressedLogSummary() =>
             $"tick={_tickErrLogBudget.Suppressed} inject={_injectErrLogBudget.Suppressed} " +
             $"unload={_unloadErrLogBudget.Suppressed} peak={_peakLogBudget.Suppressed} " +
-            $"tile={TileStreamer.LoadErrorBudget.Suppressed}";
+            $"tile={TileStreamer.LoadErrorBudget.Suppressed} " +
+            $"chunk={ChunkTerrainInject.SuppressedInjectLogLines} " +
+            $"poi={RuntimePoiInject.SuppressedLogLines} " +
+            $"ydim={RuntimeYDimTranspiler.SuppressedLogLines}";
 
         public static void PlayerTickPostfix(object __instance)
         {
