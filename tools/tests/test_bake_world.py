@@ -57,7 +57,7 @@ def test_bake_world_snapshots_previous_output(tmp_path: Path):
     first_bytes = sentinel.read_bytes()
 
     result = bake_world_from_pack(pack, out, size=2048, name="BakeTest")
-    aside = Path(result["pre_bake_snapshot"])  # type: ignore[arg-type]
+    aside = Path(result["pre_bake_snapshot"])
     assert aside.is_dir()
     assert aside.name.startswith("world.pre-bake-")
     # every previous byte survives under the snapshot, untouched by the rebake

@@ -6,7 +6,11 @@ from unittest.mock import patch
 
 import numpy as np
 
-from realearth import EVEREST_METERS_ASL
+from realearth import (
+    DEFAULT_SEA_LEVEL_GAME_Y,
+    ENGINE_TARGET_MAX_Y,
+    EVEREST_METERS_ASL,
+)
 from realearth.height import compress_elevation
 from realearth.height_test_map import (
     EVEREST_BBOX,
@@ -136,8 +140,8 @@ def test_build_trench_pack_uses_product_sea_anchor(tmp_path: Path):
     )
     meta = info["meta"]
     assert meta["trench"] is True
-    assert meta["sea_level_game_y"] == htm.DEFAULT_SEA_LEVEL_GAME_Y == 16000
-    assert meta["engine_max_game_y"] == htm.ENGINE_TARGET_MAX_Y
+    assert meta["sea_level_game_y"] == DEFAULT_SEA_LEVEL_GAME_Y == 16000
+    assert meta["engine_max_game_y"] == ENGINE_TARGET_MAX_Y
     tile = read_tile(tile_path(pack_dir, 0, 0))
     assert float(tile.elevation_m.min()) <= -10900  # ~-11000 m ASL floor
     # product mapping: floor gameY = 16000 + (-11000) = 5000

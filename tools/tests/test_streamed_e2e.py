@@ -64,9 +64,9 @@ def test_streamed_tile_lookup_and_sample(tmp_path: Path):
     # The region grid clamps XZ into the single 512 tile, so simulate the
     # missing-tile case by deleting the .rte and re-sampling (tile_path is
     # already imported at module level; no local import to avoid shadowing).
-    tile = tile_path(pack, man.tiles[0]["tx"], man.tiles[0]["tz"])
-    assert tile.is_file()
-    tile.unlink()
+    tile_file = tile_path(pack, man.tiles[0]["tx"], man.tiles[0]["tz"])
+    assert tile_file.is_file()
+    tile_file.unlink()
     far = sample_point(pack, 10, 10, grid=grid)
     assert far == (0.0, 0, 0)
 

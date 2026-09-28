@@ -143,8 +143,8 @@ class _FakeTileClient:
     def __enter__(self) -> "_FakeTileClient":
         return self
 
-    def __exit__(self, *exc: object) -> bool:
-        return False
+    def __exit__(self, *exc: object) -> None:
+        return None
 
 
 def _tile_png() -> bytes:
@@ -176,8 +176,8 @@ class _AlwaysFailingClient:
     def __enter__(self) -> "_AlwaysFailingClient":
         return self
 
-    def __exit__(self, *exc: object) -> bool:
-        return False
+    def __exit__(self, *exc: object) -> None:
+        return None
 
 
 def test_terrarium_failure_stops_scheduling_the_rest_of_the_bbox(monkeypatch):

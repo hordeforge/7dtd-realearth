@@ -89,8 +89,14 @@ target-version = ["py311"]
 
 [tool.mypy]
 # Paths live here (not in the Makefiles) so every invocation - make lint, a
-# bare `mypy`, editors - checks the same set. tests/ is the next ratchet step:
-# strict flags ~236 no-untyped-def findings there today.
+# bare `mypy`, editors - checks the same set. tests/ is the next ratchet step.
+# Measured with `mypy tests --check-untyped-defs`: the 16 findings that are not
+# annotation demand (implicit-reexport attribute access, a stale `type: ignore`,
+# an Optional left unnarrowed, `__exit__` typed `-> bool`, a variable reused at
+# two types) are fixed; what is left there is annotation demand only:
+# disallow_untyped_defs/incomplete_defs, disallow_any_generics on test fixture
+# dicts, and **kwargs dict[str, object] unpacking. Add tests/ to `files` with
+# per-module relaxations for those three once they are annotated.
 files = ["realearth", "../scripts"]
 # No python_version pin: mypy would then parse the installed numpy stubs under
 # older syntax rules and fail on them. ruff target-version guards 3.11 syntax.

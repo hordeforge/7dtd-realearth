@@ -141,6 +141,7 @@ def test_build_region_with_corridors(tmp_path):
     # ocean cells are never painted (rule 2), so no INLAND_WATER appears where
     # the river only crosses ocean/urban, and the pack still loads.
     plain_tile = read_tile(tile_path(plain, 0, 0))
+    assert plain_tile.landcover is not None
     assert plain_tile.landcover.shape == tile.landcover.shape
     ocean_plain = (plain_tile.landcover == int(LandCover.OCEAN)).sum()
     ocean_corr = (tile.landcover == int(LandCover.OCEAN)).sum()

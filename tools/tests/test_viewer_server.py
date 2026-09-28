@@ -1,6 +1,7 @@
 """Behavior of the `realearth serve` static handler (gzip + revalidation)."""
 
 import functools
+import gzip
 import http.server
 import threading
 from pathlib import Path
@@ -122,14 +123,14 @@ def test_if_none_match_beats_if_modified_since(server: str):
 
 def test_gzip_body_is_compressed_once_per_revision(server: str, monkeypatch):
     calls = 0
-    real = viewer_server.gzip.compress
+    real = gzip.compress
 
     def counting(data: bytes, compresslevel: int = -1) -> bytes:
         nonlocal calls
         calls += 1
         return real(data, compresslevel=compresslevel)
 
-    monkeypatch.setattr(viewer_server.gzip, "compress", counting)
+    monkeypatch.setattr(gzip, "compress", counting)
     viewer_server.gzip_body.cache_clear()
     for _ in range(5):
         res = httpx.get(f"{server}/index.html", headers={"Accept-Encoding": "gzip"})

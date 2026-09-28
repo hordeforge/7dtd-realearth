@@ -87,7 +87,7 @@ def test_region_tile_pois_stamp_each_place_once(tmp_path: Path):
         name="PoiDedupe",
         max_dim=256,
     )
-    names = []
+    names: list[str] = []
     for t in m.tiles:
         tile = read_tile(tile_path(tmp_path, t["tx"], t["tz"]))
         names.extend(p["name"] for p in decode_poi_blob(tile.poi_blob))

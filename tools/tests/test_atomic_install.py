@@ -27,7 +27,7 @@ def _bash(script: str) -> subprocess.CompletedProcess[str]:
     )
 
 
-def _leftovers(parent: Path, name: str) -> list[Path]:
+def _leftovers(parent: Path, name: str) -> list[str]:
     return sorted(p.name for p in parent.iterdir() if name in p.name)
 
 
