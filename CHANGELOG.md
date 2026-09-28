@@ -68,6 +68,14 @@ and the release gate requires both to match the tag (`v<version>`).
   creates. It now names the command that actually populates that path and
   sources `scripts/toolchain-versions.env` for the pinned three version.
 
+### Fixed
+
+- **Cross-thread state that the player tick and the console path share.**
+  The Harmony bind counters read by `reinject` and the inject gate are now
+  updated and read atomically, the runtime-POI tick throttle claims its slot
+  with `Interlocked` instead of a check-then-decrement, and `recities here`
+  restores the temporary discover radius in a `finally`.
+
 ## [0.5.1] - 2026-09-21
 
 ### Removed

@@ -44,11 +44,20 @@ namespace RealEarth
         /// OnChunkGenerated runs on the chunk-generation thread; unsynchronized
         /// HashSet/Dictionary mutation corrupts buckets, and unlocked budget checks lose
         /// updates (double stamps or stranded budget). Reset/OnOriginSlide clear these
-        /// collections from the main thread, so they take the same gate.
+        /// collections from the main thread, so they take the same gate. The tick
+        /// throttle is the one exception: it is Interlocked (TryClaimTickThrottle)
+        /// instead of gated, so skipped ticks never block on this lock.
         /// </summary>
         static readonly object _stampGate = new object();
 
+        /// <summary>
+        /// Ticks skipped before the next stamp pass. Reset/OnOriginSlide clear it from
+        /// another thread's path, so the read-modify-write goes through Interlocked
+        /// (see TryClaimTickThrottle) instead of a plain check-then-decrement.
+        /// </summary>
         static int _tickThrottle;
+        /// <summary>Ticks between player-tick stamp passes.</summary>
+        const int TickThrottleTicks = 40;
         static int _logBudget = 12;
         static int _sessionStamps;
         static List<CityMapLabels.Place>? _placesCache;
@@ -58,6 +67,25 @@ namespace RealEarth
 
         /// <summary>Consume one log-budget slot (shared across threads; see _stampGate).</summary>
         static bool ConsumeLogBudget() => Interlocked.Decrement(ref _logBudget) >= 0;
+
+        /// <summary>
+        /// True when this call owns the next stamp pass. Kept off _stampGate so the
+        /// ~39 skipped ticks per pass never queue behind a chunk-generation stamp
+        /// (prefab placement and sleeper re-pin run under that gate).
+        /// </summary>
+        static bool TryClaimTickThrottle()
+        {
+            int left = Interlocked.Decrement(ref _tickThrottle);
+            if (left >= 0)
+            {
+                Interlocked.Exchange(ref _tickThrottle, TickThrottleTicks);
+                return true;
+            }
+            // Out of budget: give the slot back so the counter never drifts below
+            // zero (a permanently negative value would disable stamping for good).
+            Interlocked.Increment(ref _tickThrottle);
+            return false;
+        }
 
         public static void Reset()
         {
@@ -121,12 +149,8 @@ namespace RealEarth
             var cfg = ModApi.Config;
             if (cfg == null || !cfg.EnableRuntimePoiInject)
                 return;
-            if (_tickThrottle > 0)
-            {
-                _tickThrottle--;
+            if (!TryClaimTickThrottle())
                 return;
-            }
-            _tickThrottle = 40;
 
             try
             {

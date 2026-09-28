@@ -182,3 +182,62 @@ def test_reinject_counters_are_reset_with_session():
     # Counters are cross-thread (gen thread vs WorldReady reset), so the reset must
     # be atomic: Interlocked.Exchange on the backing field, not a plain assignment.
     assert "Interlocked.Exchange(ref _sessionReinjectedChunks, 0)" in reset.group("body")
+
+
+def test_poi_tick_throttle_is_gated():
+    """RuntimePoiInject.TickPlayer must run its throttle inside _stampGate.
+
+    Reset/OnOriginSlide clear _tickThrottle from another thread's path, so a
+    check-then-decrement left outside the lock is a lost update on shared state.
+    """
+    src = _read("RuntimePoiInject.cs")
+    m = re.search(
+        r"public static void TickPlayer\([^)]*\)\s*\{(?P<body>.*?)\n        \}",
+        src,
+        re.S,
+    )
+    assert m, "TickPlayer not found"
+    body = m.group("body")
+    assert "TryClaimTickThrottle()" in body, "throttle must go through the atomic claim"
+    assert "_tickThrottle" not in body, "no raw _tickThrottle access in TickPlayer"
+    claim = re.search(
+        r"static bool TryClaimTickThrottle\(\)\s*\{(?P<body>.*?)\n        \}", src, re.S
+    )
+    assert claim, "TryClaimTickThrottle not found"
+    cbody = claim.group("body")
+    assert "Interlocked.Decrement" in cbody
+    assert "Interlocked.Exchange" in cbody
+    assert "Interlocked.Increment" in cbody, "a refused slot must be given back"
+
+
+def test_patch_stats_counters_are_atomic():
+    """InjectPatchStats counters are written on the hook thread and read by
+    `reinject` / the inject gate on the console thread: plain += loses updates
+    and lets a reader mix pre-Reset and post-Reset fields into one verdict."""
+    src = _read("InjectPatchStats.cs")
+    assert "Interlocked.Add" in src
+    assert "Interlocked.Exchange" in src
+    assert "Volatile.Read" in src
+    for prop in (
+        "HeightQueryPatches",
+        "GenerateTerrainPatches",
+        "ChunkIndexPatches",
+        "PlayerTickPatches",
+        "WorldReadyPatches",
+    ):
+        assert f"public static int {prop} => Volatile.Read" in src
+    # No auto-property setter left to race on.
+    assert "private set; }" not in src
+
+
+def test_recities_here_restores_discover_scale():
+    """`recities here` scales the shared config field up temporarily; an
+    unrestored value would pin every later discovery at 50x radius."""
+    src = _read("ConsoleCmdReCities.cs")
+    m = re.search(r'if \(sub == "here"\)(?P<body>.*?)\n                return;', src, re.S)
+    assert m, "recities here branch not found"
+    body = m.group("body")
+    assert "finally" in body
+    fin = body.index("finally\n")
+    assert body.index("CityMapDiscoverRadiusScale = 50f") < fin
+    assert body.rindex("CityMapDiscoverRadiusScale = old") > fin
