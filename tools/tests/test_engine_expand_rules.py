@@ -6,6 +6,7 @@ pin the runtime constant targets and the switch that gates the runtime patch,
 without touching a live game DLL.
 """
 
+import re
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[2]
@@ -59,3 +60,21 @@ def test_runtime_patch_is_config_default():
     modapi = _read("Source/RealEarth/ModApi.cs")
     assert "TryInstallRuntimePatch" in modapi
     assert "EngineHeightRuntimePatch" in modapi
+
+
+def test_layer_count_rewrite_survives_sbyte_overflow():
+    """TargetLayers (8192) does not fit ldc.i4.s; casting it to sbyte yields 0.
+
+    A `for (i = 0; i < 64; i++)` loop bound in a layer-storage type is emitted as
+    ldc.i4.s, so writing the operand as a byte turns Chunk.read/write into loops
+    that never run and silently persists zero block layers. The transpiler must
+    promote the opcode instead of truncating the value.
+    """
+    src = _read("Source/RealEarth/RuntimeYDimTranspiler.cs")
+    assert "TargetYDim / 4" in src
+    assert re.search(
+        r"if \(ins\.opcode == OpCodes\.Ldc_I4_S && !FitsSByte\(replace\.Value\)\)"
+        r"\s*\{.*?ins\.opcode = OpCodes\.Ldc_I4;",
+        src,
+        re.S,
+    ), "an ldc.i4.s literal that outgrows sbyte must be promoted to ldc.i4"

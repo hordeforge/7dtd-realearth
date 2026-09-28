@@ -70,19 +70,22 @@ namespace RealEarth
         /// True when this call owns the next stamp pass. Kept off _stampGate so the
         /// ~39 skipped ticks per pass never queue behind a chunk-generation stamp
         /// (prefab placement and sleeper re-pin run under that gate).
+        ///
+        /// The counter is "ticks left until the next pass"; 0 (every reset site) means
+        /// a pass is due now. Compare-exchange keeps the claim exclusive when two
+        /// threads reach it on the same tick, which a plain decrement-then-increment
+        /// did not: giving a slot back before the check let the counter oscillate
+        /// between 0 and -1 and the claim branch was never taken.
         /// </summary>
         static bool TryClaimTickThrottle()
         {
-            int left = Interlocked.Decrement(ref _tickThrottle);
-            if (left >= 0)
+            while (true)
             {
-                Interlocked.Exchange(ref _tickThrottle, TickThrottleTicks);
-                return true;
+                int left = Volatile.Read(ref _tickThrottle);
+                int next = left > 0 ? left - 1 : TickThrottleTicks - 1;
+                if (Interlocked.CompareExchange(ref _tickThrottle, next, left) == left)
+                    return left <= 0;
             }
-            // Out of budget: give the slot back so the counter never drifts below
-            // zero (a permanently negative value would disable stamping for good).
-            Interlocked.Increment(ref _tickThrottle);
-            return false;
         }
 
         public static void Reset()

@@ -42,9 +42,13 @@ namespace RealEarth
                 $"sessionPeak={ChunkTerrainInject.SessionPeakHeight} " +
                 $"blocksOk={ChunkTerrainInject.SessionBlocksApplied}");
             int yDim = EngineHeight.EngineHeightMod.Probe?.ChunkBlockYDim ?? 256;
+            // The hot patch rewrites the const at JIT, so the probe still reads the
+            // stock value; without runtimePatchActive this reports needs-expand on a
+            // fully expanded session (the same pair ModApi logs at init).
+            bool runtimePatch = RuntimeYDimTranspiler.IsActive;
             ConsoleOut.Out(
-                $"  expand={ExpandProductGuard.DescribeHeightMode(cfg?.EnableEngineHeightMod ?? true, cfg?.EngineHeightStockSafe ?? false, yDim)} " +
-                $"needsExpand={ExpandProductGuard.RequiresExpandForRealHeight(cfg?.EngineHeightStockSafe ?? false, cfg?.EngineHeightOneToOne ?? true, yDim)} " +
+                $"  expand={ExpandProductGuard.DescribeHeightMode(cfg?.EnableEngineHeightMod ?? true, cfg?.EngineHeightStockSafe ?? false, yDim, runtimePatch)} " +
+                $"needsExpand={ExpandProductGuard.RequiresExpandForRealHeight(cfg?.EngineHeightStockSafe ?? false, cfg?.EngineHeightOneToOne ?? true, yDim, runtimePatch)} " +
                 $"productHeightBlocked={EngineHeight.EngineHeightMod.ProductHeightBlocked}");
             ConsoleOut.Out(
                 $"  densityBudget maxPerChunk={DensityBudget.DefaultMaxPrefabsPerChunk} " +

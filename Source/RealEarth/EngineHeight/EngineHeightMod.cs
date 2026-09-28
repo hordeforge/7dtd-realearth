@@ -34,6 +34,9 @@ namespace RealEarth.EngineHeight
                 cfg.EngineMaxGameY = HeightCompress.EngineTargetMaxY;
 
             // Product path: always prefer 1:1. StockSafe is an explicit opt-in compress mode.
+            // EngineHeightPreferVanillaCeiling is the operator's own opt-in to legacy
+            // short columns (docs/HEIGHT_LIMITS.md) and is honored as configured; every
+            // shipped profile sets it false.
             if (Probe.ChunkBlockYDim <= 256 && cfg.EngineHeightStockSafe)
             {
                 cfg.EngineHeightPreferVanillaCeiling = true;
@@ -41,8 +44,7 @@ namespace RealEarth.EngineHeight
             }
             else
             {
-                cfg.EngineHeightPreferVanillaCeiling = false;
-                cfg.EngineHeightOneToOne = true;
+                cfg.EngineHeightOneToOne = !cfg.EngineHeightPreferVanillaCeiling;
             }
 
             Policy = new EngineHeightPolicy(Probe, cfg);

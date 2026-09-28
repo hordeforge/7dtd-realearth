@@ -189,6 +189,9 @@ def test_poi_tick_throttle_is_gated():
 
     Reset/OnOriginSlide clear _tickThrottle from another thread's path, so a
     check-then-decrement left outside the lock is a lost update on shared state.
+    The claim is a compare-exchange on the remaining-ticks counter: 0 (every reset
+    site) means a pass is due, and a claimed pass must arm exactly TickThrottleTicks
+    skips. A decrement that hands the slot back never reaches the claim branch.
     """
     src = _read("RuntimePoiInject.cs")
     m = re.search(
@@ -205,9 +208,9 @@ def test_poi_tick_throttle_is_gated():
     )
     assert claim, "TryClaimTickThrottle not found"
     cbody = claim.group("body")
-    assert "Interlocked.Decrement" in cbody
-    assert "Interlocked.Exchange" in cbody
-    assert "Interlocked.Increment" in cbody, "a refused slot must be given back"
+    assert "Interlocked.CompareExchange" in cbody, "the claim must be exclusive"
+    assert "Volatile.Read" in cbody, "the counter must be read atomically"
+    assert "return left <= 0" in cbody, "a pass is due exactly when the budget is spent"
 
 
 def test_patch_stats_counters_are_atomic():

@@ -88,6 +88,8 @@ namespace RealEarth
                 || op == OpCodes.Bge_Un_S;
         }
 
+        static bool FitsSByte(int value) => value >= sbyte.MinValue && value <= sbyte.MaxValue;
+
         static int? ReadLdcI4(OpCode op, object operand)
         {
             if (op == OpCodes.Ldc_I4) return (int)operand;
@@ -185,7 +187,17 @@ namespace RealEarth
                 if (replace == null || replace.Value == v)
                     continue;
 
-                if (ins.opcode == OpCodes.Ldc_I4)
+                if (ins.opcode == OpCodes.Ldc_I4_S && !FitsSByte(replace.Value))
+                {
+                    // TargetLayers (8192) overflows sbyte: a cast would silently
+                    // yield 0 and turn `for (i = 0; i < 64; i++)` into a loop
+                    // that never runs, so Chunk.read/write would persist nothing.
+                    // Both forms encode 5 bytes, and Harmony re-resolves branch
+                    // targets when it re-assembles the method.
+                    ins.opcode = OpCodes.Ldc_I4;
+                    ins.operand = replace.Value;
+                }
+                else if (ins.opcode == OpCodes.Ldc_I4)
                     ins.operand = replace.Value;
                 else if (ins.opcode == OpCodes.Ldc_I4_S)
                     ins.operand = (sbyte)replace.Value;
