@@ -415,6 +415,35 @@ function renderFlat(image: HTMLImageElement, meta: PackMeta): void {
 // the map canvas, bypassing the pre-made PNG mosaic entirely. Used for packs
 // too large for one mosaic; tiles load in parallel and each is placed by its
 // tx/tz header. The map2d overlay (settlements/grid/pan-zoom) stays active.
+
+// Tiles fetched at once. A streamed pack holds one .rte per tile, and a large
+// world has thousands of them: Promise.all opens a fetch per tile up front
+// (the browser queues them all behind its per-host connection limit) and holds
+// every decoded tile until the last one lands, so the layer never draws
+// anything until the whole pack is in memory. A fixed window keeps the
+// in-flight requests and the decoded footprint bounded; results keep input
+// order, so placement by tx/tz is unchanged.
+const RTE_FETCH_CONCURRENCY = 6;
+
+async function mapWithConcurrency<T, R>(
+  items: ReadonlyArray<T>,
+  limit: number,
+  fn: (item: T) => Promise<R>
+): Promise<Array<R>> {
+  const results = new Array<R>(items.length);
+  let next = 0;
+  const worker = async (): Promise<void> => {
+    for (let index = next++; index < items.length; index += 1) {
+      const item = items[index];
+      if (item !== undefined) {
+        results[index] = await fn(item);
+      }
+    }
+  };
+  const width = Math.min(Math.max(1, limit), items.length);
+  await Promise.all(Array.from({ length: width }, worker));
+  return results;
+}
 async function renderStreamedRte(meta: PackMeta): Promise<void> {
   const base = els.packSelect.value.replace(/\/$/u, "");
   const gridW = Math.max(1, Math.ceil(meta.world_width / meta.tile_size));
@@ -439,16 +468,14 @@ async function renderStreamedRte(meta: PackMeta): Promise<void> {
     })
     .filter((u): u is string => u !== null);
 
-  const results = await Promise.all(
-    urls.map(async (url) => {
-      const resp = await fetch(url);
-      if (!resp.ok) {
-        throw new Error(`Cannot load ${url} (${resp.status})`);
-      }
-      const buf = new Uint8Array(await resp.arrayBuffer());
-      return decodeRteTile(buf);
-    })
-  );
+  const results = await mapWithConcurrency(urls, RTE_FETCH_CONCURRENCY, async (url) => {
+    const resp = await fetch(url);
+    if (!resp.ok) {
+      throw new Error(`Cannot load ${url} (${resp.status})`);
+    }
+    const buf = new Uint8Array(await resp.arrayBuffer());
+    return decodeRteTile(buf);
+  });
   const canvas = els.mapCanvas;
   const ctx = canvas.getContext("2d");
   if (ctx === null) {

@@ -163,6 +163,45 @@ def _tile_png() -> bytes:
 _BBOX = (-0.001, -0.001, 0.001, 0.001)
 
 
+class _AlwaysFailingClient:
+    """Every GET fails at the transport layer; counts requests."""
+
+    def __init__(self) -> None:
+        self.calls = 0
+
+    def get(self, url: str, params: dict | None = None) -> object:
+        self.calls += 1
+        raise httpx.ConnectError("connection reset")
+
+    def __enter__(self) -> "_AlwaysFailingClient":
+        return self
+
+    def __exit__(self, *exc: object) -> bool:
+        return False
+
+
+def test_terrarium_failure_stops_scheduling_the_rest_of_the_bbox(monkeypatch):
+    """A dead source must cost one window of requests, not one per tile.
+
+    Submitting every tile to the pool up front leaves a queued fetch (and its
+    HTTP request) per tile in the bbox, and the pool drains all of them after
+    the first failure before the error reaches the caller.
+    """
+    from realearth import elevation as elevation_mod
+
+    monkeypatch.setattr("time.sleep", lambda _s: None)
+    monkeypatch.setattr(elevation_mod, "_MAX_ATTEMPTS", 1)
+    client = _AlwaysFailingClient()
+    monkeypatch.setattr(httpx, "Client", lambda **kw: client)
+
+    # Whole world at zoom 5: 32 x 32 = 1024 tiles to fetch.
+    with pytest.raises(httpx.ConnectError):
+        fetch_region_terrarium(-180.0, -85.0, 180.0, 85.0, 8, 8, zoom=5, max_workers=4)
+
+    # One in-flight window: 4 tiles per worker x 4 workers.
+    assert client.calls <= 16, f"{client.calls} requests issued for a failing source"
+
+
 def test_terrarium_cache_serves_second_run_without_http(monkeypatch, tmp_path):
     """A cached region must rebuild offline: zero HTTP on the second run."""
     png = _tile_png()

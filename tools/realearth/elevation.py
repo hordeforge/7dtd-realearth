@@ -23,6 +23,14 @@ from realearth import JsonDict
 # otherwise abort an entire multi-hundred-tile region build.
 _MAX_ATTEMPTS = 3
 
+# Tiles kept in flight per pool worker. Submitting the whole tile list up front
+# (ThreadPoolExecutor.map) makes the queue grow with the bbox: one queued future
+# and one pending HTTP request per tile, and after the first failure the pool
+# still drains every already-submitted tile (three attempts each) before the
+# error reaches the caller. A window bounds both the queue and the work
+# abandoned by a failing build.
+_INFLIGHT_TILES_PER_WORKER = 4
+
 
 def _get_with_retry(
     client: httpx.Client, url: str, *, params: JsonDict | None = None
@@ -281,12 +289,21 @@ def fetch_region_terrarium(
     with httpx.Client(timeout=timeout, follow_redirects=True) as client:
         tiles = [(ty, tx) for ty in range(y0, y1 + 1) for tx in range(x0, x1 + 1)]
         workers = max(1, min(max_workers, len(tiles)))
+        window = _INFLIGHT_TILES_PER_WORKER * workers
         with ThreadPoolExecutor(max_workers=workers) as pool:
-            # Propagate the first failure like the sequential loop did (raise_for_status).
-            for ty, tx, elev in pool.map(lambda t: fetch_tile(t[0], t[1]), tiles):
-                py = (ty - y0) * tile_px
-                px = (tx - x0) * tile_px
-                mosaic[py : py + tile_px, px : px + tile_px] = elev
+            # Propagate the first failure like the sequential loop did
+            # (raise_for_status), in tile order. Tiles past the failing window are
+            # never submitted, so a dead source costs one window of requests
+            # instead of one per tile in the bbox.
+            for start in range(0, len(tiles), window):
+                futures = [
+                    pool.submit(fetch_tile, ty, tx) for ty, tx in tiles[start : start + window]
+                ]
+                for future in futures:
+                    ty, tx, elev = future.result()
+                    py = (ty - y0) * tile_px
+                    px = (tx - x0) * tile_px
+                    mosaic[py : py + tile_px, px : px + tile_px] = elev
 
     # Crop mosaic to exact lon/lat bbox within the tile range
     def lon_to_px(lon: float) -> float:
