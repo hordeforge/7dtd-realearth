@@ -109,3 +109,19 @@ def test_bad_assignment_is_rejected(tmp_path) -> None:
 
     assert result.returncode != 0
     assert path.read_text(encoding="utf-8") == EXISTING
+
+
+def test_line_break_in_assignment_is_rejected(tmp_path) -> None:
+    """A value carrying a newline would land in the ini as extra keys/sections."""
+    path = tmp_path / "UserOptions.ini"
+    path.write_text(EXISTING, encoding="utf-8")
+
+    result = subprocess.run(
+        ["bash", str(SCRIPT), str(path), "DiscordDisabled=true\nServerPassword=hunter2"],
+        capture_output=True,
+        text=True,
+        check=False,
+    )
+
+    assert result.returncode != 0
+    assert "ServerPassword" not in path.read_text(encoding="utf-8")

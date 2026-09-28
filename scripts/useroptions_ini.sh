@@ -38,6 +38,13 @@ re_set_ini_general_value() {
     echo "ERROR: assignment must be KEY=VALUE, got: $pair" >&2
     return 2
   fi
+  # A newline or carriage return in the key or value would land in the ini as
+  # extra lines and sections, so a value carrying one rewrites more of the
+  # file than the caller asked for. The ini is line oriented: refuse them.
+  if [[ "$pair" == *$'\n'* || "$pair" == *$'\r'* ]]; then
+    echo "ERROR: assignment must not contain a line break: $pair" >&2
+    return 2
+  fi
   mkdir -p "$(dirname "$file")"
   [[ -f "$file" ]] || : >"$file"
   # Scratch sits next to the target (same filesystem, never tmpfs) and is

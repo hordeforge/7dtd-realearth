@@ -490,6 +490,44 @@ function renderFlat(image: HTMLImageElement, meta: PackMeta): void {
 // in-flight requests and the decoded footprint bounded; results keep input
 // order, so placement by tx/tz is unchanged.
 const RTE_FETCH_CONCURRENCY = 6;
+// Hard cap on one fetched .rte body. A real 512x512 tile is well under a
+// megabyte; 64 MB matches TileStreamer.MaxCdnTileBytes so a tile the server
+// would refuse is refused in the browser too.
+const RTE_MAX_TILE_BYTES = 67_108_864;
+
+// Read a response body, refusing to buffer more than `cap` bytes. The
+// Content-Length check is a fast path; this one holds when the header is
+// absent or lies.
+async function readCapped(response: Response, cap: number, subject: string): Promise<ArrayBuffer> {
+  if (response.body === null) {
+    return response.arrayBuffer();
+  }
+  const reader = response.body.getReader();
+  const chunks: Array<Uint8Array> = [];
+  let total = 0;
+  for (;;) {
+    const { done, value } = await reader.read();
+    if (done) {
+      break;
+    }
+    if (value === undefined) {
+      continue;
+    }
+    total += value.byteLength;
+    if (total > cap) {
+      await reader.cancel();
+      throw new Error(`${subject} exceeds the ${cap} byte cap`);
+    }
+    chunks.push(value);
+  }
+  const out = new Uint8Array(total);
+  let at = 0;
+  for (const chunk of chunks) {
+    out.set(chunk, at);
+    at += chunk.byteLength;
+  }
+  return out.buffer;
+}
 
 async function mapWithConcurrency<T, R>(
   items: ReadonlyArray<T>,
@@ -546,7 +584,14 @@ async function renderStreamedRte(meta: PackMeta): Promise<void> {
     if (!resp.ok) {
       throw new Error(`Cannot load ${url} (${resp.status})`);
     }
-    const buf = new Uint8Array(await resp.arrayBuffer());
+    // A tile is bytes off disk or off a CDN: read it under a size cap so a
+    // hostile response cannot buffer without bound before decodeRteTile ever
+    // sees the header. Mirrors TileStreamer.MaxCdnTileBytes on the server side.
+    const declared = resp.headers.get("Content-Length");
+    if (declared !== null && Number(declared) > RTE_MAX_TILE_BYTES) {
+      throw new Error(`Tile ${url} declares ${declared} bytes (cap ${RTE_MAX_TILE_BYTES})`);
+    }
+    const buf = new Uint8Array(await readCapped(resp, RTE_MAX_TILE_BYTES, url));
     return decodeRteTile(buf);
   });
   const canvas = els.mapCanvas;

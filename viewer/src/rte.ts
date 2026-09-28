@@ -4,9 +4,9 @@
 //   28-byte header: <4siiHHIII> magic "RTE1", tx, tz, version, flags, w, h, reserved
 //   then length-prefixed zlib sections:
 //     elevation  u16 (sample = elev_m + 11000 offset)  [always]
-//     landcover  u8  [flag 1]
-//     population u8  [flag 2]
-//     poi blob   bytes [flag 4]
+//     landcover  u8  [flag bit 1]
+//     population u8  [flag bit 0]
+//     poi blob   bytes [flag bit 2] (not decoded here; the viewer does not use it)
 // zlib sections are standard zlib (0x78 header), so the browser's native
 // DecompressionStream("deflate") inflates them without a vendored library.
 
@@ -31,10 +31,17 @@ const BYTE_BITS = 8;
 const HALFWORD_BITS = 16;
 const THREE_BYTES_BITS = 24;
 const THIRD_BYTE_INDEX = 3;
-const FLAG_HAS_LANDCOVER = 1;
-const FLAG_HAS_POPULATION = 2;
-// Same ceiling the C# decoder enforces (RteTile.MaxTileSamples).
-const MAX_TILE_SAMPLES = 4096 * 4096;
+// Flag bit positions as written by tile_format.py: FLAG_HAS_POPULATION = 1 << 0,
+// FLAG_HAS_LANDCOVER = 1 << 1, FLAG_HAS_POI = 1 << 2.
+const FLAG_HAS_POPULATION = 1;
+const FLAG_HAS_LANDCOVER = 2;
+// Wire format this decoder understands (tools/realearth/tile_format.py
+// FORMAT_VERSION, Source/RealEarth/RteTile.cs FormatVersion).
+export const RTE_FORMAT_VERSION = 1;
+// A header claiming more samples than this would size the Float32Array below
+// from attacker-controlled dimensions. Same ceiling the C# decoder enforces
+// (RteTile.MaxTileSamples); real packs use 512x512 tiles.
+export const RTE_MAX_TILE_SAMPLES = 4096 * 4096;
 
 export type RteHeader = {
   tx: number;
@@ -53,11 +60,14 @@ export type RteTile = {
 };
 
 function readU32(bytes: Uint8Array, offset: number): number {
+  // >>> 0 keeps the unsigned value: the shifts below are 32-bit signed, so
+  // 0xffffffff would otherwise read back as -1 and slip past a bounds check.
   return (
-    (bytes[offset] ?? 0) |
-    ((bytes[offset + 1] ?? 0) << BYTE_BITS) |
-    ((bytes[offset + 2] ?? 0) << HALFWORD_BITS) |
-    ((bytes[offset + THIRD_BYTE_INDEX] ?? 0) << THREE_BYTES_BITS)
+    ((bytes[offset] ?? 0) |
+      ((bytes[offset + 1] ?? 0) << BYTE_BITS) |
+      ((bytes[offset + 2] ?? 0) << HALFWORD_BITS) |
+      ((bytes[offset + THIRD_BYTE_INDEX] ?? 0) << THREE_BYTES_BITS)) >>>
+    0
   );
 }
 
@@ -83,49 +93,93 @@ export function parseRteHeader(bytes: Uint8Array): RteHeader {
   };
 }
 
-async function inflateSection(bytes: Uint8Array, offset: number, expectedBytes: number): Promise<Uint8Array> {
+// Read one length-prefixed zlib section at `offset`, inflating it under a hard
+// output cap. Returns the inflated bytes and the offset of the next section.
+//
+// The cap is enforced while the stream is read, not after it: a section that
+// inflates to far more than its header claims (a decompression bomb) is
+// cancelled at the first chunk past the cap instead of being buffered whole.
+async function readSection(
+  bytes: Uint8Array,
+  offset: number,
+  expectedBytes: number
+): Promise<{ data: Uint8Array; nextOffset: number }> {
+  if (offset + U32_BYTES > bytes.length) {
+    throw new Error("RTE section header truncated");
+  }
   const sectionLength = readU32(bytes, offset);
-  const section = bytes.slice(offset + U32_BYTES, offset + U32_BYTES + sectionLength);
+  const start = offset + U32_BYTES;
+  const end = start + sectionLength;
+  if (sectionLength > bytes.length - start) {
+    throw new Error(`RTE section length out of range (${sectionLength})`);
+  }
+  const section = bytes.slice(start, end);
   // DecompressionStream is available in all modern browsers; "deflate" matches
   // Python zlib.compress (zlib wrapper, not raw deflate).
   const stream = new Blob([section]).stream().pipeThrough(new DecompressionStream("deflate"));
-  const inflated = new Uint8Array(await new Response(stream).arrayBuffer());
-  if (inflated.length !== expectedBytes) {
-    throw new Error(`RTE section size mismatch (${inflated.length} != ${expectedBytes})`);
+  const reader = stream.getReader();
+  const chunks: Array<Uint8Array> = [];
+  let total = 0;
+  for (;;) {
+    const { done, value } = await reader.read();
+    if (done) {
+      break;
+    }
+    if (value === undefined) {
+      continue;
+    }
+    total += value.byteLength;
+    if (total > expectedBytes) {
+      await reader.cancel();
+      throw new Error(`RTE section inflates past its declared size (${expectedBytes})`);
+    }
+    chunks.push(value);
   }
-  return inflated;
+  if (total !== expectedBytes) {
+    throw new Error(`RTE section size mismatch (${total} != ${expectedBytes})`);
+  }
+  const data = new Uint8Array(total);
+  let at = 0;
+  for (const chunk of chunks) {
+    data.set(chunk, at);
+    at += chunk.byteLength;
+  }
+  return { data, nextOffset: end };
 }
 
 export async function decodeRteTile(bytes: Uint8Array): Promise<RteTile> {
   const header = parseRteHeader(bytes);
-  // Mirrors RteTile.cs MaxTileSamples: a corrupt or hostile header otherwise
-  // allocates width*height floats (65535 x 65535 = 4.3e9) before failing opaquely.
-  if (
-    header.width <= 0 ||
-    header.height <= 0 ||
-    header.width * header.height > MAX_TILE_SAMPLES
-  ) {
-    throw new Error(`RTE tile dims out of range (${header.width}x${header.height})`);
+  if (header.version > RTE_FORMAT_VERSION) {
+    // Fail closed on future formats, as the Python and C# decoders do: a v2
+    // layout change read as v1 turns into garbage terrain, not an error.
+    throw new Error(
+      `unsupported tile version: ${header.version} (max ${RTE_FORMAT_VERSION})`
+    );
   }
   const samples = header.width * header.height;
-  let offset = HEADER_END;
+  // Mirrors RteTile.cs MaxTileSamples: a corrupt or hostile header otherwise
+  // allocates width*height floats (65535 x 65535 = 4.3e9) before failing opaquely.
+  if (header.width <= 0 || header.height <= 0 || samples > RTE_MAX_TILE_SAMPLES) {
+    throw new Error(`tile dims out of range: ${header.width}x${header.height}`);
+  }
 
-  const elevRaw = await inflateSection(bytes, offset, samples * U16_BYTES);
-  offset += U32_BYTES + readU32(bytes, offset);
+  const elev = await readSection(bytes, HEADER_END, samples * U16_BYTES);
   const elevationM = new Float32Array(samples);
-  const elevView = new DataView(elevRaw.buffer, elevRaw.byteOffset, elevRaw.byteLength);
+  const elevView = new DataView(elev.data.buffer, elev.data.byteOffset, elev.data.byteLength);
   for (let i = 0; i < samples; i++) {
     elevationM[i] = elevView.getUint16(i * U16_BYTES, true) - RTE_ELEV_OFFSET_M;
   }
 
+  let offset = elev.nextOffset;
   let landcover: Uint8Array | null = null;
   if ((header.flags & FLAG_HAS_LANDCOVER) !== 0) {
-    landcover = await inflateSection(bytes, offset, samples);
-    offset += U32_BYTES + readU32(bytes, offset);
+    const section = await readSection(bytes, offset, samples);
+    landcover = section.data;
+    offset = section.nextOffset;
   }
   let population: Uint8Array | null = null;
   if ((header.flags & FLAG_HAS_POPULATION) !== 0) {
-    population = await inflateSection(bytes, offset, samples);
+    population = (await readSection(bytes, offset, samples)).data;
   }
   return { header, elevationM, landcover, population };
 }

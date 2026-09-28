@@ -59,6 +59,43 @@
         );
       }
 
+      async function rejectsAsync(run, expected, subject) {
+        let thrown = null;
+        try {
+          await run();
+        } catch (error) {
+          thrown = error;
+        }
+        assert(thrown !== null, `${subject} was accepted`);
+        assert(
+          thrown.message.includes(expected),
+          `${subject} failed for an unrelated reason: ${thrown.message}`
+        );
+      }
+
+      // Minimal RTE1 header plus one length-prefixed zlib section, built by
+      // hand so the decoder can be fed headers no real pack would produce.
+      function hostileTile(width, height, version, sectionBytes) {
+        const header = new Uint8Array(28);
+        header.set(RTE_MAGIC.split("").map((c) => c.charCodeAt(0)), 0);
+        const view = new DataView(header.buffer);
+        view.setUint16(12, version, true);
+        view.setUint32(16, width, true);
+        view.setUint32(20, height, true);
+        const prefix = new Uint8Array(4);
+        new DataView(prefix.buffer).setUint32(0, sectionBytes.length, true);
+        const bytes = new Uint8Array(header.length + prefix.length + sectionBytes.length);
+        bytes.set(header, 0);
+        bytes.set(prefix, header.length);
+        bytes.set(sectionBytes, header.length + prefix.length);
+        return bytes;
+      }
+
+      async function deflate(payload) {
+        const stream = new Blob([payload]).stream().pipeThrough(new CompressionStream("deflate"));
+        return new Uint8Array(await new Response(stream).arrayBuffer());
+      }
+
       async function firstTileBytes(base, meta) {
         const tile = meta.tiles[0];
         assert(tile !== undefined && typeof tile.tz === "number", "pack declares no tiles");
@@ -75,6 +112,76 @@
         target.dispatchEvent(makeEvent(type));
         target.removeEventListener(type, onEvent);
         assert(seen.length === 1, `${name} dispatch delivered ${seen.length} events`);
+      }
+
+      // A tile is bytes off disk or off a CDN, so the decoder must refuse a
+      // header that would size an allocation from the file, and a section
+      // that inflates past the size its header claims. These run without an
+      // exported pack: the tiles are built here.
+      async function runHostileChecks() {
+        await check("rte: decodes both sections in wire order", async () => {
+          // 2x2 tile carrying landcover (flag bit 1) and population (bit 0);
+          // the two sections are byte-distinct so a swap cannot pass.
+          const elev = await deflate(new Uint8Array(8));
+          const lc = await deflate(new Uint8Array([0x11, 0x11, 0x11, 0x11]));
+          const pop = await deflate(new Uint8Array([0x22, 0x22, 0x22, 0x22]));
+          const bytes = new Uint8Array(28 + 4 + elev.length + 4 + lc.length + 4 + pop.length);
+          bytes.set(hostileTile(2, 2, 1, elev), 0);
+          new DataView(bytes.buffer).setUint16(14, 3, true);
+          let at = 28 + 4 + elev.length;
+          for (const section of [lc, pop]) {
+            new DataView(bytes.buffer).setUint32(at, section.length, true);
+            bytes.set(section, at + 4);
+            at += 4 + section.length;
+          }
+          const decoded = await decodeRteTile(bytes);
+          assert(decoded.landcover !== null, "landcover section was not decoded");
+          assert(decoded.population !== null, "population section was not decoded");
+          assert(decoded.landcover[0] === 0x11, `landcover[0] is 0x${decoded.landcover[0].toString(16)}`);
+          assert(
+            decoded.population[0] === 0x22,
+            `population[0] is 0x${decoded.population[0].toString(16)}`
+          );
+        });
+
+        await check("rte: rejects a future format version", async () => {
+          const section = await deflate(new Uint8Array(2 * 2 * 2));
+          await rejectsAsync(
+            () => decodeRteTile(hostileTile(2, 2, 99, section)),
+            "unsupported tile version",
+            "a v99 tile"
+          );
+        });
+
+        await check("rte: rejects an oversized header", async () => {
+          const section = await deflate(new Uint8Array(2 * 2 * 2));
+          await rejectsAsync(
+            () => decodeRteTile(hostileTile(65_535, 65_535, 1, section)),
+            "dims out of range",
+            "a header claiming 65535x65535 samples"
+          );
+        });
+
+        await check("rte: rejects a section that inflates past its header", async () => {
+          // Header says 2x2 (8 elevation bytes); the section inflates to 64 KiB.
+          const bomb = await deflate(new Uint8Array(65_536));
+          await rejectsAsync(
+            () => decodeRteTile(hostileTile(2, 2, 1, bomb)),
+            "inflates past its declared size",
+            "a decompression bomb"
+          );
+        });
+
+        await check("rte: rejects a section length past the file", async () => {
+          const section = await deflate(new Uint8Array(8));
+          const bytes = hostileTile(2, 2, 1, section);
+          new DataView(bytes.buffer).setUint32(28, 0xff_ff_ff_ff, true);
+          await rejectsAsync(
+            () => decodeRteTile(bytes),
+            "section length out of range",
+            "a section length of 4294967295"
+          );
+        });
       }
 
       // loadPack(baseUrl, path) joins path onto base, so a catalog pack path
@@ -200,6 +307,8 @@
           inputRoundTrip("touch", "touchstart", make);
         });
       }
+
+      await runHostileChecks();
 
       const catalog = await fetch("data/catalog.json").then((response) => response.json());
       const packPath = catalog[0] !== undefined ? catalog[0].path : undefined;
