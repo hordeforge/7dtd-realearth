@@ -94,7 +94,7 @@ Stock terrain and world gen do not know about Earth DEM. Expand alone still yiel
 | **WorldSession origin** | Local host ↔ absolute Earth | **Done** scaffold |
 | **LocalWindowSize host canvas** | Keep engine coords bounded (~1024) | **Done** config; **Needed** live SoloSlide proof |
 | **Longitude wrap** | Circle planet on X | **Partial** (`Validate()` auto-enables for Streamed full-planet width + no regional bbox; live soak open) |
-| **Lat-correct horizontal meters / geodesic** | True km at high lat | **Missing** |
+| **Lat-correct horizontal meters / geodesic** | True km at high lat | **Later** (idea, [`DESIGN.md`](../DESIGN.md) §18.5) |
 | **Antimeridian-safe bboxes** | Pacific / dateline packs | **Done** (offline `split_bbox_at_antimeridian` + `planet-tiles`; C# `HasRegionalBbox` accepts west>east; `LonLatToEarth` / city filter use wrap-aware span) |
 | **TileStreamer bubble** | Load/unload `.rte` by radius | **Partial** |
 | **CDN / missing tile policy** | Fetch or fail closed | **Partial** (`CdnTilePolicy` + streamer fetch; farm/CDN ops open) |
@@ -147,7 +147,7 @@ Geography without people is empty wilderness. Separate from height.
 |---|---|---|
 | **Shared origin policy** (`SharedFixed` / no per-client window) | Combat/claims work | **Partial** config; **Needed** live MP proof |
 | **Per-player tile bubbles, one world** | Data stream ≠ private coords | **Partial** design |
-| **Identical expand on all peers** | Tall Y desync | **Ops / Needed** |
+| **Identical expand on all peers** | Tall Y desync | **Ops** (not code: every peer installs and expands) |
 | **Player build deltas per tile** | Survive unload + pack update | **Needed** |
 | **Server authoritative stream** | Dedicated hosts or proxies tiles | **Needed** for true online |
 | **Save/reload absolute session** | Spawn, origin, stream state | **Partial** (`SessionStateStore` + save hooks; live proof open) |
@@ -222,5 +222,6 @@ AI/mesh optim → `7dtd-server-optimizer`. Load bots → `7dtd-loadgen`. Google 
 
 ## Changelog
 
+- **2026-09-28:** Geodesic row moved to the standard status vocabulary (Later, idea backlog).
 - **2026-08-25:** Sparse Y scaffold row moved to Removed (dead code); globe/world map UI marked viewer-only after in-game scaffold removal.
 - **2026-07-18:** Related docs hub links; status remains sole home for Done/Partial/Needed.

@@ -58,7 +58,7 @@ edge = max(32, EdgeRadiusBlocks * CityMapDiscoverRadiusScale)
 | Source | How | `edge_source` |
 |---|---|---|
 | **Density / built-up raster** | Flood-fill density peak above contour (~12% of peak); max distance peak → blob edge in meters | `density` |
-| **Explicit extent fields** | `edge_radius_m`, `radius_m`, `edge_radius_km`, or `west/south/east/north` / `bbox` urban envelope | `map` |
+| **Explicit extent fields** | `edge_radius_m`, `radius_m`, `edge_radius_km`, or a `west/south/east/north` urban envelope (pipeline also accepts a `bbox` array) | `map` |
 | **Urban polygons** (GeoJSON) | Centroid + envelope half-extent from Polygon/MultiPolygon | `map` |
 | **Seed extents** | Hardcoded half-widths for demo majors (NYC, Denver, …) when in pack bbox | `seed` |
 | **Population fallback only** | `radius_km = clamp(sqrt(pop)/40, 1.5, 80)` (same as paint Gaussian when no map extent) | `population_fallback` |
@@ -76,7 +76,7 @@ Raise `CityMapDiscoverRadiusScale` only if discovery still feels tight after map
 | Key | Default | Meaning |
 |---|---|---|
 | `ShowCityNamesOnMap` | `true` | Master switch for discover-on-approach labels |
-| `CityMapMaxLabels` | `250` | Cap on **discovered** pins (catalog is sorted largest population first) |
+| `CityMapMaxLabels` | `250` | Cap on **discovered** pins (catalog is sorted largest population first); values above 500 are hard-capped by the P6 budget |
 | `CityMapMinPopulation` | `0` | Skip places below this population when discovering |
 | `CityMapDiscoverRadiusScale` | `1.0` | Multiplier on all edge radii (min effective scale treated as 1.0 if ≤ 0.05) |
 
@@ -127,7 +127,8 @@ Array of objects, or `cities.json` object with a `cores` array. Minimal parser: 
 | `edge_radius_m` | **preferred** | Urban edge half-width in meters (map data) |
 | `edge_source` | optional | `density` / `map` / `seed` / `population_fallback` |
 | `radius_m` / `radius_km` / `edge_radius_km` | optional | Aliases for edge |
-| `west`,`south`,`east`,`north` or `bbox` | optional | Real urban-area envelope → half-extent meters |
+| `west`,`south`,`east`,`north` | optional | Real urban-area envelope → half-extent meters (runtime reads these four scalars) |
+| `bbox` | optional | Pipeline-only envelope array; `settlements.py` folds it into the four scalars before the pack ships, so a hand-edited pack must expand it |
 
 Pipeline output writes measured edges into `cities.json` cores and `settlements.json`; see [`CITIES_AND_DENSITY.md`](CITIES_AND_DENSITY.md).
 
@@ -244,7 +245,7 @@ City labels do **not** spawn traders or POIs; they only name places already repr
 ## Quick test checklist
 
 1. `make build` (or install) with game closed; copy DLL + `Config/nav_objects.xml` + pack with `settlements.json` or rely on seeds.
-2. Spawn near a known seed (e.g. Denver pack bbox). Confirm log has `catalog N places (discover-on-approach)` and **no** instant dump of all names.
+2. Spawn near a known seed (e.g. Denver pack bbox). Confirm log has `CityMapLabels: catalog N places (edge from map data: <bool>, discover-on-approach)` and **no** instant dump of all names.
 3. Approach city edge; expect `discovered '…'` and map label at center.
 4. `recities` → discovered count increments; `recities reset` clears map pins.
 5. `recities here` force-unlocks nearby for debugging without traveling full edge distance (large temp scale).

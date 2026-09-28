@@ -75,9 +75,11 @@
 | P5 | SharedFixed via `SessionOriginPolicy` + `realearth.mp.json` | `test_p5_*` |
 | P6 | `DensityBudget` + `clamp_prefabs_in_chunk` inside stamp planner | `test_stamp_prefabs_applies_density_budget_*` |
 | P7 | `CdnTilePolicy` + TileStreamer CDN URL | `test_p7_*` |
-| P8 | AbsoluteHeightStore (SparseYScaffold section math removed as dead) | `test_phase_cores.py::test_absolute_height_store_earth_key`, `test_engine_constants.py::test_absolute_height_store_csharp_has_sparse_api` |
+| P8 (sparse core) | AbsoluteHeightStore (SparseYScaffold section math removed as dead) | `test_phase_cores.py::test_absolute_height_store_earth_key`, `test_engine_constants.py::test_absolute_height_store_csharp_has_sparse_api` |
 
 Also: `InjectPatchStats`, `reinject` console, loadgen run manifests.
+
+AbsoluteHeightStore is the P8 sparse-surface cache and shipped ahead of the P8 idea work; the P8 tranche itself (sparse Y sections, roads, climate, globe XUi) stays **Later** per the priority table and `MODIFICATIONS.md`.
 
 **Live** inject walk / multi-bot SharedFixed remain **Partial** until dedicated evidence (not offline Done).
 
@@ -115,4 +117,5 @@ See sibling `7dtd-loadgen/docs/REALEARTH.md`.
 
 ## Changelog
 
+- **2026-09-28:** P8 row relabelled: AbsoluteHeightStore is the shipped sparse core, the P8 tranche itself stays Later.
 - **2026-07-19:** Ownership header; live inject/MP evidence bar; related docs.

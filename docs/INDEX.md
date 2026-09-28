@@ -66,7 +66,7 @@ flowchart TB
 | Attack surface / threat model + security policy | [`THREAT_MODEL.md`](THREAT_MODEL.md) + [`../SECURITY.md`](../SECURITY.md) | realearth-review (robustness only), MODIFICATIONS (status) |
 | Height YDim / stock APIs (generic RE) | [`../../7dtd-engine-research/docs/world/terrain-height.md`](../../7dtd-engine-research/docs/world/terrain-height.md) | HEIGHT_LIMITS (product policy) |
 
-**Status tags** (MODIFICATIONS + TODO only): **Done** · **Partial** · **Needed** · **Later** · **Ops**.  
+**Status tags** (MODIFICATIONS + TODO only): **Done** · **Partial** · **Needed** · **Later** · **Ops** · **Removed** (dead code, dropped).  
 Never mark Done without live measure (GAP evidence checklist).
 
 ---
@@ -127,7 +127,10 @@ Never mark Done without live measure (GAP evidence checklist).
 | [DYNAMIC_CHUNK_HEIGHT](DYNAMIC_CHUNK_HEIGHT.md) | Sparse Y future |
 | [CITIES_AND_DENSITY](CITIES_AND_DENSITY.md) | Density stamps |
 | [CITY_MAP_LABELS](CITY_MAP_LABELS.md) | Discover-on-approach names |
+| [CITY_MAPDATA_TO_7DTD](CITY_MAPDATA_TO_7DTD.md) | MapData/real streets research into 7DTD representation |
 | [DATA_SOURCES](DATA_SOURCES.md) | DEM/pop/landcover sources |
+| [TILE_FARM](TILE_FARM.md) | Tile farm, CDN, storage plan |
+| [TERRAIN_PERSISTENCE](TERRAIN_PERSISTENCE.md) | Terrain deltas + build persistence |
 | [BACKUP_RESTORE](BACKUP_RESTORE.md) | State inventory, backups, restore drills, RPO/RTO |
 | [REALISM_AND_GOOGLE_EARTH](REALISM_AND_GOOGLE_EARTH.md) | Legal data policy |
 | [MODDING_REFERENCES](MODDING_REFERENCES.md) | External sites |
@@ -157,6 +160,7 @@ Generic engine machines (gmUpdate, AI LOD, path, chunk flags, net bands): [resea
 
 ## Changelog
 
+- **2026-09-28:** Flat doc list completed (CITY_MAPDATA_TO_7DTD, TILE_FARM, TERRAIN_PERSISTENCE were only in the ownership table); `Removed` added to the status tag list.
 - **2026-09-28:** THREAT_MODEL re-verified against code: dropped the disk-patcher build boundary (no such tool in the tree; expand is the Harmony runtime transpiler), retired the CDN three.js threat (vendored + CI hash gate), corrected drifted line references, recorded the dead CSP script-src grant.
 - **2026-08-26:** BACKUP_RESTORE registered (durability posture: state inventory, artifact archives, RPO/RTO).
 - **2026-08-23:** THREAT_MODEL + SECURITY registered (threat model owns attack-surface documentation).

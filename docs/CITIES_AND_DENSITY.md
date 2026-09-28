@@ -26,6 +26,8 @@ Bands (density peak → stamp pack; thresholds from `density.py::density_to_band
 | hamlet | ≥ 80 | cabin, cottage, barn | Wilderness transition |
 | rural_scatter | < 80 | isolated cabins/farms | True wilderness + rare stamps |
 
+Runtime stamping uses a separate **population** ladder (`RuntimePoiInject.BandFromPop`, mirrored by `settlements.py`): metro ≥ 1,000,000, large_city ≥ 100,000, town ≥ 10,000, village ≥ 1,000, hamlet ≥ 100, else rural_scatter. The density thresholds above apply to the offline pipeline only, so a band computed from a raster and a band resolved at runtime from a place's population can differ for the same place.
+
 ```mermaid
 flowchart LR
   POP[pop / built rasters<br/>or settlements seeds]
