@@ -375,14 +375,14 @@ namespace RealEarth
                     }
                     catch (Exception ex)
                     {
-                        ModApi.LogWarn("SessionStateStore.TrySave path " + p, ex);
+                        ModLog.LogWarn("SessionStateStore.TrySave path " + p, ex);
                     }
                 }
                 return any;
             }
             catch (Exception ex)
             {
-                ModApi.LogError("SessionStateStore.TrySave", ex);
+                ModLog.LogError("SessionStateStore.TrySave", ex);
                 return false;
             }
         }
@@ -407,7 +407,7 @@ namespace RealEarth
                     }
                     catch (Exception ex)
                     {
-                        ModApi.LogWarn("SessionStateStore read failed " + p + ": " + ex.GetType().Name + ": " + ex.Message);
+                        ModLog.LogWarn("SessionStateStore read failed " + p + ": " + ex.GetType().Name + ": " + ex.Message);
                         continue;
                     }
                     if (!SessionSnapshot.TryParse(json, out snap))
@@ -415,7 +415,7 @@ namespace RealEarth
                         // Skipping a snapshot silently reads as "no session": the world
                         // restarts at the config spawn and the operator only finds out
                         // by noticing the origin moved. Name the file and its size.
-                        ModApi.LogWarn(
+                        ModLog.LogWarn(
                             $"SessionStateStore skip unreadable snapshot {p} bytes={Encoding.UTF8.GetByteCount(json)}");
                         continue;
                     }
@@ -426,7 +426,7 @@ namespace RealEarth
                     if (snap.Scope.Length > 0 && currentScope.Length > 0
                         && !string.Equals(snap.Scope, currentScope, StringComparison.Ordinal))
                     {
-                        ModApi.Log("SessionStateStore skip " + p + " (different world scope)");
+                        ModLog.Log("SessionStateStore skip " + p + " (different world scope)");
                         continue;
                     }
                     if (TryApply(session, snap))
@@ -434,8 +434,8 @@ namespace RealEarth
                         // Soft gap 32: re-seed city discoveries (markers re-place on tick).
                         int n = CityMapLabels.RestoreDiscoveredNames(snap.DiscoveredCities);
                         if (n > 0)
-                            ModApi.Log("SessionStateStore restored " + n + " discovered cities");
-                        ModApi.Log("SessionStateStore loaded from " + p);
+                            ModLog.Log("SessionStateStore restored " + n + " discovered cities");
+                        ModLog.Log("SessionStateStore loaded from " + p);
                         return true;
                     }
                 }
@@ -443,7 +443,7 @@ namespace RealEarth
             }
             catch (Exception ex)
             {
-                ModApi.LogError("SessionStateStore.TryLoad", ex);
+                ModLog.LogError("SessionStateStore.TryLoad", ex);
                 return false;
             }
         }

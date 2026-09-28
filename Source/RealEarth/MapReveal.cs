@@ -54,12 +54,12 @@ namespace RealEarth
                     if (RevealFullMap())
                     {
                         Volatile.Write(ref _fullDone, 1);
-                        ModApi.Log("DebugRevealFullMap: host map FOW filled.");
+                        ModLog.Log("DebugRevealFullMap: host map FOW filled.");
                     }
                     else if (Interlocked.Decrement(ref _fullRetryBudget) < 0)
                     {
                         Volatile.Write(ref _fullDone, 1);
-                        ModApi.Log("DebugRevealFullMap: gave up (no FOW database yet).");
+                        ModLog.Log("DebugRevealFullMap: gave up (no FOW database yet).");
                     }
                 }
 
@@ -68,7 +68,7 @@ namespace RealEarth
             }
             catch (Exception ex)
             {
-                ModApi.LogError($"MapReveal failed: {ex.GetType().Name}: {ex.Message}");
+                ModLog.LogError($"MapReveal failed: {ex.GetType().Name}: {ex.Message}");
                 Volatile.Write(ref _fullDone, 1);
             }
         }
@@ -194,7 +194,7 @@ namespace RealEarth
                 minCz = midZ - r;
                 maxCz = midZ + r;
                 total = (long)(maxCx - minCx + 1) * (maxCz - minCz + 1);
-                ModApi.Log($"MapReveal[{tag}]: clamped to {total} chunks around center.");
+                ModLog.Log($"MapReveal[{tag}]: clamped to {total} chunks around center.");
             }
 
             int added = 0;
@@ -212,7 +212,7 @@ namespace RealEarth
 
             if (added > 0 && (tag == "full" || added >= 100))
             {
-                ModApi.Log(
+                ModLog.Log(
                     $"MapReveal[{tag}]: added {added}/{total} map chunks " +
                     $"cx[{minCx},{maxCx}] cz[{minCz},{maxCz}]");
             }
@@ -253,7 +253,7 @@ namespace RealEarth
             var m = FindAdd(fow.GetType());
             if (m == null)
             {
-                ModApi.LogWarn("MapReveal: MapChunkDatabase.Add(int,int,ushort[]) not found.");
+                ModLog.LogWarn("MapReveal: MapChunkDatabase.Add(int,int,ushort[]) not found.");
                 add = null;
                 return false;
             }

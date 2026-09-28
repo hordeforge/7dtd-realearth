@@ -59,7 +59,7 @@ namespace RealEarth
                     {
                         if (!_loggedMissingFall)
                         {
-                            ModApi.Log("FallSpawnRetune: EntityPlayer type missing; fall scale idle");
+                            ModLog.Log("FallSpawnRetune: EntityPlayer type missing; fall scale idle");
                             _loggedMissingFall = true;
                         }
                         return;
@@ -74,7 +74,7 @@ namespace RealEarth
                 {
                     if (!_loggedMissingFall)
                     {
-                        ModApi.Log("FallSpawnRetune: FallDamageModifier field missing; fall scale idle");
+                        ModLog.Log("FallSpawnRetune: FallDamageModifier field missing; fall scale idle");
                         _loggedMissingFall = true;
                     }
                     _fallScaleApplied = true;
@@ -88,13 +88,13 @@ namespace RealEarth
                 if (next > 2f) next = 2f;
                 _fallDamageModifier.SetValue(null, next);
                 _fallScaleApplied = true;
-                ModApi.Log(
+                ModLog.Log(
                     $"FallSpawnRetune: FallDamageModifier {cur:0.###} → {next:0.###} " +
                     $"(scale={scale:0.###})");
             }
             catch (Exception ex)
             {
-                ModApi.LogError($"FallSpawnRetune fall scale: {ex.GetType().Name}: {ex.Message}");
+                ModLog.LogError($"FallSpawnRetune fall scale: {ex.GetType().Name}: {ex.Message}");
                 _fallScaleApplied = true;
             }
         }
@@ -135,20 +135,20 @@ namespace RealEarth
 
                 if (!EngineReflection.TrySetPos(entity, localX, targetY, localZ))
                 {
-                    ModApi.Log(
+                    ModLog.Log(
                         $"FallSpawnRetune: surface snap failed at ({localX},{localZ}) " +
                         $"y={localY}→{targetY}");
                     return;
                 }
 
                 _spawnSnapDone = true;
-                ModApi.Log(
+                ModLog.Log(
                     $"FallSpawnRetune: snapped spawn Y {localY}→{targetY} " +
                     $"(surface={surface} at local=({localX},{localZ}))");
             }
             catch (Exception ex)
             {
-                ModApi.LogError($"FallSpawnRetune snap: {ex.GetType().Name}: {ex.Message}");
+                ModLog.LogError($"FallSpawnRetune snap: {ex.GetType().Name}: {ex.Message}");
                 _spawnSnapDone = true;
             }
         }
@@ -228,7 +228,7 @@ namespace RealEarth
                         if (EngineReflection.TrySetPos(entity, vx, targetY, vz))
                         {
                             snapped++;
-                            ModApi.Log(
+                            ModLog.Log(
                                 $"FallSpawnRetune: vehicle snap Y {vy}→{targetY} " +
                                 $"(surface={surface} at local=({vx},{vz}))");
                         }
@@ -239,11 +239,11 @@ namespace RealEarth
                 if (waiting == 0)
                     _vehicleSnapDone = true;
                 else if (snapped > 0)
-                    ModApi.Log($"FallSpawnRetune: vehicle snap pending tiles (snapped={snapped}, waiting={waiting})");
+                    ModLog.Log($"FallSpawnRetune: vehicle snap pending tiles (snapped={snapped}, waiting={waiting})");
             }
             catch (Exception ex)
             {
-                ModApi.LogError($"FallSpawnRetune vehicle snap: {ex.GetType().Name}: {ex.Message}");
+                ModLog.LogError($"FallSpawnRetune vehicle snap: {ex.GetType().Name}: {ex.Message}");
                 _vehicleSnapDone = true;
             }
         }
@@ -280,19 +280,19 @@ namespace RealEarth
                 _lastKillPlaneMs = now;
                 if (!EngineReflection.TrySetPos(entity, localX, targetY, localZ))
                 {
-                    ModApi.Log(
+                    ModLog.Log(
                         $"FallSpawnRetune: kill-plane rescue failed at ({localX},{localZ}) " +
                         $"y={localY}→{targetY}");
                     return;
                 }
 
-                ModApi.Log(
+                ModLog.Log(
                     $"FallSpawnRetune: kill-plane rescue Y {localY}→{targetY} " +
                     $"(surface={surface}, depth={depth} at local=({localX},{localZ}))");
             }
             catch (Exception ex)
             {
-                ModApi.LogError($"FallSpawnRetune kill-plane: {ex.GetType().Name}: {ex.Message}");
+                ModLog.LogError($"FallSpawnRetune kill-plane: {ex.GetType().Name}: {ex.Message}");
                 _lastKillPlaneMs = now;
             }
         }

@@ -61,7 +61,7 @@ namespace RealEarth
             }
             catch (Exception ex)
             {
-                ModApi.LogError($"LonLatHudTick: {ex.GetType().Name}: {ex.Message}");
+                ModLog.LogError($"LonLatHudTick: {ex.GetType().Name}: {ex.Message}");
             }
         }
 
@@ -73,7 +73,7 @@ namespace RealEarth
             {
                 if (!_loggedMissing)
                 {
-                    ModApi.Log("LonLatHudTick: EntityBuffs not found; lon/lat HUD idle");
+                    ModLog.Log("LonLatHudTick: EntityBuffs not found; lon/lat HUD idle");
                     _loggedMissing = true;
                 }
                 return false;
@@ -116,7 +116,7 @@ namespace RealEarth
             }
             catch (Exception ex)
             {
-                ModApi.LogError($"LonLatHudTick resolve: {ex.GetType().Name}: {ex.Message}");
+                ModLog.LogError($"LonLatHudTick resolve: {ex.GetType().Name}: {ex.Message}");
                 return;
             }
             _buffsProp = buffsProp;

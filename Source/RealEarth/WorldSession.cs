@@ -332,7 +332,7 @@ namespace RealEarth
             // Refuse slide when land claims exist (builds would desync from absolute Earth).
             if (OriginSlideRemap.HasLandClaims())
             {
-                ModApi.LogWarn(
+                ModLog.LogWarn(
                     "Origin slide refused: land claims present (SharedFixed / absolute builds).");
                 return false;
             }
@@ -351,7 +351,7 @@ namespace RealEarth
             EarthToLocal(earthX, earthZ, out newLocalX, out newLocalZ);
             newLocalX = Math.Max(1, Math.Min(LocalWindowSize - 2, newLocalX));
             newLocalZ = Math.Max(1, Math.Min(LocalWindowSize - 2, newLocalZ));
-            ModApi.Log(
+            ModLog.Log(
                 $"Active window slid to absolute=({earthX},{earthZ}) " +
                 $"origin=({OriginEarthX},{OriginEarthZ}) local→({newLocalX},{newLocalZ}) " +
                 $"dOrigin=({originDeltaX},{originDeltaZ}) updateAbs={updateSessionAbsolute}");
@@ -475,7 +475,7 @@ namespace RealEarth
             // Prefetch only (no sticky focusId=0); player tick registers real entity foci.
             ModApi.Streamer?.EnsureHotAround(ex, ez, radius: _cfg.HotRadiusTiles, allowSyncLoad: true);
             GetActiveWindowEarthBounds(out int minX, out int minZ, out int maxX, out int maxZ);
-            ModApi.Log(
+            ModLog.Log(
                 $"Spawn absolute lon={lon:0.####} lat={lat:0.####} earth=({ex},{ez}); " +
                 $"active window earth X[{minX},{maxX}) Z[{minZ},{maxZ}) size={LocalWindowSize}");
         }

@@ -210,7 +210,7 @@ namespace RealEarth
                 rewritten++;
             }
             if (rewritten > 0 && _logBudget.Allow())
-                ModApi.Log($"RuntimeYDimTranspiler: rewrote {rewritten} literal(s) in {typeName}.{methodName}");
+                ModLog.Log($"RuntimeYDimTranspiler: rewrote {rewritten} literal(s) in {typeName}.{methodName}");
             return list;
         }
 
@@ -241,7 +241,7 @@ namespace RealEarth
             {
                 if (!(harmonyInstance is Harmony harmony))
                 {
-                    ModApi.Log("RuntimeYDimTranspiler: harmony instance is not HarmonyLib.Harmony");
+                    ModLog.Log("RuntimeYDimTranspiler: harmony instance is not HarmonyLib.Harmony");
                     return;
                 }
                 var transpilerInfo = typeof(RuntimeYDimTranspiler).GetMethod(
@@ -253,7 +253,7 @@ namespace RealEarth
                 var asm = GameAssembly();
                 if (asm == null)
                 {
-                    ModApi.Log("RuntimeYDimTranspiler: Assembly-CSharp not loaded yet");
+                    ModLog.Log("RuntimeYDimTranspiler: Assembly-CSharp not loaded yet");
                     return;
                 }
 
@@ -297,14 +297,14 @@ namespace RealEarth
                 }
                 PatchCount = attached;
                 IsActive = attached > 0;
-                ModApi.Log(
+                ModLog.Log(
                     $"RuntimeYDimTranspiler: {(IsActive ? "ACTIVE" : "no binds")} " +
                     $"({attached} method transpilers attached; stock engine hot-patch)");
             }
             catch (Exception ex)
             {
                 IsActive = false;
-                ModApi.LogError("RuntimeYDimTranspiler", ex);
+                ModLog.LogError("RuntimeYDimTranspiler", ex);
             }
         }
 

@@ -83,7 +83,7 @@ namespace RealEarth
                 string path = AssemblyPath;
                 if (string.IsNullOrEmpty(path) || !File.Exists(path))
                 {
-                    ModApi.LogWarn("BuildGuard: Assembly-CSharp.dll not found; build treated as UNKNOWN.");
+                    ModLog.LogWarn("BuildGuard: Assembly-CSharp.dll not found; build treated as UNKNOWN.");
                     Blocked = !allowUnknownBuild;
                     return !Blocked;
                 }
@@ -91,13 +91,13 @@ namespace RealEarth
                 BuildKnown = ReviewedBuilds.ContainsKey(CurrentSha);
                 if (BuildKnown)
                 {
-                    ModApi.Log(
+                    ModLog.Log(
                         $"BuildGuard: Assembly-CSharp build reviewed ({ReviewedBuilds[CurrentSha]}).");
                     Blocked = false;
                     return true;
                 }
                 Blocked = !allowUnknownBuild;
-                ModApi.LogWarn(
+                ModLog.LogWarn(
                     $"BuildGuard: Assembly-CSharp build UNKNOWN (sha256={CurrentSha.Substring(0, 16)}...). " +
                     (Blocked
                         ? "Height inject BLOCKED (fail-closed). Review the new build, then set " +
@@ -108,7 +108,7 @@ namespace RealEarth
             catch (Exception ex)
             {
                 Blocked = !allowUnknownBuild;
-                ModApi.LogError("BuildGuard: hash failed, build treated as UNKNOWN", ex);
+                ModLog.LogError("BuildGuard: hash failed, build treated as UNKNOWN", ex);
                 return !Blocked;
             }
         }

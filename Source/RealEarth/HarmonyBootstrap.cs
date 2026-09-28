@@ -16,18 +16,18 @@ namespace RealEarth
                 if (harmonyType == null)
                 {
                     // 0Harmony may load after mods; RuntimeHooks will retry discovery
-                    ModApi.Log(
+                    ModLog.Log(
                         "HarmonyBootstrap: 0Harmony type not yet visible; " +
                         "RuntimeHooks.Apply will scan assemblies and attach patches.");
                     return;
                 }
 
-                ModApi.Log(
+                ModLog.Log(
                     "HarmonyBootstrap: Harmony present, RuntimeHooks.Apply attaches single-map patches.");
             }
             catch (Exception ex)
             {
-                ModApi.LogError("HarmonyBootstrap", ex);
+                ModLog.LogError("HarmonyBootstrap", ex);
             }
         }
     }

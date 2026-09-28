@@ -318,6 +318,7 @@ Content-addressed by tile index. Runtime loads a **bubble** around players; opti
 | Piece | Responsibility |
 |---|---|
 | `ModApi` | Load config, init height module, streamer, session |
+| `ModLog` | Log sink: level routing to the game logger, control-char strip, `Describe(ex)` |
 | `WorldSession` | Local ↔ absolute Earth mapping, origin policy |
 | `TileStreamer` | Ensure/unload `.rte` around absolute position |
 | `ChunkTerrainSampler` / `ChunkTerrainInject` | Real-height sample + column fill |

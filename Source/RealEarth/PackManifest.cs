@@ -42,14 +42,14 @@ namespace RealEarth
 
                 ApplyBbox(cfg, man.Bbox);
 
-                ModApi.Log(
+                ModLog.Log(
                     $"Pack manifest: {man.WorldWidth ?? -1}x{man.WorldHeight ?? -1} " +
                     $"tile={man.TileSize ?? -1} seaY={cfg.SeaLevelGameY} " +
                     $"wrap={cfg.EnableLongitudeWrap} bbox={cfg.HasRegionalBbox}");
             }
             catch (Exception ex)
             {
-                ModApi.LogWarn("Pack manifest skip", ex);
+                ModLog.LogWarn("Pack manifest skip", ex);
             }
         }
 

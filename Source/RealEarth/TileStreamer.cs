@@ -120,7 +120,7 @@ namespace RealEarth
         static void LogLoadError(string msg)
         {
             if (LoadErrorBudget.Allow())
-                ModApi.LogError(msg);
+                ModLog.LogError(msg);
         }
 
         /// <summary>

@@ -91,7 +91,7 @@ namespace RealEarth
                 catch (Exception ex)
                 {
                     // No sample: climate falls back to sea-level lapse only.
-                    ModApi.LogError(
+                    ModLog.LogError(
                         $"AltitudeClimateTick: surface sample failed: {ex.GetType().Name}: {ex.Message}");
                     elevMeters = 0f;
                 }
@@ -142,7 +142,7 @@ namespace RealEarth
             }
             catch (Exception ex)
             {
-                ModApi.LogError($"AltitudeClimateTick: {ex.GetType().Name}: {ex.Message}");
+                ModLog.LogError($"AltitudeClimateTick: {ex.GetType().Name}: {ex.Message}");
             }
         }
 
@@ -166,7 +166,7 @@ namespace RealEarth
             {
                 if (!_loggedMissing)
                 {
-                    ModApi.Log("AltitudeClimateTick: EntityBuffs not found; altitude buffs idle");
+                    ModLog.Log("AltitudeClimateTick: EntityBuffs not found; altitude buffs idle");
                     _loggedMissing = true;
                 }
                 return false;
@@ -231,7 +231,7 @@ namespace RealEarth
             }
             catch (Exception ex)
             {
-                ModApi.LogError($"AltitudeClimateTick resolve: {ex.GetType().Name}: {ex.Message}");
+                ModLog.LogError($"AltitudeClimateTick resolve: {ex.GetType().Name}: {ex.Message}");
                 return;
             }
             _buffsProp = buffsProp;

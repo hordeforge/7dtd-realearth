@@ -20,7 +20,7 @@ namespace RealEarth
                 }
             }
             catch { /* fall through */ }
-            ModApi.Log(msg);
+            ModLog.Log(msg);
         }
 
         /// <summary>Block coords of the primary local player, or false when there is none.</summary>

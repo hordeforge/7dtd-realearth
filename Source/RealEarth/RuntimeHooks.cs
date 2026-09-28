@@ -48,7 +48,7 @@ namespace RealEarth
                     // Do not set _applied: WorldReady / player tick may retry when assemblies load.
                     _harmonyMissing = true;
                     ChunkTerrainInject.InjectBlocked = true;
-                    ModApi.Log(
+                    ModLog.Log(
                         "RuntimeHooks: Harmony not loaded (keep Mods/0_TFP_Harmony). " +
                         "Inject BLOCKED (fail-closed); will retry on world ready.");
                     return;
@@ -80,14 +80,14 @@ namespace RealEarth
                 // Only mark applied when something useful bound; else leave false so Apply can re-run.
                 _applied = HasUsefulBinding;
                 EnforceInjectGate();
-                ModApi.Log(
+                ModLog.Log(
                     $"RuntimeHooks: {n} patch group(s). MapMode={ModApi.Config.MapMode} " +
                     $"FailClosedMissingTiles={ModApi.Config?.FailClosedMissingTiles} " +
                     $"inject={InjectPatchStats.FormatSummary()}");
             }
             catch (Exception ex)
             {
-                ModApi.LogError($"RuntimeHooks failed: {ex.GetType().Name}: {ex.Message}");
+                ModLog.LogError($"RuntimeHooks failed: {ex.GetType().Name}: {ex.Message}");
                 // Recompute gate from actual binds (do not leave InjectBlocked stuck true with healthy patches).
                 _applied = HasUsefulBinding;
                 EnforceInjectGate();
@@ -132,7 +132,7 @@ namespace RealEarth
                 {
                     int gen = TryPatchChunkTerrainGenerate();
                     if (gen > 0)
-                        ModApi.Log("RuntimeHooks retry: GenerateTerrain binds added.");
+                        ModLog.Log("RuntimeHooks retry: GenerateTerrain binds added.");
                 }
                 if (InjectPatchStats.PlayerTickPatches == 0)
                     InjectPatchStats.AddPlayerTick(TryPatchPlayerTick());
@@ -144,7 +144,7 @@ namespace RealEarth
             }
             catch (Exception ex)
             {
-                ModApi.LogWarn("RuntimeHooks retry: " + ex.GetType().Name + ": " + ex.Message);
+                ModLog.LogWarn("RuntimeHooks retry: " + ex.GetType().Name + ": " + ex.Message);
             }
             EnforceInjectGate();
         }
@@ -208,7 +208,7 @@ namespace RealEarth
                     if (!seen.Add(m)) continue;
                     if (PatchPostfix(m, typeof(HooksImpl).GetMethod(nameof(HooksImpl.PlayerTickPostfix))!))
                     {
-                        ModApi.Log($"Patched player: {t.Name}.{m.Name} (decl={m.DeclaringType?.Name})");
+                        ModLog.Log($"Patched player: {t.Name}.{m.Name} (decl={m.DeclaringType?.Name})");
                         tickPatched++;
                         typeDone = true;
                     }
@@ -227,18 +227,18 @@ namespace RealEarth
                     if (!seen.Add(m)) continue;
                     if (PatchPostfix(m, typeof(HooksImpl).GetMethod(nameof(HooksImpl.PlayerUnloadPostfix))!))
                     {
-                        ModApi.Log($"Patched player unload: {t.Name}.{m.Name}");
+                        ModLog.Log($"Patched player unload: {t.Name}.{m.Name}");
                         unloadPatched++;
                         break;
                     }
                 }
             }
             if (tickPatched == 0)
-                ModApi.Log(
+                ModLog.Log(
                     $"Player tick patch not bound yet (unloadBound={unloadPatched > 0}). " +
                     "Stream tick still works on world load.");
             else
-                ModApi.Log(
+                ModLog.Log(
                     $"Player tick patches bound: {tickPatched} " +
                     $"(EntityPlayer + EntityPlayerLocal when present; unload={unloadPatched})");
             return tickPatched;
@@ -256,7 +256,7 @@ namespace RealEarth
                     if (m == null) continue;
                     if (PatchPostfix(m, typeof(HooksImpl).GetMethod(nameof(HooksImpl.WorldReadyPostfix))!))
                     {
-                        ModApi.Log($"Patched world: {t.Name}.{m.Name}");
+                        ModLog.Log($"Patched world: {t.Name}.{m.Name}");
                         n++;
                         break;
                     }
@@ -268,7 +268,7 @@ namespace RealEarth
                     if (m == null) continue;
                     if (PatchPostfix(m, typeof(HooksImpl).GetMethod(nameof(HooksImpl.WorldSavePostfix))!))
                     {
-                        ModApi.Log($"Patched world save: {t.Name}.{m.Name}");
+                        ModLog.Log($"Patched world save: {t.Name}.{m.Name}");
                         n++;
                         break;
                     }
@@ -282,7 +282,7 @@ namespace RealEarth
                 if (m != null
                     && PatchPostfix(m, typeof(HooksImpl).GetMethod(nameof(HooksImpl.WorldSavePostfix))!))
                 {
-                    ModApi.Log("Patched World.SaveWorldState for RealEarth session persist");
+                    ModLog.Log("Patched World.SaveWorldState for RealEarth session persist");
                     n++;
                 }
             }
@@ -302,7 +302,7 @@ namespace RealEarth
             if (m == null) return 0;
             if (!PatchPostfix(m, typeof(HooksImpl).GetMethod(nameof(HooksImpl.ClampToValidWorldPosForMapPostfix))!))
                 return 0;
-            ModApi.Log("Patched World.ClampToValidWorldPosForMap for longitude wrap scroll");
+            ModLog.Log("Patched World.ClampToValidWorldPosForMap for longitude wrap scroll");
             return 1;
         }
 
@@ -316,7 +316,7 @@ namespace RealEarth
             var game = GameAssembly();
             if (game == null)
             {
-                ModApi.Log("Assembly-CSharp not loaded; height-query patches deferred.");
+                ModLog.Log("Assembly-CSharp not loaded; height-query patches deferred.");
                 return 0;
             }
 
@@ -340,7 +340,7 @@ namespace RealEarth
 
                 if (PatchPostfix(m, postfix))
                 {
-                    ModApi.Log($"Patched height query: {key}");
+                    ModLog.Log($"Patched height query: {key}");
                     patched++;
                 }
                 else
@@ -350,11 +350,11 @@ namespace RealEarth
             }
 
             InjectPatchStats.AddHeightQuery(patched);
-            ModApi.Log(
+            ModLog.Log(
                 $"Height-query inject: patched={patched} failed={failed} discovered={methods.Count} " +
                 $"(concrete first; includes TerrainGeneratorWithBiomeResource when present)");
             if (patched == 0)
-                ModApi.LogWarn(
+                ModLog.LogWarn(
                     "Height-query inject not bound for this build (will try GenerateTerrain rewrite).");
             return patched > 0 ? 1 : 0;
         }
@@ -424,7 +424,7 @@ namespace RealEarth
                             if (!seen.Add(key)) continue;
                             if (PatchPostfix(m, typeof(HooksImpl).GetMethod(nameof(HooksImpl.GenerateTerrainPostfix))!))
                             {
-                                ModApi.Log($"Patched terrain gen: {t.Name}.{m.Name}");
+                                ModLog.Log($"Patched terrain gen: {t.Name}.{m.Name}");
                                 genPatched++;
                             }
                         }
@@ -461,7 +461,7 @@ namespace RealEarth
                         if (!seen.Add(key)) continue;
                         if (PatchPostfix(m, typeof(HooksImpl).GetMethod(nameof(HooksImpl.ChunkIndexPostfix))!))
                         {
-                            ModApi.Log($"Patched terrain index: {t.Name}.{m.Name}");
+                            ModLog.Log($"Patched terrain index: {t.Name}.{m.Name}");
                             idxPatched++;
                         }
                     }
@@ -473,14 +473,14 @@ namespace RealEarth
             int patched = genPatched + idxPatched;
             if (patched == 0)
             {
-                ModApi.LogWarn(
+                ModLog.LogWarn(
                     "Terrain inject not bound for this build. " +
                     "Use MapMode=Baked + realearth bake-world for full terrain on one map, " +
                     "or retarget Harmony after inspecting Assembly-CSharp.");
             }
             else
             {
-                ModApi.Log($"Terrain gen/index inject: gen={genPatched} index={idxPatched}");
+                ModLog.Log($"Terrain gen/index inject: gen={genPatched} index={idxPatched}");
             }
             return patched > 0 ? 1 : 0;
         }
@@ -516,14 +516,14 @@ namespace RealEarth
             ChunkTerrainInject.InjectBlocked = true;
             if (InjectPatchStats.HasMinimalInjectBinding)
             {
-                ModApi.LogError(
+                ModLog.LogError(
                     "INJECT GATE: Streamed+expanded needs GenerateTerrain bind for solid columns " +
                     $"(heightQ={InjectPatchStats.HeightQueryPatches} gen={InjectPatchStats.GenerateTerrainPatches}). " +
                     "Height inject DISABLED until gen rewrite binds (reinject / retry).");
             }
             else
             {
-                ModApi.LogError(
+                ModLog.LogError(
                     "INJECT GATE: Streamed mode has no height/GenerateTerrain Harmony binds. " +
                     "Height inject DISABLED to avoid silent stock RWG under RealEarth. " +
                     "Check 0_TFP_Harmony + Assembly-CSharp method names (reinject).");
@@ -596,7 +596,7 @@ namespace RealEarth
                 // Interfaces/abstracts expected to fail, so keep log quiet unless concrete.
                 var dt = target.DeclaringType;
                 if (dt != null && !dt.IsInterface && !dt.IsAbstract)
-                            ModApi.LogWarn($"Patch failed {dt.Name}.{target.Name}: {ex.GetType().Name}: {ex.Message}");
+                            ModLog.LogWarn($"Patch failed {dt.Name}.{target.Name}: {ex.GetType().Name}: {ex.Message}");
                 return false;
             }
         }
@@ -694,7 +694,7 @@ namespace RealEarth
                             ModApi.Session.SetOrigin(
                                 ModApi.Session.OriginEarthX - dOx,
                                 ModApi.Session.OriginEarthZ - dOz);
-                            ModApi.LogError(
+                            ModLog.LogError(
                                 $"Origin slide rolled back (SetPos failed) dOrigin=({dOx},{dOz})");
                         }
                         return;
@@ -724,12 +724,12 @@ namespace RealEarth
                             // log so "world looks torn after slide" stays debuggable.
                             if (_tickErrLogBudget.Allow())
                             {
-                                ModApi.LogWarn(
+                                ModLog.LogWarn(
                                     $"Origin slide reinject error: {ex.GetType().Name}: {ex.Message}");
                             }
                         }
                     }
-                    ModApi.Log(
+                    ModLog.Log(
                         $"Single-map origin slide → local ({nx},{nz}) focus={focusId} " +
                         $"dOrigin=({dOx},{dOz})");
                     CityMapLabels.RefreshAfterOriginSlide();
@@ -751,7 +751,7 @@ namespace RealEarth
                 }
                 if (ChunkTerrainInject.SessionInjectCount > 0 && _peakLogBudget.Allow())
                 {
-                    ModApi.Log(
+                    ModLog.Log(
                         $"Height inject stats: count={ChunkTerrainInject.SessionInjectCount} " +
                         $"blocksOk={ChunkTerrainInject.SessionBlocksApplied} " +
                         $"sessionPeak={ChunkTerrainInject.SessionPeakHeight} " +
@@ -765,7 +765,7 @@ namespace RealEarth
                 // a stuck tick path otherwise looks like "tiles never stream" with zero trace.
                 if (_tickErrLogBudget.Allow())
                 {
-                        ModApi.LogWarn($"PlayerTick postfix error: {ex.GetType().Name}: {ex.Message}");
+                        ModLog.LogWarn($"PlayerTick postfix error: {ex.GetType().Name}: {ex.Message}");
                 }
             }
         }
@@ -831,7 +831,7 @@ namespace RealEarth
                 // players' tiles hot (bubble leak) and must not be invisible.
                 if (_unloadErrLogBudget.Allow())
                 {
-                    ModApi.LogWarn(
+                    ModLog.LogWarn(
                         $"PlayerUnload postfix error: {ex.GetType().Name}: {ex.Message}");
                 }
             }
@@ -841,7 +841,7 @@ namespace RealEarth
         {
             try
             {
-                ModApi.Log("Single-map world ready.");
+                ModLog.Log("Single-map world ready.");
                 RuntimeHooks.TryRetryApply();
                 RuntimeHooks.EnforceInjectGate();
                 var cfg = ModApi.Config;
@@ -862,7 +862,7 @@ namespace RealEarth
                 bool restored = SessionStateStore.TryLoad(session);
                 if (restored)
                 {
-                    ModApi.Log(
+                    ModLog.Log(
                         $"Session restored absolute=({session.AbsoluteX},{session.AbsoluteZ}) " +
                         $"origin=({session.OriginEarthX},{session.OriginEarthZ})");
                     ModApi.Streamer?.EnsureHotAround(
@@ -891,7 +891,7 @@ namespace RealEarth
                             h = HeightInjectMath.MetersToGameYOneToOne(
                                 elevM, cfg.SeaLevelGameY, cfg.EngineMaxGameY);
                     }
-                    ModApi.Log(
+                    ModLog.Log(
                         $"Spawn sample pack-center earth=({mid},{midZ}) gameY={h} " +
                         $"(sea={cfg.SeaLevelGameY}; H500 fixture ~500 / Everest ~24849 / trench floor ~5000; " +
                         "focus not stomped)");
@@ -921,24 +921,24 @@ namespace RealEarth
                 try
                 {
                     var snap = SessionStateStore.Capture(session, cfg);
-                    ModApi.Log(
+                    ModLog.Log(
                         "Session snapshot: " + snap.ToJson() +
                         " path=" + WorldSavePath.SessionPath());
                     SessionStateStore.TrySave(session, cfg);
                 }
                 catch (Exception sex)
                 {
-                    ModApi.LogWarn("Session snapshot skip: " + sex.GetType().Name + ": " + sex.Message);
+                    ModLog.LogWarn("Session snapshot skip: " + sex.GetType().Name + ": " + sex.Message);
                 }
 
-                ModApi.Log(
+                ModLog.Log(
                     $"FullSolidBlockFillMax={ChunkTerrainInject.EffectiveFullDualFillMaxSurface()} " +
                     $"(config={cfg.FullSolidBlockFillMaxSurface}, expanded={EngineHeight.EngineHeightMod.EngineExpanded}) " +
                     $"runtimePoi={cfg.EnableRuntimePoiInject}");
 
                 if (EngineHeight.EngineHeightMod.ProductHeightBlocked)
                 {
-                    ModApi.LogWarn(
+                    ModLog.LogWarn(
                         "PRODUCT HEIGHT CAPPED: YDim expand required for true real-height columns. " +
                         $"Heights clamp to allocY={EngineHeight.EngineHeightMod.AllocatableColumnMaxY} " +
                         "(inject still samples RealEarth, not stock RWG). " +
@@ -947,7 +947,7 @@ namespace RealEarth
             }
             catch (Exception ex)
             {
-                ModApi.LogError($"WorldReady: {ex.GetType().Name}: {ex.Message}");
+                ModLog.LogError($"WorldReady: {ex.GetType().Name}: {ex.Message}");
             }
         }
 
@@ -1066,7 +1066,7 @@ namespace RealEarth
                 // rewrite leaves stock RWG terrain that looks like a streaming bug.
                 if (_injectErrLogBudget.Allow())
                 {
-                    ModApi.LogError(
+                    ModLog.LogError(
                         $"GenerateTerrain postfix error: {ex.GetType().Name}: {ex.Message}");
                 }
             }
@@ -1094,7 +1094,7 @@ namespace RealEarth
                 // mapping/reflection failures so tiles missing forever stays debuggable.
                 if (_injectErrLogBudget.Allow())
                 {
-                    ModApi.LogWarn($"ChunkIndex postfix error ({__0},{__1}): {ex.GetType().Name}: {ex.Message}");
+                    ModLog.LogWarn($"ChunkIndex postfix error ({__0},{__1}): {ex.GetType().Name}: {ex.Message}");
                 }
             }
         }

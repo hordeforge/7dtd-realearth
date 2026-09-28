@@ -261,7 +261,7 @@ namespace RealEarth
             }
             catch (Exception ex)
             {
-                ModApi.LogWarn($"CityMapLabels tick: {ex.GetType().Name}: {ex.Message}");
+                ModLog.LogWarn($"CityMapLabels tick: {ex.GetType().Name}: {ex.Message}");
             }
         }
 
@@ -342,7 +342,7 @@ namespace RealEarth
                     {
                         _discovered.Add(p.Name);
                         discovered = true;
-                        ModApi.Log(
+                        ModLog.Log(
                             $"CityMapLabels: discovered '{p.Name}' " +
                             $"(dist={(int)Math.Sqrt(distSq):0} edge={edge:0} center=({cx},{cz})).");
                     }
@@ -397,7 +397,7 @@ namespace RealEarth
                 foreach (var p in places)
                     byName[p.Name] = p;
                 _catalogByName = byName;
-                ModApi.Log(
+                ModLog.Log(
                     $"CityMapLabels: catalog {_catalog.Count} places " +
                     $"(edge from map data: {fromMap}, discover-on-approach).");
                 return true;
@@ -405,7 +405,7 @@ namespace RealEarth
             catch (Exception ex)
             {
                 _catalogRetry--;
-                ModApi.LogError($"CityMapLabels: catalog load failed: {ex.GetType().Name}: {ex.Message}");
+                ModLog.LogError($"CityMapLabels: catalog load failed: {ex.GetType().Name}: {ex.Message}");
                 return false;
             }
         }
@@ -508,7 +508,7 @@ namespace RealEarth
             }
             catch (Exception ex)
             {
-                ModApi.LogWarn($"CityMapLabels: pin '{p.Name}' failed: " +
+                ModLog.LogWarn($"CityMapLabels: pin '{p.Name}' failed: " +
                     (ex.InnerException != null
                         ? $"{ex.InnerException.GetType().Name}: {ex.InnerException.Message}"
                         : $"{ex.GetType().Name}: {ex.Message}"));
@@ -609,20 +609,20 @@ namespace RealEarth
                     ParseSettlementsJson(File.ReadAllText(path, Encoding.UTF8), list);
                     if (list.Count > 0)
                     {
-                        ModApi.Log($"CityMapLabels: loaded {list.Count} from {path}");
+                        ModLog.Log($"CityMapLabels: loaded {list.Count} from {path}");
                         break;
                     }
                 }
                 catch (Exception ex)
                 {
-                    ModApi.LogWarn($"CityMapLabels: parse {path}: {ex.GetType().Name}: {ex.Message}");
+                    ModLog.LogWarn($"CityMapLabels: parse {path}: {ex.GetType().Name}: {ex.Message}");
                 }
             }
 
             int before = list.Count;
             AddSeedPlacesInPack(list);
             if (list.Count > before)
-                ModApi.Log($"CityMapLabels: +{list.Count - before} seed places in pack range");
+                ModLog.Log($"CityMapLabels: +{list.Count - before} seed places in pack range");
 
             var seen = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
             var uniq = new List<Place>();

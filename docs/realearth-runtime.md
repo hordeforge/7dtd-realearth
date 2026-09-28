@@ -270,7 +270,7 @@ tagged Out line, so grepping either channel works.
 Repeated failures from hot paths (per-tile, per-chunk, per-tick) pass through a
 `LogBudget`: the first N lines are printed, the rest are counted. Init, patch
 install, and save/load failures are one-shot, so they log through
-`ModApi.LogError(msg, ex)` and carry the full stack, rendered on one line
+`ModLog.LogError(msg, ex)` and carry the full stack, rendered on one line
 (`Type: message | at Frame <- inner`) because `Emit` strips newlines and a
 multi-line entry would break the server log parser.
 

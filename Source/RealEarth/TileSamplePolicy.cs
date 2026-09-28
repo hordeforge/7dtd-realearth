@@ -57,7 +57,7 @@ namespace RealEarth
             {
                 try
                 {
-                    ModApi.LogWarn(
+                    ModLog.LogWarn(
                         $"TileSamplePolicy: missing tile sample (failClosed={failClosed}) " +
                         $"misses={_missingHits} elevPlaceholder={elevM}");
                 }

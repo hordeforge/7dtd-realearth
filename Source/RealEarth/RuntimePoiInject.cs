@@ -219,7 +219,7 @@ namespace RealEarth
             {
                 if (_logBudget.Allow())
                 {
-                    ModApi.LogError("RuntimePoiInject: " + ex.GetType().Name + ": " + ex.Message);
+                    ModLog.LogError("RuntimePoiInject: " + ex.GetType().Name + ": " + ex.Message);
                 }
             }
         }
@@ -270,7 +270,7 @@ namespace RealEarth
             {
                 if (_logBudget.Allow())
                 {
-                    ModApi.LogError("RuntimePoiInject chunk: " + ex.GetType().Name + ": " + ex.Message);
+                    ModLog.LogError("RuntimePoiInject chunk: " + ex.GetType().Name + ": " + ex.Message);
                 }
             }
         }
@@ -329,7 +329,7 @@ namespace RealEarth
             }
             if (_logBudget.Allow())
             {
-                ModApi.Log(
+                ModLog.Log(
                     $"RuntimePoiInject: {(placed ? "placed" : "retry-later")} '{prefabName}' " +
                     $"for '{p.Name}' band={band} local=({localX},{y},{localZ}) surface={surface}" +
                     (distBlocks >= 0 ? $" dist={distBlocks}" : ""));
@@ -400,12 +400,12 @@ namespace RealEarth
                     pinned++;
                 }
                 if (pinned > 0 && _logBudget.Allow())
-                    ModApi.Log($"RuntimePoiInject: sleeper Y re-pin count={pinned} near=({localX},{localZ}) y={sleeperY}");
+                    ModLog.Log($"RuntimePoiInject: sleeper Y re-pin count={pinned} near=({localX},{localZ}) y={sleeperY}");
             }
             catch (Exception ex)
             {
                 if (_logBudget.Allow())
-                    ModApi.Log($"RuntimePoiInject: sleeper Y skip ({ex.GetType().Name}: {ex.Message})");
+                    ModLog.Log($"RuntimePoiInject: sleeper Y skip ({ex.GetType().Name}: {ex.Message})");
             }
         }
 
@@ -580,7 +580,7 @@ namespace RealEarth
                 object? cache = null;
                 if (world == null)
                 {
-                    if (_logBudget.Allow()) ModApi.Log("RuntimePoiInject: GameManager.Instance.World null");
+                    if (_logBudget.Allow()) ModLog.Log("RuntimePoiInject: GameManager.Instance.World null");
                 }
                 else
                 {
@@ -596,7 +596,7 @@ namespace RealEarth
                     }
                     else
                     {
-                        if (_logBudget.Allow()) ModApi.Log("RuntimePoiInject: World.m_PrefabCache field not found");
+                        if (_logBudget.Allow()) ModLog.Log("RuntimePoiInject: World.m_PrefabCache field not found");
                     }
                 }
 
@@ -619,21 +619,21 @@ namespace RealEarth
                         object? cachePrefab = cacheGet.Invoke(cache, new object[] { prefabName, true, true, true, false });
                         if (cachePrefab != null)
                             return PlaceResolvedPrefab(prefabName, cachePrefab, world, x, y, z);
-                        if (_logBudget.Allow()) ModApi.Log($"RuntimePoiInject: PrefabCache.GetPrefab('{prefabName}') null");
+                        if (_logBudget.Allow()) ModLog.Log($"RuntimePoiInject: PrefabCache.GetPrefab('{prefabName}') null");
                         return false;
                     }
-                    if (_logBudget.Allow()) ModApi.Log($"RuntimePoiInject: no PrefabCache.GetPrefab(string,..) on {cacheType.Name}");
+                    if (_logBudget.Allow()) ModLog.Log($"RuntimePoiInject: no PrefabCache.GetPrefab(string,..) on {cacheType.Name}");
                     return false;
                 }
 
                 if (pmType == null)
                 {
-                    if (_logBudget.Allow()) ModApi.Log("RuntimePoiInject: no PrefabManager (3.0.x) and no World.m_PrefabCache (3.2.0)");
+                    if (_logBudget.Allow()) ModLog.Log("RuntimePoiInject: no PrefabManager (3.0.x) and no World.m_PrefabCache (3.2.0)");
                     return false;
                 }
                 if (pm == null)
                 {
-                    if (_logBudget.Allow()) ModApi.Log("RuntimePoiInject: PrefabManager.Instance null");
+                    if (_logBudget.Allow()) ModLog.Log("RuntimePoiInject: PrefabManager.Instance null");
                     return false;
                 }
 
@@ -648,13 +648,13 @@ namespace RealEarth
                         break;
                     }
                 }
-                if (getPrefab == null) { if (_logBudget.Allow()) ModApi.Log($"RuntimePoiInject: no GetPrefab method on {pmType.Name}"); return false; }
+                if (getPrefab == null) { if (_logBudget.Allow()) ModLog.Log($"RuntimePoiInject: no GetPrefab method on {pmType.Name}"); return false; }
                 object? prefab = getPrefab.GetParameters().Length == 1
                     ? getPrefab.Invoke(pm, new object[] { prefabName })
                     : getPrefab.Invoke(pm, new object[] { prefabName, true });
                 if (prefab == null)
                 {
-                    if (_logBudget.Allow()) ModApi.Log($"RuntimePoiInject: GetPrefab('{prefabName}') returned null");
+                    if (_logBudget.Allow()) ModLog.Log($"RuntimePoiInject: GetPrefab('{prefabName}') returned null");
                     return false;
                 }
                 return PlaceResolvedPrefab(prefabName, prefab, ReflectCache.GetEngineWorld(), x, y, z);
@@ -662,7 +662,7 @@ namespace RealEarth
             catch (Exception ex)
             {
                 if (_logBudget.Allow())
-                    ModApi.Log($"RuntimePoiInject: prefab resolve failed '{prefabName}' ({ex.GetType().Name}: {ex.Message})");
+                    ModLog.Log($"RuntimePoiInject: prefab resolve failed '{prefabName}' ({ex.GetType().Name}: {ex.Message})");
             }
             return false;
         }
@@ -679,7 +679,7 @@ namespace RealEarth
             if (TryPlaceViaPrefabInstance(prefabName, prefab, world, x, y, z, out string? piFail))
                 return true;
             if (piFail != null)
-                if (_logBudget.Allow()) ModApi.Log($"RuntimePoiInject: prefab path '{prefabName}' ({piFail})");
+                if (_logBudget.Allow()) ModLog.Log($"RuntimePoiInject: prefab path '{prefabName}' ({piFail})");
             foreach (var m in world.GetType().GetMethods(BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic))
             {
                 if (m.Name.IndexOf("Prefab", StringComparison.OrdinalIgnoreCase) < 0) continue;
@@ -810,7 +810,7 @@ namespace RealEarth
                     "None", BindingFlags.Static | BindingFlags.Public | BindingFlags.NonPublic)?.GetValue(null);
                 if (tags == null) { fail = "no FastTags.none"; return false; }
                 copy.Invoke(instance, new object[] { world, false, true, tags });
-                ModApi.Log($"RuntimePoiInject: CopyIntoWorld '{prefabName}' at ({x},{y},{z})");
+                ModLog.Log($"RuntimePoiInject: CopyIntoWorld '{prefabName}' at ({x},{y},{z})");
                 fail = null;
                 return true;
             }
@@ -818,7 +818,7 @@ namespace RealEarth
             {
                 // Visible, not silent: every retry-later stamp hides one of these.
                 if (_logBudget.Allow())
-                    ModApi.Log($"RuntimePoiInject: CopyIntoWorld failed '{prefabName}' ({ex.GetType().Name}: {ex.Message})");
+                    ModLog.Log($"RuntimePoiInject: CopyIntoWorld failed '{prefabName}' ({ex.GetType().Name}: {ex.Message})");
             }
             return false;
         }

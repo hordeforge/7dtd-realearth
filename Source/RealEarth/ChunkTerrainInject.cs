@@ -330,7 +330,7 @@ namespace RealEarth
             if (_injectLogBudget.Allow())
             {
                 byte lc = landcover[landcover.Length / 2];
-                ModApi.Log(
+                ModLog.Log(
                     $"Height inject chunk=({chunkX},{chunkZ}) earth=({ex},{ez}) " +
                     $"midH={mid} maxH={maxH} sessionPeak={SessionPeakHeight} " +
                     $"allocY={EngineHeight.EngineHeightMod.AllocatableColumnMaxY} " +
@@ -420,9 +420,9 @@ namespace RealEarth
                     _setHeight = FindSetHeight(t);
                     _setBiomeId = FindSetBiomeId(t);
                     if (_setBiomeId != null)
-                        ModApi.Log($"ChunkTerrainInject: SetBiomeId bound ({t.Name})");
+                        ModLog.Log($"ChunkTerrainInject: SetBiomeId bound ({t.Name})");
                     else
-                        ModApi.Log("ChunkTerrainInject: SetBiomeId NOT found (biome stays stock)");
+                        ModLog.Log("ChunkTerrainInject: SetBiomeId NOT found (biome stays stock)");
                 }
                 ResolveTerrainBlocksLocked();
                 setDensity = _setDensityCached;
@@ -631,7 +631,7 @@ namespace RealEarth
                     Interlocked.Add(ref _sessionReinjectedChunks, reinjected);
                     if (_injectLogBudget.Allow())
                     {
-                        ModApi.Log(
+                        ModLog.Log(
                             $"Origin slide reinject: {reinjected}/{candidates.Count} loaded chunks " +
                             $"rewritten around local=({centerLocalX},{centerLocalZ}) " +
                             $"r={radiusBlocks} sessionTotal={SessionReinjectedChunks}");
@@ -642,7 +642,7 @@ namespace RealEarth
             {
                 if (_injectLogBudget.Allow())
                 {
-                    ModApi.LogWarn("ReinjectLoadedChunksAround failed (non-fatal): " + ex.GetType().Name + ": " + ex.Message);
+                    ModLog.LogWarn("ReinjectLoadedChunksAround failed (non-fatal): " + ex.GetType().Name + ": " + ex.Message);
                 }
             }
             return reinjected;
@@ -911,14 +911,14 @@ namespace RealEarth
                     if (airField != null) _airBlock = airField.GetValue(null);
                 }
 
-                ModApi.Log(
+                ModLog.Log(
                     _solidBlock != null && _airBlock != null
                         ? "Height inject: solid+air BlockValue ready (landcover-aware columns)."
                         : "Height inject: BlockValue partial, density-only columns.");
             }
             catch (Exception ex)
             {
-                ModApi.LogError($"Height inject BlockValue resolve failed: {ex.GetType().Name}: {ex.Message}");
+                ModLog.LogError($"Height inject BlockValue resolve failed: {ex.GetType().Name}: {ex.Message}");
             }
         }
     }

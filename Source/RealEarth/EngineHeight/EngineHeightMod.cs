@@ -61,7 +61,7 @@ namespace RealEarth.EngineHeight
 
             Policy = new EngineHeightPolicy(Probe, cfg);
             Store.Clear();
-            ModApi.Log($"EngineHeightMod: {Policy.Describe()}");
+            ModLog.Log($"EngineHeightMod: {Policy.Describe()}");
 
             if (!cfg.EnableEngineHeightMod)
                 return;
@@ -73,14 +73,14 @@ namespace RealEarth.EngineHeight
                 int effectiveYDim = RuntimeYDimTranspiler.IsActive
                     ? RuntimeYDimTranspiler.TargetYDim
                     : Probe?.ChunkBlockYDim ?? 256;
-                ModApi.Log(
+                ModLog.Log(
                     $"EngineHeightMod: RealEarth YDim expand active YDim={effectiveYDim} " +
                     "(runtime hot patch) - " +
                     $"real height 1:1 up to content maxY={Policy.MaxGameY}.");
             }
             else if (cfg.EngineHeightStockSafe)
             {
-                ModApi.LogWarn(
+                ModLog.LogWarn(
                     $"EngineHeightMod: OPT-IN compress on stock YDim={Probe?.ChunkBlockYDim ?? 256} " +
                     "(~0-250). Product path is real height: enable EngineHeightRuntimePatch " +
                     "(runtime YDim transpiler), set EngineHeightStockSafe=false, restart.");
@@ -92,7 +92,7 @@ namespace RealEarth.EngineHeight
                     cfg.EngineHeightStockSafe,
                     cfg.EngineHeightOneToOne,
                     Probe?.ChunkBlockYDim ?? 256);
-                ModApi.LogWarn(
+                ModLog.LogWarn(
                     $"EngineHeightMod: stock YDim={Probe?.ChunkBlockYDim ?? 256}, real-height mode - " +
                     "the runtime YDim transpiler (EngineHeightRuntimePatch=true) is off or failed; " +
                     "enable it or the height inject runs clamped. " +

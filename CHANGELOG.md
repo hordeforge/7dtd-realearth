@@ -72,6 +72,12 @@ and the release gate requires both to match the tag (`v<version>`) and a dated
   gains `LICENSE` (copied from the pinned package, sha256-pinned as
   `THREE_LICENSE_SHA256` and re-checked by `scripts/vendor-three.sh`),
   because `OrbitControls.js` carries no license header of its own.
+- **`ModApi.Log`/`LogWarn`/`LogError` moved to `ModLog`.** The log sink is no
+  longer part of the `IModApi` entry point, so mod internals stop depending on
+  the bootstrap class to log. Log behavior is unchanged: same level routing,
+  same prefixes, same budgets. Only the type name changed, and it is now
+  `internal`, so a third-party mod that called `RealEarth.ModApi.Log` directly
+  has to read the game log instead.
 - **A missing `Config/realearth.json` now says so at startup.** The mod still
   writes a defaults file for a fresh install, but init logs
   `config: no realearth.json at <path>` (and names a failed write) so a

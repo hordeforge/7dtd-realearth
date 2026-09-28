@@ -95,9 +95,9 @@ def test_lazy_reflection_resolve_publishes_last():
         guard = src.index("if (_resolved) return;")
         catch = src.index("catch (Exception ex)", guard)
         publish = src.index("_resolved = true;", catch)
-        assert guard < catch < publish, (
-            f"{rel}: _resolved must be set after the resolve body, never before it"
-        )
+        assert (
+            guard < catch < publish
+        ), f"{rel}: _resolved must be set after the resolve body, never before it"
         assert src.index(marker) > 0
 
 

@@ -27,7 +27,7 @@ def test_tile_streamer_never_logs_load_failure_unbudgeted():
     helper = re.search(r"static void LogLoadError\(string msg\).*?\n        \}", src, re.S)
     assert helper, "LogLoadError helper not found"
     sites = src[: helper.start()] + src[helper.end() :]
-    for m in re.finditer(r"ModApi\.Log(?:Error|Warn)\(", sites):
+    for m in re.finditer(r"ModLog\.Log(?:Error|Warn)\(", sites):
         line = sites[: m.start()].count("\n") + 1
         raise AssertionError(
             f"TileStreamer.cs:{line} logs a tile-load failure directly; "
@@ -76,16 +76,16 @@ def test_reinject_reports_load_latency_and_suppressed_lines():
 
 def test_init_failures_carry_the_stack():
     """Init/patch/save paths fire once: the operator has no debugger, so keep the stack."""
-    mod = _read("ModApi.cs")
+    mod = _read("ModLog.cs")
     assert "internal static string Describe(Exception ex)" in mod
     assert "stack.Split" in mod, "Describe must render the stack chain"
     for rel, needle in (
-        ("ModApi.cs", 'LogError("RealEarth failed to init", ex)'),
-        ("ModApi.cs", 'LogWarn("Harmony bootstrap skipped", hex)'),
-        ("ModApi.cs", 'LogWarn("RuntimeHooks skipped", rex)'),
-        ("ModApi.cs", 'LogWarn("BuildGuard skipped", gex)'),
-        ("HarmonyBootstrap.cs", 'ModApi.LogError("HarmonyBootstrap", ex)'),
-        ("SessionStateStore.cs", 'ModApi.LogError("SessionStateStore.TryLoad", ex)'),
+        ("ModApi.cs", 'ModLog.LogError("RealEarth failed to init", ex)'),
+        ("ModApi.cs", 'ModLog.LogWarn("Harmony bootstrap skipped", hex)'),
+        ("ModApi.cs", 'ModLog.LogWarn("RuntimeHooks skipped", rex)'),
+        ("ModApi.cs", 'ModLog.LogWarn("BuildGuard skipped", gex)'),
+        ("HarmonyBootstrap.cs", 'ModLog.LogError("HarmonyBootstrap", ex)'),
+        ("SessionStateStore.cs", 'ModLog.LogError("SessionStateStore.TryLoad", ex)'),
     ):
         assert needle in _read(rel), f"{rel} must log the full exception: {needle}"
 
@@ -141,10 +141,11 @@ def test_config_write_failure_is_not_silent():
     catch = re.compile(r"catch\s*\(\s*Exception \w+\s*\)[^{]*\{").search(src, write)
     assert catch, "no catch around the default-config write"
     # The log may come after bookkeeping (the WriteFailed flag), so read the whole
-    # block instead of demanding the log as its first statement.
-    assert "ModApi.LogWarn(" in _block_after(
-        src, catch.end() - 1
-    ), "a failed default-config write must reach the log, not be ignored"
+    # block instead of demanding the log as its first statement. The exception has
+    # to come along too: the message names the path, not why the write failed.
+    assert re.search(
+        r"ModLog\.LogWarn\(.*?,\s*ex\)", _block_after(src, catch.end() - 1), re.S
+    ), "a failed default-config write must reach the log with the exception, not be ignored"
 
 
 def test_tick_path_logs_stay_one_line():
