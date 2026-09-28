@@ -19,6 +19,13 @@ namespace RealEarth
         const int KillPlaneMinIntervalMs = 500;
         static int _lastKillPlaneMs;
 
+        /// <summary>
+        /// Millisecond tick source with Environment.TickCount semantics (unchecked
+        /// wrap-safe deltas). Injectable so the kill-plane rescue throttle can be
+        /// stepped by virtual time in a deterministic harness instead of wall clock.
+        /// </summary>
+        internal static Func<int> TickNow { get; set; } = static () => Environment.TickCount;
+
         /// <summary>Reset on WorldReady so a new world can snap again.</summary>
         public static void ResetSession()
         {
@@ -254,7 +261,7 @@ namespace RealEarth
             if (session == null || !session.IsStreamed)
                 return;
 
-            int now = Environment.TickCount;
+            int now = TickNow();
             if (_lastKillPlaneMs != 0 && unchecked(now - _lastKillPlaneMs) < KillPlaneMinIntervalMs)
                 return;
 

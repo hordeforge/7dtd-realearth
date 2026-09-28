@@ -44,6 +44,13 @@ namespace RealEarth
         const int MinIntervalMs = 1000;
         static int _lastTickMs;
 
+        /// <summary>
+        /// Millisecond tick source with Environment.TickCount semantics (unchecked
+        /// wrap-safe deltas). Injectable so the throttle can be stepped by virtual
+        /// time in a deterministic harness instead of wall clock.
+        /// </summary>
+        internal static Func<int> TickNow { get; set; } = static () => Environment.TickCount;
+
         static MethodInfo? _addBuff;
         static MethodInfo? _removeBuff;
         static MethodInfo? _setCustomVar;
@@ -59,7 +66,7 @@ namespace RealEarth
         {
             try
             {
-                int now = Environment.TickCount;
+                int now = TickNow();
                 if (_lastTickMs != 0 && unchecked(now - _lastTickMs) < MinIntervalMs)
                     return;
                 _lastTickMs = now;

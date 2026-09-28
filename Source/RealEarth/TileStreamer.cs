@@ -45,7 +45,24 @@ namespace RealEarth
         /// </summary>
         internal Func<int> TickNow { get; set; } = static () => Environment.TickCount;
 
+        /// <summary>
+        /// Backoff between in-flight claims in <see cref="WaitForHotOrClaim"/>. Paired
+        /// with <see cref="TickNow"/>: both must be injectable, or a harness that
+        /// freezes virtual time spins on real milliseconds and its wait never times out.
+        /// </summary>
+        internal static Action<int> SleepMs { get; set; } = static ms => System.Threading.Thread.Sleep(ms);
+
+        /// <summary>
+        /// Dispatch for the fire-and-forget async load. The default hands it to the
+        /// thread pool, which makes the order in which tiles become hot a function of
+        /// OS scheduling; a harness passes a dispatcher that runs the load inline so
+        /// completion order is chosen, not raced for.
+        /// </summary>
+        internal static Action<Func<Task>> DispatchAsyncLoad { get; set; } = static body => _ = body();
+
         const int MissCacheMs = 10_000;
+        /// <summary>Wait slice between in-flight claim retries (see SleepMs).</summary>
+        const int ClaimRetrySliceMs = 5;
         /// <summary>
         /// Deadline for the streamed CDN body copy (matches the HttpClient header
         /// timeout; see FetchTileBytesAsync for why the body needs its own bound).
@@ -444,7 +461,7 @@ namespace RealEarth
                         return true;
                     }
                 }
-                System.Threading.Thread.Sleep(5);
+                SleepMs(ClaimRetrySliceMs);
             }
         }
 
@@ -547,7 +564,7 @@ namespace RealEarth
                 start = _loadInFlight.Add(key);
             }
             if (!start) return;
-            _ = LoadTileFireAndForget(tx, tz, path, key, fromCdn);
+            DispatchAsyncLoad(() => LoadTileFireAndForget(tx, tz, path, key, fromCdn));
         }
 
         void TryLoadLocalSync(int tx, int tz, string path, long key)

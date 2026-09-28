@@ -154,3 +154,48 @@ def test_cdn_tile_decode_precedes_durable_publish():
     assert cdn_branch.index("RteTile.Decode") < cdn_branch.index(
         "PublishTileBytes"
     ), "async CDN path must decode-validate before publishing to disk"
+
+
+def test_per_tick_throttles_run_on_the_injected_clock():
+    """Every time-gated per-tick decision must read the injectable TickNow seam,
+    not Environment.TickCount. A wall-clock read makes the gate unsteppable: a
+    harness driving virtual time can neither reproduce nor advance the throttle,
+    so the same input run produces different buff/lon-lat/rescue state."""
+    for rel, marker in (
+        ("AltitudeClimateTick.cs", "MinIntervalMs"),
+        ("LonLatHudTick.cs", "MinIntervalMs"),
+        ("FallSpawnRetune.cs", "KillPlaneMinIntervalMs"),
+    ):
+        src = _read(rel)
+        assert "internal static Func<int> TickNow" in src, f"{rel}: no TickNow seam"
+        body = src[src.index(marker) :]
+        assert "TickNow()" in body, f"{rel}: throttle does not read the injected clock"
+        # One occurrence, the seam's own default; any other is a raw wall-clock read.
+        code = re.sub(r"///.*|//.*", "", src)
+        assert (
+            code.count("Environment.TickCount") == 1
+        ), f"{rel}: raw Environment.TickCount left in a time-driven decision"
+
+
+def test_async_tile_load_dispatch_and_claim_wait_are_injectable():
+    """The two places the streamer hands control to the OS: the fire-and-forget
+    load dispatch (completion order = hot-set contents) and the in-flight claim
+    wait (real-time spin against a virtual clock). Both need a seam before any
+    scheduler can step them."""
+    src = _read("TileStreamer.cs")
+    assert "internal static Action<Func<Task>> DispatchAsyncLoad" in src
+    queue = _method_body(
+        src,
+        r"void QueueLoad\(int tx, int tz, string path, long key, bool fromCdn\)",
+        "\n        void TryLoadLocalSync(",
+    )
+    assert "DispatchAsyncLoad(" in queue, "async load must go through the dispatch seam"
+    assert "Task.Run" not in queue, "queueing must not start the load on an OS thread directly"
+    assert "internal static Action<int> SleepMs" in src
+    claim = _method_body(
+        src,
+        r"bool WaitForHotOrClaim\(long key, int maxWaitMs\)",
+        "\n        void TryLoadCdnSync(",
+    )
+    assert "SleepMs(ClaimRetrySliceMs)" in claim
+    assert "Thread.Sleep" not in claim, "claim wait must not burn real milliseconds"

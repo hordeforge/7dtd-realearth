@@ -110,9 +110,7 @@ def test_config_validate_exists_and_runs_at_init():
     manifest = api.index("TryApplyPackManifest(tileRoot, Config);")
     validate = api.index("foreach (var warning in Config.Validate())")
     first_use = api.index("new EarthCoords(", validate)
-    assert (
-        load < manifest < validate < first_use
-    ), (
+    assert load < manifest < validate < first_use, (
         "InitMod must Load, then apply the pack manifest, then run Config.Validate() "
         "in InitMod, after the pack manifest and before the config is used"
     )
