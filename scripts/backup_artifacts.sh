@@ -47,6 +47,15 @@ ARTIFACT_DIRS=(worlds data/samples data/cache viewer/data)
 # each of those trees came from.
 EXTRA_PREFIX=realearth-extra
 TARGET_FILE=.realearth-target
+
+# Inventory member inside every archive: which ARTIFACT_DIRS were in it, which
+# were absent when it was written, and every out-of-tree target. Without it a
+# restore of an archive that never contained data/cache/ is indistinguishable
+# from a complete one, which is the narrowing this script exists to prevent.
+# Only the tree shape is recorded (no stamp, no host, no paths outside the
+# extras), so an unchanged tree still produces identical manifest bytes.
+MANIFEST_NAME=realearth-backup-manifest.txt
+MANIFEST_SCHEMA=1
 EXTRA_SPEC="${RE_BACKUP_EXTRA_PATHS:-}"
 EXTRA_LABELS=()
 EXTRA_PATHS=()
@@ -115,6 +124,25 @@ stage_extras() {
   done
 }
 
+# Record what went into the archive. Deterministic on purpose: the same tree
+# and the same RE_BACKUP_EXTRA_PATHS must yield the same manifest, so an
+# unchanged backup is still byte-comparable. The run's stamp and host go in a
+# .meta sidecar instead, which restore does not need.
+write_manifest() {
+  local stage="$1" dirs="$2" d
+  {
+    echo "realearth-artifact-manifest $MANIFEST_SCHEMA"
+    echo "included:${dirs:+ ${dirs//$'\n'/ }}"
+    for d in "${ARTIFACT_DIRS[@]}"; do
+      [[ -d "$ROOT/$d" ]] || echo "absent: $d"
+    done
+    local i
+    for i in "${!EXTRA_LABELS[@]}"; do
+      echo "extra: ${EXTRA_LABELS[$i]}=${EXTRA_PATHS[$i]}"
+    done
+  } >"$stage/$MANIFEST_NAME"
+}
+
 # Drop archives older than the newest KEEP. Runs only after the new archive
 # passed its checksum gate, so a failed backup never prunes the last good one.
 prune_old_archives() {
@@ -129,7 +157,7 @@ prune_old_archives() {
   )
   ((${#old[@]})) || return 0
   for f in "${old[@]}"; do
-    rm -f -- "$f" "$f.sha256"
+    rm -f -- "$f" "$f.sha256" "$f.meta"
     echo "Pruned old archive: $(basename "$f")"
   done
 }
@@ -196,23 +224,29 @@ cmd_backup() {
     die "tar failed while writing $archive"
   fi
 
-  # Out-of-tree state goes in under EXTRA_PREFIX. -h is scoped to this
-  # invocation so it follows only the stage's own symlinks; symlinks already
-  # inside the artifact dirs keep archiving as links, as the create step did.
-  # The append targets the uncompressed staging file: a second gzip -czf on
-  # the archive would truncate the first one, and two concatenated gzip
-  # members lose all but the first when read back.
-  local stage=""
+  # Out-of-tree state goes in under EXTRA_PREFIX, and the inventory manifest
+  # alongside it. -h is scoped to the extras invocation so it follows only the
+  # stage's own symlinks; symlinks already inside the artifact dirs keep
+  # archiving as links, as the create step did. The append targets the
+  # uncompressed staging file: a second gzip -czf on the archive would
+  # truncate the first one, and two concatenated gzip members lose all but
+  # the first when read back.
+  local stage extra_args=()
+  stage="$(mktemp -d "$BACKUP_DIR/.stage-$stamp.XXXXXX")"
   if ((${#EXTRA_LABELS[@]})); then
-    stage="$(mktemp -d "$BACKUP_DIR/.stage-$stamp.XXXXXX")"
     stage_extras "$stage"
-    if ! tar -C "$stage" -rhf "$partial_tar" "$EXTRA_PREFIX"; then
-      rm -rf "$stage"
-      rm -f "$partial_tar"
-      die "tar failed while writing $archive"
-    fi
-    rm -rf "$stage"
+    extra_args+=("$EXTRA_PREFIX")
   fi
+  write_manifest "$stage" "$dirs"
+  extra_args+=("$MANIFEST_NAME")
+  # -f takes the archive as the next argument. extra_args are members, so the
+  # staging tar has to come first or tar treats the manifest name as the archive.
+  if ! tar -C "$stage" -rhf "$partial_tar" "${extra_args[@]}"; then
+    rm -rf "$stage"
+    rm -f "$partial_tar"
+    die "tar failed while writing $archive"
+  fi
+  rm -rf "$stage"
 
   if ! gzip -n -9 -c "$partial_tar" >"$partial"; then
     rm -f "$partial" "$partial_tar"
@@ -229,6 +263,14 @@ cmd_backup() {
     sha256sum "$(basename "$archive")" >"$(basename "$archive").sha256"
     sha256sum -c "$(basename "$archive").sha256" >/dev/null
   )
+  # Provenance of the run. Not needed to restore, so it stays a sidecar: only
+  # the .sha256 is a restore prerequisite.
+  {
+    echo "created_utc=$stamp"
+    echo "host=$(hostname 2>/dev/null || echo unknown)"
+    echo "root=$ROOT"
+    echo "archive=$(basename "$archive")"
+  } >"${archive}.meta"
 
   local size
   size="$(du -h "$archive" | cut -f1)"
@@ -239,6 +281,19 @@ cmd_backup() {
   if [[ "$BACKUP_DIR" == "$ROOT"/backups* ]]; then
     echo "WARNING: archive lives on the same disk as the data it protects." >&2
     echo "Copy it off-host (RE_BACKUP_DIR=/mnt/external ...) or instance loss still loses everything." >&2
+  fi
+  # An artifact dir that does not exist right now is not in this archive, and
+  # a restore months later cannot tell that from a directory that was empty.
+  local d
+  for d in "${ARTIFACT_DIRS[@]}"; do
+    [[ -d "$ROOT/$d" ]] || \
+      echo "WARNING: $d does not exist; it is NOT in this archive." >&2
+  done
+  # Save games are the one irreplaceable state, and they live outside the
+  # repo. An archive that does not name them says so on every run.
+  if ((${#EXTRA_LABELS[@]} == 0)); then
+    echo "WARNING: no RE_BACKUP_EXTRA_PATHS; dedicated-server save games are" >&2
+    echo "NOT in this archive (name them: RE_BACKUP_EXTRA_PATHS=\"saves=\$USERDATA/Saves\")." >&2
   fi
 
   # The terrarium cache is the only local copy of source tiles; if it was
