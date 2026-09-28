@@ -223,6 +223,15 @@ body {
   line-height: 1.4;
 }
 
+/* Why a control is inert, in text. A disabled button never fires a hover
+   event, so its own title attribute stays invisible. */
+.hint {
+  margin: 0 0 10px;
+  color: var(--muted);
+  font-size: var(--fs-micro);
+  line-height: 1.4;
+}
+
 .legend {
   display: grid;
   gap: 6px;

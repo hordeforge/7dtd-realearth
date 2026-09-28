@@ -41,6 +41,9 @@ const INVALID_COLOR_HEX = "#808080";
 // The globe draws a sphere with no canvas overlay, so the flat-map-only
 // controls do nothing there; they are disabled with this reason attached.
 const FLAT_ONLY_HINT = "Flat map only. Switch to Flat map to use this.";
+const GL_SPIN_HINT = "Spinning applies to the globe only.";
+const NO_PLAYER_HINT =
+  "Jump to player needs a live position: serve data/player.json, or type coordinates below.";
 const OPACITY_PERCENT_SCALE = 100;
 // Set when the globe falls back from the flat-only streamed layer, so the
 // "Loaded" status does not immediately overwrite the explanation.
@@ -75,6 +78,13 @@ const LEGENDS: Record<string, ReadonlyArray<LegendRow>> = {
     ["#ff2020", "High"],
   ],
   hybrid: HYBRID_LEGEND,
+  // Streamed .rte tiles draw the grey relief ramp from rteLayer.ts, not a
+  // baked mosaic: sea stays blue, land runs from dark to light grey.
+  rte: [
+    ["#143ca0", "Sea (0 m)"],
+    ["#3c3c3c", "Low land"],
+    ["#f0f0f0", "High peaks (8849 m)"],
+  ],
 };
 
 function requiredElement<T extends Element>(elementType: new () => T, selector: string): T {
@@ -116,6 +126,7 @@ const els = {
   opacityValue: requiredElement(HTMLOutputElement, "#opacityValue"),
   gridField: requiredElement(HTMLElement, "#gridField"),
   opacityField: requiredElement(HTMLElement, "#opacityField"),
+  controlHint: requiredElement(HTMLParagraphElement, "#controlHint"),
 };
 
 type StatusTone = "info" | "error";
@@ -220,12 +231,26 @@ function fillLayers(meta: PackMeta): void {
   renderLegend(state.layerId);
 }
 
+// A disabled button swallows its own hover events, so a title attribute on
+// one never explains why the control is inert. Say the reason in text that
+// stays on screen.
+function updateControlHints(): void {
+  const reasons: Array<string> = [];
+  if (state.player === null) {
+    reasons.push(NO_PLAYER_HINT);
+  }
+  if (state.mode !== "globe") {
+    reasons.push(GL_SPIN_HINT);
+  }
+  els.controlHint.textContent = reasons.join(" ");
+  els.controlHint.hidden = reasons.length === 0;
+}
+
 function fmt(degrees: number): string {
   return Number.isNaN(degrees) ? "?" : degrees.toFixed(BBOX_DECIMALS);
 }
 
-function describePack(meta: PackMeta): void {
-  els.titleHud.textContent = meta.name === "" ? "RealEarth" : meta.name;
+function renderPackInfo(meta: PackMeta): void {
   const metersText = meta.meters_per_block > 0 ? `~${meta.meters_per_block} m/sample` : "";
   const viewText = meta.view_width > 0 ? ` · view ${meta.view_width}×${meta.view_height}` : "";
   const seaText = meta.sea_level_game_y > 0 ? ` · sea Y ${meta.sea_level_game_y}` : "";
@@ -260,6 +285,11 @@ function describePack(meta: PackMeta): void {
     }
     els.packInfo.append(document.createTextNode(line));
   }
+}
+
+function describePack(meta: PackMeta): void {
+  els.titleHud.textContent = meta.name === "" ? "RealEarth" : meta.name;
+  renderPackInfo(meta);
 }
 
 function elevationAt(u: number, v: number): string {
@@ -549,6 +579,7 @@ function setModeButtons(mode: ViewerMode): void {
   els.opacityField.classList.toggle("disabled", !flat);
   els.gridField.title = flat ? "" : FLAT_ONLY_HINT;
   els.opacityField.title = flat ? "" : FLAT_ONLY_HINT;
+  updateControlHints();
 }
 
 // The globe has no streamed renderer. Leaving "Streamed elevation" selected
@@ -731,6 +762,7 @@ function applyPlayer(player: PlayerFix | null): void {
   }
   state.map2d?.setPlayer(player);
   state.globeInstance?.setPlayerMarker(player);
+  updateControlHints();
 }
 
 function refreshPlayer(): void {
@@ -862,7 +894,17 @@ els.btnJumpCoords.addEventListener("click", () => {
   setCoordinateInvalid(els.jumpLat, lat === null);
   setCoordinateInvalid(els.jumpLon, lon === null);
   if (lat === null || lon === null) {
-    setStatus("Jump needs lat in [-90, 90] and lon in [-180, 180]", "error");
+    // Name the field that failed: "lat and lon" leaves the user guessing which
+    // of the two red boxes to retype.
+    const problems: Array<string> = [];
+    if (lat === null) {
+      problems.push("Latitude must be a number in [-90, 90]");
+    }
+    if (lon === null) {
+      problems.push("Longitude must be a number in [-180, 180]");
+    }
+    setStatus(problems.join(" · "), "error");
+    (lat === null ? els.jumpLat : els.jumpLon).focus();
     return;
   }
   goTo({ lon, lat });
@@ -917,11 +959,11 @@ els.jsonFile.addEventListener("change", () => {
     .text()
     .then((text) => JSON.parse(text))
     .then((meta) => {
-      state.meta = packMetaFrom(meta);
-      fillLayers(state.meta);
-      setStatus("Use a served pack path for full layers. Meta only loaded for preview.");
-      els.packInfo.textContent =
-        "Loaded viewer.json from disk. Serve the export folder over HTTP and pick it in Dataset for images.";
+      // Preview only. Adopting the file's meta would leave state.meta paired
+      // with the previously loaded pack's images, so the next layer pick would
+      // draw those images under the file's bounding box and settlements.
+      renderPackInfo(packMetaFrom(meta));
+      setStatus("Metadata only. Serve the export folder and pick it in Dataset to draw its layers.");
     })
     .catch((error: unknown) => {
       setStatus(errorMessage(error), "error");
@@ -929,4 +971,5 @@ els.jsonFile.addEventListener("change", () => {
 });
 
 updateOpacityReadout();
+updateControlHints();
 await boot();

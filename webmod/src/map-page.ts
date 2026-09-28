@@ -35,6 +35,7 @@ let lastProbePoint: ProbePoint | null = null;
 // readout shows the dash.
 let elevRawCanvas: ElevRawCanvas | null = null;
 let elevRawPending = false;
+const NO_PACK_NOTE = "Shows once a pack loads.";
 
 type MapPageRefs = {
   map: { current: Map2D | null };
@@ -152,8 +153,8 @@ function updateProbe(
     return;
   }
   lastProbePoint = point;
-  setText(lonEl, `${point.lon.toFixed(PROBE_COORD_PRECISION)} deg`);
-  setText(latEl, `${point.lat.toFixed(PROBE_COORD_PRECISION)} deg`);
+  setText(lonEl, `${point.lon.toFixed(PROBE_COORD_PRECISION)}°`);
+  setText(latEl, `${point.lat.toFixed(PROBE_COORD_PRECISION)}°`);
   setText(uvEl, `${point.u.toFixed(PROBE_UV_PRECISION)}, ${point.v.toFixed(PROBE_UV_PRECISION)}`);
   ensureElevRaw(pack, () => updateProbe(probeEl, lastProbePoint, pack));
   setText(elevEl, elevationText(pack, point));
@@ -484,6 +485,9 @@ function renderStage(h: ElementFactory, refs: MapPageRefs, stageMessage: string)
 }
 
 function renderSide(h: ElementFactory, refs: MapPageRefs): unknown {
+  // Each side panel starts with a line saying what will fill it, so a pack
+  // that is still loading reads as empty rather than broken. Loading the pack
+  // replaces the text through the same refs.
   return h(
     "aside",
     { className: "re-side" },
@@ -491,7 +495,7 @@ function renderSide(h: ElementFactory, refs: MapPageRefs): unknown {
       "section",
       { className: "re-panel" },
       h("h2", null, "Legend"),
-      h("div", { ref: refs.legend, className: "re-legend" })
+      h("div", { ref: refs.legend, className: "re-legend" }, h("p", { className: "re-muted" }, NO_PACK_NOTE))
     ),
     h(
       "section",
@@ -510,7 +514,7 @@ function renderSide(h: ElementFactory, refs: MapPageRefs): unknown {
       "section",
       { className: "re-panel" },
       h("h2", null, "Pack"),
-      h("div", { ref: refs.packInfo, className: "re-pack-info" })
+      h("div", { ref: refs.packInfo, className: "re-pack-info" }, h("p", { className: "re-muted" }, NO_PACK_NOTE))
     )
   );
 }
