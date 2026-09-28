@@ -1,0 +1,219 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>RealEarth viewer smoke harness</title>
+    <!--
+      Headless smoke harness driven by scripts/test-viewer-smoke.sh, which
+      loads this page in chromium with dump-dom and reads the PASS/FAIL lines
+      in the pre element below. It exercises the BUILT modules under
+      viewer/js/ through a real browser engine: pack loading and schema
+      rejection, .rte header and tile decoding, relief rendering, and input
+      event dispatch.
+
+      Tracked on purpose: without it the smoke gate cannot run from a clean
+      clone, because the page it needs would be a local artifact. The pack it
+      loads comes from viewer/data/catalog.json, so export one first
+      (make demo && make viewer).
+    -->
+    <script type="module">
+      import { loadPack, packMetaFrom } from "./js/pack.js";
+      import { RTE_MAGIC, parseRteHeader, decodeRteTile } from "./js/rte.js";
+      import { renderRteLayer } from "./js/rteLayer.js";
+
+      const out = document.getElementById("out");
+      const ELEVATION_FLOOR_M = -11_000;
+      const ELEVATION_CEILING_M = 9_000;
+
+      function report(name, ok, detail = "") {
+        out.append(`${ok ? "PASS" : "FAIL"} ${name}${detail ? `: ${detail}` : ""}\n`);
+      }
+
+      function assert(condition, message) {
+        if (!condition) {
+          throw new Error(message);
+        }
+      }
+
+      async function check(name, run) {
+        try {
+          await run();
+          report(name, true);
+        } catch (error) {
+          report(name, false, error instanceof Error ? error.message : String(error));
+        }
+      }
+
+      function rejects(run, expected, subject) {
+        let thrown = null;
+        try {
+          run();
+        } catch (error) {
+          thrown = error;
+        }
+        assert(thrown !== null, `${subject} was accepted`);
+        assert(
+          thrown.message.includes(expected),
+          `${subject} failed for an unrelated reason: ${thrown.message}`
+        );
+      }
+
+      async function firstTileBytes(base, meta) {
+        const tile = meta.tiles[0];
+        assert(tile !== undefined && typeof tile.tz === "number", "pack declares no tiles");
+        const response = await fetch(`${base}/tiles/${tile.tz}/${tile.tx}.rte`);
+        assert(response.ok, `tile fetch failed (HTTP ${response.status})`);
+        return { tx: tile.tx, tz: tile.tz, bytes: new Uint8Array(await response.arrayBuffer()) };
+      }
+
+      function inputRoundTrip(name, type, makeEvent) {
+        const target = document.getElementById("input-target");
+        const seen = [];
+        const onEvent = (event) => seen.push(event.type);
+        target.addEventListener(type, onEvent);
+        target.dispatchEvent(makeEvent(type));
+        target.removeEventListener(type, onEvent);
+        assert(seen.length === 1, `${name} dispatch delivered ${seen.length} events`);
+      }
+
+      // loadPack(baseUrl, path) joins path onto base, so a catalog pack path
+      // ("data/demo") is the second argument and the base stays empty.
+      async function runChecks(base) {
+        await check("pack: loads from the catalog", async () => {
+          const pack = await loadPack("", base);
+          assert(pack.meta.name !== "", "pack has no name");
+          assert(pack.layers.length > 0, "pack has no layers");
+          assert(pack.settlements.length > 0, "pack has no settlements");
+        });
+
+        await check("pack: rejects a pack with no layers", () => {
+          rejects(
+            () =>
+              packMetaFrom({
+                bbox: { west: 0, south: 0, east: 1, north: 1 },
+                sample_width: 8,
+                sample_height: 8,
+                meters_per_block: 1
+              }),
+            "no layers",
+            "a layerless pack"
+          );
+        });
+
+        await check("pack: rejects a degenerate bbox", () => {
+          rejects(
+            () =>
+              packMetaFrom({
+                bbox: { west: 10, south: 0, east: 10, north: 1 },
+                sample_width: 8,
+                sample_height: 8,
+                meters_per_block: 1,
+                layers: [{ id: "hybrid", file: "hybrid.png" }]
+              }),
+            "degenerate",
+            "a zero-width bbox"
+          );
+        });
+
+        await check("rte: header decodes", async () => {
+          const pack = await loadPack("", base);
+          const { tx, tz, bytes } = await firstTileBytes(base, pack.meta);
+          const header = parseRteHeader(bytes);
+          assert(
+            String.fromCharCode(...bytes.slice(0, 4)) === RTE_MAGIC,
+            "tile does not start with the RTE1 magic"
+          );
+          assert(header.tx === tx && header.tz === tz, "header indices do not match the pack");
+          assert(header.width > 0 && header.height > 0, "header has no extent");
+        });
+
+        await check("rte: tile decodes to elevation and landcover", async () => {
+          const pack = await loadPack("", base);
+          const { bytes } = await firstTileBytes(base, pack.meta);
+          const decoded = await decodeRteTile(bytes);
+          const header = decoded.header;
+          assert(
+            decoded.elevationM.length === header.width * header.height,
+            `elevation has ${decoded.elevationM.length} samples, header says ${header.width * header.height}`
+          );
+          let min = Infinity;
+          let max = -Infinity;
+          for (const value of decoded.elevationM) {
+            if (value < min) {
+              min = value;
+            }
+            if (value > max) {
+              max = value;
+            }
+          }
+          assert(max > min, `elevation is flat at ${min} m`);
+          assert(
+            min > ELEVATION_FLOOR_M && max < ELEVATION_CEILING_M,
+            `elevation outside the physical range (${min}..${max} m)`
+          );
+          assert(decoded.landcover !== null, "tile carries no landcover section");
+        });
+
+        await check("render: relief layer paints the decoded tile", async () => {
+          const pack = await loadPack("", base);
+          const { bytes } = await firstTileBytes(base, pack.meta);
+          const decoded = await decodeRteTile(bytes);
+          const canvas = document.getElementById("relief");
+          const ctx = canvas.getContext("2d", { willReadFrequently: true });
+          assert(ctx !== null, "no 2d context");
+          await renderRteLayer(canvas, ctx, [decoded], {
+            tileSize: decoded.header.width,
+            gridW: 1,
+            gridH: 1,
+            seaLevelGameY: pack.meta.sea_level_game_y,
+            metersPerBlock: pack.meta.meters_per_block
+          });
+          assert(canvas.width === decoded.header.width, "canvas was not sized to the tile");
+          const pixels = ctx.getImageData(0, 0, canvas.width, canvas.height).data;
+          const distinct = new Set();
+          for (let i = 0; i < pixels.length; i += 4) {
+            distinct.add(`${pixels[i]},${pixels[i + 1]},${pixels[i + 2]}`);
+          }
+          assert(distinct.size > 1, `relief canvas is one flat color (${[...distinct][0]})`);
+        });
+
+        await check("input: keyboard dispatch", () => {
+          inputRoundTrip("keyboard", "keydown", (type) => new KeyboardEvent(type, { key: "a" }));
+        });
+
+        await check("input: pointer dispatch", () => {
+          inputRoundTrip("pointer", "pointerdown", (type) => new PointerEvent(type, { bubbles: true }));
+        });
+
+        await check("input: touch dispatch", () => {
+          // Chromium only builds a TouchEvent from a Touch list, and headless
+          // has no touch device, so fall back to the bare event: the check
+          // asserts the listener fires, not that a touch was fabricated.
+          const make = (type) => {
+            try {
+              return new TouchEvent(type, { bubbles: true });
+            } catch {
+              return new Event(type, { bubbles: true });
+            }
+          };
+          inputRoundTrip("touch", "touchstart", make);
+        });
+      }
+
+      const catalog = await fetch("data/catalog.json").then((response) => response.json());
+      const packPath = catalog[0] !== undefined ? catalog[0].path : undefined;
+      if (typeof packPath !== "string") {
+        report("pack: catalog.json lists no pack", false, "export one: make demo && make viewer");
+      } else {
+        await runChecks(packPath);
+      }
+    </script>
+  </head>
+  <body>
+    <h1>RealEarth viewer smoke</h1>
+    <pre id="out"></pre>
+    <canvas id="relief" width="8" height="8"></canvas>
+    <div id="input-target"></div>
+  </body>
+</html>

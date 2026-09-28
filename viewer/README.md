@@ -148,6 +148,13 @@ make viewer-build
 make viewer-lint   # tsc --strict (viewer/tsconfig.json) + oxlint, anti-slop + strict
 ```
 
+`viewer/smoke.html` is the headless harness for `make viewer-smoke`: chromium
+loads it, it drives the built `js/` modules against the pack named in
+`viewer/data/catalog.json`, and it prints one PASS/FAIL line per check. Run
+`make demo && make viewer` first so the harness has a pack to load.
+`viewer/package.json` declares the viewer sources' `three` dependency for the
+oxlint dependency rule; nothing is installed from it.
+
 `make serve` rebuilds before serving. After editing, test both views, pack switching, settlement
 hover, cursor probing, and a narrow/mobile viewport.
 

@@ -29,11 +29,21 @@ src_dir="$root/viewer/src"
 #    npm package), oxlint-tsgolint (the type-aware backend), typescript,
 #    @types/three (globe.ts's importmap import of three), three itself and
 #    vnu-jar, all installed from the committed lockfile with hash
-#    verification. three is installed (not merely declared) so the
-#    @rikalabs/no-unlisted-external-imports rule sees it in the manifest
-#    dependencies while the repo itself stays free of a tracked package.json.
-#    The same cache dir serves the webmod and HTML gates.
+#    verification. The same cache dir serves the webmod and HTML gates.
 bash "$root/scripts/install-js-toolchain.sh" "$cache_dir" >/dev/null
+
+# viewer/package.json declares the viewer sources' only external dependency.
+# @rikalabs/no-unlisted-external-imports resolves that manifest by walking up
+# from the linted file, so without it the rule reads whatever package.json
+# happens to sit above the clone (on a CI runner there is none, so the gate
+# passes there and fails on a developer machine) or falls back to the cache
+# manifest. The declared range must match the pin, or the type gate and the
+# vendored blobs would describe a different three than the one installed.
+grep -q "\"three\": \"$THREE_VERSION\"" "$root/viewer/package.json" ||
+  {
+    echo "ERROR: viewer/package.json must declare three $THREE_VERSION (scripts/toolchain-versions.env)" >&2
+    exit 1
+  }
 
 # 2. Type check (tsc --strict per viewer/tsconfig.json). Module resolution
 #    walks up from viewer/src, so a symlink from viewer/node_modules to the

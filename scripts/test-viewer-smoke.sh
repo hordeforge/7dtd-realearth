@@ -46,21 +46,24 @@ fi
 
 # A missing harness page is a missing prerequisite, not a smoke failure: the
 # browser would dump a 404 body and every check would report FAIL for a reason
-# that has nothing to do with the viewer.
-HARNESS="${RE_VIEWER_SMOKE_HARNESS:-$ROOT/viewer/data/smoke.html}"
-if ! curl -s -o /dev/null -f "http://127.0.0.1:${PORT}/data/smoke.html"; then
-  echo "realearth: viewer smoke cannot run, harness page not served at /data/smoke.html" >&2
-  echo "  expected: $HARNESS (export the demo pack: make viewer)" >&2
+# that has nothing to do with the viewer. The page is tracked (viewer/smoke.html);
+# the exported pack it loads is not (make demo && make viewer).
+HARNESS="${RE_VIEWER_SMOKE_HARNESS:-$ROOT/viewer/smoke.html}"
+HARNESS_URL="${RE_VIEWER_SMOKE_URL:-/smoke.html}"
+if ! curl -s -o /dev/null -f "http://127.0.0.1:${PORT}${HARNESS_URL}"; then
+  echo "realearth: viewer smoke cannot run, harness page not served at ${HARNESS_URL}" >&2
+  echo "  expected: $HARNESS" >&2
   exit 1
 fi
 
 timeout 60 "$CHROMIUM" --headless --no-sandbox --disable-gpu \
   --virtual-time-budget=15000 --run-all-compositor-stages-before-draw \
-  --dump-dom "http://127.0.0.1:${PORT}/data/smoke.html" 2>/dev/null >"$OUT" || true
+  --dump-dom "http://127.0.0.1:${PORT}${HARNESS_URL}" 2>/dev/null >"$OUT" || true
 
-# The harness writes one PASS/FAIL line per check into <pre id="out">.
-RESULTS="$(sed -n '/<pre id="out">/,$p' "$OUT" |
-  sed -e 's|.*<pre id="out">||' -e 's|</pre>.*||')"
+# The harness writes one PASS/FAIL line per check into <pre id="out">. Stop at
+# the closing tag: the rest of the dumped DOM would otherwise trail the report.
+RESULTS="$(sed -n '/<pre id="out">/,/<\/pre>/p' "$OUT" |
+  sed -e '1s|.*<pre id="out">||' -e '$s|</pre>.*||' -e '/<pre id="out">/d' -e '/<\/pre>/d')"
 [[ -n "$RESULTS" ]] || RESULTS="FAIL harness produced no output"
 echo "$RESULTS"
 rm -f "$OUT"

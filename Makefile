@@ -379,9 +379,12 @@ coverage:
 	cd $(TOOLS) && $(COV) report -m
 
 # Mirrors ci.yml (tools job) as far as a game-less machine allows: build needs
-# the installed game assemblies, everything else here is what CI checks.
-check: setup test-fast lint-python lint-shell lint-yaml build viewer-build viewer-lint viewer-smoke webmod-lint html-lint
-	@echo "OK check (setup + test-fast + lint-python + lint-shell + lint-yaml + build + viewer-build + viewer-lint + viewer-smoke + webmod-lint + html-lint)"
+# the installed game assemblies, everything else here is what CI checks. demo +
+# viewer export the pack the viewer smoke loads, so a clean clone reaches
+# viewer-smoke instead of stopping at its missing-prerequisite error.
+check: setup test-fast lint-python lint-shell lint-yaml demo viewer \
+	build viewer-build viewer-lint viewer-smoke webmod-lint html-lint
+	@echo "OK check (setup + test-fast + lint-python + lint-shell + lint-yaml + demo + viewer + build + viewer-build + viewer-lint + viewer-smoke + webmod-lint + html-lint)"
 
 # ---------------------------------------------------------------------------
 # Viewer

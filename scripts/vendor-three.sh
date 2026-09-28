@@ -4,7 +4,8 @@
 # works fully offline via the importmap and the committed files stay in sync
 # with the pinned version in toolchain-versions.env / js-toolchain.lock.
 #
-# The repo tracks no package.json: scripts/lint-viewer.sh installs the pinned
+# The repo installs nothing from viewer/package.json (it only declares the
+# dependency for the oxlint gate): scripts/lint-viewer.sh installs the pinned
 # three into a shared cache and symlinks viewer/node_modules at it, which is
 # what this script reads.
 #

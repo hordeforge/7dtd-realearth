@@ -20,7 +20,7 @@ root="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 source "$root/scripts/toolchain-versions.env"
 cache_dir="${XDG_CACHE_HOME:-$HOME/.cache}/realearth/oxlint-standards"
 
-html_files=("$root/viewer/index.html")
+html_files=("$root/viewer/index.html" "$root/viewer/smoke.html")
 css_files=("$root/viewer/css/app.css" "$root/webmod/styling.css")
 
 bash "$root/scripts/install-js-toolchain.sh" "$cache_dir" >/dev/null
