@@ -224,6 +224,42 @@ def multi_player_hot_tiles(
     return hot
 
 
+def cap_hot_tiles(
+    hot: set[tuple[int, int]],
+    foci: list[tuple[int, int]],
+    *,
+    tile_size: int = 512,
+    max_hot: int | None = 192,
+    tiles_x: int | None = None,
+    wrap_x: bool = True,
+) -> set[tuple[int, int]]:
+    """Hot set after the resident-tile cap (mirrors TileStreamer.TrimHotToCapLocked).
+
+    Keeps the max_hot tiles nearest a focus, so a decoded 512x512 tile (~1.5 MB)
+    cannot make the cache grow with player count. max_hot=None or <=0 leaves the
+    set untouched (cap disabled).
+    """
+    if max_hot is None or max_hot <= 0 or len(hot) <= max_hot:
+        return set(hot)
+    if not foci:
+        return set()
+
+    def dist_sq(tile: tuple[int, int]) -> tuple[int, int]:
+        tx, tz = tile[0] // tile_size, tile[1] // tile_size
+        best = None
+        for ex, ez in foci:
+            dx = abs(tx - ex // tile_size)
+            dz = abs(tz - ez // tile_size)
+            if wrap_x and tiles_x:
+                dx = min(dx, tiles_x - dx)
+            d = dx * dx + dz * dz
+            if best is None or d < best:
+                best = d
+        return (best if best is not None else 0, tx + tz * (tiles_x or 0))
+
+    return set(sorted(hot, key=dist_sq)[:max_hot])
+
+
 def tiles_to_evict(
     hot: set[tuple[int, int]],
     foci: list[tuple[int, int]],

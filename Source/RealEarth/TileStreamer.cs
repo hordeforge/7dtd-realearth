@@ -479,6 +479,7 @@ namespace RealEarth
                     _hot[key] = tile;
                     _missUntilTick.Remove(key);
                     _loadInFlight.Remove(key);
+                    TrimHotToCapLocked();
                 }
                 sw.Stop();
                 TileLoadStats.AddCdnOk(sw.ElapsedMilliseconds);
@@ -560,6 +561,7 @@ namespace RealEarth
                     _hot[key] = tile;
                     _missUntilTick.Remove(key);
                     _loadInFlight.Remove(key);
+                    TrimHotToCapLocked();
                 }
                 sw.Stop();
                 TileLoadStats.AddDiskOk(sw.ElapsedMilliseconds);
@@ -652,6 +654,7 @@ namespace RealEarth
                 {
                     _hot[key] = tile;
                     _missUntilTick.Remove(key);
+                    TrimHotToCapLocked();
                 }
                 sw.Stop();
                 if (fromCdn)
@@ -713,7 +716,68 @@ namespace RealEarth
                 }
                 foreach (var k in remove)
                     _hot.Remove(k);
+
+                TrimHotToCapLocked(centers);
             }
+        }
+
+        /// <summary>
+        /// Cap check for load-completion paths (disk, CDN, prefetch), which add tiles
+        /// without running focus eviction.
+        /// </summary>
+        void TrimHotToCapLocked()
+        {
+            if (_cfg.MaxHotTiles <= 0 || _hot.Count <= _cfg.MaxHotTiles)
+                return;
+            var centers = new List<(int tx, int tz)>(_foci.Count);
+            foreach (var kv in _foci)
+                centers.Add((kv.Value.tx, kv.Value.tz));
+            TrimHotToCapLocked(centers);
+        }
+
+        /// <summary>
+        /// Drop the tiles farthest from their nearest focus once the hot set passes
+        /// <see cref="RealEarthConfig.MaxHotTiles"/>. Focus-radius eviction alone grows
+        /// with player count (a decoded tile is ~1.5 MB), so the cap is what bounds
+        /// resident memory; the dropped tiles reload on demand.
+        /// </summary>
+        void TrimHotToCapLocked(List<(int tx, int tz)> centers)
+        {
+            int cap = _cfg.MaxHotTiles;
+            if (cap <= 0 || _hot.Count <= cap)
+                return;
+            if (centers.Count == 0)
+            {
+                _hot.Clear();
+                return;
+            }
+
+            var ranked = new List<(long distSq, long key)>(_hot.Count);
+            foreach (var kv in _hot)
+            {
+                int tx = (int)(kv.Key >> 32);
+                int tz = (int)(kv.Key & 0xffffffff);
+                long best = long.MaxValue;
+                foreach (var c in centers)
+                {
+                    long dx = Math.Abs((long)tx - c.tx);
+                    long dz = Math.Abs((long)tz - c.tz);
+                    if (_cfg.EnableLongitudeWrap)
+                    {
+                        int ntx = _coords.TilesX;
+                        if (ntx > 0)
+                            dx = Math.Min(dx, ntx - dx);
+                    }
+                    long d = dx * dx + dz * dz;
+                    if (d < best)
+                        best = d;
+                }
+                ranked.Add((best, kv.Key));
+            }
+            // Nearest first: the tail past the cap is what leaves the cache.
+            ranked.Sort();
+            for (int i = cap; i < ranked.Count; i++)
+                _hot.Remove(ranked[i].key);
         }
 
         bool IsWithinAnyFocus(int tx, int tz, List<(int tx, int tz)> centers, int keepRadius)

@@ -220,3 +220,29 @@ def test_ensure_hot_mirror_does_not_evict_other_foci():
     gone = tiles_to_evict(hot2, foci, tile_size=512, unload_radius=5)
     # Inject-only tiles far from both foci may go, player tiles must stay
     assert not (gone & hot)
+
+
+def test_hot_cache_cap_keeps_nearest_focus_tiles():
+    """Resident decoded tiles are ~1.5 MB each: the cap is the memory bound.
+
+    Mirrors TileStreamer.TrimHotToCapLocked: over the cap, the tiles farthest
+    from their nearest focus leave the cache and reload on demand.
+    """
+    from realearth.local_window import cap_hot_tiles
+
+    near = (1000, 2000)
+    far = (5_000_000, 8_000_000)
+    hot = multi_player_hot_tiles([near, far], tile_size=512, radius=2)
+    # 25 tiles per focus at radius 2; a 192 cap never binds for two groups.
+    assert len(cap_hot_tiles(hot, [near, far], max_hot=192)) == len(hot)
+
+    capped = cap_hot_tiles(hot, [near, far], max_hot=30)
+    assert len(capped) == 30
+    near_bubble = stream_tile_bubble(near[0], near[1], tile_size=512, radius=2)
+    far_bubble = stream_tile_bubble(far[0], far[1], tile_size=512, radius=2)
+    # Distance to the nearest focus, not to the first one: the far group keeps
+    # its own tiles instead of being emptied by the solo player's bubble.
+    assert len(capped & near_bubble) > 0
+    assert len(capped & far_bubble) > 0
+    # Cap disabled or already under the bound: unchanged.
+    assert cap_hot_tiles(hot, [near, far], max_hot=0) == hot

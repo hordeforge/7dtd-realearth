@@ -25,6 +25,17 @@ namespace RealEarth
         [DataMember] public int UnloadRadiusTiles { get; set; } = 4;
 
         /// <summary>
+        /// Ceiling on resident decoded .rte tiles. A decoded 512x512 tile costs about
+        /// 1.5 MB (float elevation + landcover + population), and the keep set is
+        /// (2*UnloadRadiusTiles+1)^2 tiles per focus, so without a ceiling the hot
+        /// cache grows with player count: ~120 MB per player at the 2/4 defaults,
+        /// unbounded on a busy dedicated server. Over the cap the tiles farthest
+        /// from their nearest focus are dropped and reload on demand. 0 disables.
+        /// </summary>
+        public const int DefaultMaxHotTiles = 192;
+        [DataMember] public int MaxHotTiles { get; set; } = DefaultMaxHotTiles;
+
+        /// <summary>
         /// Finite host world edge the engine allocates (not whole Earth, not all "loaded" mesh).
         /// Slides with absolute position. Keep small: 512–1024 is plenty if tiles inject on demand.
         /// Actual drawn/sim chunks are further limited by vanilla view/sim distance (often &lt;&lt; this).
@@ -332,6 +343,24 @@ namespace RealEarth
                 UnloadRadiusTiles = StreamRadiusTiles + 1;
                 warnings.Add(
                     $"UnloadRadiusTiles must exceed StreamRadiusTiles; reset to {UnloadRadiusTiles}.");
+            }
+            if (MaxHotTiles < 0)
+            {
+                MaxHotTiles = DefaultMaxHotTiles;
+                warnings.Add($"MaxHotTiles < 0; reset to {MaxHotTiles}.");
+            }
+            if (MaxHotTiles > 0)
+            {
+                // A cap below one focus's keep set evicts tiles the same focus is
+                // about to re-request, which turns the cache into a reload loop.
+                int oneFocusKeep = (2 * UnloadRadiusTiles + 1) * (2 * UnloadRadiusTiles + 1);
+                if (MaxHotTiles < oneFocusKeep)
+                {
+                    MaxHotTiles = oneFocusKeep;
+                    warnings.Add(
+                        $"MaxHotTiles must hold at least one unload bubble ({oneFocusKeep}); " +
+                        $"reset to {MaxHotTiles}.");
+                }
             }
             if (LocalWindowSize <= 0)
             {

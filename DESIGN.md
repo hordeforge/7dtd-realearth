@@ -333,11 +333,14 @@ Config product defaults (see `Config/realearth.json`):
   "LocalWindowSize": 1024,
   "TileSize": 512,
   "StreamRadiusTiles": 2,
+  "MaxHotTiles": 192,
   "EnableLongitudeWrap": false
 }
 ```
 
 Shipped regional packs keep `EnableLongitudeWrap=false` until a full-planet pack is installed. Code and config share stream radii **2/4** with the default JSON.
+
+`MaxHotTiles` bounds resident decoded tiles. A decoded 512×512 `.rte` is ~1.5 MB (float elevation + landcover + population) and the keep set is `(2·UnloadRadiusTiles+1)²` tiles per focus, so focus-radius eviction alone grows the cache with player count (~120 MB per player at 2/4). Past the cap the tiles farthest from their nearest focus leave the cache and reload on demand; `Validate` refuses a cap below one unload bubble, which would reload-loop a single focus. The MP profile ships 384 for 3/5 radii.
 
 Install path for product height: **`make install`** (the mod hot-patches the YDim expand at boot), not “mod only + compress.”
 

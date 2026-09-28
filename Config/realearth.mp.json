@@ -8,6 +8,7 @@
   "TileSize": 512,
   "StreamRadiusTiles": 3,
   "UnloadRadiusTiles": 5,
+  "MaxHotTiles": 384,
   "LocalWindowSize": 512,
   "MultiplayerOriginMode": "SharedFixed",
   "EnableLongitudeWrap": false,

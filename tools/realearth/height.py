@@ -1,8 +1,9 @@
 """Map real elevation (meters ASL) into 7DTD game Y.
 
 Stock ceiling ~255. RealEarth engine-height mod targets ENGINE_TARGET_MAX_Y
-(11000; sea 100 + Everest + fly room) with optional 1 m = 1 block (profile
-one_to_one). .rte keeps real meters; mapping happens when writing game terrain / inject.
+(29000; sea 16000 + airliner cruise + fly room) with optional 1 m = 1 block
+(profile one_to_one). .rte keeps real meters; mapping happens when writing
+game terrain / inject.
 """
 
 from __future__ import annotations
