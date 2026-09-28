@@ -141,8 +141,23 @@ install_mod() {
   [[ -f "$ROOT/Config/nav_objects.xml" ]] && cp -f "$ROOT/Config/nav_objects.xml" "$stage/Config/"
   [[ -f "$ROOT/Config/spawning.xml" ]] && cp -f "$ROOT/Config/spawning.xml" "$stage/Config/"
   [[ -f "$ROOT/Config/buffs.xml" ]] && cp -f "$ROOT/Config/buffs.xml" "$stage/Config/"
-  [[ -f "$ROOT/Config/realearth.advanced_height.json" ]] && \
-    cp -f "$ROOT/Config/realearth.advanced_height.json" "$stage/Config/"
+  [[ -f "$ROOT/Config/gamestages.xml" ]] && cp -f "$ROOT/Config/gamestages.xml" "$stage/Config/"
+  # XUi lon/lat HUD windows (soft gap 31); without Config/XUi_InGame the
+  # ShowLonLatHud cvar has no window to bind to.
+  if [[ -d "$ROOT/Config/XUi_InGame" ]]; then
+    mkdir -p "$stage/Config/XUi_InGame"
+    cp -f "$ROOT/Config/XUi_InGame/"*.xml "$stage/Config/XUi_InGame/" 2>/dev/null || true
+  fi
+  # SharedFixed multiplayer template, same set the release zip carries
+  # (scripts/package_mod.sh), so a dedicated install and a downloaded package
+  # are the same mod folder.
+  [[ -f "$ROOT/Config/realearth.mp.json" ]] && cp -f "$ROOT/Config/realearth.mp.json" "$stage/Config/"
+  # The mod folder is redistributed standalone (server packs, mod sites) and
+  # MIT requires the license text to travel with it; CHANGELOG/ATTRIBUTION
+  # name the shipped versions and the bundled data sources.
+  cp "$ROOT/LICENSE" "$stage/"
+  cp "$ROOT/ATTRIBUTION.md" "$stage/" 2>/dev/null || true
+  cp "$ROOT/CHANGELOG.md" "$stage/" 2>/dev/null || true
 
   # MAP_MODE validated up front (see top of script); Streamed is the 1:1 inject default
   local map_mode="$MAP_MODE"

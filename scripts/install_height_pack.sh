@@ -88,6 +88,8 @@ install_one() {
   fi
   cp -f "$ROOT/ModInfo.xml" "$dest/"
   cp -f "$DLL" "$dest/"
+  # The mod folder is redistributed standalone; MIT requires the license text.
+  cp -f "$ROOT/LICENSE" "$dest/"
   rm -rf "$dest/Data/tiles"
   mkdir -p "$dest/Data/tiles"
   if [[ -d "$PACK/tiles" ]]; then

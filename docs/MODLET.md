@@ -34,9 +34,25 @@ From an installed mod folder (after `make package`):
 
 ```text
 Mods/RealEarth/
+ ModInfo.xml
  RealEarth.dll
+ LICENSE
+ ATTRIBUTION.md
+ CHANGELOG.md
  Config/realearth.json
+ Config/realearth.mp.json
+ Config/realearth.advanced_height.json
+ Config/nav_objects.xml
+ Config/spawning.xml
+ Config/gamestages.xml
+ Config/buffs.xml
+ Config/XUi_InGame/{xui,windows}.xml
+ Data/tiles/
 ```
+
+`make package` adds `Docs/` (INSTALL.md, MODLET.md, HEIGHT_LIMITS.md) and
+`WebMod/` (the stock dashboard webui) on top of the folder `make install`
+writes; both paths ship the same mod payload.
 
 The mod hot-patches the YDim expand at boot; no Tools/ step is needed. The
 log should show `YDim=32768 / ENGINE EXPANDED`.

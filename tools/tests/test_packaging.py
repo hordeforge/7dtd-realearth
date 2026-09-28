@@ -71,6 +71,33 @@ def test_package_mod_does_not_ship_repo_hub_docs():
     assert 'cp "$ROOT/docs/INDEX.md" "$OUT/Docs/"' not in src
 
 
+def test_install_ships_the_same_mod_file_set_as_the_release_zip():
+    """`make install` and the release zip produce the same mod folder: a
+    dedicated install that silently lacks gamestages, the XUi lon/lat windows,
+    the multiplayer template, or the license text is a mod that behaves
+    differently from the downloaded package."""
+    install = _read("scripts/install_proton.sh")
+    for marker in (
+        "Config/gamestages.xml",
+        "Config/XUi_InGame",
+        "Config/realearth.mp.json",
+        'cp "$ROOT/LICENSE"',
+    ):
+        assert marker in install, f"install_proton.sh does not ship {marker}"
+
+
+def test_wheel_ships_the_mit_license_text():
+    """MIT requires the license text in every copy. The build backend globs
+    license-files inside the project dir only, so the wheel/sdist carry
+    tools/LICENSE; a "../LICENSE" pattern instead yields an sdist member
+    literally named "../LICENSE" (path traversal) and no license in the wheel.
+    """
+    pyproject = _read("tools/pyproject.toml")
+    assert re.search(r"^license-files = \[[^\]]*\]$", pyproject, re.M)
+    assert not re.search(r"^license-files = .*\.\./", pyproject, re.M)
+    assert (ROOT / "tools" / "LICENSE").read_text(encoding="utf-8") == _read("LICENSE")
+
+
 # install_proton.sh sources these at the top; the fake root has to carry the
 # whole closure or the run dies on a missing helper before it reaches the
 # guard under test.

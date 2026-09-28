@@ -2,7 +2,12 @@
 name = "realearth-tools"
 description = "Offline pipeline: real-world Earth data → 7 Days to Die RealEarth tiles"
 readme = "README.md"
-license = { text = "MIT" }
+license = "MIT"
+# MIT requires the license text in every copy; tools/LICENSE is byte-identical
+# to the repo-root LICENSE (pinned by tests/test_packaging.py) because the
+# build backend globs only inside the project dir: a "../LICENSE" pattern
+# ships an sdist member named "../LICENSE", a path-traversal entry.
+license-files = ["LICENSE"]
 requires-python = ">=3.11"
 # Single source of truth for the version is realearth/__init__.py (__version__),
 # resolved by hatchling at build time so the two cannot disagree.

@@ -196,6 +196,16 @@ and the release gate requires both to match the tag (`v<version>`) and a dated
 
 ### Fixed
 
+- **`make install` now ships the same mod file set as the release zip.**
+  `scripts/install_proton.sh` was missing `Config/gamestages.xml`, the
+  `Config/XUi_InGame` lon/lat HUD windows, the `Config/realearth.mp.json`
+  multiplayer template, and the license, attribution, and changelog text, so
+  a dedicated install ran a different mod folder than a downloaded package.
+- **The wheel and sdist now carry the MIT license text.** `license-files`
+  pointed at `../LICENSE`, which the build backend cannot reach: the wheel
+  shipped none and the sdist carried a member literally named `../LICENSE`.
+  `tools/LICENSE` is a byte-identical copy of the repo-root license (pinned
+  by `tests/test_packaging.py`).
 - **`make sbom` output is now reproducible.** `scripts/sbom.py` fills the SPDX
   `creationInfo.created` field from `SOURCE_DATE_EPOCH` when it is exported,
   the same convention `scripts/package_zip.sh` already follows. Without it two
