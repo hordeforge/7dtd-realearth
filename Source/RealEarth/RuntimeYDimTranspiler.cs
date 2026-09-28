@@ -280,7 +280,7 @@ namespace RealEarth
             catch (Exception ex)
             {
                 IsActive = false;
-                ModApi.LogError($"RuntimeYDimTranspiler: {ex.GetType().Name}: {ex.Message}");
+                ModApi.LogError("RuntimeYDimTranspiler", ex);
             }
         }
 

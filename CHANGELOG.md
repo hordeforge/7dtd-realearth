@@ -12,6 +12,23 @@ and the release gate requires both to match the tag (`v<version>`).
 
 ## [Unreleased]
 
+### Changed
+
+- **`reinject` now reports tile-load latency and log suppression.** Tile
+  load counters carry avg / last / max milliseconds per source (disk, CDN),
+  and a new `suppressedLogLines(...)` line shows how many failure lines the
+  per-tile / per-chunk / per-tick log budgets refused to print. A nonzero
+  count means the server log understates the failure rate, not that the
+  failures stopped.
+- **Tile-load failures are budgeted and carry their target.** An unreadable
+  tile root or a dead CDN no longer writes one ERROR per tile per miss window;
+  the failures are counted instead, and each printed line names the tile path
+  or CDN URL, the elapsed milliseconds, and (at Error level, for one-shot
+  init and save/load paths) the exception stack on a single line.
+- **A corrupt session snapshot is no longer skipped silently.**
+  `SessionStateStore` names the file and its size when it cannot parse one,
+  instead of leaving the world to restart at the config spawn with no trace.
+
 ## [0.5.1] - 2026-09-21
 
 ### Removed

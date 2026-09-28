@@ -606,28 +606,29 @@ namespace RealEarth
     {
         // Log budgets are cross-thread: _injectErrLogBudget is consumed by the
         // chunk-generation thread (GenerateTerrain/ChunkIndex postfixes) while
-        // WorldReadyPostfix resets it on the main thread; plain RMW would race.
-        static int _peakLogBudget = 3;
+        // WorldReadyPostfix resets it on the main thread; LogBudget does the
+        // read-modify-write atomically. Each budget counts what it refuses to
+        // print; `reinject` reports those totals as suppressedErr so a truncated
+        // log cannot read as a failure that stopped.
+        static readonly LogBudget _peakLogBudget = new LogBudget(3);
         /// <summary>Budget for tick-path errors so persistent failures stay visible without spam.</summary>
-        static int _tickErrLogBudget = 8;
+        static readonly LogBudget _tickErrLogBudget = new LogBudget(8);
         /// <summary>Budget for inject-path errors: a swallowed gen/inject exception otherwise
         /// looks like "terrain is stock RWG under RealEarth" with zero trace.</summary>
-        static int _injectErrLogBudget = 8;
+        static readonly LogBudget _injectErrLogBudget = new LogBudget(8);
         /// <summary>
         /// Budget for player-unload errors: a persistently throwing unload postfix pins
         /// departed players' bubble tiles hot until the stale-focus TTL fires.
         /// </summary>
-        static int _unloadErrLogBudget = 4;
+        static readonly LogBudget _unloadErrLogBudget = new LogBudget(4);
         /// <summary>Hoisted: TryGetEntityId runs every frame per player (no per-call alloc).</summary>
         static readonly string[] EntityIdMemberNames = { "entityId", "EntityId", "EntityID" };
 
-        /// <summary>
-        /// Consume one budget slot atomically (gen thread + main thread share them).
-        /// </summary>
-        static bool ConsumeBudget(ref int budget) => Interlocked.Decrement(ref budget) >= 0;
-
-        static void ResetBudget(ref int budget, int value)
-            => Interlocked.Exchange(ref budget, value);
+        /// <summary>Failure lines these paths refused to print, by budget.</summary>
+        public static string SuppressedLogSummary() =>
+            $"tick={_tickErrLogBudget.Suppressed} inject={_injectErrLogBudget.Suppressed} " +
+            $"unload={_unloadErrLogBudget.Suppressed} peak={_peakLogBudget.Suppressed} " +
+            $"tile={TileStreamer.LoadErrorBudget.Suppressed}";
 
         public static void PlayerTickPostfix(object __instance)
         {
@@ -718,7 +719,7 @@ namespace RealEarth
                             // Never break the slide path, but a failed reinject leaves loaded
                             // chunks desynced (the exact symptom this call exists to close);
                             // log so "world looks torn after slide" stays debuggable.
-                            if (ConsumeBudget(ref _tickErrLogBudget))
+                            if (_tickErrLogBudget.Allow())
                             {
                                 ModApi.LogWarn(
                                     $"Origin slide reinject error: {ex.GetType().Name}: {ex.Message}");
@@ -745,7 +746,7 @@ namespace RealEarth
                 {
                     RuntimePoiInject.TickPlayer(x, z);
                 }
-                if (ChunkTerrainInject.SessionInjectCount > 0 && ConsumeBudget(ref _peakLogBudget))
+                if (ChunkTerrainInject.SessionInjectCount > 0 && _peakLogBudget.Allow())
                 {
                     ModApi.Log(
                         $"Height inject stats: count={ChunkTerrainInject.SessionInjectCount} " +
@@ -759,7 +760,7 @@ namespace RealEarth
             {
                 // Never break the gameplay loop, but do not fail silently either:
                 // a stuck tick path otherwise looks like "tiles never stream" with zero trace.
-                if (ConsumeBudget(ref _tickErrLogBudget))
+                if (_tickErrLogBudget.Allow())
                 {
                         ModApi.LogWarn($"PlayerTick postfix error: {ex.GetType().Name}: {ex.Message}");
                 }
@@ -825,7 +826,7 @@ namespace RealEarth
             {
                 // never break unload path, but a repeated failure here pins departed
                 // players' tiles hot (bubble leak) and must not be invisible.
-                if (ConsumeBudget(ref _unloadErrLogBudget))
+                if (_unloadErrLogBudget.Allow())
                 {
                     ModApi.LogWarn(
                         $"PlayerUnload postfix error: {ex.GetType().Name}: {ex.Message}");
@@ -903,9 +904,14 @@ namespace RealEarth
                 FallSpawnRetune.ResetSession();
                 RuntimePoiInject.Reset();
                 ChunkTerrainInject.ResetSessionCounters();
-                ResetBudget(ref _tickErrLogBudget, 8);
-                ResetBudget(ref _injectErrLogBudget, 8);
-                ResetBudget(ref _unloadErrLogBudget, 4);
+                _tickErrLogBudget.Reset(8);
+                _injectErrLogBudget.Reset(8);
+                _unloadErrLogBudget.Reset(4);
+                // Refill the stats-line budget too: otherwise a second world load in
+                // the same process (listen server, world switch) prints no inject
+                // stats at all and looks like a dead instrument.
+                _peakLogBudget.Reset(3);
+                TileStreamer.LoadErrorBudget.Reset(TileStreamer.LoadErrorLogSlots);
                 try
                 {
                     var snap = SessionStateStore.Capture(session, cfg);
@@ -1052,7 +1058,7 @@ namespace RealEarth
             {
                 // Never break chunk gen, but do not fail silently: an aborted density
                 // rewrite leaves stock RWG terrain that looks like a streaming bug.
-                if (ConsumeBudget(ref _injectErrLogBudget))
+                if (_injectErrLogBudget.Allow())
                 {
                     ModApi.LogError(
                         $"GenerateTerrain postfix error: {ex.GetType().Name}: {ex.Message}");
@@ -1080,7 +1086,7 @@ namespace RealEarth
             {
                 // Prefetch-only path: TileStreamer logs its own load failures; this logs
                 // mapping/reflection failures so tiles missing forever stays debuggable.
-                if (ConsumeBudget(ref _injectErrLogBudget))
+                if (_injectErrLogBudget.Allow())
                 {
                     ModApi.LogWarn($"ChunkIndex postfix error ({__0},{__1}): {ex.GetType().Name}: {ex.Message}");
                 }

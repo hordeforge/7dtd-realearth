@@ -12,7 +12,7 @@ namespace RealEarth
 
         public override string getHelp() =>
             "reinject          print inject patch binds + sample counters\n" +
-            "reinject reset    clear sample counters (not Harmony binds)\n" +
+            "reinject reset    clear sample and tile-load counters (not Harmony binds)\n" +
             "P1 needs height and/or GenerateTerrain patches bound after world load.";
 
         public override void Execute(List<string> _params, CommandSenderInfo _senderInfo)
@@ -21,7 +21,8 @@ namespace RealEarth
             if (sub == "reset")
             {
                 TileSamplePolicy.ResetCounters();
-                Out("[RealEarth] reinject: sample counters cleared.");
+                TileLoadStats.Reset();
+                Out("[RealEarth] reinject: sample and tile-load counters cleared.");
                 return;
             }
 
@@ -33,6 +34,9 @@ namespace RealEarth
                 $"  minimalInjectBinding={InjectPatchStats.HasMinimalInjectBinding} " +
                 $"productInjectBinding={InjectPatchStats.HasProductInjectBinding} " +
                 $"injectBlocked={ChunkTerrainInject.InjectBlocked}");
+            // Lines the hot paths refused to print. Nonzero here means the log above
+            // understates the failure rate, not that the failures stopped.
+            Out("  suppressedLogLines(" + HooksImpl.SuppressedLogSummary() + ")");
             Out(
                 $"  dualFillMax={ChunkTerrainInject.EffectiveFullDualFillMaxSurface()} " +
                 $"sessionPeak={ChunkTerrainInject.SessionPeakHeight} " +

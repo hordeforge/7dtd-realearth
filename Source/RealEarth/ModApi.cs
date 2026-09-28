@@ -125,7 +125,7 @@ namespace RealEarth
                 }
                 catch (Exception hex)
                 {
-                    LogWarn($"Harmony bootstrap skipped: {hex.GetType().Name}: {hex.Message}");
+                    LogWarn("Harmony bootstrap skipped", hex);
                 }
 
                 try
@@ -134,7 +134,7 @@ namespace RealEarth
                 }
                 catch (Exception rex)
                 {
-                    LogWarn($"RuntimeHooks skipped: {rex.GetType().Name}: {rex.Message}");
+                    LogWarn("RuntimeHooks skipped", rex);
                 }
 
                 // Fail-closed build guard: hash Assembly-CSharp and compare against
@@ -150,12 +150,12 @@ namespace RealEarth
                 }
                 catch (Exception gex)
                 {
-                    LogWarn($"BuildGuard skipped: {gex.GetType().Name}: {gex.Message}");
+                    LogWarn("BuildGuard skipped", gex);
                 }
             }
             catch (Exception ex)
             {
-                LogError($"RealEarth failed to init: {ex}");
+                LogError("RealEarth failed to init", ex);
             }
         }
 
@@ -229,6 +229,37 @@ namespace RealEarth
         public static void LogWarn(string msg) => Emit(LogLevel.Warn, msg);
 
         /// <summary>
+        /// One-line rendering of an exception: type, message, and the stack chain as
+        /// " | at Frame" segments, inner exceptions appended as " &lt;-". A raw ToString()
+        /// would be folded into an unreadable run by StripControlChars at Emit, and a
+        /// multi-line entry would break the server log parser. Use this on paths that
+        /// fire once (init, patch install, save/load) where the operator has no
+        /// debugger; budgeted per-tick/per-chunk paths keep the compact
+        /// "{Type}: {Message}" form so a repeated failure stays one short line.
+        /// </summary>
+        internal static string Describe(Exception ex)
+        {
+            if (ex == null) return "(null exception)";
+            var sb = new StringBuilder(256);
+            for (var e = ex; e != null; e = e.InnerException)
+            {
+                if (sb.Length > 0) sb.Append(" <- ");
+                sb.Append(e.GetType().Name).Append(": ").Append(e.Message);
+                string stack = e.StackTrace;
+                if (string.IsNullOrEmpty(stack)) continue;
+                foreach (string raw in stack.Split('\n'))
+                {
+                    string frame = raw.Trim();
+                    if (frame.Length > 0) sb.Append(" | ").Append(frame);
+                }
+            }
+            return sb.ToString();
+        }
+
+        public static void LogWarn(string msg, Exception ex) =>
+            Emit(LogLevel.Warn, msg + ": " + Describe(ex));
+
+        /// <summary>
         /// Product runtime YDim hot-patch: create the Harmony instance
         /// (same recipe as RuntimeHooks) and install the transpiler set, then
         /// re-init EngineHeightMod so EngineExpanded/allocY reflect IsActive.
@@ -256,10 +287,12 @@ namespace RealEarth
             }
             catch (Exception ex)
             {
-                LogWarn($"RuntimeYDimTranspiler install failed: {ex.GetType().Name}: {ex.Message}");
+                LogWarn("RuntimeYDimTranspiler install failed", ex);
             }
         }
         public static void LogError(string msg) => Emit(LogLevel.Error, msg);
+        public static void LogError(string msg, Exception ex) =>
+            Emit(LogLevel.Error, msg + ": " + Describe(ex));
 
         /// <summary>
         /// Read earth.manifest.json next to tiles/ so Streamed mode uses pack world size
@@ -321,7 +354,7 @@ namespace RealEarth
             }
             catch (Exception ex)
             {
-                LogWarn($"Pack manifest skip: {ex.GetType().Name}: {ex.Message}");
+                LogWarn("Pack manifest skip", ex);
             }
         }
 

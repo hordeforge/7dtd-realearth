@@ -101,8 +101,7 @@ namespace RealEarth
             catch (Exception ex)
             {
                 Blocked = !allowUnknownBuild;
-                ModApi.LogError($"BuildGuard: hash failed ({ex.GetType().Name}: {ex.Message}); " +
-                                "build treated as UNKNOWN.");
+                ModApi.LogError("BuildGuard: hash failed, build treated as UNKNOWN", ex);
                 return !Blocked;
             }
         }

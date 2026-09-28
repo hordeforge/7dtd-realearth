@@ -253,6 +253,9 @@ Full-column Reflect to ~8849 hangs gen and is not a product requirement for play
 | Session inject count / peak | Only on **successful** apply; reset on WorldReady |
 | Miss / present tile hits | Fail-closed observability |
 | `TileLoadStats` disk/cdn ok/fail | Tile load outcomes; `badPayload` = CDN serving wrong bytes, `existsErr` = unreadable tile root (streamer blind) |
+| `TileLoadStats` per-source ms | Avg / last / max wall time of a successful disk or CDN load, so a slow CDN is distinguishable from a fast failing one; `n/a` before the first success |
+| `suppressedErr` (in `reinject`) | Load failures counted but not logged because the budget was spent. Nonzero means the log understates the rate, not that failures stopped |
+| `suppressedLogLines(...)` (in `reinject`) | Same, for the tick / inject / unload / peak / tile log budgets |
 | Player tick stats | Count **Update** path only (unload success must not mask missing tick) |
 | `reinject` / `reheight` | Console: force sync load + sample proof |
 | `InjectPatchStats` | Bind counts, blocked flag |
@@ -263,6 +266,13 @@ through `Log.Warning`; operator-visible path failures (init failed, INJECT GATE
 closed, tick/gen postfix errors) through `Log.Error`. When the host logger lacks
 the level method the line falls back to an `[RealEarth][WARN]`/`[RealEarth][ERROR]`
 tagged Out line, so grepping either channel works.
+
+Repeated failures from hot paths (per-tile, per-chunk, per-tick) pass through a
+`LogBudget`: the first N lines are printed, the rest are counted. Init, patch
+install, and save/load failures are one-shot, so they log through
+`ModApi.LogError(msg, ex)` and carry the full stack, rendered on one line
+(`Type: message | at Frame <- inner`) because `Emit` strips newlines and a
+multi-line entry would break the server log parser.
 
 ---
 

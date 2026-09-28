@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.Diagnostics;
 using System.IO;
 using System.Net.Http;
 using System.Threading.Tasks;
@@ -63,6 +64,27 @@ namespace RealEarth
         /// one entry per failed tile lives for the whole server uptime (map only grows).
         /// </summary>
         const int MissCachePruneThreshold = 4096;
+
+        /// <summary>
+        /// Lines a failing tile load may print before the rest are counted instead
+        /// (see LogBudget). One bad tile is re-queued every MissCacheMs per focus,
+        /// so an unreadable tile root or a dead CDN would otherwise put one ERROR
+        /// per tile per window into the server log and bury the real cause.
+        /// </summary>
+        internal const int LoadErrorLogSlots = 20;
+
+        /// <summary>Shared by every load failure path; counted by `reinject` (suppressedErr).</summary>
+        internal static readonly LogBudget LoadErrorBudget = new LogBudget(LoadErrorLogSlots);
+
+        /// <summary>
+        /// Log a tile load failure once per budget slot. Over-budget failures are
+        /// counted, so `reinject` still shows the true rate behind a truncated log.
+        /// </summary>
+        static void LogLoadError(string msg)
+        {
+            if (LoadErrorBudget.Allow())
+                ModApi.LogError(msg);
+        }
 
         /// <summary>
         /// Cap on CDN tile payloads (a full 512x512 .rte is well under 2 MB). Bounds memory
@@ -355,11 +377,10 @@ namespace RealEarth
             {
                 // A throwing File.Exists means the tile root is unreadable (permissions,
                 // unmounted volume): every tile would silently miss into ocean with zero
-                // trace. Count + one budgeted warning keeps the failure visible.
+                // trace. Count + one budgeted line keeps the failure visible.
                 TileLoadStats.AddExistsError();
-                if (TileLoadStats.ExistsErrors <= 3)
-                    ModApi.LogWarn(
-                        $"Tile root probe failed path={path}: {ex.GetType().Name}: {ex.Message}");
+                LogLoadError(
+                    $"Tile root probe failed path={path}: {ex.GetType().Name}: {ex.Message}");
                 exists = false;
             }
 
@@ -433,12 +454,13 @@ namespace RealEarth
                 return;
             try
             {
+                var sw = Stopwatch.StartNew();
                 var bytes = FetchTileBytesAsync(url).ConfigureAwait(false).GetAwaiter().GetResult();
                 if (bytes == null || bytes.Length < 8 || !RteTile.HasMagic(bytes))
                 {
                     TileLoadStats.AddBadPayload();
                     TileLoadStats.AddCdnFail();
-                    ModApi.LogWarn($"CDN sync tile {tx},{tz}: bad payload");
+                    LogLoadError($"CDN sync tile {tx},{tz} url={url}: bad payload ({sw.ElapsedMilliseconds} ms)");
                     MarkMiss(key);
                     lock (_lock) { _loadInFlight.Remove(key); }
                     return;
@@ -458,12 +480,13 @@ namespace RealEarth
                     _missUntilTick.Remove(key);
                     _loadInFlight.Remove(key);
                 }
-                TileLoadStats.AddCdnOk();
+                sw.Stop();
+                TileLoadStats.AddCdnOk(sw.ElapsedMilliseconds);
             }
             catch (Exception ex)
             {
                 TileLoadStats.AddCdnFail();
-                ModApi.LogError($"CDN sync tile {tx},{tz}: {ex.GetType().Name}: {ex.Message}");
+                LogLoadError($"CDN sync tile {tx},{tz} url={url}: {ex.GetType().Name}: {ex.Message}");
                 MarkMiss(key);
                 lock (_lock) { _loadInFlight.Remove(key); }
             }
@@ -530,6 +553,7 @@ namespace RealEarth
         {
             try
             {
+                var sw = Stopwatch.StartNew();
                 var tile = RteTile.Load(path);
                 lock (_lock)
                 {
@@ -537,12 +561,13 @@ namespace RealEarth
                     _missUntilTick.Remove(key);
                     _loadInFlight.Remove(key);
                 }
-                TileLoadStats.AddDiskOk();
+                sw.Stop();
+                TileLoadStats.AddDiskOk(sw.ElapsedMilliseconds);
             }
             catch (Exception ex)
             {
                 TileLoadStats.AddDiskFail();
-                ModApi.LogError($"Load tile {tx},{tz}: {ex.GetType().Name}: {ex.Message}");
+                LogLoadError($"Load tile {tx},{tz} path={path}: {ex.GetType().Name}: {ex.Message}");
                 MarkMiss(key);
                 lock (_lock) { _loadInFlight.Remove(key); }
             }
@@ -588,13 +613,14 @@ namespace RealEarth
 
         async Task LoadTileFireAndForget(int tx, int tz, string path, long key, bool fromCdn)
         {
+            var sw = Stopwatch.StartNew();
+            string? url = fromCdn ? CdnTilePolicy.TileUrl(_cfg.TileCdnBaseUrl, tx, tz) : null;
             try
             {
                 byte[] bytes;
                 RteTile tile;
                 if (fromCdn)
                 {
-                    string? url = CdnTilePolicy.TileUrl(_cfg.TileCdnBaseUrl, tx, tz);
                     if (url == null)
                     {
                         MarkMiss(key);
@@ -605,7 +631,8 @@ namespace RealEarth
                     {
                         TileLoadStats.AddBadPayload();
                         TileLoadStats.AddCdnFail();
-                        ModApi.LogWarn($"CDN tile {tx},{tz}: bad payload (not RTE1)");
+                        LogLoadError(
+                            $"CDN tile {tx},{tz} url={url}: bad payload (not RTE1) after {sw.ElapsedMilliseconds} ms");
                         MarkMiss(key);
                         return;
                     }
@@ -626,23 +653,27 @@ namespace RealEarth
                     _hot[key] = tile;
                     _missUntilTick.Remove(key);
                 }
+                sw.Stop();
                 if (fromCdn)
-                    TileLoadStats.AddCdnOk();
+                    TileLoadStats.AddCdnOk(sw.ElapsedMilliseconds);
                 else
-                    TileLoadStats.AddDiskOk();
+                    TileLoadStats.AddDiskOk(sw.ElapsedMilliseconds);
             }
             catch (Exception ex)
             {
                 if (fromCdn)
                 {
                     TileLoadStats.AddCdnFail();
-                    ModApi.LogError(
-                        $"CDN tile {tx},{tz} failed (failClosed={_cfg.FailClosedMissingTiles}): {ex.GetType().Name}: {ex.Message}");
+                    LogLoadError(
+                        $"CDN tile {tx},{tz} url={url} failed after {sw.ElapsedMilliseconds} ms " +
+                        $"(failClosed={_cfg.FailClosedMissingTiles}): {ex.GetType().Name}: {ex.Message}");
                 }
                 else
                 {
                     TileLoadStats.AddDiskFail();
-                    ModApi.LogError($"Async load tile {tx},{tz}: {ex.GetType().Name}: {ex.Message}");
+                    LogLoadError(
+                        $"Async load tile {tx},{tz} path={path} failed after {sw.ElapsedMilliseconds} ms: " +
+                        $"{ex.GetType().Name}: {ex.Message}");
                 }
                 MarkMiss(key);
             }

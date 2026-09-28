@@ -283,14 +283,14 @@ namespace RealEarth
                     }
                     catch (Exception ex)
                     {
-                        ModApi.LogWarn("SessionStateStore.TrySave path " + p + ": " + ex.GetType().Name + ": " + ex.Message);
+                        ModApi.LogWarn("SessionStateStore.TrySave path " + p, ex);
                     }
                 }
                 return any;
             }
             catch (Exception ex)
             {
-                ModApi.LogError("SessionStateStore.TrySave: " + ex.GetType().Name + ": " + ex.Message);
+                ModApi.LogError("SessionStateStore.TrySave", ex);
                 return false;
             }
         }
@@ -320,7 +320,11 @@ namespace RealEarth
                     }
                     if (!SessionSnapshot.TryParse(json, out snap))
                     {
-                        ModApi.LogWarn("SessionStateStore unparsable snapshot " + p + "; trying next path");
+                        // Skipping a snapshot silently reads as "no session": the world
+                        // restarts at the config spawn and the operator only finds out
+                        // by noticing the origin moved. Name the file and its size.
+                        ModApi.LogWarn(
+                            $"SessionStateStore skip unreadable snapshot {p} bytes={json.Length}");
                         continue;
                     }
                     // The mod Config fallback is global across worlds; without this gate a
@@ -347,7 +351,7 @@ namespace RealEarth
             }
             catch (Exception ex)
             {
-                ModApi.LogError("SessionStateStore.TryLoad: " + ex.GetType().Name + ": " + ex.Message);
+                ModApi.LogError("SessionStateStore.TryLoad", ex);
                 return false;
             }
         }

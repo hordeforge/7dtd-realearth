@@ -629,15 +629,22 @@ def test_hooks_log_budgets_are_interlocked():
     """Gen thread consumes inject budget while WorldReady (main) resets it.
 
     Plain read-modify-write on the shared budgets loses updates across the
-    gen/main boundary; every cross-thread budget must go through Interlocked."""
+    gen/main boundary; every cross-thread budget must go through the shared
+    LogBudget, which does the read-modify-write atomically."""
     hooks = _read("RuntimeHooks.cs")
     for field in ("_peakLogBudget", "_tickErrLogBudget", "_injectErrLogBudget"):
         assert f"--{field}" not in hooks, f"{field} decremented without Interlocked"
         assert f"{field} > 0" not in hooks, f"{field} check-then-act outside Interlocked"
-    assert "ConsumeBudget(ref _injectErrLogBudget)" in hooks
-    assert "ResetBudget(ref _injectErrLogBudget" in hooks
-    assert "Interlocked.Decrement(ref budget)" in hooks
-    assert "Interlocked.Exchange(ref budget, value)" in hooks
+        assert f"readonly LogBudget {field}" in hooks, f"{field} must use the shared LogBudget"
+        assert f"{field}.Allow()" in hooks
+        assert f"{field}.Reset(" in hooks
+    budget = _read("LogBudget.cs")
+    assert "Interlocked.Decrement(ref _remaining)" in budget
+    assert "Interlocked.Exchange(ref _remaining, slots)" in budget
+    # What a spent budget refuses to print must stay countable, or a truncated
+    # log reads as a failure that stopped.
+    assert "Suppressed" in budget
+    assert "SuppressedLogSummary()" in hooks
 
 
 def test_runtime_ydim_transpiler_site_coverage():

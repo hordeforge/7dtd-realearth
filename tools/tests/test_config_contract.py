@@ -106,7 +106,10 @@ def test_config_validate_exists_and_runs_at_init():
     validate = api.index("foreach (var warning in Config.Validate())")
     assert (
         load < manifest < validate
-    ), "InitMod must Load, then apply the pack manifest, then run Config.Validate()"
+    ), (
+        "InitMod must Load, then apply the pack manifest, then run Config.Validate() "
+        "in InitMod, after the pack manifest"
+    )
 
 
 def test_config_validate_cross_field_guards():
