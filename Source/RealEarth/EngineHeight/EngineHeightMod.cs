@@ -13,7 +13,7 @@ namespace RealEarth.EngineHeight
     {
         public static WorldConstantsProbe? Probe { get; private set; }
         public static EngineHeightPolicy? Policy { get; private set; }
-        public static AbsoluteHeightStore Store { get; } = new AbsoluteHeightStore(16);
+        public static AbsoluteHeightStore Store { get; } = new AbsoluteHeightStore();
         public static bool Active => Policy != null && Policy.Enabled;
         /// <summary>
         /// True when product real-height requires YDim expand but the engine is still stock

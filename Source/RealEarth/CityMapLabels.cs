@@ -36,6 +36,18 @@ namespace RealEarth
         /// </summary>
         static readonly object _cityGate = new object();
 
+        /// <summary>Reach floor (blocks): no label is ever discovered closer than this.</summary>
+        public const int MinEdgeRadiusBlocks = 32;
+
+        /// <summary>
+        /// Reach ceiling (blocks, 1000 km at 1 m = 1 block). Every place on Earth is
+        /// inside 20_003_931 blocks, so a real urban edge never approaches it; the cap
+        /// exists because edge radius comes from pack JSON and the discover scale from
+        /// config, so their product is unbounded and an int cast past 2^31 wraps to
+        /// int.MinValue, collapsing a metro's reach to the 32-block floor.
+        /// </summary>
+        public const int MaxEdgeRadiusBlocks = 1_000_000;
+
         /// <summary>
         /// Canonical form for place-name identity: NFC so an NFD spelling of the
         /// same name (macOS-written JSON, some map exports) matches the composed
@@ -283,7 +295,7 @@ namespace RealEarth
                         long dx = (long)playerLocalX - cx;
                         long dz = (long)playerLocalZ - cz;
                         long distSq = dx * dx + dz * dz;
-                        long edge = Math.Max(32, (int)(p.EdgeRadiusBlocks * scale));
+                        double edge = ScaledEdgeRadiusBlocks(p.EdgeRadiusBlocks, scale);
 
                         // Reaching the edge is enough to discover; pin at center.
                         // Squared compare avoids a sqrt per place per window.
@@ -294,7 +306,7 @@ namespace RealEarth
                                 _discovered.Add(p.Name);
                                 ModApi.Log(
                                     $"CityMapLabels: discovered '{p.Name}' " +
-                                    $"(dist={(int)Math.Sqrt(distSq):0} edge={edge} center=({cx},{cz})).");
+                                    $"(dist={(int)Math.Sqrt(distSq):0} edge={edge:0} center=({cx},{cz})).");
                                 // Soft gap 32: persist immediately so dedicated/shared
                                 // session files pick up discoveries without waiting for
                                 // logout/origin-slide. Wire MP package sync still open.
@@ -384,19 +396,53 @@ namespace RealEarth
         {
             // Any measured extent outranks the population formula (docs/CITY_MAP_LABELS.md
             // source priority; mirrors Python effective_edge_radius_m's > 0 test). The
-            // result is still floored at 32 blocks below.
+            // result is still floored at MinEdgeRadiusBlocks below.
             if (p.EdgeRadiusM > 0)
             {
                 if (string.IsNullOrEmpty(p.EdgeSource))
                     p.EdgeSource = "map";
-                return Math.Max(32, (int)Math.Round(p.EdgeRadiusM));
+                return EdgeMetersToBlocks(p.EdgeRadiusM);
             }
 
             // Population fallback only when pack/seed has no density or polygon extent.
             double radiusKm = Math.Max(1.5, Math.Min(80.0, Math.Sqrt(Math.Max(1, p.Population)) / 40.0));
             p.EdgeRadiusM = radiusKm * 1000.0;
             p.EdgeSource = "population_fallback";
-            return Math.Max(32, (int)Math.Round(p.EdgeRadiusM));
+            return EdgeMetersToBlocks(p.EdgeRadiusM);
+        }
+
+        /// <summary>
+        /// Map-data edge meters → blocks (1 m = 1 block), clamped into
+        /// [MinEdgeRadiusBlocks, MaxEdgeRadiusBlocks] before the int cast. Meters come
+        /// from pack JSON, so a large or non-finite value must not reach an
+        /// out-of-range double→int conversion (undefined in unchecked C#; int.MinValue
+        /// in practice, which then floors the reach at 32 blocks).
+        /// </summary>
+        static int EdgeMetersToBlocks(double meters)
+        {
+            if (double.IsNaN(meters)) return MinEdgeRadiusBlocks;
+            double blocks = Math.Round(meters);
+            if (blocks >= MaxEdgeRadiusBlocks) return MaxEdgeRadiusBlocks;
+            if (blocks <= MinEdgeRadiusBlocks) return MinEdgeRadiusBlocks;
+            return (int)blocks;
+        }
+
+        /// <summary>
+        /// Discovery reach in blocks for a place after the operator's global discover
+        /// scale, kept in double so the squared distance compare stays exact. Callers
+        /// must not round through int here: the product is usually fractional (101
+        /// blocks x 0.75 = 75.75) and truncating it costs up to a block of reach per
+        /// place, while a large pack radius or an uncapped config scale overflows the
+        /// cast instead.
+        /// </summary>
+        public static double ScaledEdgeRadiusBlocks(int edgeRadiusBlocks, float discoverScale)
+        {
+            double scaled = Math.Max(0, edgeRadiusBlocks) * (double)discoverScale;
+            // Non-finite (a NaN scale survives RealEarthConfig.Validate) reaches the
+            // floor, matching what the old int cast produced, and stays fail-closed.
+            if (double.IsNaN(scaled) || double.IsInfinity(scaled))
+                return MinEdgeRadiusBlocks;
+            return Math.Min(MaxEdgeRadiusBlocks, Math.Max(MinEdgeRadiusBlocks, scaled));
         }
 
         // Band from population lives in RuntimePoiInject.BandFromPop (single ladder;

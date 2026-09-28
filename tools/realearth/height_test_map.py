@@ -451,7 +451,8 @@ def bake_height_test_world(
     # Spawn near peak but slightly off-summit (safer), and at mid elevations
     half = size // 2
     pz, px = np.unravel_index(int(np.argmax(elev_r)), elev_r.shape)
-    # scale pack peak pixel to world size
+    # scale pack peak pixel to world size (row z, col x; clamp: the pack peak at
+    # the far edge maps to size/pack_w which rounds past the last world column)
     pack_h, pack_w = elev.shape
     iz = min(size - 1, int(pz * size / pack_h))
     ix = min(size - 1, int(px * size / pack_w))

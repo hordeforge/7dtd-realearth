@@ -12,16 +12,17 @@ namespace RealEarth.EngineHeight
     /// </summary>
     public sealed class AbsoluteHeightStore
     {
-        readonly int _sectionHeight;
+        /// <summary>Blocks per section edge: one vanilla 16x16 chunk.</summary>
+        const int SectionBlocks = 16;
+
         readonly int _maxColumns;
         readonly Dictionary<long, SectionColumn> _columns = new Dictionary<long, SectionColumn>();
         readonly LinkedList<long> _lru = new LinkedList<long>();
         readonly Dictionary<long, LinkedListNode<long>> _lruNodes = new Dictionary<long, LinkedListNode<long>>();
         readonly object _lock = new object();
 
-        public AbsoluteHeightStore(int sectionHeight = 16, int maxColumns = 4096)
+        public AbsoluteHeightStore(int maxColumns = 4096)
         {
-            _sectionHeight = Math.Max(4, sectionHeight);
             _maxColumns = Math.Max(64, maxColumns);
         }
 
@@ -34,16 +35,16 @@ namespace RealEarth.EngineHeight
         /// </summary>
         public void SetSurfaceMetersEarth(int earthX, int earthZ, float elevM)
         {
-            int cx = EngineReflection.FloorDiv(earthX, 16);
-            int cz = EngineReflection.FloorDiv(earthZ, 16);
-            int lx = SessionOriginPolicy.FoldCoord(earthX, 16);
-            int lz = SessionOriginPolicy.FoldCoord(earthZ, 16);
+            int cx = EngineReflection.FloorDiv(earthX, SectionBlocks);
+            int cz = EngineReflection.FloorDiv(earthZ, SectionBlocks);
+            int lx = SessionOriginPolicy.FoldCoord(earthX, SectionBlocks);
+            int lz = SessionOriginPolicy.FoldCoord(earthZ, SectionBlocks);
             long key = Key(cx, cz);
             lock (_lock)
             {
                 if (!_columns.TryGetValue(key, out var col))
                 {
-                    col = new SectionColumn(_sectionHeight);
+                    col = new SectionColumn();
                     _columns[key] = col;
                     var node = _lru.AddFirst(key);
                     _lruNodes[key] = node;
@@ -70,10 +71,10 @@ namespace RealEarth.EngineHeight
         public bool TryGetSurfaceMetersEarth(int earthX, int earthZ, out float elevM)
         {
             elevM = 0;
-            int cx = EngineReflection.FloorDiv(earthX, 16);
-            int cz = EngineReflection.FloorDiv(earthZ, 16);
-            int lx = SessionOriginPolicy.FoldCoord(earthX, 16);
-            int lz = SessionOriginPolicy.FoldCoord(earthZ, 16);
+            int cx = EngineReflection.FloorDiv(earthX, SectionBlocks);
+            int cz = EngineReflection.FloorDiv(earthZ, SectionBlocks);
+            int lx = SessionOriginPolicy.FoldCoord(earthX, SectionBlocks);
+            int lz = SessionOriginPolicy.FoldCoord(earthZ, SectionBlocks);
             long key = Key(cx, cz);
             lock (_lock)
             {
@@ -135,28 +136,26 @@ namespace RealEarth.EngineHeight
 
         sealed class SectionColumn
         {
-            readonly int _sectionHeight;
             // surface meters per local XZ (16x16); NaN = unset
-            readonly float[] _surface = new float[256];
+            readonly float[] _surface = new float[SectionBlocks * SectionBlocks];
 
-            public SectionColumn(int sectionHeight)
+            public SectionColumn()
             {
-                _sectionHeight = sectionHeight;
                 for (int i = 0; i < _surface.Length; i++)
                     _surface[i] = float.NaN;
             }
 
             public void SetSurface(int lx, int lz, float elevM)
             {
-                if ((uint)lx >= 16 || (uint)lz >= 16) return;
-                _surface[lz * 16 + lx] = elevM;
+                if ((uint)lx >= SectionBlocks || (uint)lz >= SectionBlocks) return;
+                _surface[lz * SectionBlocks + lx] = elevM;
             }
 
             public bool TryGetSurface(int lx, int lz, out float elevM)
             {
                 elevM = 0;
-                if ((uint)lx >= 16 || (uint)lz >= 16) return false;
-                float v = _surface[lz * 16 + lx];
+                if ((uint)lx >= SectionBlocks || (uint)lz >= SectionBlocks) return false;
+                float v = _surface[lz * SectionBlocks + lx];
                 if (float.IsNaN(v)) return false;
                 elevM = v;
                 return true;

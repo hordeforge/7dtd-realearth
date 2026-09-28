@@ -183,7 +183,8 @@ namespace RealEarth
                         long dz = (long)playerLocalZ - cz;
                         long distSq = dx * dx + dz * dz;
                         // Original gate: dist <= edge * 1.5 (squared to skip the sqrt).
-                        double edge = Math.Max(32, (int)(CityMapLabels.ResolveEdgeRadiusBlocks(p) * discoverScale));
+                        double edge = CityMapLabels.ScaledEdgeRadiusBlocks(
+                            CityMapLabels.ResolveEdgeRadiusBlocks(p), discoverScale);
                         double reach = edge * 1.5;
                         if (distSq > reach * reach)
                             continue;
