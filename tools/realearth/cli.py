@@ -78,8 +78,6 @@ def info_cmd() -> None:
 def verify_build_cmd(pack: str) -> None:
     """Verify a pack's build.json: schema, and input hashes vs on-disk files."""
     import hashlib
-    import json
-    from pathlib import Path
 
     root = Path(pack)
     bpath = root / "build.json"
@@ -605,8 +603,6 @@ def engine_audit_cmd(dll: str | None) -> None:
     Confirms why RealEarth needs an engine-height module for true tall mountains:
     stock 3.0.x is a fixed 256-block column (compile-time literals).
     """
-    from pathlib import Path
-
     from realearth.engine_constants import audit_engine_height
 
     report = audit_engine_height(Path(dll) if dll else None)

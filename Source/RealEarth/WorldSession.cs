@@ -66,7 +66,6 @@ namespace RealEarth
         public int LocalWindowSize => _cfg.LocalWindowSize;
         public string MapMode => _cfg.MapMode ?? "Streamed";
         public bool IsStreamed => !string.Equals(MapMode, "Baked", StringComparison.OrdinalIgnoreCase);
-        public bool IsBaked => string.Equals(MapMode, "Baked", StringComparison.OrdinalIgnoreCase);
 
         /// <summary>Absolute Earth bounds currently covered by the host window [min, max).</summary>
         public void GetActiveWindowEarthBounds(out int minX, out int minZ, out int maxX, out int maxZ)

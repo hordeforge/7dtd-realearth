@@ -453,15 +453,6 @@ def bake_height_test_world(
     pz, px = np.unravel_index(int(np.argmax(elev_r)), elev_r.shape)
     # scale pack peak pixel to world size
     pack_h, pack_w = elev.shape
-    wx = int(px * size / pack_w) - half
-    wz = int(pz * size / pack_h) - half
-    peak_gy = int(
-        game_y[
-            pz * size // pack_h if False else min(size - 1, int(pz * size / pack_h)),
-            min(size - 1, int(px * size / pack_w)),
-        ]
-    )
-    # fix indices properly
     iz = min(size - 1, int(pz * size / pack_h))
     ix = min(size - 1, int(px * size / pack_w))
     peak_gy = int(game_y[iz, ix])

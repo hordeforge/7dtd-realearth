@@ -9,9 +9,6 @@ namespace RealEarth
     /// </summary>
     public static class HeightCompress
     {
-        /// <summary>Mount Everest elevation (m ASL), 1 m ≈ 1 block in one-to-one mode.</summary>
-        public const int EverestMetersAsl = 8849;
-
         /// <summary>Commercial airliner cruise band (~12 km ASL), the product ceiling driver.</summary>
         public const int AirlinerCruiseM = 12000;
 

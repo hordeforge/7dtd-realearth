@@ -88,7 +88,6 @@ def build_region(
 
     # Region size in meters (approx equirectangular at bbox center)
     mid_lat = (south + north) / 2
-    import math
 
     m_per_deg_lat = EARTH_MERIDIAN_HALF_M / 180.0
     m_per_deg_lon = abs(math.cos(math.radians(mid_lat))) * (EARTH_CIRCUMFERENCE_M / 360.0)

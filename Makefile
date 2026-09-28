@@ -56,7 +56,6 @@ WORLD_SIZE    ?= 2048
 BAKE_SIZE     ?= 4096
 PACK_DEMO     := $(ROOT)/data/samples/demo_region
 PACK_HEIGHT   := $(ROOT)/data/samples/height_test
-WORLD_HEIGHT  := $(ROOT)/worlds/RealEarth_HeightTest
 
 # Local Terrarium source-tile cache. Every fetched DEM tile is persisted here,
 # so packs and worlds stay rebuildable offline if the remote AWS dataset

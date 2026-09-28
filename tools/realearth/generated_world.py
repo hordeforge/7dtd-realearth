@@ -165,19 +165,8 @@ def detect_client_versions() -> tuple[str, str]:
     return _DEFAULT_MAP_INFO_VERSION, _DEFAULT_TTW_VERSION
 
 
-def detect_game_version_string() -> str:
-    """map_info GameVersion (e.g. V.3.0.1) for the live Steam client."""
-    return detect_client_versions()[0]
-
-
-def detect_ttw_version_string() -> str:
-    """main.ttw embedded version (e.g. V 3.0.1 (b4))."""
-    return detect_client_versions()[1]
-
-
-def write_ttw_with_version(path: Path, template: Path, version: str | None = None) -> None:
+def write_ttw_with_version(path: Path, template: Path, version: str) -> None:
     """Copy template main.ttw and rewrite embedded game version string."""
-    version = version or detect_ttw_version_string()
     data = bytearray(template.read_bytes())
     if len(data) < 10 or data[:4] != b"ttw\0":
         path.write_bytes(template.read_bytes())
@@ -191,9 +180,8 @@ def write_ttw_with_version(path: Path, template: Path, version: str | None = Non
     path.write_bytes(head + bytes(data[9 + old_len :]))
 
 
-def write_map_info(path: Path, size: int, name: str, game_version: str | None = None) -> None:
+def write_map_info(path: Path, size: int, name: str, game_version: str) -> None:
     # If present, GameVersion major must match the client or a warning is shown.
-    gv = game_version or detect_game_version_string()
     # World names come from --name (arbitrary text). Escape for the attribute
     # context so '&', '<', '>' and quotes cannot break map_info.xml.
     safe_name = saxutils_escape(name, {'"': "&quot;"})
@@ -204,7 +192,7 @@ def write_map_info(path: Path, size: int, name: str, game_version: str | None = 
   <property name="Modes" value="Survival,SurvivalSP,SurvivalMP,Creative" />
   <property name="FixedWaterLevel" value="false" />
   <property name="RandomGeneratedWorld" value="false" />
-  <property name="GameVersion" value="{gv}" />
+  <property name="GameVersion" value="{game_version}" />
   <property name="Description" value="RealEarth continuous single map: {safe_name}" />
 </MapInfo>
 """
@@ -308,9 +296,8 @@ def _find_ttw_template() -> Path | None:
 
 def write_main_ttw(
     path: Path,
+    version: str,
     template: Path | None = None,
-    *,
-    version: str | None = None,
 ) -> None:
     """Copy a known-good main.ttw and stamp current game version (avoids major-version warning)."""
     tmpl = template if template and template.exists() else _find_ttw_template()
@@ -318,7 +305,7 @@ def write_main_ttw(
         raise FileNotFoundError(
             "main.ttw template required: install 7DTD (Pregen worlds) or pass --ttw-template"
         )
-    write_ttw_with_version(path, tmpl, version=version or detect_ttw_version_string())
+    write_ttw_with_version(path, tmpl, version)
 
 
 def write_water_info(path: Path) -> None:
@@ -333,7 +320,6 @@ def bake_generated_world(
     name: str = "RealEarth",
     sea_level_y: int = DEFAULT_SEA_LEVEL_GAME_Y,
     ttw_template: Path | None = None,
-    game_version: str | None = None,
 ) -> JsonDict:
     """Build a full GeneratedWorlds-compatible continuous map from a tile pack.
 
@@ -352,7 +338,6 @@ def bake_generated_world(
             name=name,
             sea_level_y=sea_level_y,
             ttw_template=ttw_template,
-            game_version=game_version,
             pre_bake_snapshot=pre_bake_snapshot,
         )
     except BaseException:
@@ -368,7 +353,6 @@ def _bake_generated(
     name: str,
     sea_level_y: int,
     ttw_template: Path | None,
-    game_version: str | None,
     pre_bake_snapshot: Path | None,
 ) -> JsonDict:
     out_dir.mkdir(parents=True, exist_ok=True)
@@ -458,16 +442,10 @@ def _bake_generated(
     )
     write_water_info(out_dir / "water_info.xml")
     map_ver, ttw_ver = detect_client_versions()
-    if game_version:
-        map_ver = game_version
-        # Dotted map_info form only ("V.3.0.1"): keep the live client ttw stamp,
-        # which carries the full "V x.y.z (bN)" string the major check wants.
-        if not (game_version.startswith("V.") and " " not in game_version):
-            ttw_ver = game_version
-    write_map_info(out_dir / "map_info.xml", size, name, game_version=map_ver)
+    write_map_info(out_dir / "map_info.xml", size, name, map_ver)
     write_spawnpoints(out_dir / "spawnpoints.xml", size, game_y, sea_level=sea_level_y)
     # main.ttw embeds full client Version string, e.g. "V 3.0.1 (b4)"
-    write_main_ttw(out_dir / "main.ttw", ttw_template, version=ttw_ver)
+    write_main_ttw(out_dir / "main.ttw", ttw_ver, ttw_template)
 
     export_preview_png(elev_r, lc_r, out_dir / "preview.png")
 

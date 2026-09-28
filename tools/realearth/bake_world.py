@@ -40,7 +40,7 @@ def snap_world_size(size: int) -> int:
 def resize_arrays(
     elev: np.ndarray,
     lc: np.ndarray,
-    pop: np.ndarray | None,
+    pop: np.ndarray,
     size: int,
 ) -> tuple[np.ndarray, np.ndarray, np.ndarray]:
     """Resize mosaics to square `size` x `size` for a single continuous world."""
@@ -52,15 +52,12 @@ def resize_arrays(
         ),
         dtype=np.uint8,
     )
-    if pop is not None:
-        pop_r = np.asarray(
-            Image.fromarray(np.asarray(pop, dtype=np.uint8), mode="L").resize(
-                (size, size), Image.Resampling.BILINEAR
-            ),
-            dtype=np.uint8,
-        )
-    else:
-        pop_r = np.zeros((size, size), dtype=np.uint8)
+    pop_r = np.asarray(
+        Image.fromarray(np.asarray(pop, dtype=np.uint8), mode="L").resize(
+            (size, size), Image.Resampling.BILINEAR
+        ),
+        dtype=np.uint8,
+    )
     return elev_r, lc_r, pop_r
 
 
@@ -296,12 +293,9 @@ def _bake_from_pack(
     write_manifest(out_dir / "earth.manifest.json", baked)
 
     return {
-        "name": world_name,
         "size": size,
         "out_dir": str(out_dir.resolve()),
         "heightmap": str(out_dir / "heightmap.png"),
-        "biomes": str(out_dir / "biomes.png"),
-        "settlements": len(settlements),
         "pre_bake_snapshot": str(pre_bake_snapshot) if pre_bake_snapshot else None,
     }
 

@@ -63,8 +63,6 @@ namespace RealEarth
         static List<CityMapLabels.Place>? _placesCache;
         static readonly Dictionary<string, int> _chunkCounts = new Dictionary<string, int>(StringComparer.Ordinal);
 
-        public static int SessionStampCount => Volatile.Read(ref _sessionStamps);
-
         /// <summary>Consume one log-budget slot (shared across threads; see _stampGate).</summary>
         static bool ConsumeLogBudget() => Interlocked.Decrement(ref _logBudget) >= 0;
 
