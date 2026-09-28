@@ -473,6 +473,52 @@ namespace RealEarth
             return warnings;
         }
 
+        /// <summary>
+        /// Names of every property this class reads from JSON. DataContractJsonSerializer
+        /// drops members it has no contract for, so an unrecognized key is a silent no-op.
+        /// </summary>
+        private static readonly HashSet<string> KnownMemberNames = BuildKnownMemberNames();
+
+        private static HashSet<string> BuildKnownMemberNames()
+        {
+            var names = new HashSet<string>(StringComparer.Ordinal);
+            foreach (var prop in typeof(RealEarthConfig).GetProperties())
+                if (prop.IsDefined(typeof(DataMemberAttribute), false))
+                    names.Add(prop.Name);
+            return names;
+        }
+
+        /// <summary>
+        /// Top-level keys in the config file that no [DataMember] claims, which the
+        /// loader therefore ignores. A misspelled key is the failure this exists to
+        /// name: without it the operator sees the built-in default and no error.
+        /// Returns a single diagnostic entry if the key scan itself cannot run.
+        /// </summary>
+        public IReadOnlyList<string> FindUnknownMemberNames(string path)
+        {
+            var unknown = new List<string>();
+            if (!File.Exists(path))
+                return unknown;
+            try
+            {
+                using var fs = File.OpenRead(path);
+                var ser = new DataContractJsonSerializer(typeof(Dictionary<string, object>));
+                var raw = ser.ReadObject(fs) as Dictionary<string, object>;
+                if (raw == null)
+                    return unknown;
+                foreach (var key in raw.Keys)
+                    // Keys starting with "_" are documentation (_comment), not config.
+                    if (!KnownMemberNames.Contains(key) && !key.StartsWith("_", StringComparison.Ordinal))
+                        unknown.Add(key);
+            }
+            catch (Exception ex)
+            {
+                unknown.Add("<key scan failed: " + ex.GetType().Name + ">");
+            }
+            unknown.Sort(StringComparer.Ordinal);
+            return unknown;
+        }
+
         public static RealEarthConfig Load(string path)
         {
             if (!File.Exists(path))

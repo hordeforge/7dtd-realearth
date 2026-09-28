@@ -29,8 +29,11 @@ EARTH_MERIDIAN_HALF_M = 20_003_931  # pole-to-pole arc length approx
 DEFAULT_TILE_SIZE = 512
 # A canvas this wide can only be planet-wide (Earth is ~40M blocks at 1 m/block),
 # so it is the only case where X wraps at the antimeridian. Regional packs are
-# orders of magnitude smaller and must clamp instead. Mirrors ModApi.cs.
-PLANET_CANVAS_MIN_WIDTH = 10_000_000
+# orders of magnitude smaller and must clamp instead. Mirrors the runtime
+# threshold in RealEarthConfig.Validate (WorldWidth >= 40_000_000 auto-enables
+# EnableLongitudeWrap): a lower cutoff here would ship wrap=true for packs the
+# mod then warns about at init.
+PLANET_CANVAS_MIN_WIDTH = 40_000_000
 # Local window the streamer keeps resident around the player, capped so a
 # planet-wide canvas does not try to materialize as one window.
 DEFAULT_LOCAL_WINDOW_SIZE = 1024

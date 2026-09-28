@@ -70,7 +70,7 @@ namespace RealEarth
                             modY = EngineHeight.EngineHeightMod.Policy.MapMetersToGameY(em);
                         else if (modY < 0)
                         {
-                            int sea = ModApi.Config?.SeaLevelGameY ?? 100;
+                            int sea = ModApi.Config?.SeaLevelGameY ?? HeightInjectMath.DefaultSeaLevelGameY;
                             modY = HeightCompress.MetersToGameYOneToOne(
                                 em, sea, HeightCompress.EngineTargetMaxY);
                         }

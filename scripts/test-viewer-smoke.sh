@@ -11,6 +11,14 @@
 set -euo pipefail
 ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 PORT="${RE_VIEWER_SMOKE_PORT:-8765}"
+case "$PORT" in
+  ""|*[!0-9]*)
+    # Port lands in curl URLs and the server --port flag; a non-numeric value
+    # would surface as a curl URL error instead of naming the bad variable.
+    echo "ERROR: RE_VIEWER_SMOKE_PORT must be a positive integer (got: $PORT)" >&2
+    exit 2
+    ;;
+esac
 # Scratch lives under the repo's git-ignored .scratch/, not TMPDIR: /tmp is
 # tmpfs on most Linux hosts, and a fixed /tmp log path collides with any other
 # run of this script on the same host.

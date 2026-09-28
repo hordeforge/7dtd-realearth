@@ -5,6 +5,8 @@ from __future__ import annotations
 import json
 from pathlib import Path
 
+import pytest
+
 from realearth import mod_config
 
 ROOT = Path(__file__).resolve().parents[2]
@@ -42,6 +44,39 @@ def test_override_set_and_setdefault(tmp_path: Path):
     assert cfg["EngineMaxGameY"] == 11000
     # Empty fresh base: ?= fills the absent key.
     assert cfg["LocalWindowSize"] == 1024
+
+
+def test_known_keys_cover_every_shipped_template():
+    """The C# contract is the only key list, so templates must not outrun it."""
+    known = mod_config.known_config_keys(ROOT)
+    assert known, "RealEarthConfig.cs not found or has no [DataMember] properties"
+    for name in ("realearth.json", "realearth.mp.json", "realearth.advanced_height.json"):
+        cfg = json.loads((ROOT / "Config" / name).read_text(encoding="utf-8"))
+        mod_config.reject_unknown_keys(cfg, known)
+
+
+def test_write_rejects_misspelled_key(tmp_path: Path):
+    """A typo would ship as a no-op: the loader ignores unknown members."""
+    dest = tmp_path / "dest"
+    with pytest.raises(SystemExit) as exc:
+        mod_config.main(
+            [
+                "write",
+                str(dest),
+                str(ROOT),
+                "--fresh",
+                "EngineMaxGameY=11000",
+                "EngineMaxGamY=29000",
+            ]
+        )
+    assert "EngineMaxGamY" in str(exc.value)
+    assert not (dest / "Config" / "realearth.json").exists()
+
+
+def test_unknown_key_check_is_skipped_without_contract_source(tmp_path: Path):
+    """A root without the C# source (installed tree) must not fail the write."""
+    cfg = write_config(tmp_path, ["--fresh", "MapMode=Baked"])
+    assert cfg["MapMode"] == "Baked"
 
 
 def test_setdefault_keeps_explicit_value(tmp_path: Path):

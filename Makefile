@@ -49,6 +49,9 @@ endif
 MAP_MODE      ?= Streamed
 export MAP_MODE
 WORLD_SIZE    ?= 2048
+# `make bake` bakes the demo pack; its own default matches the CLI default
+# (bake-world --size), separate from the height-test pack size above.
+BAKE_SIZE     ?= 4096
 PACK_DEMO     := $(ROOT)/data/samples/demo_region
 PACK_HEIGHT   := $(ROOT)/data/samples/height_test
 WORLD_HEIGHT  := $(ROOT)/worlds/RealEarth_HeightTest
@@ -158,7 +161,7 @@ help:
 	@echo "    make check              setup + test-fast + lint-python + build + viewer/webmod/html lint"
 	@echo "    make clean              Remove Python caches / build artifacts"
 	@echo ""
-	@echo "Overrides: GAME_DIR=... MAP_MODE=Baked|Streamed WORLD_SIZE=2048 DOTNET_ROOT=..."
+	@echo "Overrides: GAME_DIR=... MAP_MODE=Baked|Streamed WORLD_SIZE=2048 BAKE_SIZE=4096 DOTNET_ROOT=..."
 	@echo "Also:      make -C tools help"
 
 help-all: help
@@ -277,7 +280,7 @@ demo:
 
 bake:
 	@$(REEARTH) bake-world --pack "$(PACK_DEMO)" --out "$(ROOT)/worlds/RealEarth" \
-		--size 4096 --name RealEarth --generated
+		--size $(BAKE_SIZE) --name RealEarth --generated
 	@echo "OK world → $(ROOT)/worlds/RealEarth"
 
 bake-height: height-map

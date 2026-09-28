@@ -40,7 +40,10 @@ namespace RealEarth
                     }
                 }
 
-                Config = RealEarthConfig.Load(Path.Combine(ModPath, "Config", "realearth.json"));
+                var configPath = Path.Combine(ModPath, "Config", "realearth.json");
+                Config = RealEarthConfig.Load(configPath);
+                foreach (var key in Config.FindUnknownMemberNames(configPath))
+                    LogWarn($"config: key '{key}' is not a RealEarth config key; it is ignored.");
 
                 var tileRoot = Path.IsPathRooted(Config.TilePackPath)
                     ? Config.TilePackPath
@@ -53,6 +56,18 @@ namespace RealEarth
                 TryApplyPackManifest(tileRoot, Config);
                 foreach (var warning in Config.Validate())
                     LogWarn($"config: {warning}");
+
+                // Effective profile after the manifest and the clamps above, so a
+                // log read shows what the session actually runs, not the file.
+                Log(
+                    $"config: mode={Config.MapMode} world={Config.WorldWidth}x{Config.WorldHeight} " +
+                    $"tile={Config.TileSize} window={Config.LocalWindowSize} " +
+                    $"stream={Config.StreamRadiusTiles}/{Config.UnloadRadiusTiles} " +
+                    $"wrap={(Config.EnableLongitudeWrap ? "on" : "off")} " +
+                    $"regionalBbox={Config.HasRegionalBbox} " +
+                    $"seaY={Config.SeaLevelGameY} maxY={Config.EngineMaxGameY} " +
+                    $"heightMod={(Config.EnableEngineHeightMod ? (Config.EngineHeightStockSafe ? "stocksafe" : "1:1") : "off")} " +
+                    $"pack={Config.TilePackPath}");
 
                 Coords = new EarthCoords(Config.WorldWidth, Config.WorldHeight, Config.TileSize);
                 // Host canvas cannot exceed pack extent

@@ -106,7 +106,7 @@ def test_config_validate_exists_and_runs_at_init():
     # WorldWidth and regional bbox, so validating earlier would clamp against
     # the shipped placeholders.
     api = _read("Source/RealEarth/ModApi.cs")
-    load = api.index('RealEarthConfig.Load(Path.Combine(ModPath, "Config", "realearth.json"));')
+    load = api.index("Config = RealEarthConfig.Load(configPath);")
     manifest = api.index("TryApplyPackManifest(tileRoot, Config);")
     validate = api.index("foreach (var warning in Config.Validate())")
     first_use = api.index("new EarthCoords(", validate)
@@ -185,3 +185,26 @@ def test_package_script_reads_documented_game_dir_knob():
     """
     src = _read("scripts/package_mod.sh")
     assert 'GAME_DIR="${SEVENDTD_GAME_DIR:-${GAME_DIR:-}}"' in src
+
+
+def test_loader_reports_unknown_config_keys():
+    """A misspelled key is dropped by the serializer, so init must name it."""
+    src = _read("Source/RealEarth/RealEarthConfig.cs")
+    assert "FindUnknownMemberNames" in src, (
+        "RealEarthConfig must expose an unknown-key scan: DataContractJsonSerializer "
+        "silently ignores members it has no contract for"
+    )
+    api = _read("Source/RealEarth/ModApi.cs")
+    assert "FindUnknownMemberNames" in api, "ModApi must log unknown config keys at init"
+    assert "config: mode=" in api, "ModApi must log the effective profile at init"
+
+
+def test_wrap_threshold_matches_runtime_auto_enable():
+    """Offline writer and runtime must agree on which packs wrap the antimeridian."""
+    py = _read("tools/realearth/__init__.py")
+    match = re.search(r"PLANET_CANVAS_MIN_WIDTH = ([\d_]+)", py)
+    assert match, "PLANET_CANVAS_MIN_WIDTH not found"
+    assert int(match.group(1).replace("_", "")) == 40_000_000, (
+        "RealEarthConfig.Validate auto-enables longitude wrap at WorldWidth >= 40,000,000; "
+        "a lower offline threshold ships wrap=true for packs the mod rejects at init"
+    )

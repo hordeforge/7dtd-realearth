@@ -170,6 +170,14 @@ fi
 # progress irrecoverably. Trash older than RE_SAVE_TRASH_DAYS (default 7) is
 # pruned on each run.
 SAVE_TRASH_DAYS="${RE_SAVE_TRASH_DAYS:-7}"
+case "$SAVE_TRASH_DAYS" in
+  ""|*[!0-9]*)
+    # A non-numeric value makes find fail, and the prune below swallows that
+    # error, so the trash dir would grow without bound. Fail before the run.
+    echo "ERROR: RE_SAVE_TRASH_DAYS must be a non-negative integer (got: $SAVE_TRASH_DAYS)" >&2
+    exit 2
+    ;;
+esac
 TRASH="$USERDATA/Saves_trash"
 mkdir -p "$TRASH"
 # UTC stamp like the log name below: a fall-back DST hour would repeat a local

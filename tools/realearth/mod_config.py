@@ -19,6 +19,7 @@ from __future__ import annotations
 
 import argparse
 import json
+import re
 import sys
 from pathlib import Path
 
@@ -55,6 +56,36 @@ def apply_override(cfg: JsonDict, pair: str) -> None:
     if not sep or not key:
         raise SystemExit(f"ERROR: override must be KEY=VALUE, got: {pair!r}")
     cfg[key] = parse_scalar(raw)
+
+
+# The mod loader (RealEarthConfig, DataContractJsonSerializer) ignores JSON
+# members with no [DataMember], so a typo in a template or a KEY=VALUE override
+# would ship silently and leave the default in force. Keys are read from the
+# C# contract instead of a second list here, so the writer cannot drift.
+CONFIG_KEY_RE = re.compile(r"\[DataMember\]\s+public\s+\S+\s+(\w+)\s*\{")
+# JSON keys that are documentation, not config members.
+_NON_MEMBER_KEYS = frozenset({"_comment"})
+
+
+def known_config_keys(root: Path) -> frozenset[str] | None:
+    """Config member names from Source/RealEarth/RealEarthConfig.cs, or None."""
+    source = root / "Source" / "RealEarth" / "RealEarthConfig.cs"
+    if not source.is_file():
+        return None
+    return frozenset(CONFIG_KEY_RE.findall(source.read_text(encoding="utf-8")))
+
+
+def reject_unknown_keys(cfg: JsonDict, known: frozenset[str] | None) -> None:
+    """Abort the write when a config key is not a mod config member."""
+    if known is None:
+        return
+    unknown = sorted(key for key in cfg if key not in known and key not in _NON_MEMBER_KEYS)
+    if unknown:
+        raise SystemExit(
+            f"ERROR: unknown RealEarth config key(s): {', '.join(unknown)}. "
+            "The mod ignores keys it does not know, so these would ship as "
+            "no-ops. Check the spelling against RealEarthConfig.cs."
+        )
 
 
 def sync_manifest_dimensions(
@@ -185,6 +216,7 @@ def main(argv: list[str] | None = None) -> int:
             print(f"note: no manifest at {args.dest / 'Data' / 'tiles' / 'earth.manifest.json'}")
     if args.height_test_meta:
         apply_height_test_meta(args.dest, cfg)
+    reject_unknown_keys(cfg, known_config_keys(args.root))
 
     out_path = args.dest / "Config" / "realearth.json"
     out_path.parent.mkdir(parents=True, exist_ok=True)
