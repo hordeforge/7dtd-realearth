@@ -9,6 +9,20 @@
 # (starts its own server on port 8765 unless RE_VIEWER_SMOKE_PORT is set)
 
 set -euo pipefail
+
+usage() {
+  # Header comment with the leading '# ' stripped; a fixed line range would
+  # shift whenever a note is added above it.
+  awk 'NR == 1 { next } /^#/ { sub(/^# ?/, ""); print; next } { exit }' "$0"
+}
+
+case "${1:-}" in
+  -h | --help)
+    usage
+    exit 0
+    ;;
+esac
+
 ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 PORT="${RE_VIEWER_SMOKE_PORT:-8765}"
 case "$PORT" in

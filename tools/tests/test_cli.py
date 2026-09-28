@@ -410,3 +410,62 @@ def test_verify_build_rejects_input_without_file_field(tmp_path: Path) -> None:
     assert result.exit_code == 1
     assert "Traceback" not in result.stderr
     assert "dem" in result.stderr
+
+
+@pytest.mark.parametrize(
+    "tail_argv",
+    [
+        ["bake-world", "--out", "{out}"],
+        ["export-viewer", "--out", "{out}"],
+        ["sample-chunk"],
+    ],
+)
+def test_pack_commands_reject_a_directory_without_a_manifest(
+    tmp_path: Path, tail_argv: list[str]
+) -> None:
+    """A wrong --pack must name the missing file, not traceback or fake a pack.
+
+    An empty --pack used to reach the reader (FileNotFoundError traceback) or,
+    for sample-chunk, decode nothing and print a flat all-sea chunk as if it
+    were real sample data.
+    """
+    command, rest = tail_argv[0], tail_argv[1:]
+    args = [command, "--pack", str(tmp_path), *[a.format(out=str(tmp_path / "w")) for a in rest]]
+    result = CliRunner().invoke(main, args)
+    assert result.exit_code == 1
+    assert "Traceback" not in result.stderr
+    assert "earth.manifest.json" in result.stderr
+
+
+def test_planet_tiles_limit_zero_prints_every_tile() -> None:
+    """The default 50-line cap would silently drop tiles from a pipe."""
+    runner = CliRunner()
+    base = ["planet-tiles", "--west", "-1", "--south", "-1", "--east", "1", "--north", "1"]
+    capped = runner.invoke(main, base)
+    assert capped.exit_code == 0
+    full = runner.invoke(main, [*base, "--limit", "0"])
+    assert full.exit_code == 0
+    assert len(full.stdout.splitlines()) > len(capped.stdout.splitlines())
+    assert "... and" in capped.stderr
+    assert "... and" not in full.stderr
+
+
+def test_planet_tiles_rejects_a_negative_limit() -> None:
+    result = CliRunner().invoke(
+        main,
+        [
+            "planet-tiles",
+            "--west",
+            "-1",
+            "--south",
+            "-1",
+            "--east",
+            "1",
+            "--north",
+            "1",
+            "--limit",
+            "-1",
+        ],
+    )
+    assert result.exit_code == 2
+    assert "--limit" in result.stderr

@@ -20,6 +20,8 @@ import sys
 from pathlib import Path
 from xml.etree import ElementTree as ET
 
+from realearth import __version__
+
 # Serverconfig is tab-indented under a single <ServerSettings> root; inserted
 # properties match that so a written file still diffs cleanly against a template.
 INDENT = "\t"
@@ -89,6 +91,7 @@ def main(argv: list[str] | None = None) -> int:
         epilog=_EPILOG,
         formatter_class=argparse.RawDescriptionHelpFormatter,
     )
+    parser.add_argument("--version", action="version", version=f"%(prog)s {__version__}")
     parser.add_argument("src", type=Path, help="serverconfig template to read")
     parser.add_argument("dest", type=Path, help="serverconfig to write")
     parser.add_argument(

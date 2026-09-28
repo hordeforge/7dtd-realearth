@@ -1,6 +1,20 @@
 #!/usr/bin/env bash
 # Assemble a Mods/RealEarth folder ready to copy into the game.
 set -euo pipefail
+
+usage() {
+  # Header comment with the leading '# ' stripped; a fixed line range would
+  # shift whenever a note is added above it.
+  awk 'NR == 1 { next } /^#/ { sub(/^# ?/, ""); print; next } { exit }' "$0"
+}
+
+case "${1:-}" in
+  -h | --help)
+    usage
+    exit 0
+    ;;
+esac
+
 ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 OUT="${1:-$ROOT/dist/RealEarth}"
 # Same precedence as every install/expand script: SEVENDTD_GAME_DIR wins,

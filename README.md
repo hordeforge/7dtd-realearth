@@ -162,7 +162,7 @@ realearth export-viewer --pack DIR --out viewer/data/NAME
 realearth serve
 realearth list-tiles DIR
 realearth inspect-tile DIR TX TZ
-realearth planet-tiles --west … --south … --east … --north …
+realearth planet-tiles --west … --south … --east … --north … --limit 0 # every tile
 ```
 
 ## One large map in the game

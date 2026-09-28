@@ -4,6 +4,20 @@
 #   not listed, Twitch locked, no web dashboard.
 # Leaves the server running (does not auto-kill after soak).
 set -euo pipefail
+
+usage() {
+  # Header comment with the leading '# ' stripped; a fixed line range would
+  # shift whenever a note is added above it.
+  awk 'NR == 1 { next } /^#/ { sub(/^# ?/, ""); print; next } { exit }' "$0"
+}
+
+case "${1:-}" in
+  -h | --help)
+    usage
+    exit 0
+    ;;
+esac
+
 ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 # shellcheck source=scripts/generated-world.sh
 source "$ROOT/scripts/generated-world.sh"

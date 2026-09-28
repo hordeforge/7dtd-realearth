@@ -16,6 +16,19 @@
 #   source scripts/useroptions_ini.sh; re_set_ini_general_value FILE KEY=VALUE
 set -euo pipefail
 
+usage() {
+  # Header comment with the leading '# ' stripped; a fixed line range would
+  # shift whenever a note is added above it.
+  awk 'NR == 1 { next } /^#/ { sub(/^# ?/, ""); print; next } { exit }' "$0"
+}
+
+case "${1:-}" in
+  -h | --help)
+    usage
+    exit 0
+    ;;
+esac
+
 re_set_ini_general_value() {
   local file="$1" pair key value scratch crlf
   pair="${2:?usage: re_set_ini_general_value FILE KEY=VALUE}"

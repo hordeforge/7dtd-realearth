@@ -7,7 +7,7 @@ from xml.etree import ElementTree as ET
 
 import pytest
 
-from realearth import server_config
+from realearth import __version__, server_config
 
 ROOT = Path(__file__).resolve().parents[2]
 SHIPPED_TEMPLATE = ROOT / "scripts" / "serverconfig_height_test.xml"
@@ -105,3 +105,10 @@ def test_help_documents_invocation_and_example(capsys: pytest.CaptureFixture[str
     assert "NAME=VALUE" in out
     assert "examples:" in out
     assert "python3 -m realearth.server_config SRC DEST" in out
+
+
+def test_version_prints_and_exits_zero(capsys: pytest.CaptureFixture[str]) -> None:
+    with pytest.raises(SystemExit) as exc:
+        server_config.main(["--version"])
+    assert exc.value.code == 0
+    assert __version__ in capsys.readouterr().out

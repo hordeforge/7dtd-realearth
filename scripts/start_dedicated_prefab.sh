@@ -16,6 +16,20 @@
 #   # Custom RWG size/seed
 #   RE_WORLD_NAME=RWG RE_WORLD_GEN_SIZE=4096 RE_WORLD_GEN_SEED=botpoi4k ./scripts/start_dedicated_prefab.sh
 set -euo pipefail
+
+usage() {
+  # Header comment with the leading '# ' stripped; a fixed line range would
+  # shift whenever a note is added above it.
+  awk 'NR == 1 { next } /^#/ { sub(/^# ?/, ""); print; next } { exit }' "$0"
+}
+
+case "${1:-}" in
+  -h | --help)
+    usage
+    exit 0
+    ;;
+esac
+
 ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 DS_DIR="${SEVENDTD_SERVER_DIR:-$HOME/.local/share/Steam/steamapps/common/7 Days to Die Dedicated Server}"
 USERDATA="${RE_DEDICATED_USERDATA:-$HOME/.cache/realearth-dedicated}"

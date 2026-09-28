@@ -58,6 +58,23 @@ def _read_json(path: Path, label: str) -> JsonDict:
     return data
 
 
+def _require_pack(pack: str, flag: str = "--pack") -> Path:
+    """Return a pack directory that actually holds a manifest.
+
+    `click.Path(exists=True)` only proves the directory is there. A wrong
+    --pack (repo root, a tile dir, an empty tmp dir) otherwise reaches the
+    reader and surfaces as a FileNotFoundError traceback, or worse, as a
+    silently empty pack that bakes a flat world.
+    """
+    root = Path(pack)
+    if not (root / "earth.manifest.json").is_file():
+        raise click.ClickException(
+            f"no earth.manifest.json in {root} ({flag} needs a tile pack directory; "
+            f"create one with: realearth build-region ... --out {root})"
+        )
+    return root
+
+
 def _require_finite(name: str, value: float) -> None:
     """Reject NaN/inf coordinates as usage errors instead of crashing later."""
     if not math.isfinite(value):
@@ -413,13 +430,25 @@ def inspect_tile_cmd(pack_dir: str, tx: int, tz: int) -> None:
 @click.option("--east", type=float, required=True, help="East longitude")
 @click.option("--north", type=float, required=True, help="North latitude")
 @click.option("--tile-size", type=int, default=512, show_default=True, help="Tile edge in blocks")
-def planet_tiles_cmd(west: float, south: float, east: float, north: float, tile_size: int) -> None:
+@click.option(
+    "--limit",
+    type=int,
+    default=50,
+    show_default=True,
+    help="Max tiles printed on stdout; 0 prints every tile (required when scripting)",
+)
+def planet_tiles_cmd(
+    west: float, south: float, east: float, north: float, tile_size: int, limit: int
+) -> None:
     """List absolute Earth tile indices covering a bbox (planning full planet builds).
 
     Accepts continuous east>west bboxes and dateline-straddling west>east
     (Pacific) packs; those split via split_bbox_at_antimeridian. Stdout carries
     only "tx tz" lines (pipeable); counts and truncation notes go to stderr.
+    Pass --limit 0 when piping, or the default 50-line cap silently drops tiles.
     """
+    if limit < 0:
+        raise click.BadParameter("must be 0 (no limit) or greater", param_hint="--limit")
     for flag, value in (
         ("--west", west),
         ("--south", south),
@@ -433,10 +462,13 @@ def planet_tiles_cmd(west: float, south: float, east: float, north: float, tile_
         raise click.BadParameter(str(exc), param_hint="--west/--east/--south/--north") from exc
     # Status on stderr so piped stdout stays pure "tx tz" data lines.
     click.echo(f"{len(tiles)} tiles", err=True)
-    for tx, tz in tiles[:50]:
+    shown = tiles if limit == 0 else tiles[:limit]
+    for tx, tz in shown:
         click.echo(f"{tx} {tz}")
-    if len(tiles) > 50:
-        click.echo(f"... and {len(tiles) - 50} more", err=True)
+    if len(shown) < len(tiles):
+        click.echo(
+            f"... and {len(tiles) - len(shown)} more (rerun with --limit 0 for all)", err=True
+        )
 
 
 @main.command("wrap-check", context_settings=_ctx(ignore_unknown_options=True))
@@ -721,7 +753,7 @@ def sample_chunk_cmd(
             param_hint="--lon/--lat",
         )
 
-    pack = Path(pack_dir)
+    pack = _require_pack(pack_dir)
     if lon is not None and lat is not None:
         _require_finite("--lon", lon)
         _require_finite("--lat", lat)
@@ -867,11 +899,12 @@ def bake_world_cmd(
     )
     from realearth.generated_world import bake_generated_world
 
+    pack = _require_pack(pack_dir)
     size = snap_world_size(size)
     world_name = name or "RealEarth"
     if generated:
         meta = bake_generated_world(
-            Path(pack_dir),
+            pack,
             Path(out_dir),
             size=size,
             name=world_name,
@@ -891,7 +924,7 @@ def bake_world_cmd(
         click.echo("  then New Game → select that world (one continuous map).")
     else:
         result = bake_world_from_pack(
-            Path(pack_dir),
+            pack,
             Path(out_dir),
             size=size,
             name=world_name,
@@ -931,7 +964,7 @@ def export_viewer_cmd(pack_dir: str, out_dir: str, max_dim: int, name: str | Non
     """Export PNG mosaics + viewer.json for the web map viewer."""
     from realearth.viewer_export import export_viewer_pack
 
-    path = export_viewer_pack(Path(pack_dir), Path(out_dir), max_dim=max_dim, name=name)
+    path = export_viewer_pack(_require_pack(pack_dir), Path(out_dir), max_dim=max_dim, name=name)
     click.echo(f"Viewer pack → {path}")
     click.echo("  hybrid.png elevation.png landcover.png population.png viewer.json")
 
