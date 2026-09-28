@@ -1,6 +1,6 @@
 # Security policy
 
-Project scope: RealEarth, a 7 Days to Die V3.1.0 mod plus its offline data pipeline.
+Project scope: RealEarth, a 7 Days to Die V3.2.0 (b9) mod plus its offline data pipeline.
 It holds no user PII, credentials, or signing keys.
 
 ## Reporting
@@ -14,8 +14,11 @@ lists the known surfaces (tile decoder, CDN fetch path, viewer, install tooling)
 ## In scope
 
 - `.rte` tile decoding and the runtime CDN fetch path (`Source/RealEarth/RteTile.cs`, `Source/RealEarth/TileStreamer.cs`)
-- The web viewer and WebMod bundle (`viewer/src`, `viewer/index.html`, `webmod/src`),
-  including its pinned runtime CDN dependency (`three.js` via cdn.jsdelivr.net)
+- The web viewer and WebMod bundle (`viewer/src`, `viewer/index.html`, `webmod/src`).
+  three.js is vendored into `viewer/vendor/three` and hash-checked against the pinned
+  `node_modules` copy by `scripts/vendor-three.sh --check`, so the viewer loads no
+  remote script at runtime. Reports about a viewer page pulling code from a CDN are
+  in scope and worth reporting: the importmap is supposed to stay same-origin.
 - Pipeline CLI input handling (`tools/realearth`)
 - Install tooling and the runtime YDim transpiler (`scripts/`, `Source/RealEarth/RuntimeYDimTranspiler.cs`)
 

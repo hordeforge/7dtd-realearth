@@ -157,6 +157,7 @@ Generic engine machines (gmUpdate, AI LOD, path, chunk flags, net bands): [resea
 
 ## Changelog
 
+- **2026-09-28:** THREAT_MODEL re-verified against code: dropped the disk-patcher build boundary (no such tool in the tree; expand is the Harmony runtime transpiler), retired the CDN three.js threat (vendored + CI hash gate), corrected drifted line references, recorded the dead CSP script-src grant.
 - **2026-08-26:** BACKUP_RESTORE registered (durability posture: state inventory, artifact archives, RPO/RTO).
 - **2026-08-23:** THREAT_MODEL + SECURITY registered (threat model owns attack-surface documentation).
 - **2026-07-19:** ENGINE_LIMITATIONS §7b + link generic research engine-limitations map.

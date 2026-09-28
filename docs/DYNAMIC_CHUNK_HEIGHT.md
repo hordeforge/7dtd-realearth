@@ -111,12 +111,12 @@ Keep **meters in `.rte`** either way.
 |---|---|---|
 | **H0** | Product: real meters + YDim expand (not global compress) | **Product path** ([HEIGHT_LIMITS](HEIGHT_LIMITS.md)) |
 | **H1** | Research: Chunk arrays, Y clamps, light/mesh 255 sites on 3.0.1 | **Closed** in research + [realearth-surfaces](realearth-surfaces.md) |
-| **H2** | Expand to full product YDim (32768) soak | **Done** (2026-08-29/30 live: H500/Everest/trench soaks at YDim=32768; runtime hot patch is now the default, disk patcher fallback) |
+| **H2** | Expand to full product YDim (32768) soak | **Done** (2026-08-29/30 live: H500/Everest/trench soaks at YDim=32768; expand ships as the Harmony runtime hot patch, the only expand path in the tree) |
 | **H3** | Sparse sections: only allocate used Y bands | **Later** (this doc) |
 | **H4** | Stream sections with player Y (dig deep / fly high) | **Later** |
 | **H5** | Multiplayer section sync | **Later** |
 
-**H2** is the near-term engine work (hot-patch or disk expand + inject). **H3-H4** is the real dynamic RAM design.
+**H2** is the near-term engine work (runtime hot-patch expand + inject). **H3-H4** is the real dynamic RAM design.
 
 **Audit 2026-08-30:** the static full-column claim is accurate for the *engine*
 (`Chunk` allocates 16×16×32768 cells per chunk when expanded/hot-patched - the
