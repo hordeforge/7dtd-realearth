@@ -21,6 +21,11 @@ Assumes a stock 7 Days to Die V3.2.0 (b9) install and the sibling
 | `Config/realearth.json` | Product defaults: Streamed, 1:1 height, SoloSlide/SharedFixed |
 | `Data/tiles/` | `.rte` elevation packs (demo pack shipped) |
 
+If `Config/realearth.json` is missing at startup, the mod writes the built-in
+defaults there and logs `config: no realearth.json at ...` at WARN. The session
+then runs full-planet Streamed with real-height 1:1, so treat that warning as a
+missing install step, not a notice.
+
 Product height model: `gameY = SeaLevelGameY(16000) + elev_m` (1 m ≈ 1 block).
 Expand raises the engine column to YDim=32768 so real relief fits both ways:
 ~12 km up (airliner band, ceiling 29000) and real depth below sea (trench

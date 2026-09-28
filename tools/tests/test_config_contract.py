@@ -106,7 +106,7 @@ def test_config_validate_exists_and_runs_at_init():
     # WorldWidth and regional bbox, so validating earlier would clamp against
     # the shipped placeholders.
     api = _read("Source/RealEarth/ModApi.cs")
-    load = api.index("Config = RealEarthConfig.Load(configPath);")
+    load = api.index("RealEarthConfig.Load(configPath)")
     manifest = api.index("TryApplyPackManifest(tileRoot, Config);")
     validate = api.index("foreach (var warning in Config.Validate())")
     first_use = api.index("new EarthCoords(", validate)
@@ -136,6 +136,29 @@ def _csharp_config_members() -> set[str]:
     return set(re.findall(r"\[DataMember\]\s*public\s+\S+\s+(\w+)\s*\{", src))
 
 
+def test_missing_config_is_reported_not_silent():
+    """A missing realearth.json must be named at init, not run as silent defaults.
+
+    Load() writes a defaults file when none exists so a fresh install has one to
+    edit, but every value the session then runs was chosen by nobody. The load
+    result has to reach the log or a server with a mis-copied Config directory
+    looks configured.
+    """
+    cfg_src = _read("Source/RealEarth/RealEarthConfig.cs")
+    assert (
+        "public static LoadResult Load(string path)" in cfg_src
+    ), "Load must return a result that says the values came from built-in defaults"
+    assert "public bool SynthesizedDefaults { get; }" in cfg_src
+    api = _read("Source/RealEarth/ModApi.cs")
+    assert "RealEarthConfig.Load(configPath);" in api
+    assert (
+        "loadedConfig.SynthesizedDefaults" in api
+    ), "InitMod must warn when it is running built-in config defaults"
+    assert api.index("RealEarthConfig.Load(configPath);") < api.index(
+        "loadedConfig.SynthesizedDefaults"
+    ), "the synthesized-defaults warning must fire right after the load"
+
+
 def test_shipped_config_keys_exist_in_csharp_loader():
     """Every shipped realearth.json key must map to a C# [DataMember].
 
@@ -153,6 +176,100 @@ def test_shipped_config_keys_exist_in_csharp_loader():
         cfg = json.loads(_read(f"Config/{name}"))
         unknown = sorted(k for k in cfg if not k.startswith("_") and k not in members)
         assert not unknown, f"{name} has keys the mod loader ignores: {unknown}"
+
+
+# Regional pack bbox; the pack manifest fills it at init, so no profile ships it.
+_PROFILE_EXEMPT = frozenset({"BboxWest", "BboxSouth", "BboxEast", "BboxNorth"})
+
+
+def _csharp_config_defaults() -> dict[str, object]:
+    """Default value of every [DataMember] property, keyed by member name.
+
+    Only the literal initializers are read; a member defaulting to a constant
+    (MaxHotTiles = DefaultMaxHotTiles) is resolved from the same source.
+    """
+    src = _read("Source/RealEarth/RealEarthConfig.cs")
+    consts = {
+        name: value.replace("_", "")
+        for name, value in re.findall(r"public const \w+ (\w+) = ([^;]+);", src)
+    }
+    pattern = re.compile(
+        r"\[DataMember\]\s*public\s+(\w+)\s+(\w+)\s*\{\s*get;\s*set;\s*\}\s*=\s*([^;]+);"
+    )
+    out: dict[str, object] = {}
+    for ctype, name, raw in pattern.findall(src):
+        literal = raw.strip().rstrip("f")
+        if literal in consts:
+            literal = consts[literal]
+        elif ctype == "string":
+            out[name] = literal.strip('"')
+            continue
+        else:
+            # int / double / float / bool literals all parse as JSON scalars.
+            literal = literal.replace("_", "")
+        out[name] = json.loads(literal)
+    return out
+
+
+def test_shipped_default_profile_matches_csharp_defaults():
+    """Config/realearth.json must carry every key the C# loader defines, at the
+    same value.
+
+    The profile is the operator-facing copy of the defaults, and the defaults
+    also apply when the file is missing. A key added to RealEarthConfig.cs and
+    left out of the profile (or shipped at a different value) leaves the two
+    descriptions of "the default" disagreeing, and a key the profile drops
+    silently reverts to whatever the class says.
+    """
+    defaults = _csharp_config_defaults()
+    assert "MapMode" in defaults  # sanity: the regex still matches the schema
+    profile = json.loads(_read("Config/realearth.json"))
+    missing = sorted(k for k in defaults if k not in profile and k not in _PROFILE_EXEMPT)
+    assert not missing, f"Config/realearth.json is missing keys the mod defines: {missing}"
+    drifted = {
+        key: (defaults[key], profile[key])
+        for key in defaults
+        if key in profile and profile[key] != defaults[key]
+    }
+    assert not drifted, f"Config/realearth.json disagrees with the C# defaults: {drifted}"
+
+
+def test_every_env_var_read_by_the_build_is_documented():
+    """Every environment variable the scripts and pipeline read must be named in
+    .env.example.
+
+    An operator knob nothing documents is one they set blind, and a knob added
+    to a script after the template was written is invisible from here. Reads are
+    matched in their default form (${VAR:-...}), so variables a script sets for
+    itself are not mistaken for knobs.
+    """
+    shell = "".join(
+        p.read_text(encoding="utf-8") for p in sorted((ROOT / "scripts").glob("*.sh"))
+    ) + _read("Makefile")
+    read = set(re.findall(r"\$\{([A-Z][A-Z0-9_]*)[:-]", shell))
+    read |= set(
+        re.findall(
+            r'os\.environ(?:\.get)?\(?\[?"([A-Z][A-Z0-9_]*)"',
+            "".join(
+                p.read_text(encoding="utf-8")
+                for p in sorted((ROOT / "tools" / "realearth").glob("*.py"))
+            ),
+        )
+    )
+    assert read, "no env vars found; the scan regex is wrong, not the scripts"
+    # The project knob families. Script-local scratch variables (PROTON_UD,
+    # SCRATCH_OUT) and build internals (PYTHONPATH, SOURCE_DATE_EPOCH) share the
+    # read syntax but are not operator configuration.
+    knobs = {
+        v
+        for v in read
+        if v.startswith(("RE_", "SEVENDTD_"))
+        or v in {"GAME_DIR", "MAP_MODE", "STEAM_DIR", "DOTNET_ROOT"}
+    }
+    assert knobs, "the knob scan found nothing; the prefixes are wrong"
+    example = _read(".env.example")
+    undocumented = sorted(v for v in knobs if v not in example)
+    assert not undocumented, f"env vars read but absent from .env.example: {undocumented}"
 
 
 def test_script_window_default_matches_tools_constant():

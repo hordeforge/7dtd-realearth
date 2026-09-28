@@ -46,6 +46,12 @@ and the release gate requires both to match the tag (`v<version>`) and a dated
 
 ### Changed
 
+- **A missing `Config/realearth.json` now says so at startup.** The mod still
+  writes a defaults file for a fresh install, but init logs
+  `config: no realearth.json at <path>` (and names a failed write) so a
+  server whose Config directory was not installed is not mistaken for a
+  configured one running the full-planet defaults.
+
 - **CI runs the whole Python suite, not a hand-picked subset.** The `tools`
   job ran 13 of the 49 test files, so a test file no job invoked could sit
   unmaintained: the UTF-8 pack-read assertion still pointed at `ModApi.cs`

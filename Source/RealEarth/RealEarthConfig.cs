@@ -569,11 +569,36 @@ namespace RealEarth
             return unknown;
         }
 
-        public static RealEarthConfig Load(string path)
+        /// <summary>
+        /// What a load produced, so init can say when the values did not come
+        /// from a file. Without this a missing config is indistinguishable from
+        /// a configured one: the mod runs the full-planet Streamed defaults and
+        /// the operator sees no error.
+        /// </summary>
+        public readonly struct LoadResult
+        {
+            public LoadResult(RealEarthConfig config, bool synthesizedDefaults, bool writeFailed)
+            {
+                Config = config;
+                SynthesizedDefaults = synthesizedDefaults;
+                WriteFailed = writeFailed;
+            }
+
+            public RealEarthConfig Config { get; }
+
+            /// <summary>No realearth.json at the path; every value is a class default.</summary>
+            public bool SynthesizedDefaults { get; }
+
+            /// <summary>The synthesized default file could not be written (read-only install).</summary>
+            public bool WriteFailed { get; }
+        }
+
+        public static LoadResult Load(string path)
         {
             if (!File.Exists(path))
             {
                 var cfg = new RealEarthConfig();
+                var written = true;
                 try
                 {
                     var dir = Path.GetDirectoryName(path);
@@ -583,16 +608,19 @@ namespace RealEarth
                 }
                 catch
                 {
-                    // ignore write failures
+                    written = false;
                 }
-                return cfg;
+                return new LoadResult(cfg, true, !written);
             }
 
             try
             {
                 using var fs = File.OpenRead(path);
                 var ser = new DataContractJsonSerializer(typeof(RealEarthConfig));
-                return ser.ReadObject(fs) as RealEarthConfig ?? new RealEarthConfig();
+                return new LoadResult(
+                    ser.ReadObject(fs) as RealEarthConfig ?? new RealEarthConfig(),
+                    false,
+                    false);
             }
             catch (Exception ex)
             {

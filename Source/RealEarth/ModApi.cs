@@ -41,7 +41,19 @@ namespace RealEarth
                 }
 
                 var configPath = Path.Combine(ModPath, "Config", "realearth.json");
-                Config = RealEarthConfig.Load(configPath);
+                var loadedConfig = RealEarthConfig.Load(configPath);
+                Config = loadedConfig.Config;
+                if (loadedConfig.SynthesizedDefaults)
+                    // Not fatal: a fresh install has no config yet and the defaults
+                    // are the shipped profile. But say so, because every value the
+                    // session runs is then a default nobody chose.
+                    LogWarn(
+                        $"config: no realearth.json at {configPath}; running built-in defaults " +
+                        "(full-planet Streamed, 1:1 height, 512 tiles, wrap auto). " +
+                        (loadedConfig.WriteFailed
+                            ? "The default file could NOT be written (permissions or a read-only install); "
+                              + "the mod stays unconfigured until one is placed there."
+                            : "Edit that file to configure the server."));
                 foreach (var key in Config.FindUnknownMemberNames(configPath))
                     LogWarn($"config: key '{key}' is not a RealEarth config key; it is ignored.");
 
