@@ -74,7 +74,7 @@ namespace RealEarth
 
         /// <summary>
         /// Debug: continuously uncover FOW in a radius around the local player (chunk units).
-        /// 0 = off (default). Dev may set 128 (≈ 2048 m).
+        /// 0 = off (default). Clamped to [0, 64] on Validate, like the explore knob.
         /// </summary>
         [DataMember] public int DebugMapRevealRadiusChunks { get; set; } = 0;
 
@@ -417,6 +417,21 @@ namespace RealEarth
             {
                 MapExploreRevealRadiusChunks = 64;
                 warnings.Add("MapExploreRevealRadiusChunks > 64; clamp to 64.");
+            }
+
+            // Same bound as the explore knob: the debug knob wins the radius
+            // selection in MapReveal, and AddRect allocates a fresh map-sized
+            // buffer plus a reflective call per chunk on the player tick, so an
+            // unclamped value scales that cost as radius squared.
+            if (DebugMapRevealRadiusChunks < 0)
+            {
+                DebugMapRevealRadiusChunks = 0;
+                warnings.Add("DebugMapRevealRadiusChunks < 0; reset to 0.");
+            }
+            if (DebugMapRevealRadiusChunks > 64)
+            {
+                DebugMapRevealRadiusChunks = 64;
+                warnings.Add("DebugMapRevealRadiusChunks > 64; clamp to 64.");
             }
 
             if (CityMapMinPopulation < 0)

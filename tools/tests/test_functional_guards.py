@@ -73,6 +73,18 @@ def test_world_tile_indices_for_bbox_rejects_bad_bbox():
     assert len(tiles) == expect_tx * expect_tz
 
 
+def test_world_tile_indices_full_planet_covers_every_column():
+    """lon +180 folds onto block 0, so a -180..180 bbox must not collapse to tx 0.
+
+    One row of latitude keeps the plan at one tile tall (a full-planet plan is
+    billions of tiles); the column selection is what the bug broke.
+    """
+    g = EarthGrid()
+    tiles = world_tile_indices_for_bbox(-180.0, 0.0, 180.0, 0.0001, tile_size=DEFAULT_TILE_SIZE)
+    assert {tx for tx, _ in tiles} == set(range(g.tiles_x))
+    assert len({tz for _, tz in tiles}) == 1
+
+
 def test_split_bbox_at_antimeridian_continuous():
     assert split_bbox_at_antimeridian(-105.3, 39.5, -104.7, 40.0) == [(-105.3, 39.5, -104.7, 40.0)]
 

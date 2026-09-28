@@ -39,6 +39,18 @@ namespace RealEarth
                 if (ww > 0 && ww < 10_000_000)
                     cfg.EnableLongitudeWrap = false;
 
+                // The runtime maps elevation 1 m = 1 block on every product path, so a
+                // pack built at a coarser sample size is vertically exaggerated. The
+                // scale is not applied, only surfaced: a silently ignored manifest field
+                // is a silent misconfiguration.
+                double mpb = ReadJsonDouble(json, "meters_per_block");
+                if (!double.IsNaN(mpb) && Math.Abs(mpb - 1.0) > 0.001)
+                {
+                    ModApi.LogWarn(
+                        $"Pack is {mpb} m per block; the runtime renders elevation 1 m = 1 block, " +
+                        "so vertical relief is exaggerated by that factor.");
+                }
+
                 double west = ReadJsonDouble(json, "west");
                 double south = ReadJsonDouble(json, "south");
                 double east = ReadJsonDouble(json, "east");

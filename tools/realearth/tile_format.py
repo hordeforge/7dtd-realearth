@@ -44,6 +44,11 @@ class EarthTile:
             raise ValueError("elevation_m must be 2D")
         self.elevation_m = np.asarray(self.elevation_m)
         h, w = self.elevation_m.shape
+        if w <= 0 or h <= 0 or w * h > MAX_TILE_SAMPLES:
+            # Every reader (decode_tile, the viewer mosaic, RteTile.Decode) caps
+            # the sample count; refuse at the writer so an oversized tile_size
+            # cannot produce a pack its own toolchain rejects.
+            raise ValueError(f"tile dims out of range: {w}x{h}")
         if self.landcover is not None:
             self.landcover = np.asarray(self.landcover, dtype=np.uint8)
             if self.landcover.shape != (h, w):

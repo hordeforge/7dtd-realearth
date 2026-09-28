@@ -446,15 +446,20 @@ def _world_tile_indices_continuous(
     g = EarthGrid(tile_size=tile_size)
     x0, z_south = lonlat_to_block(west, south, g)
     x1, z_north = lonlat_to_block(east, north, g)
+    # lonlat_to_block folds +180 onto block 0, so a bbox that reaches the
+    # antimeridian (a full-planet pack) would otherwise report a single tile
+    # column. Take the east edge unwrapped to decide which side of the seam the
+    # span ends on.
+    x1_raw = int((east + 180.0) / 360.0 * g.width)
     tz0 = min(z_north, z_south) // tile_size
     tz1 = max(z_north, z_south) // tile_size
-    if x0 <= x1:
+    if x0 <= x1 and x1_raw < g.width:
         txs: list[int] = list(range(min(x0, x1) // tile_size, max(x0, x1) // tile_size + 1))
     else:
         # Block X wraps at the antimeridian (lon +180 maps to block 0), so an
-        # ordinary east>west bbox can still straddle it (west=179, east=180).
-        # Cover x0..last-tile then 0..x1 instead of min/max expanding to the
-        # near-full-planet span.
+        # ordinary east>west bbox can still straddle it (west=179, east=180),
+        # and a full-planet bbox (-180..180) always does. Cover x0..last-tile
+        # then 0..x1 instead of min/max expanding to the near-full-planet span.
         last_tx = g.tiles_x - 1
         hi0, lo1 = x0 // tile_size, x1 // tile_size
         txs = list(range(hi0, last_tx + 1)) + list(range(lo1 + 1))

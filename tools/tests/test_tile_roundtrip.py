@@ -3,6 +3,7 @@ import zlib
 from pathlib import Path
 
 import numpy as np
+import pytest
 
 from realearth import DEFAULT_SEA_LEVEL_GAME_Y, ENGINE_TARGET_MAX_Y
 from realearth.height import compress_elevation
@@ -138,6 +139,16 @@ def test_decode_rejects_hostile_dims():
         raise AssertionError("expected ValueError for high-bit dims")
     except ValueError:
         pass
+
+
+def test_writer_rejects_oversized_tile():
+    # The reader, the viewer mosaic and RteTile.Decode all cap the sample count;
+    # an oversized tile_size must fail at the writer, not produce a pack that
+    # decode_tile then rejects.
+    over = int(MAX_TILE_SAMPLES**0.5) + 1
+    for w, h in ((over, over), (MAX_TILE_SAMPLES + 1, 1)):
+        with pytest.raises(ValueError):
+            EarthTile(0, 0, np.zeros((h, w), dtype=np.float32))
 
 
 def test_decode_rejects_future_version():
