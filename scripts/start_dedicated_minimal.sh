@@ -173,20 +173,14 @@ PYTHONPATH="$ROOT/tools" python3 -m realearth.server_config \
   EnemySpawnMode=true \
   ZombieMove=2
 
-# Discord: not a serverconfig property. Write a local UserOptions override if present.
+# Discord: not a serverconfig property. Write a local UserOptions override.
+# The setter rewrites the key to exactly one entry under [General] on every
+# run, so restarting this script does not stack duplicate DiscordDisabled
+# lines (the old append grew the file once per start).
 OPTS="$USERDATA/UserOptions.ini"
-if [[ ! -f "$OPTS" ]]; then
-  printf '%s\n' \
-    '[General]' \
-    'DiscordDisabled=true' \
-    >"$OPTS"
-else
-  if grep -q 'DiscordDisabled' "$OPTS"; then
-    sed -i 's/^DiscordDisabled=.*/DiscordDisabled=true/' "$OPTS"
-  else
-    printf '\nDiscordDisabled=true\n' >>"$OPTS"
-  fi
-fi
+# shellcheck disable=SC1091
+source "$ROOT/scripts/useroptions_ini.sh"
+re_set_ini_general_value "$OPTS" DiscordDisabled=true
 echo "UserOptions DiscordDisabled=true → $OPTS"
 
 LOG="$USERDATA/server_minimal_$(date -u +%Y-%m-%d__%H-%M-%S)_$$.txt"

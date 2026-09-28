@@ -5,6 +5,7 @@ from __future__ import annotations
 import hashlib
 import json
 import math
+import shutil
 from pathlib import Path
 from typing import Any
 
@@ -176,6 +177,16 @@ def build_region(
     tiles_meta: list[dict[str, int]] = []
     n_tx = (width + tile_size - 1) // tile_size
     n_tz = (height + tile_size - 1) // tile_size
+
+    # A rerun with a smaller grid (narrower bbox, coarser resolution, smaller
+    # tile_size) writes fewer tiles than the previous run, so whatever it left
+    # in tiles/ survives: the directory no longer matches earth.manifest.json,
+    # and the install scripts copy the whole directory into the mod folder.
+    # This function owns tiles/ and rewrites the whole grid below, so clear it
+    # first and let the rebuild be the only writer.
+    tiles_dir = out_dir / "tiles"
+    if tiles_dir.is_dir():
+        shutil.rmtree(tiles_dir)
 
     for tz in range(n_tz):
         for tx in range(n_tx):

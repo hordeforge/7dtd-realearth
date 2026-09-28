@@ -178,3 +178,66 @@ def test_build_region_writes_reproducible_build_manifest(tmp_path: Path):
     assert b["resolution_m"] > 0
     assert b["inputs"] == {}
     assert any("Copernicus" in line for line in b["attribution"])
+
+
+def test_rebuild_clears_tiles_from_a_previous_wider_run(tmp_path: Path):
+    """Rerunning build_region into the same pack dir must leave tiles/ equal to
+    the manifest it just wrote. A first run over a wide bbox writes a wide grid;
+    a second run over a narrow bbox writes fewer tiles, and the leftovers would
+    otherwise ship with the pack (install copies the whole directory)."""
+    pack = tmp_path / "pack"
+    build_region(
+        -105.2,
+        39.6,
+        -104.9,
+        39.9,
+        pack,
+        resolution_m=30.0,
+        source="synthetic",
+        name="Rerun",
+        max_dim=1024,
+        also_export_7dtd=False,
+    )
+    wide = sorted(p.relative_to(pack / "tiles").as_posix() for p in (pack / "tiles").rglob("*.rte"))
+    assert len(wide) > 1
+
+    build_region(
+        -105.1,
+        39.7,
+        -105.05,
+        39.75,
+        pack,
+        resolution_m=120.0,
+        source="synthetic",
+        name="Rerun",
+        max_dim=1024,
+        also_export_7dtd=False,
+    )
+    man = read_manifest(pack / "earth.manifest.json")
+    on_disk = sorted(
+        p.relative_to(pack / "tiles").as_posix() for p in (pack / "tiles").glob("*/*.rte")
+    )
+    listed = sorted(f"{t['tz']}/{t['tx']}.rte" for t in man.tiles)
+    assert on_disk == listed
+    assert len(on_disk) < len(wide)
+
+
+def pack_bytes(pack: Path) -> dict[str, bytes]:
+    return {p.relative_to(pack).as_posix(): p.read_bytes() for p in pack.rglob("*") if p.is_file()}
+
+
+def test_rebuild_with_identical_parameters_is_byte_identical(tmp_path: Path):
+    """Same inputs, run twice: the pack on disk is the same pack."""
+    pack = tmp_path / "pack"
+    kwargs = {
+        "resolution_m": 120.0,
+        "source": "synthetic",
+        "name": "Twice",
+        "max_dim": 256,
+        "also_export_7dtd": False,
+    }
+    build_region(-105.2, 39.6, -104.9, 39.9, pack, **kwargs)
+    first = pack_bytes(pack)
+    build_region(-105.2, 39.6, -104.9, 39.9, pack, **kwargs)
+    second = pack_bytes(pack)
+    assert first == second
