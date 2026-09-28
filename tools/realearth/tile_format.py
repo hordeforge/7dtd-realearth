@@ -208,7 +208,17 @@ def write_tile(path: Path, tile: EarthTile) -> None:
 
 
 def read_tile(path: Path) -> EarthTile:
-    return decode_tile(path.read_bytes())
+    """Deserialize a .rte file, naming it in any decode failure.
+
+    A pack holds thousands of tiles and every one of them decodes through the
+    same handful of ValueError messages ("corrupt compressed section", "bad
+    magic"), so a bare re-raise leaves the operator hunting for which tile is
+    bad. Prefix the path and keep the decoder's reason as the cause.
+    """
+    try:
+        return decode_tile(path.read_bytes())
+    except ValueError as exc:
+        raise ValueError(f"unreadable tile {path}: {exc}") from exc
 
 
 def tile_path(root: Path, tx: int, tz: int) -> Path:

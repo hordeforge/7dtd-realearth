@@ -120,6 +120,29 @@ def _as_finite_float(raw: object, key: str) -> float:
     return value
 
 
+def _read_json_object(path: Path, label: str) -> JsonDict:
+    """Load a JSON object, naming the file and the parser's complaint on failure.
+
+    These inputs arrive from a pack or a staged fixture, so a truncated write
+    is ordinary input, not a crash: a bare json.loads raises a traceback full
+    of interpreter paths and never says which file it choked on.
+    """
+    try:
+        text = path.read_text(encoding="utf-8")
+    except OSError as exc:
+        raise ValueError(f"cannot read {label} ({path}): {exc.strerror}") from exc
+    try:
+        data = json.loads(text)
+    except json.JSONDecodeError as exc:
+        raise ValueError(
+            f"{label} is not valid JSON ({path}): {exc.msg} at line {exc.lineno} "
+            f"column {exc.colno}"
+        ) from exc
+    if not isinstance(data, dict):
+        raise ValueError(f"{label} must hold a JSON object, got {type(data).__name__}")
+    return data
+
+
 def sync_manifest_dimensions(
     dest: Path,
     cfg: JsonDict,
@@ -131,9 +154,7 @@ def sync_manifest_dimensions(
     manifest_path = dest / "Data" / "tiles" / "earth.manifest.json"
     if not manifest_path.is_file():
         return False
-    manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
-    if not isinstance(manifest, dict):
-        raise ValueError(f"manifest must be a JSON object, got {type(manifest).__name__}")
+    manifest = _read_json_object(manifest_path, "manifest")
     cfg["WorldWidth"] = int(_as_finite_float(manifest.get("world_width") or 512, "world_width"))
     cfg["WorldHeight"] = int(_as_finite_float(manifest.get("world_height") or 512, "world_height"))
     cfg["TileSize"] = int(_as_finite_float(manifest.get("tile_size") or 512, "tile_size"))
@@ -160,10 +181,15 @@ def apply_height_test_meta(dest: Path, cfg: JsonDict) -> None:
     meta_path = dest / "Data" / "tiles" / "height_test.json"
     if not meta_path.is_file():
         return
-    meta = json.loads(meta_path.read_text(encoding="utf-8"))
+    # Same untrusted-input contract as the manifest above: the fixture is
+    # written by a test run, so a truncated or non-object file must name
+    # itself instead of raising a bare traceback, and the numeric members go
+    # through the finite-float guard (1e999 parses to inf and would otherwise
+    # reach the mod as an infinite spawn longitude).
+    meta = _read_json_object(meta_path, "height_test.json")
     if meta.get("summit_lon") is not None:
-        cfg["SpawnLongitude"] = float(meta["summit_lon"])
-        cfg["SpawnLatitude"] = float(meta["summit_lat"])
+        cfg["SpawnLongitude"] = _as_finite_float(meta["summit_lon"], "summit_lon")
+        cfg["SpawnLatitude"] = _as_finite_float(meta["summit_lat"], "summit_lat")
         cfg["DefaultSpawnLon"] = cfg["SpawnLongitude"]
         cfg["DefaultSpawnLat"] = cfg["SpawnLatitude"]
     # Staged maps may set engine_max_game_y; Everest-scale fixtures historically
@@ -171,7 +197,7 @@ def apply_height_test_meta(dest: Path, cfg: JsonDict) -> None:
     # RAISE the configured ceiling (monotonic), never downgrade it: the config
     # knob from the caller (e.g. scripts write EngineMaxGameY=29000) wins over
     # a stale fixture hint.
-    engine_max = int(meta.get("engine_max_game_y") or 0)
+    engine_max = int(_as_finite_float(meta.get("engine_max_game_y") or 0, "engine_max_game_y"))
     if engine_max > 500 and engine_max > int(cfg.get("EngineMaxGameY") or 0):
         cfg["EngineMaxGameY"] = engine_max
 
@@ -182,11 +208,11 @@ def build_config(root: Path, fresh: bool, template: Path | None = None) -> JsonD
     if template is not None:
         if not template.is_file():
             raise SystemExit(f"ERROR: no config template at {template}")
-        return json.loads(template.read_text(encoding="utf-8"))
+        return _read_json_object(template, "config template")
     for name in ("realearth.mp.json", "realearth.json"):
         candidate = root / "Config" / name
         if candidate.is_file():
-            return json.loads(candidate.read_text(encoding="utf-8"))
+            return _read_json_object(candidate, f"config template {name}")
     return {}
 
 
@@ -252,26 +278,32 @@ def main(argv: list[str] | None = None) -> int:
     )
     args = parser.parse_args(argv)
 
-    cfg = build_config(args.root, args.fresh, args.template)
-    for pair in args.overrides:
-        apply_override(cfg, pair)
-    if args.sync_manifest:
-        synced = sync_manifest_dimensions(
-            args.dest,
-            cfg,
-            include_bbox=args.sync_bbox,
-            max_window=args.max_window,
-            spawn_from_bbox=args.spawn_from_bbox,
-        )
-        if not synced:
-            # stderr, so a script reading the `config ->` line off stdout is not
-            # handed a status line ahead of it.
-            print(
-                f"note: no manifest at {args.dest / 'Data' / 'tiles' / 'earth.manifest.json'}",
-                file=sys.stderr,
+    # The install scripts call this as a subprocess and only see the exit code
+    # plus stderr, so a ValueError from a bad manifest or fixture must arrive as
+    # one ERROR line naming the file, not a traceback full of interpreter paths.
+    try:
+        cfg = build_config(args.root, args.fresh, args.template)
+        for pair in args.overrides:
+            apply_override(cfg, pair)
+        if args.sync_manifest:
+            synced = sync_manifest_dimensions(
+                args.dest,
+                cfg,
+                include_bbox=args.sync_bbox,
+                max_window=args.max_window,
+                spawn_from_bbox=args.spawn_from_bbox,
             )
-    if args.height_test_meta:
-        apply_height_test_meta(args.dest, cfg)
+            if not synced:
+                # stderr, so a script reading the `config ->` line off stdout is not
+                # handed a status line ahead of it.
+                print(
+                    f"note: no manifest at {args.dest / 'Data' / 'tiles' / 'earth.manifest.json'}",
+                    file=sys.stderr,
+                )
+        if args.height_test_meta:
+            apply_height_test_meta(args.dest, cfg)
+    except ValueError as exc:
+        raise SystemExit(f"ERROR: {exc}") from exc
     reject_unknown_keys(cfg, known_config_keys(args.root))
 
     out_path = args.dest / "Config" / "realearth.json"

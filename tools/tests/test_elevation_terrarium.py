@@ -326,3 +326,39 @@ def test_region_nodata_cells_fail_closed_to_sea_level():
     assert np.isfinite(y).all()
     assert int(y[0, 0]) == DEFAULT_SEA_LEVEL_GAME_Y  # nan -> 0 m ASL -> sea level
     assert int(y[0, 1]) == DEFAULT_SEA_LEVEL_GAME_Y + 100
+
+
+def test_store_tile_returns_the_publish_error(monkeypatch, tmp_path):
+    """The cache is the only offline copy, so a write failure must not vanish."""
+
+    def failing_replace(src: object, dst: object, **kw: object) -> None:
+        raise OSError(28, "No space left on device")
+
+    monkeypatch.setattr(os, "replace", failing_replace)
+    err = _store_tile(tmp_path, 1, 0, 0, _tile_png())
+    assert isinstance(err, OSError)
+    assert not (tmp_path / "1" / "0" / "0.png").exists()
+
+
+def test_terrarium_cache_write_failure_is_reported_once(monkeypatch, tmp_path, capsys):
+    """An unwritable cache still yields a good mosaic, but must say so.
+
+    The fetch itself succeeded, so the pack is complete; what is broken is the
+    offline rebuild. Staying quiet would leave the operator believing the cache
+    is populated. Reported once, not once per tile: a bad cache root fails
+    every publish and would otherwise bury the run under thousands of lines.
+    """
+
+    def failing_replace(src: object, dst: object, **kw: object) -> None:
+        raise OSError(28, "No space left on device")
+
+    png = _tile_png()
+    client = _FakeTileClient(png)
+    monkeypatch.setattr(httpx, "Client", lambda **kw: client)
+    monkeypatch.setattr(os, "replace", failing_replace)
+
+    fetch_region_terrarium(*_BBOX, 8, 8, zoom=1, cache_dir=tmp_path)
+    err = capsys.readouterr().err
+    assert err.count("terrarium cache") == 1
+    assert "No space left on device" in err
+    assert str(tmp_path) in err

@@ -184,3 +184,61 @@ def test_missing_manifest_note_goes_to_stderr(
     captured = capsys.readouterr()
     assert "note: no manifest" in captured.err
     assert captured.out.startswith("config -> ")
+
+
+def test_height_test_meta_rejects_non_finite_spawn(tmp_path: Path):
+    """1e999 parses to inf; it must not reach the config as a spawn longitude.
+
+    The manifest path already refuses non-finite members. The fixture path is
+    the same untrusted input, so it gets the same guard.
+    """
+    dest = tmp_path / "dest"
+    tiles = dest / "Data" / "tiles"
+    tiles.mkdir(parents=True)
+    (tiles / "height_test.json").write_text(
+        '{"summit_lon": 1e999, "summit_lat": 46.85}', encoding="utf-8"
+    )
+    cfg: dict = {}
+    with pytest.raises(ValueError, match="summit_lon"):
+        mod_config.apply_height_test_meta(dest, cfg)
+    assert "SpawnLongitude" not in cfg
+
+
+def test_height_test_meta_rejects_non_object_file(tmp_path: Path):
+    dest = tmp_path / "dest"
+    tiles = dest / "Data" / "tiles"
+    tiles.mkdir(parents=True)
+    (tiles / "height_test.json").write_text("[1, 2, 3]", encoding="utf-8")
+    with pytest.raises(ValueError, match="JSON object"):
+        mod_config.apply_height_test_meta(dest, {})
+
+
+def test_truncated_manifest_is_a_clean_error_not_a_traceback(tmp_path: Path):
+    """Install scripts read stderr only, so a truncated manifest must name itself."""
+    dest = tmp_path / "dest"
+    tiles = dest / "Data" / "tiles"
+    tiles.mkdir(parents=True)
+    (tiles / "earth.manifest.json").write_text('{"world_width": 512', encoding="utf-8")
+    with pytest.raises(SystemExit) as exc:
+        mod_config.main(
+            ["write", str(dest), str(tmp_path / "missing-root"), "--fresh", "--sync-manifest"]
+        )
+    message = str(exc.value)
+    assert "not valid JSON" in message
+    assert "earth.manifest.json" in message
+    assert "Traceback" not in message
+
+
+def test_truncated_height_test_fixture_is_a_clean_error(tmp_path: Path):
+    dest = tmp_path / "dest"
+    tiles = dest / "Data" / "tiles"
+    tiles.mkdir(parents=True)
+    (tiles / "height_test.json").write_text('{"summit_lon":', encoding="utf-8")
+    with pytest.raises(SystemExit) as exc:
+        mod_config.main(
+            ["write", str(dest), str(tmp_path / "missing-root"), "--fresh", "--height-test-meta"]
+        )
+    message = str(exc.value)
+    assert "not valid JSON" in message
+    assert "height_test.json" in message
+    assert "Traceback" not in message

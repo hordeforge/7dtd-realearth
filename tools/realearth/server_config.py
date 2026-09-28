@@ -61,11 +61,22 @@ def set_property(root: ET.Element, name: str, value: str) -> bool:
 
 def write_config(src: Path, dest: Path, properties: dict[str, str]) -> list[str]:
     """Apply `properties` to the SRC template and write DEST. Returns a summary."""
-    prolog, body = split_prolog(src.read_text(encoding="utf-8"))
+    # The dedicated launch scripts call this as a subprocess and only see the
+    # exit code, so an unreadable or malformed template must arrive as one
+    # ERROR line naming the file rather than a traceback from ET or the
+    # decoder. Same convention as mod_config, which the same scripts call.
+    try:
+        body_text = src.read_text(encoding="utf-8")
+    except OSError as exc:
+        raise SystemExit(f"ERROR: cannot read serverconfig template {src}: {exc.strerror}") from exc
+    prolog, body = split_prolog(body_text)
     # insert_comments keeps the per-property comments inside the root.
     parser = ET.XMLParser(target=ET.TreeBuilder(insert_comments=True))
-    parser.feed(body)
-    root = parser.close()
+    try:
+        parser.feed(body)
+        root = parser.close()
+    except ET.ParseError as exc:
+        raise SystemExit(f"ERROR: {src} is not valid XML: {exc}") from exc
 
     summary = []
     for name, value in properties.items():
@@ -73,7 +84,10 @@ def write_config(src: Path, dest: Path, properties: dict[str, str]) -> list[str]
         summary.append(f"{name}={value}{' (inserted)' if inserted else ''}")
 
     dest.parent.mkdir(parents=True, exist_ok=True)
-    dest.write_text(prolog + ET.tostring(root, encoding="unicode") + "\n", encoding="utf-8")
+    try:
+        dest.write_text(prolog + ET.tostring(root, encoding="unicode") + "\n", encoding="utf-8")
+    except OSError as exc:
+        raise SystemExit(f"ERROR: cannot write serverconfig {dest}: {exc.strerror}") from exc
     return summary
 
 

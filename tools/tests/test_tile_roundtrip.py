@@ -199,3 +199,31 @@ def test_csharp_decoder_reads_the_format_byte_order_explicitly():
     assert "br.ReadUInt16()" not in body
     assert body.count("ReadI32Le(") >= 5  # header fields plus the reserved word
     assert "ReadU16Le(br)" in body
+
+
+def test_read_tile_names_the_offending_file(tmp_path: Path):
+    """A corrupt tile must name itself: a pack holds thousands of them.
+
+    Every decode failure otherwise reports the same handful of reasons
+    ("corrupt compressed section", "bad magic"), so an operator aborting a
+    multi-thousand-tile bake has no way to tell which file is bad.
+    """
+    from realearth.tile_format import read_tile
+
+    good = EarthTile(tile_x=1, tile_z=2, elevation_m=np.zeros((4, 4), dtype=np.float32))
+    path = tmp_path / "tiles" / "2" / "1.rte"
+    path.parent.mkdir(parents=True)
+    path.write_bytes(encode_tile(good))
+
+    # Valid header, corrupt body: the reason alone names no file.
+    blob = bytearray(encode_tile(good))
+    blob[-8:] = b"\xff" * 8
+    path.write_bytes(bytes(blob))
+
+    with pytest.raises(ValueError) as exc:
+        read_tile(path)
+    message = str(exc.value)
+    assert str(path) in message
+    # The decoder's own reason survives as the cause, not discarded.
+    assert exc.value.__cause__ is not None
+    assert str(exc.value.__cause__) in message

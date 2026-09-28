@@ -112,3 +112,24 @@ def test_version_prints_and_exits_zero(capsys: pytest.CaptureFixture[str]) -> No
         server_config.main(["--version"])
     assert exc.value.code == 0
     assert __version__ in capsys.readouterr().out
+
+
+def test_malformed_template_is_a_clean_error_not_a_traceback(tmp_path: Path):
+    """A drifted template must fail with the file named, not an ET traceback.
+
+    The launch scripts call this as a subprocess and only read stderr, so an
+    ET.ParseError traceback would reach the operator as interpreter paths.
+    """
+    src = write_template(tmp_path, '<?xml version="1.0"?>\n<ServerSettings>\n\t<property\n')
+    with pytest.raises(SystemExit) as exc:
+        server_config.main([str(src), str(tmp_path / "live.xml")])
+    message = str(exc.value)
+    assert "not valid XML" in message
+    assert str(src) in message
+
+
+def test_unreadable_template_names_the_file(tmp_path: Path):
+    missing = tmp_path / "absent.xml"
+    with pytest.raises(SystemExit) as exc:
+        server_config.main([str(missing), str(tmp_path / "live.xml")])
+    assert "no serverconfig template" in str(exc.value)

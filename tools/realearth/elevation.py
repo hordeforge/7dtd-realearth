@@ -11,6 +11,7 @@ from __future__ import annotations
 import contextlib
 import math
 import os
+import sys
 import time
 from pathlib import Path
 
@@ -170,11 +171,13 @@ def _cached_tile(cache_dir: Path, zoom: int, tx: int, ty: int) -> bytes | None:
         return None
 
 
-def _store_tile(cache_dir: Path, zoom: int, tx: int, ty: int, data: bytes) -> None:
-    """Publish a fetched tile into the cache atomically (best effort).
+def _store_tile(cache_dir: Path, zoom: int, tx: int, ty: int, data: bytes) -> OSError | None:
+    """Publish a fetched tile into the cache atomically; the failure, if any.
 
     The cache is the only local copy of source tiles: if the remote dataset
-    disappears, packs can only be rebuilt from what was persisted here.
+    disappears, packs can only be rebuilt from what was persisted here. That
+    makes a discarded write error worth reporting, so the OSError is returned
+    for the caller to surface once instead of being swallowed per tile.
     """
     directory = cache_dir / str(zoom) / str(tx)
     tmp = directory / f".{ty}.{os.getpid()}.tmp"
@@ -182,11 +185,13 @@ def _store_tile(cache_dir: Path, zoom: int, tx: int, ty: int, data: bytes) -> No
         directory.mkdir(parents=True, exist_ok=True)
         tmp.write_bytes(data)
         os.replace(tmp, directory / f"{ty}.png")
-    except OSError:
+    except OSError as exc:
         # A failed publish must not orphan its temp file: the pid-scoped name
         # differs per run, so leftovers would accumulate in the cache forever.
         with contextlib.suppress(OSError):
             tmp.unlink(missing_ok=True)
+        return exc
+    return None
 
 
 def _decode_tile_png(data: bytes) -> np.ndarray | None:
@@ -267,13 +272,13 @@ def fetch_region_terrarium(
     mosaic_h = (y1 - y0 + 1) * tile_px
     mosaic = np.full((mosaic_h, mosaic_w), np.nan, dtype=np.float32)
 
-    def fetch_tile(ty: int, tx: int) -> tuple[int, int, np.ndarray]:
+    def fetch_tile(ty: int, tx: int) -> tuple[int, int, np.ndarray, OSError | None]:
         if cache is not None:
             data = _cached_tile(cache, zoom, tx, ty)
             if data is not None:
                 elev = _decode_tile_png(data)
                 if elev is not None:
-                    return ty, tx, elev
+                    return ty, tx, elev, None
         url = TERRARIUM_URL.format(z=zoom, x=tx, y=ty)
         r = _get_with_retry(client, url)
         elev = _decode_tile_png(r.content)
@@ -282,14 +287,15 @@ def fetch_region_terrarium(
         # Store only validated tiles: a corrupt-but-HTTP-200 body must not enter
         # the durable cache as a success entry (the cached copy would shadow the
         # source until the next refetch overwrites it).
-        if cache is not None:
-            _store_tile(cache, zoom, tx, ty, r.content)
-        return ty, tx, elev
+        store_error = None if cache is None else _store_tile(cache, zoom, tx, ty, r.content)
+        return ty, tx, elev, store_error
 
     with httpx.Client(timeout=timeout, follow_redirects=True) as client:
         tiles = [(ty, tx) for ty in range(y0, y1 + 1) for tx in range(x0, x1 + 1)]
         workers = max(1, min(max_workers, len(tiles)))
         window = _INFLIGHT_TILES_PER_WORKER * workers
+        store_failures = 0
+        first_store_error: OSError | None = None
         with ThreadPoolExecutor(max_workers=workers) as pool:
             # Propagate the first failure like the sequential loop did
             # (raise_for_status), in tile order. Tiles past the failing window are
@@ -300,10 +306,26 @@ def fetch_region_terrarium(
                     pool.submit(fetch_tile, ty, tx) for ty, tx in tiles[start : start + window]
                 ]
                 for future in futures:
-                    ty, tx, elev = future.result()
+                    ty, tx, elev, store_error = future.result()
                     py = (ty - y0) * tile_px
                     px = (tx - x0) * tile_px
                     mosaic[py : py + tile_px, px : px + tile_px] = elev
+                    if store_error is not None:
+                        store_failures += 1
+                        if first_store_error is None:
+                            first_store_error = store_error
+
+    # One line, not one per tile: an unwritable cache root fails every publish,
+    # and the run still succeeds on the fetched mosaic. Reporting per tile would
+    # bury the fetch result under thousands of identical lines, but staying
+    # silent would leave the operator believing the offline cache is populated.
+    if store_failures:
+        print(
+            f"WARNING: {store_failures}/{len(tiles)} tiles could not be written to the "
+            f"terrarium cache at {cache} ({first_store_error}); the pack is complete, "
+            "but rebuilding it offline from the cache will not work",
+            file=sys.stderr,
+        )
 
     # Crop mosaic to exact lon/lat bbox within the tile range
     def lon_to_px(lon: float) -> float:
