@@ -1,3 +1,6 @@
+/* One token block for both RealEarth surfaces. The dashboard webmod
+ * (webmod/styling.css) repeats the palette and the same radius and type
+ * scales under the re- prefix, so a change here has to land there too. */
 :root {
   --bg: #0b0e14;
   --panel: #121722;
@@ -8,7 +11,25 @@
   --accent: #3dd6c6;
   --accent-2: #f0a500;
   --danger: #ff6b6b;
-  --radius: 12px;
+  /* Dark text on the teal accent, 10.6:1. Never white on the accent. */
+  --on-accent: #041212;
+  --accent-soft: rgba(61, 214, 198, 0.15);
+  --hairline: rgba(255, 255, 255, 0.15);
+  /* Floating chrome (HUD, tooltips, zoom buttons) shares one translucent
+   * plate, so an overlay reads as the same material wherever it appears. */
+  --overlay: rgba(10, 14, 22, 0.92);
+  --stage-bg: #070a10;
+  /* Radii stay small: this is an instrument panel, not a card deck. Panels
+   * and controls step down, and nothing uses a value between them. */
+  --radius-panel: 6px;
+  --radius-control: 4px;
+  --radius-chip: 4px;
+  --radius-swatch: 3px;
+  /* Four type sizes, each a clear step. Anything between them is a one-off. */
+  --fs-micro: 0.75rem;
+  --fs-label: 0.8125rem;
+  --fs-body: 0.875rem;
+  --fs-title: 1.125rem;
   --font: "Segoe UI", system-ui, -apple-system, sans-serif;
   --mono: ui-monospace, "Cascadia Code", "SF Mono", Menlo, monospace;
 }
@@ -66,31 +87,31 @@ body {
 .logo {
   width: 44px;
   height: 44px;
-  border-radius: 12px;
+  border-radius: var(--radius-panel);
   display: grid;
   place-items: center;
   font-weight: 800;
   letter-spacing: 0.04em;
   background: var(--accent);
-  color: #041212;
+  color: var(--on-accent);
 }
 
 .brand h1 {
   margin: 0;
-  font-size: 1.15rem;
+  font-size: var(--fs-title);
   font-weight: 700;
 }
 
 .tag {
   margin: 2px 0 0;
   color: var(--muted);
-  font-size: 0.78rem;
+  font-size: var(--fs-label);
 }
 
 .panel {
   background: var(--panel);
   border: 1px solid var(--border);
-  border-radius: var(--radius);
+  border-radius: var(--radius-panel);
   padding: 12px;
 }
 
@@ -99,7 +120,7 @@ body {
  * grouping cue. */
 .panel h2 {
   margin: 0 0 10px;
-  font-size: 0.78rem;
+  font-size: var(--fs-label);
   color: var(--text);
   font-weight: 600;
 }
@@ -109,7 +130,7 @@ body {
   flex-direction: column;
   gap: 4px;
   margin-bottom: 10px;
-  font-size: 0.85rem;
+  font-size: var(--fs-body);
 }
 
 .field span {
@@ -128,14 +149,21 @@ body {
   color: var(--muted);
 }
 
+/* Readouts are monospace so a value ticking between frames keeps its width
+ * and the row does not shimmer. */
 #opacityValue {
   font-family: var(--mono);
-  font-size: 0.78rem;
+  font-size: var(--fs-label);
   color: var(--text);
 }
 
+.field input[type="range"] {
+  width: 100%;
+  accent-color: var(--accent);
+}
+
 /* Flat-map-only controls stay visible in globe mode but read as inactive
-   instead of silently ignoring input. */
+ * instead of silently ignoring input. */
 .check.disabled,
 .field.disabled {
   opacity: 0.5;
@@ -148,13 +176,8 @@ body {
   background: var(--panel-2);
   color: var(--text);
   border: 1px solid var(--border);
-  border-radius: 8px;
+  border-radius: var(--radius-control);
   padding: 8px 10px;
-}
-
-.field input[type="range"] {
-  width: 100%;
-  accent-color: var(--accent);
 }
 
 .check {
@@ -162,7 +185,7 @@ body {
   align-items: center;
   gap: 8px;
   margin: 8px 0;
-  font-size: 0.9rem;
+  font-size: var(--fs-body);
   color: var(--text);
 }
 
@@ -177,11 +200,11 @@ body {
   background: var(--panel-2);
   color: var(--text);
   border: 1px solid var(--border);
-  border-radius: 8px;
+  border-radius: var(--radius-control);
   padding: 8px 10px;
   cursor: pointer;
   font-weight: 600;
-  font-size: 0.85rem;
+  font-size: var(--fs-body);
 }
 
 .btn:hover {
@@ -189,21 +212,21 @@ body {
 }
 
 .btn.active {
-  background: rgba(61, 214, 198, 0.15);
+  background: var(--accent-soft);
   border-color: var(--accent);
   color: var(--accent);
 }
 
 .muted {
   color: var(--muted);
-  font-size: 0.8rem;
+  font-size: var(--fs-micro);
   line-height: 1.4;
 }
 
 .legend {
   display: grid;
   gap: 6px;
-  font-size: 0.8rem;
+  font-size: var(--fs-micro);
 }
 
 .legend-row {
@@ -215,8 +238,8 @@ body {
 .swatch {
   width: 14px;
   height: 14px;
-  border-radius: 3px;
-  border: 1px solid rgba(255, 255, 255, 0.15);
+  border-radius: var(--radius-swatch);
+  border: 1px solid var(--hairline);
   flex-shrink: 0;
 }
 
@@ -230,7 +253,7 @@ body {
   display: grid;
   grid-template-columns: 48px 1fr;
   gap: 8px;
-  font-size: 0.85rem;
+  font-size: var(--fs-body);
 }
 
 .probe dt {
@@ -241,7 +264,7 @@ body {
 .probe dd {
   margin: 0;
   font-family: var(--mono);
-  font-size: 0.82rem;
+  font-size: var(--fs-micro);
 }
 
 .foot {
@@ -252,7 +275,7 @@ body {
 #stage {
   position: relative;
   overflow: hidden;
-  background: #070a10;
+  background: var(--stage-bg);
 }
 
 #mapCanvas {
@@ -291,11 +314,11 @@ body {
 
 #titleHud,
 #statusHud {
-  background: rgba(10, 14, 22, 0.92);
+  background: var(--overlay);
   border: 1px solid var(--border);
-  border-radius: 10px;
+  border-radius: var(--radius-chip);
   padding: 8px 12px;
-  font-size: 0.85rem;
+  font-size: var(--fs-body);
 }
 
 #titleHud {
@@ -306,7 +329,7 @@ body {
 #statusHud {
   color: var(--muted);
   font-family: var(--mono);
-  font-size: 0.75rem;
+  font-size: var(--fs-micro);
   max-width: 50%;
   text-align: right;
 }
@@ -326,12 +349,12 @@ body {
 }
 
 #playerHud {
-  background: rgba(10, 14, 22, 0.92);
+  background: var(--overlay);
   border: 1px solid var(--danger);
-  border-radius: 10px;
+  border-radius: var(--radius-chip);
   padding: 8px 12px;
   font-family: var(--mono);
-  font-size: 0.75rem;
+  font-size: var(--fs-micro);
 }
 
 #viewTools {
@@ -347,10 +370,11 @@ body {
 #viewTools button {
   width: 40px;
   height: 40px;
-  border-radius: 10px;
-  background: rgba(10, 14, 22, 0.92);
+  border-radius: var(--radius-chip);
+  background: var(--overlay);
   border: 1px solid var(--border);
   color: var(--text);
+  /* Glyph size for + and -, not a type step. */
   font-size: 1.2rem;
   line-height: 1;
   cursor: pointer;
@@ -371,10 +395,10 @@ body {
   background: var(--panel-2);
   color: var(--text);
   border: 1px solid var(--border);
-  border-radius: 8px;
+  border-radius: var(--radius-control);
   padding: 8px;
   font-family: var(--mono);
-  font-size: 0.8rem;
+  font-size: var(--fs-micro);
 }
 
 .jump-row input.invalid {
@@ -385,12 +409,12 @@ body {
   position: absolute;
   z-index: 5;
   pointer-events: none;
-  background: rgba(10, 14, 22, 0.92);
+  background: var(--overlay);
   border: 1px solid var(--accent-2);
   color: var(--text);
-  border-radius: 8px;
+  border-radius: var(--radius-control);
   padding: 8px 10px;
-  font-size: 0.8rem;
+  font-size: var(--fs-micro);
   transform: translate(12px, 12px);
   box-shadow: 0 8px 24px rgba(0, 0, 0, 0.4);
 }

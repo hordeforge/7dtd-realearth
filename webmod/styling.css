@@ -26,6 +26,13 @@
   --re-accent-text: #041212;
   --re-btn-bg: var(--re-accent);
   --re-btn-bg-hover: var(--re-accent-hover);
+  /* The standalone viewer's radius scale and two type steps
+   * (viewer/css/app.css), in px to sit on the dashboard's own base size. */
+  --re-radius-panel: 6px;
+  --re-radius-control: 4px;
+  --re-radius-swatch: 3px;
+  --re-fs-body: 13px;
+  --re-fs-micro: 12px;
   --re-danger-border: rgba(192, 57, 43, 0.6);
   --re-danger-bg: rgba(192, 57, 43, 0.18);
   --re-danger-text: #ffb4a8;
@@ -49,14 +56,14 @@
   padding: 8px 12px;
   background: var(--re-panel-bg);
   border: 1px solid var(--re-border);
-  border-radius: 6px;
+  border-radius: var(--re-radius-panel);
 }
 
 .re-field {
   display: flex;
   align-items: center;
   gap: 6px;
-  font-size: 13px;
+  font-size: var(--re-fs-body);
   color: var(--re-text);
 }
 
@@ -77,22 +84,22 @@
 .re-select {
   background: var(--re-input-bg);
   border: 1px solid var(--re-border-strong);
-  border-radius: 4px;
+  border-radius: var(--re-radius-control);
   color: var(--re-text-bright);
   padding: 4px 8px;
-  font-size: 13px;
+  font-size: var(--re-fs-body);
   min-width: 160px;
 }
 
 .re-btn {
   background: var(--re-btn-bg);
   border: none;
-  border-radius: 4px;
+  border-radius: var(--re-radius-control);
   /* Dark text on the teal accent, not white: 10.6:1 against #3dd6c6 and 8.3:1
    * against the hover shade, where white would sit under 2:1. */
   color: var(--re-accent-text);
   padding: 5px 12px;
-  font-size: 13px;
+  font-size: var(--re-fs-body);
   cursor: pointer;
 }
 
@@ -104,7 +111,7 @@
   display: flex;
   align-items: center;
   gap: 6px;
-  font-size: 13px;
+  font-size: var(--re-fs-body);
   color: var(--re-text);
   cursor: pointer;
 }
@@ -114,14 +121,14 @@
 }
 
 .re-range-value {
-  font-size: 12px;
+  font-size: var(--re-fs-micro);
   color: var(--re-text-bright);
   min-width: 34px;
 }
 
 .re-status {
   margin-left: auto;
-  font-size: 12px;
+  font-size: var(--re-fs-micro);
   color: var(--re-text-muted);
 }
 
@@ -131,7 +138,7 @@
   grid-row: 2;
   min-height: 0;
   border: 1px solid var(--re-border);
-  border-radius: 6px;
+  border-radius: var(--re-radius-panel);
   overflow: hidden;
   background: var(--re-stage-bg);
 }
@@ -150,9 +157,9 @@
   pointer-events: none;
   background: var(--re-overlay-bg);
   border: 1px solid var(--re-border-strong);
-  border-radius: 4px;
+  border-radius: var(--re-radius-control);
   color: var(--re-text-bright);
-  font-size: 12px;
+  font-size: var(--re-fs-micro);
   padding: 4px 8px;
   max-width: 260px;
   z-index: 10;
@@ -173,7 +180,7 @@
 .re-tool {
   min-width: 40px;
   height: 40px;
-  border-radius: 6px;
+  border-radius: var(--re-radius-panel);
   background: var(--re-overlay-bg);
   border: 1px solid var(--re-border-strong);
   color: var(--re-text-bright);
@@ -192,7 +199,7 @@
   display: grid;
   place-items: center;
   color: var(--re-text-muted);
-  font-size: 13px;
+  font-size: var(--re-fs-body);
   pointer-events: none;
 }
 
@@ -209,7 +216,7 @@
 .re-panel {
   background: var(--re-panel-bg);
   border: 1px solid var(--re-border);
-  border-radius: 6px;
+  border-radius: var(--re-radius-panel);
   padding: 10px 12px;
 }
 
@@ -218,7 +225,7 @@
  * cue, and the same caps treatment appears on every admin page. */
 .re-panel h2 {
   margin: 0 0 8px;
-  font-size: 13px;
+  font-size: var(--re-fs-body);
   font-weight: 600;
   color: var(--re-text-bright);
 }
@@ -240,7 +247,7 @@
   border: 1px solid var(--re-border-strong);
   color: var(--re-text-muted);
   padding: 2px 8px;
-  font-size: 12px;
+  font-size: var(--re-fs-micro);
 }
 
 .re-btn-ghost:hover {
@@ -253,7 +260,7 @@
   display: flex;
   align-items: center;
   gap: 8px;
-  font-size: 12px;
+  font-size: var(--re-fs-micro);
   color: var(--re-text);
   padding: 2px 0;
 }
@@ -262,7 +269,7 @@
   display: inline-block;
   width: 14px;
   height: 14px;
-  border-radius: 3px;
+  border-radius: var(--re-radius-swatch);
   border: 1px solid var(--re-border-strong);
   flex-shrink: 0;
 }
@@ -275,7 +282,7 @@
   display: flex;
   justify-content: space-between;
   gap: 12px;
-  font-size: 12px;
+  font-size: var(--re-fs-micro);
   padding: 2px 0;
 }
 
@@ -290,7 +297,7 @@
 }
 
 .re-pack-info {
-  font-size: 12px;
+  font-size: var(--re-fs-micro);
   color: var(--re-text);
   white-space: pre-line;
   line-height: 1.55;
@@ -302,10 +309,10 @@
   flex: 1 1 240px;
   background: var(--re-danger-bg);
   border: 1px solid var(--re-danger-border);
-  border-radius: 6px;
+  border-radius: var(--re-radius-panel);
   color: var(--re-danger-text);
   padding: 8px 12px;
-  font-size: 13px;
+  font-size: var(--re-fs-body);
 }
 
 .re-overview {
@@ -329,7 +336,7 @@
   justify-content: space-between;
   gap: 12px;
   padding: 3px 0;
-  font-size: 13px;
+  font-size: var(--re-fs-body);
   border-bottom: 1px solid var(--re-divider);
 }
 
@@ -354,7 +361,7 @@
   display: flex;
   justify-content: space-between;
   gap: 12px;
-  font-size: 13px;
+  font-size: var(--re-fs-body);
   padding: 3px 0;
 }
 
@@ -363,19 +370,19 @@
 }
 
 .re-note {
-  font-size: 13px;
+  font-size: var(--re-fs-body);
   color: var(--re-text);
   margin: 0 0 8px;
 }
 
 .re-warning {
-  font-size: 13px;
+  font-size: var(--re-fs-body);
   color: var(--re-danger-text);
   margin: 0 0 8px;
 }
 
 .re-muted {
-  font-size: 12px;
+  font-size: var(--re-fs-micro);
   color: var(--re-text-muted);
 }
 
@@ -383,7 +390,7 @@
   display: flex;
   flex-direction: column;
   gap: 10px;
-  font-size: 13px;
+  font-size: var(--re-fs-body);
   color: var(--re-text);
   max-width: 560px;
 }

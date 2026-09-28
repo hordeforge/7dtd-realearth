@@ -431,19 +431,28 @@ async function mapWithConcurrency<T, R>(
   limit: number,
   fn: (item: T) => Promise<R>
 ): Promise<Array<R>> {
-  const results = new Array<R>(items.length);
+  // A sentinel, not a hole: an unwritten slot is distinguishable from a
+  // written undefined, so the narrowing below is the compiler's, not a cast.
+  const EMPTY = Symbol("mapWithConcurrency slot");
+  const slots: Array<R | typeof EMPTY> = Array.from({ length: items.length }, () => EMPTY);
   let next = 0;
   const worker = async (): Promise<void> => {
     for (let index = next++; index < items.length; index += 1) {
       const item = items[index];
       if (item !== undefined) {
-        results[index] = await fn(item);
+        slots[index] = await fn(item);
       }
     }
   };
   const width = Math.min(Math.max(1, limit), items.length);
   await Promise.all(Array.from({ length: width }, worker));
-  return results;
+  return slots.map((slot, index) => {
+    if (slot === EMPTY) {
+      // Unreachable while the loop above claims every index exactly once.
+      throw new Error(`mapWithConcurrency: no result for index ${index}`);
+    }
+    return slot;
+  });
 }
 async function renderStreamedRte(meta: PackMeta): Promise<void> {
   const base = els.packSelect.value.replace(/\/$/u, "");
