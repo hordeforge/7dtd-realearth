@@ -44,7 +44,12 @@ namespace RealEarth
         /// <summary>Soft gap 24: severe heat when ambient °C rises above this.</summary>
         public const float HeatSevereC = 45f;
 
-        /// <summary>gameY − seaLevelGameY → meters above sea level (1 m = 1 block).</summary>
+        /// <summary>
+        /// gameY − seaLevelGameY → meters ASL. Valid only under a 1:1 height
+        /// policy; the compressed modes (EngineHeightStockSafe,
+        /// EngineHeightPreferVanillaCeiling) saturate gameY at 255, so callers
+        /// that need real meters must sample the DEM column instead.
+        /// </summary>
         public static int ElevMFromGameY(int gameY, int seaLevelGameY)
             => gameY - seaLevelGameY;
 

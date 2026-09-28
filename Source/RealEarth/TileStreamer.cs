@@ -210,7 +210,10 @@ namespace RealEarth
                 _foci[focusId] = (earthX, earthZ, tx, tz, now);
             }
 
-            EnsureRadius(tx, tz, _cfg.StreamRadiusTiles, allowSyncLoad);
+            // HotRadiusTiles, not the raw field: a StreamRadiusTiles of 0 is a
+            // legal config, and streaming only the single tile under the player
+            // turns everything past the tile edge into fail-closed ocean.
+            EnsureRadius(tx, tz, _cfg.HotRadiusTiles, allowSyncLoad);
             EvictOutsideAllFoci(_cfg.UnloadRadiusTiles);
         }
 
@@ -824,7 +827,14 @@ namespace RealEarth
                     {
                         int ntx = _coords.TilesX;
                         if (ntx > 0)
+                        {
+                            // Fold into [0, ntx) first: a focus outside the grid
+                            // makes the raw delta exceed the circumference, and
+                            // ntx - dx would then go negative, so squaring it
+                            // ranked the farthest tile as nearest.
+                            dx %= ntx;
                             dx = Math.Min(dx, ntx - dx);
+                        }
                     }
                     long d = dx * dx + dz * dz;
                     if (d < best)
@@ -848,7 +858,13 @@ namespace RealEarth
                 {
                     int ntx = _coords.TilesX;
                     if (ntx > 0)
+                    {
+                        // Fold first: an out-of-grid focus makes the raw delta
+                        // exceed the circumference, and the unguarded form below
+                        // went negative, so the radius test admitted every far tile.
+                        dx %= ntx;
                         dx = Math.Min(dx, ntx - dx);
+                    }
                 }
                 if (dx <= keepRadius && dz <= keepRadius)
                     return true;

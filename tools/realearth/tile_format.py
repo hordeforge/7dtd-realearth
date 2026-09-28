@@ -80,7 +80,7 @@ class EarthTile:
 def encode_tile(tile: EarthTile) -> bytes:
     """Serialize tile to .rte bytes."""
     elev = np.asarray(tile.elevation_m, dtype=np.float32)
-    elev_u16 = _elevation_to_u16(elev)
+    elev_u16 = elevation_m_to_u16(elev)
     elev_z = zlib.compress(elev_u16.tobytes(), level=6)
 
     parts: list[bytes] = []
@@ -167,7 +167,7 @@ def decode_tile(data: bytes) -> EarthTile:
     # Payload is little-endian per the format contract (matches the C# decoder,
     # which reads the low byte first); never rely on host byte order here.
     elev_u16 = np.frombuffer(elev_raw, dtype="<u2").reshape((h, w))
-    elevation = _u16_to_elevation(elev_u16)
+    elevation = u16_to_elevation_m(elev_u16)
 
     landcover = None
     population = None
@@ -216,21 +216,24 @@ def tile_path(root: Path, tx: int, tz: int) -> Path:
 
 # Elevation packed as little-endian uint16: value = meters_asl + 11000
 # (covers trenches to Everest+; byte order must match the C# runtime decoder).
-_ELEV_OFFSET_M = 11_000
+ELEV_OFFSET_M = 11_000
 
 
-def _elevation_to_u16(elev: np.ndarray) -> np.ndarray:
+def elevation_m_to_u16(elev: np.ndarray) -> np.ndarray:
     # Round to the nearest meter: Terrarium decode yields B/256 fractions, and a
     # plain astype(uint16) would truncate toward zero, biasing every stored
     # column downward by up to 1 m on a 1 m = 1 block product. Non-finite input
     # fails closed to 0 m ASL (matches the C# missing-sample placeholder) instead
-    # of casting NaN to platform-garbage.
-    v = np.nan_to_num(np.asarray(elev, dtype=np.float64), nan=0.0)
-    return np.clip(np.rint(v + _ELEV_OFFSET_M), 0, 65535).astype("<u2")
+    # of casting NaN to platform-garbage. np.nan_to_num maps +/-inf to the float
+    # extremes, which rint+clip would pin to the uint16 rails (a 54535 m peak or
+    # the -11000 m floor), so the finite mask is applied before the offset.
+    v = np.asarray(elev, dtype=np.float64)
+    v = np.where(np.isfinite(v), v, 0.0)
+    return np.clip(np.rint(v + ELEV_OFFSET_M), 0, 65535).astype("<u2")
 
 
-def _u16_to_elevation(u: np.ndarray) -> np.ndarray:
-    return u.astype(np.float32) - _ELEV_OFFSET_M
+def u16_to_elevation_m(u: np.ndarray) -> np.ndarray:
+    return u.astype(np.float32) - ELEV_OFFSET_M
 
 
 @dataclass

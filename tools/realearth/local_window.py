@@ -251,6 +251,10 @@ def cap_hot_tiles(
             dx = abs(tx - ex // tile_size)
             dz = abs(tz - ez // tile_size)
             if wrap_x and tiles_x:
+                # Fold into [0, tiles_x) first: a focus outside the grid makes the
+                # raw delta exceed the circumference, and `tiles_x - dx` would then
+                # go negative, so squaring it ranked the farthest tile as nearest.
+                dx %= tiles_x
                 dx = min(dx, tiles_x - dx)
             d = dx * dx + dz * dz
             if best is None or d < best:

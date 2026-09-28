@@ -33,6 +33,8 @@ const THREE_BYTES_BITS = 24;
 const THIRD_BYTE_INDEX = 3;
 const FLAG_HAS_LANDCOVER = 1;
 const FLAG_HAS_POPULATION = 2;
+// Same ceiling the C# decoder enforces (RteTile.MaxTileSamples).
+const MAX_TILE_SAMPLES = 4096 * 4096;
 
 export type RteHeader = {
   tx: number;
@@ -96,6 +98,15 @@ async function inflateSection(bytes: Uint8Array, offset: number, expectedBytes: 
 
 export async function decodeRteTile(bytes: Uint8Array): Promise<RteTile> {
   const header = parseRteHeader(bytes);
+  // Mirrors RteTile.cs MaxTileSamples: a corrupt or hostile header otherwise
+  // allocates width*height floats (65535 x 65535 = 4.3e9) before failing opaquely.
+  if (
+    header.width <= 0 ||
+    header.height <= 0 ||
+    header.width * header.height > MAX_TILE_SAMPLES
+  ) {
+    throw new Error(`RTE tile dims out of range (${header.width}x${header.height})`);
+  }
   const samples = header.width * header.height;
   let offset = HEADER_END;
 

@@ -169,5 +169,35 @@ namespace RealEarth.EngineHeight
         {
             return HeightInjectMath.ToByteHeight(SampleGameHeightInt(localX, localZ));
         }
+
+        /// <summary>
+        /// Real surface meters ASL at a local block, with no gameY mapping applied.
+        /// The same sample the height path takes, so the stored DEM column and the
+        /// column the player stands on cannot disagree; the store is the fallback
+        /// when no session/streamer is live.
+        /// </summary>
+        public static void SampleSurfaceMeters(int localX, int localZ, out float elevM)
+        {
+            var session = ModApi.Session;
+            var streamer = ModApi.Streamer;
+            var cfg = ModApi.Config;
+            if (session != null && streamer != null)
+            {
+                session.LocalToEarth(localX, localZ, out int ex, out int ez);
+                bool ok = streamer.TrySamplePrefetch(ex, ez, out float sampled, out _, out _);
+                bool present = TileSamplePolicy.ResolveElev(ok, sampled, cfg, out float resolved, out _);
+                if (present)
+                    Store.SetSurfaceMetersEarth(ex, ez, resolved);
+                elevM = resolved;
+                return;
+            }
+            if (Store.TryGetSurfaceMeters(localX, localZ, out float cached))
+            {
+                // Cached values were written only on present DEM samples.
+                elevM = cached;
+                return;
+            }
+            TileSamplePolicy.ResolveElev(false, 0f, cfg, out elevM, out _);
+        }
     }
 }

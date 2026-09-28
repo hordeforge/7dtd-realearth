@@ -32,6 +32,36 @@ namespace RealEarth
         }
 
         /// <summary>
+        /// Real surface elevation in meters ASL at an engine-local block.
+        /// Consumers keyed on physical altitude (climate, hypoxia) must use this,
+        /// not gameY - sea: under a compressing height policy
+        /// (EngineHeightStockSafe, EngineHeightPreferVanillaCeiling) the game Y
+        /// saturates at 255, so the difference from the 16000 sea anchor reads as
+        /// about -15745 m and every band inverts.
+        /// </summary>
+        public static void SampleSurfaceMeters(int localX, int localZ, out float elevM)
+        {
+            if (EngineHeight.EngineHeightMod.Active)
+            {
+                EngineHeight.EngineHeightMod.SampleSurfaceMeters(localX, localZ, out elevM);
+                return;
+            }
+
+            var session = ModApi.Session;
+            var streamer = ModApi.Streamer;
+            var cfg = ModApi.Config;
+            if (session == null || streamer == null)
+            {
+                TileSamplePolicy.ResolveElev(false, 0f, cfg, out elevM, out _);
+                return;
+            }
+
+            session.LocalToEarth(localX, localZ, out int ex, out int ez);
+            bool ok = streamer.TrySamplePrefetch(ex, ez, out float sampled, out _, out _);
+            TileSamplePolicy.ResolveElev(ok, sampled, cfg, out elevM, out _);
+        }
+
+        /// <summary>
         /// Sample game surface height at engine-local block coords using explicit deps.
         /// Missing tile → ocean default (below sea level).
         /// </summary>

@@ -84,15 +84,15 @@ def run_height_mod_case() -> list[CaseResult]:
         )
     )
 
-    # 4) Fly over Everest: summit + half fly budget still under ceiling
-    fly_elev = float(EVEREST_METERS_ASL + FLY_OVER_HEADROOM_M // 2)  # 8849 + 1000
-    fly_y = _one_to_one(fly_elev)
-    want_fly = DEFAULT_SEA_LEVEL_GAME_Y + int(fly_elev)
+    # 4) Fly over Everest: summit + the full fly headroom, still under the ceiling
+    fly_elev = EVEREST_METERS_ASL + FLY_OVER_HEADROOM_M
+    fly_y = _one_to_one(float(fly_elev))
+    want_fly = DEFAULT_SEA_LEVEL_GAME_Y + fly_elev
     results.append(
         CaseResult(
             "fly_over_everest",
             fly_y == want_fly and fly_y < ENGINE_TARGET_MAX_Y,
-            f"elev={int(fly_elev)} m (summit+1 km) → gameY={fly_y} "
+            f"elev={fly_elev} m (summit+1 km) → gameY={fly_y} "
             f"(want {want_fly}, ceiling {ENGINE_TARGET_MAX_Y}, "
             f"air_left={ENGINE_TARGET_MAX_Y - fly_y})",
         )

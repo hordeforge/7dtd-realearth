@@ -516,6 +516,9 @@ def test_streamer_eviction_respects_longitude_wrap():
     ts = _read("TileStreamer.cs")
     assert "EnableLongitudeWrap" in ts
     assert "Math.Min(dx, ntx - dx)" in ts
+    # The delta must be folded into [0, ntx) first, or an out-of-grid focus makes
+    # ntx - dx negative and the radius/ordering tests admit or rank far tiles.
+    assert ts.count("dx %= ntx;") == 2
     assert "IsWithinAnyFocus" in ts
     assert "EvictOutsideAllFoci" in ts
 

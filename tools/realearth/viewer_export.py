@@ -14,8 +14,10 @@ from PIL import Image
 
 from realearth.landcover import landcover_to_biome_rgb
 from realearth.tile_format import (
+    ELEV_OFFSET_M,
     MAX_TILE_SAMPLES,
     Manifest,
+    elevation_m_to_u16,
     read_manifest,
     read_tile,
     tile_path,
@@ -112,9 +114,11 @@ def mosaic_pack(pack_dir: Path) -> PackMosaic:
     ts = man.tile_size
     max_tx = max(t["tx"] for t in man.tiles)
     max_tz = max(t["tz"] for t in man.tiles)
+    min_tx = min(t["tx"] for t in man.tiles)
+    min_tz = min(t["tz"] for t in man.tiles)
     if ts <= 0 or ts > MAX_MOSAIC_TILE_SIZE:
         raise ValueError(f"manifest tile_size out of range (1..{MAX_MOSAIC_TILE_SIZE}): {ts}")
-    if min(max_tx, max_tz) < 0 or min(man.world_width, man.world_height) < 0:
+    if min(min_tx, min_tz) < 0 or min(man.world_width, man.world_height) < 0:
         raise ValueError("manifest tile indices and world dims must be non-negative")
     # Prefer manifest sample dimensions when present
     width = man.world_width if man.world_width > 0 else (max_tx + 1) * ts
@@ -223,8 +227,11 @@ def export_viewer_pack(
     Image.fromarray(pop_rgb).save(out_dir / "population.png")
     Image.fromarray(hybrid).save(out_dir / "hybrid.png")
 
-    # Raw elevation as 16-bit for sampling in viewer (optional)
-    elev_norm = np.clip((elev_s + 500) / 4500.0 * 65535.0, 0, 65535).astype(np.uint16)
+    # Raw elevation as 16-bit for sampling in the viewer (optional). Same linear
+    # mapping the .rte tiles use (meters + ELEV_OFFSET_M over the full uint16
+    # span), so nothing saturates: a hand-picked -500..4000 m window clipped
+    # every real trench and every peak above 4 km into a flat rail.
+    elev_norm = elevation_m_to_u16(elev_s)
     Image.fromarray(elev_norm).save(out_dir / "elevation_raw.png")
 
     settlements_src = pack_dir / "settlements.json"
@@ -274,8 +281,8 @@ def export_viewer_pack(
         "settlement_count": len(settlements),
         "elev_raw": {
             "file": "elevation_raw.png",
-            "offset_m": -500,
-            "scale_m": 4500,
+            "offset_m": -ELEV_OFFSET_M,
+            "scale_m": 65535,
         },
     }
     (out_dir / "viewer.json").write_text(

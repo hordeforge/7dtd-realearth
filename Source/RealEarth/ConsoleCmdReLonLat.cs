@@ -45,9 +45,14 @@ namespace RealEarth
                 session.EarthToLonLat(earthX, earthZ, out double lon, out double lat);
 
                 int sea = ModApi.Config?.SeaLevelGameY ?? HeightInjectMath.DefaultSeaLevelGameY;
-                int elevM = engineY >= 0
-                    ? AltitudeClimate.ElevMFromGameY(engineY, sea)
-                    : 0;
+                int elevM = 0;
+                if (engineY >= 0)
+                {
+                    // Sample the DEM column; gameY - sea is only meters under a 1:1
+                    // height policy and reads as -15745 m under the compressed modes.
+                    ChunkTerrainSampler.SampleSurfaceMeters(x, z, out float elevMeters);
+                    elevM = (int)Math.Round(elevMeters);
+                }
 
                 ConsoleOut.Out(
                     $"[RealEarth] local=({x},{z}) earth=({earthX},{earthZ}) " +

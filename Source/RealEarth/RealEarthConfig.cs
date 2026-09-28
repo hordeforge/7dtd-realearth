@@ -33,6 +33,13 @@ namespace RealEarth
         /// from their nearest focus are dropped and reload on demand. 0 disables.
         /// </summary>
         public const int DefaultMaxHotTiles = 192;
+
+        /// <summary>
+        /// Upper bound on the tile radii. The prefetch sweep is a
+        /// (2r+1)^2 loop run under the streamer lock every player every tick, so an
+        /// unclamped value stops the server rather than just wasting work.
+        /// </summary>
+        public const int MaxRadiusTiles = 64;
         [DataMember] public int MaxHotTiles { get; set; } = DefaultMaxHotTiles;
 
         /// <summary>
@@ -344,6 +351,16 @@ namespace RealEarth
                 StreamRadiusTiles = 0;
                 warnings.Add("StreamRadiusTiles < 0; reset to 0.");
             }
+            if (StreamRadiusTiles > MaxRadiusTiles)
+            {
+                StreamRadiusTiles = MaxRadiusTiles;
+                warnings.Add($"StreamRadiusTiles > {MaxRadiusTiles}; reset to {StreamRadiusTiles}.");
+            }
+            if (UnloadRadiusTiles > MaxRadiusTiles)
+            {
+                UnloadRadiusTiles = MaxRadiusTiles;
+                warnings.Add($"UnloadRadiusTiles > {MaxRadiusTiles}; reset to {UnloadRadiusTiles}.");
+            }
             if (UnloadRadiusTiles < StreamRadiusTiles)
             {
                 UnloadRadiusTiles = StreamRadiusTiles + 1;
@@ -359,10 +376,12 @@ namespace RealEarth
             {
                 // A cap below one focus's keep set evicts tiles the same focus is
                 // about to re-request, which turns the cache into a reload loop.
-                int oneFocusKeep = (2 * UnloadRadiusTiles + 1) * (2 * UnloadRadiusTiles + 1);
+                // Long arithmetic: (2r+1)^2 wraps int above r = 23169 and the
+                // wrapped value is small enough to skip the correction entirely.
+                long oneFocusKeep = (2L * UnloadRadiusTiles + 1) * (2L * UnloadRadiusTiles + 1);
                 if (MaxHotTiles < oneFocusKeep)
                 {
-                    MaxHotTiles = oneFocusKeep;
+                    MaxHotTiles = (int)Math.Min(oneFocusKeep, int.MaxValue);
                     warnings.Add(
                         $"MaxHotTiles must hold at least one unload bubble ({oneFocusKeep}); " +
                         $"reset to {MaxHotTiles}.");

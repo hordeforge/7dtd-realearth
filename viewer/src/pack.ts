@@ -155,6 +155,7 @@ export function packMetaFrom(candidate: unknown): PackMeta {
   const sampleWidth = asNumber(record.sample_width);
   const sampleHeight = asNumber(record.sample_height);
   const metersPerBlock = asNumber(record.meters_per_block);
+  const tileSize = asNumber(record.tile_size);
   // A viewer.json missing the fields the renderer actually needs must fail
   // loudly with a named reason instead of silently drawing an all-zero pack
   // (the coercers above default every missing number to 0).
@@ -176,6 +177,11 @@ export function packMetaFrom(candidate: unknown): PackMeta {
   if (!(metersPerBlock > 0)) {
     throw new Error(`Pack viewer.json meters_per_block is missing or non-positive (${metersPerBlock})`);
   }
+  // Every .rte offset is tx * tile_size; a 0 here collapses the streamed layer
+  // to a single point and turns the tile-grid division in app.ts into Infinity.
+  if (!(tileSize > 0)) {
+    throw new Error(`Pack viewer.json tile_size is missing or non-positive (${tileSize})`);
+  }
   return {
     name: asString(record.name),
     version: asNumber(record.version),
@@ -185,7 +191,7 @@ export function packMetaFrom(candidate: unknown): PackMeta {
     view_width: asNumber(record.view_width),
     view_height: asNumber(record.view_height),
     scale: asNumber(record.scale),
-    tile_size: asNumber(record.tile_size),
+    tile_size: tileSize,
     meters_per_block: metersPerBlock,
     world_width: asNumber(record.world_width),
     world_height: asNumber(record.world_height),

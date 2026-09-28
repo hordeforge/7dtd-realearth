@@ -75,20 +75,20 @@ def test_height_respects_custom_max_y_for_future_engine_mod():
 def test_elevation_u16_rounds_to_nearest_meter():
     # Terrarium decodes carry B/256 fractions; packing must round (not truncate)
     # so stored meters match the sampled surface on a 1 m = 1 block product.
-    from realearth.tile_format import _elevation_to_u16, _u16_to_elevation
+    from realearth.tile_format import elevation_m_to_u16, u16_to_elevation_m
 
     elev = np.array([[123.25, 123.75], [-10999.5, 8849.0]], dtype=np.float32)
-    back = _u16_to_elevation(_elevation_to_u16(elev))
+    back = u16_to_elevation_m(elevation_m_to_u16(elev))
     assert back[0, 0] == np.float32(123.0)  # 123.25 → nearest is 123
     assert back[0, 1] == np.float32(124.0)  # 123.75 must not truncate to 123
     assert back[1, 1] == np.float32(8849.0)
 
 
 def test_elevation_u16_nan_fails_closed_to_zero_meters():
-    from realearth.tile_format import _elevation_to_u16, _u16_to_elevation
+    from realearth.tile_format import elevation_m_to_u16, u16_to_elevation_m
 
     elev = np.array([[np.nan, 500.0]], dtype=np.float32)
-    back = _u16_to_elevation(_elevation_to_u16(elev))
+    back = u16_to_elevation_m(elevation_m_to_u16(elev))
     assert float(back[0, 0]) == 0.0  # matches C# missing-sample placeholder elev
     assert float(back[0, 1]) == 500.0
 
@@ -100,10 +100,10 @@ def test_elevation_payload_is_little_endian_on_the_wire():
     # host order and break tiles between machines.
     import struct as _struct
 
-    from realearth.tile_format import _elevation_to_u16
+    from realearth.tile_format import elevation_m_to_u16
 
     elev = np.array([[123.0, -11000.0], [8849.0, 42.0]], dtype=np.float32)
-    raw = _elevation_to_u16(elev).tobytes()
+    raw = elevation_m_to_u16(elev).tobytes()
     expected = b"".join(_struct.pack("<H", v) for v in (11123, 0, 19849, 11042))
     assert raw == expected
 

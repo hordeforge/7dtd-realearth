@@ -76,11 +76,23 @@ namespace RealEarth
                 if (cfg == null || session == null)
                     return;
 
-                int sea = cfg.SeaLevelGameY;
-                if (sea <= 0)
-                    sea = HeightInjectMath.DefaultSeaLevelGameY;
-
-                int elevM = AltitudeClimate.ElevMFromGameY(gameY, sea);
+                // Sample the DEM column, do not re-derive meters from gameY: the
+                // identity gameY - sea only holds under a 1:1 height policy, and
+                // the compressed opt-in modes clamp Y to 255, which read as
+                // -15745 m and invert every band.
+                float elevMeters = 0f;
+                try
+                {
+                    ChunkTerrainSampler.SampleSurfaceMeters(localX, localZ, out elevMeters);
+                }
+                catch (Exception ex)
+                {
+                    // No sample: climate falls back to sea-level lapse only.
+                    ModApi.LogError(
+                        $"AltitudeClimateTick: surface sample failed: {ex.GetType().Name}: {ex.Message}");
+                    elevMeters = 0f;
+                }
+                int elevM = (int)Math.Round(elevMeters);
 
                 float latDeg = 0f;
                 try
