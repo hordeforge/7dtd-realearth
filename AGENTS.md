@@ -25,8 +25,8 @@ Workspace root guide: [`hordeforge/.github` MODDING_BEST_PRACTICES.md](https://g
 2. **Keep expand logic in RealEarth**, never in EfficientServer or APM.
 3. **Data sources:** Copernicus / Terrarium / OSM-class sources only. Google Earth bulk data is not allowed (`docs/REALISM_AND_GOOGLE_EARTH.md`).
 4. **Product height is real meters (1 m = 1 block).** YDim expand is required. Do not treat global compress (`EngineHeightStockSafe`) as the product path. See `docs/HEIGHT_LIMITS.md`.
-5. **Retarget Managed refs after game updates** (client + dedicated). Publicizer rules follow the pinned release in `docs/GAME_VERSION.md`: overrides of vanilla methods may need to be public.
-6. **Python tooling: `uv` only** under `tools/`. Never pip / break-system-packages. Large scratch goes under project dirs or disk-backed cache, not tmpfs `/tmp`.
+5. **Retarget Managed refs after game updates** (client + dedicated). Publicizer rules follow the pinned release in `docs/GAME_VERSION.md`: overrides of vanilla methods may need to be public. `BuildGuard` pins reviewed `Assembly-CSharp.dll` sha256 values, so a new game build fails closed (height inject refused) until the allowlist is re-reviewed, not because the mod is broken.
+6. **Python tooling: `uv` only** under `tools/`. Never pip / break-system-packages. Large scratch goes under project dirs or disk-backed cache, not tmpfs `/tmp`. Every make target runs `uv --locked`: `uv.lock` is never hand-edited and never re-resolved by a target, so a dependency change needs an explicit `uv lock` in its own commit.
 7. **Install can write into Steam game directories.** Stop the game/server, keep backups, and confirm `GAME_DIR` / `SEVENDTD_GAME_DIR` before `make install*` or expand.
 8. **No AI attribution** in commits/docs/comments. **No em dashes** in shipped text.
 9. **Load-test bots live in `../7dtd-loadgen`.** Do not reintroduce them under `tools/`.
@@ -47,6 +47,7 @@ make install               # build + install mod (hot-patches YDim expand at boo
 make package               # dist/RealEarth + deterministic RealEarth-v*.zip (+ WebMod webui)
 make demo                  # synthetic demo region pack
 make viewer && make viewer-build && make serve  # web map viewer (TS sources)
+make viewer-lint webmod-lint html-lint  # CI gates: tsc --strict + oxlint, W3C vnu (also viewer-smoke)
 make check
 make clean
 ```
