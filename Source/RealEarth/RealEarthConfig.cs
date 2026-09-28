@@ -222,7 +222,7 @@ namespace RealEarth
         /// <summary>
         /// Optional regional pack bbox (degrees). When set, lon/lat maps linearly into
         /// WorldWidth×WorldHeight instead of full-planet equirectangular.
-        /// Filled from earth.manifest.json by ModApi.TryApplyPackManifest.
+        /// Filled from earth.manifest.json by PackManifest.TryApplyPackManifest.
         /// </summary>
         [DataMember] public double BboxWest { get; set; }
         [DataMember] public double BboxSouth { get; set; }

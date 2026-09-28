@@ -127,7 +127,7 @@ Never mark Done without live measure (GAP evidence checklist).
 | [DYNAMIC_CHUNK_HEIGHT](DYNAMIC_CHUNK_HEIGHT.md) | Sparse Y future |
 | [CITIES_AND_DENSITY](CITIES_AND_DENSITY.md) | Density stamps |
 | [CITY_MAP_LABELS](CITY_MAP_LABELS.md) | Discover-on-approach names |
-| [CITY_MAPDATA_TO_7DTD](CITY_MAPDATA_TO_7DTD.md) | MapData/real streets research into 7DTD representation |
+| [CITY_MAPDATA_TO_7DTD](CITY_MAPDATA_TO_7DTD.md) | MapData/real streets research: OSM streets/waterways/footprints → 7DTD representation |
 | [DATA_SOURCES](DATA_SOURCES.md) | DEM/pop/landcover sources |
 | [TILE_FARM](TILE_FARM.md) | Tile farm, CDN, storage plan |
 | [TERRAIN_PERSISTENCE](TERRAIN_PERSISTENCE.md) | Terrain deltas + build persistence |

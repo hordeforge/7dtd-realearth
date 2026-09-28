@@ -6,7 +6,7 @@ rewrites the ReviewedBuilds entries in Source/RealEarth/BuildGuard.cs. Run
 after verifying a NEW game version (live soak + hook binds green) so the
 fail-closed build guard does not block the updated build.
 
-Usage: python3 tools/scripts/refresh_build_guard.py
+Usage: python3 scripts/refresh_build_guard.py
 """
 
 from __future__ import annotations
@@ -15,7 +15,7 @@ import hashlib
 import sys
 from pathlib import Path
 
-ROOT = Path(__file__).resolve().parents[2]
+ROOT = Path(__file__).resolve().parents[1]
 GUARD = ROOT / "Source" / "RealEarth" / "BuildGuard.cs"
 GAME = Path.home() / ".local/share/Steam/steamapps/common/7 Days To Die"
 DEDI = Path.home() / ".local/share/Steam/steamapps/common/7 Days to Die Dedicated Server"

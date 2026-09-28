@@ -84,7 +84,7 @@ provenance and distinguish prototypes from verified in-game behavior.
 - [ ] Validate physics, pathing, zombies, prefabs, weather, rendering, and saves
   above the stock height ceiling.
 - [x] Add automated inspection that refuses an unknown assembly build unless the
-  operator explicitly selects a reviewed override. (`Source/RealEarth/BuildGuard.cs`: sha256 `Assembly-CSharp.dll` at init vs reviewed allowlist; unknown → `InjectBlocked` unless `EngineHeightAllowUnknownBuild=true` (default `false`); `tools/scripts/refresh_build_guard.py`; pinned by `test_build_guard_fail_closed_unknown_build`.)
+  operator explicitly selects a reviewed override. (`Source/RealEarth/BuildGuard.cs`: sha256 `Assembly-CSharp.dll` at init vs reviewed allowlist; unknown → `InjectBlocked` unless `EngineHeightAllowUnknownBuild=true` (default `false`); `scripts/refresh_build_guard.py`; pinned by `test_build_guard_fail_closed_unknown_build`.)
 
 ## Data pipeline and realism
 

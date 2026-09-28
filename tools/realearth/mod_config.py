@@ -121,7 +121,7 @@ def sync_manifest_dimensions(
     cfg["TileSize"] = int(manifest.get("tile_size") or 512)
     window = min(cfg["WorldWidth"], cfg["WorldHeight"])
     cfg["LocalWindowSize"] = min(window, max_window) if max_window else window
-    # Wrap follows the synced canvas, matching ModApi.TryApplyPackManifest: a
+    # Wrap follows the synced canvas, matching PackManifest.TryApplyPackManifest: a
     # regional pack must never wrap at the antimeridian.
     cfg["EnableLongitudeWrap"] = cfg["WorldWidth"] >= PLANET_CANVAS_MIN_WIDTH
     if include_bbox:

@@ -3,7 +3,8 @@
 Module map (dependency direction: top imports bottom, never the reverse):
 - coords, local_window          planet grid math, longitude wrap, sliding window
 - elevation                     DEM fetch (open-meteo / terrarium)
-- landcover, settlements, density   surface classification, POIs, population bands
+- landcover, corridors, settlements, density   surface classification, stamp
+  corridors, POIs, population bands
 - height, tile_format           real-meters-to-game-Y math, .rte tile codec
 - streamed_chunk                fill one Streamed chunk from .rte samples
 - region, generated_world, bake_world, height_test_map   world builders

@@ -46,6 +46,13 @@ and the release gate requires both to match the tag (`v<version>`) and a dated
 
 ### Changed
 
+- **`earth.manifest.json` reading moved out of the mod entry point.** The
+  manifest parse and config overlay now live in `Source/RealEarth/PackManifest.cs`
+  (`PackManifest.TryApplyPackManifest`); `ModApi.InitMod` only calls it. Same
+  call order, same values, no config or tile-format change. The BuildGuard
+  allowlist refresher moved with it: `scripts/refresh_build_guard.py` (was
+  `tools/scripts/`), since it edits the C# tree and is not part of the
+  `realearth` package.
 - **A region pack rebuild now owns its `tiles/` directory.** `build_region`
   clears `tiles/` before writing the grid, so a rerun with a smaller grid (a
   narrower bbox, a coarser resolution, a smaller `tile_size`) no longer
