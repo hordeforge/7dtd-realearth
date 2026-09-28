@@ -8,6 +8,7 @@ from pathlib import Path
 import httpx
 import pytest
 
+from realearth import viewer_server
 from realearth.viewer_server import ViewerHandler
 
 BIG_HTML = b"<html>" + b"x" * 4096 + b"</html>"
@@ -16,10 +17,16 @@ PNG_BYTES = bytes(range(256)) * 64  # binary, incompressible-ish, .png suffix
 
 
 @pytest.fixture()
-def server(tmp_path: Path):
+def served_root(tmp_path: Path) -> Path:
     (tmp_path / "index.html").write_bytes(BIG_HTML)
     (tmp_path / "tiny.txt").write_bytes(SMALL_TXT)
     (tmp_path / "tile.png").write_bytes(PNG_BYTES)
+    return tmp_path
+
+
+@pytest.fixture()
+def server(served_root: Path):
+    tmp_path = served_root
 
     handler = functools.partial(ViewerHandler, directory=str(tmp_path))
     httpd = http.server.ThreadingHTTPServer(("127.0.0.1", 0), handler)
@@ -72,6 +79,63 @@ def test_if_modified_since_answers_304(server: str):
         headers={"Accept-Encoding": "gzip", "If-Modified-Since": last_modified},
     )
     assert second.status_code == 304
+
+
+def test_etag_answers_304_for_every_encoding(server: str):
+    # A validator must cover the gzip and the identity representation, or a
+    # client that negotiated the other encoding re-downloads the whole file.
+    for accept in ("gzip", "identity"):
+        first = httpx.get(f"{server}/index.html", headers={"Accept-Encoding": accept})
+        etag = first.headers["ETag"]
+        second = httpx.get(
+            f"{server}/index.html",
+            headers={"Accept-Encoding": accept, "If-None-Match": etag},
+        )
+        assert second.status_code == 304, accept
+        assert second.content == b"", accept
+
+
+def test_stale_etag_is_replaced_not_304(server: str, served_root: Path):
+    page = served_root / "index.html"
+    res = httpx.get(f"{server}/index.html", headers={"Accept-Encoding": "gzip"})
+    page.write_bytes(BIG_HTML + b"y" * 2048)
+    again = httpx.get(
+        f"{server}/index.html",
+        headers={"Accept-Encoding": "gzip", "If-None-Match": res.headers["ETag"]},
+    )
+    assert again.status_code == 200
+    assert again.content == BIG_HTML + b"y" * 2048
+
+
+def test_if_none_match_beats_if_modified_since(server: str):
+    res = httpx.get(f"{server}/index.html", headers={"Accept-Encoding": "gzip"})
+    mismatched = httpx.get(
+        f"{server}/index.html",
+        headers={
+            "Accept-Encoding": "gzip",
+            "If-None-Match": 'W/"deadbeef-1"',
+            "If-Modified-Since": res.headers["Last-Modified"],
+        },
+    )
+    assert mismatched.status_code == 200
+
+
+def test_gzip_body_is_compressed_once_per_revision(server: str, monkeypatch):
+    calls = 0
+    real = viewer_server.gzip.compress
+
+    def counting(data: bytes, compresslevel: int = -1) -> bytes:
+        nonlocal calls
+        calls += 1
+        return real(data, compresslevel=compresslevel)
+
+    monkeypatch.setattr(viewer_server.gzip, "compress", counting)
+    viewer_server.gzip_body.cache_clear()
+    for _ in range(5):
+        res = httpx.get(f"{server}/index.html", headers={"Accept-Encoding": "gzip"})
+        assert res.status_code == 200
+        assert res.content == BIG_HTML
+    assert calls <= 1
 
 
 def test_security_headers_allow_no_remote_script_origin(server: str):

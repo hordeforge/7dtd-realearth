@@ -150,3 +150,28 @@ make viewer-lint   # tsc --strict (viewer/tsconfig.json) + oxlint, anti-slop + s
 
 `make serve` rebuilds before serving. After editing, test both views, pack switching, settlement
 hover, cursor probing, and a narrow/mobile viewport.
+
+## Payload
+
+The audience is a developer on a LAN or localhost opening one map, not a
+public page on mobile, so the budget is "no large asset before first paint"
+rather than a hard byte ceiling. Measured on the default build:
+
+| Asset | Raw | gzip | When |
+|---|---|---|---|
+| `index.html` | 5.1 KB | 1.7 KB | first response |
+| `css/app.css` | 5.9 KB | 1.7 KB | first response |
+| `js/*.js` (7 modules, static graph) | see `make viewer-build` | | first response |
+| `vendor/three/three.module.js` | 1.3 MB | 267 KB | only on the Globe button |
+
+Rules the build and `serve` keep:
+
+- The 1.3 MB three.js module is behind the dynamic `import("./globe.js")`
+  in `app.ts`, never in the entry graph, and `index.html` never preloads it.
+- `index.html` preloads the entry module's static imports, so the module
+  graph downloads in parallel instead of a round trip per dependency level.
+  `tools/tests/test_viewer_preload.py` fails when that list and the real
+  import graph disagree.
+- `realearth serve` deflates text assets once per file revision and reuses
+  the bytes (level 6: 37 ms of CPU per request on the three.js module without
+  it), sends a weak ETag alongside Last-Modified, and revalidates with 304s.

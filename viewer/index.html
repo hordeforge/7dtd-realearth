@@ -6,6 +6,20 @@
   <title>RealEarth Map Viewer</title>
   <link rel="icon" type="image/svg+xml" href="favicon.svg">
   <link rel="stylesheet" href="css/app.css">
+  <!-- The entry module's static imports are only discovered once app.js has
+       been fetched and parsed, which serializes two request rounds before the
+       viewer can run. Preload them so the graph downloads in parallel.
+       globe.js is deliberately absent: it is the dynamic import behind the
+       Globe button and drags in the 1.3 MB vendored three.js module, which
+       must stay off the first-paint path. Keep this list in sync with the
+       module graph in scripts/build-viewer.sh. -->
+  <link rel="modulepreload" href="js/app.js">
+  <link rel="modulepreload" href="js/pack.js">
+  <link rel="modulepreload" href="js/coerce.js">
+  <link rel="modulepreload" href="js/map2d.js">
+  <link rel="modulepreload" href="js/lonWrap.js">
+  <link rel="modulepreload" href="js/rte.js">
+  <link rel="modulepreload" href="js/rteLayer.js">
   <!-- three.js resolves from the vendored copy under vendor/three (offline,
        no CDN dependency, no third-party script origin). Keep vendor/three in
        sync with the locked npm copy and verified hashes via
