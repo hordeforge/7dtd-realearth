@@ -210,6 +210,10 @@ for sv in "$USERDATA/Saves/HeightTest500" "$USERDATA/Saves/$WORLD_NAME"; do
       trash_m=$((trash_m + 1))
     done
     mv "$sv" "$aside"
+    # mv keeps the save dir's own mtime, which the prune below reads as its
+    # age: a world baked weeks ago would be deleted the moment it is moved
+    # aside, taking the only pre-run copy with it.
+    touch "$aside"
   fi
 done
 find "$TRASH" -mindepth 1 -maxdepth 1 -mtime "+$SAVE_TRASH_DAYS" -exec rm -rf {} + 2>/dev/null || true

@@ -8,6 +8,7 @@ import functools
 import gzip
 import http.server
 import io
+import math
 import os
 import webbrowser
 from pathlib import Path
@@ -31,6 +32,18 @@ def gzip_body(path: str, mtime_ns: int, size: int) -> bytes:
     request is identical to recompressing them.
     """
     return gzip.compress(Path(path).read_bytes(), compresslevel=_GZIP_LEVEL)
+
+
+def _http_seconds(mtime: float) -> int:
+    """Whole seconds for a file mtime, as HTTP dates carry them.
+
+    HTTP-date has one-second resolution, so an mtime is floored, not rounded
+    and not truncated toward zero: a pre-epoch mtime (btrfs, or a tree
+    unpacked from an archive stamped before 1970) truncates upward and reports
+    the file as modified up to a second later than it was, which flips the
+    304/200 decision at the boundary.
+    """
+    return math.floor(mtime)
 
 
 def _etag_for(fstat: os.stat_result) -> str:
@@ -136,7 +149,7 @@ class ViewerHandler(http.server.SimpleHTTPRequestHandler):
             return True
         if since.tzinfo is None:
             return True
-        return int(mtime) > since.timestamp()
+        return _http_seconds(mtime) > since.timestamp()
 
     def send_head(self) -> io.BytesIO | BinaryIO | None:
         """As the stdlib handler does: an open binary stream, or None after an error response."""
@@ -174,7 +187,7 @@ class ViewerHandler(http.server.SimpleHTTPRequestHandler):
         if self._client_copy_is_fresh(etag, fstat.st_mtime):
             self.send_response(http.HTTPStatus.NOT_MODIFIED)
             self.send_header("ETag", etag)
-            self.send_header("Last-Modified", self.date_time_string(int(fstat.st_mtime)))
+            self.send_header("Last-Modified", self.date_time_string(_http_seconds(fstat.st_mtime)))
             self.end_headers()
             return None
         try:
@@ -190,7 +203,7 @@ class ViewerHandler(http.server.SimpleHTTPRequestHandler):
         if compress:
             self.send_header("Content-Encoding", "gzip")
         self.send_header("ETag", etag)
-        self.send_header("Last-Modified", self.date_time_string(int(fstat.st_mtime)))
+        self.send_header("Last-Modified", self.date_time_string(_http_seconds(fstat.st_mtime)))
         self.end_headers()
         if self.command == "HEAD":
             return None

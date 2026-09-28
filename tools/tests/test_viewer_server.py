@@ -3,6 +3,7 @@
 import functools
 import gzip
 import http.server
+import os
 import threading
 from pathlib import Path
 
@@ -119,6 +120,24 @@ def test_if_none_match_beats_if_modified_since(server: str):
         },
     )
     assert mismatched.status_code == 200
+
+
+def test_pre_epoch_mtime_revalidates_as_304(server: str, served_root: Path):
+    # A tree unpacked from an archive stamped before 1970 (btrfs holds such
+    # mtimes) has a negative st_mtime. Truncating it toward zero reports the
+    # file as modified a second later than it was, so the client is told 200
+    # for the very revision it already holds.
+    page = served_root / "index.html"
+    pre_epoch = -0.5  # 1969-12-31T23:59:59.5Z
+    os.utime(page, (pre_epoch, pre_epoch))
+    first = httpx.get(f"{server}/index.html", headers={"Accept-Encoding": "gzip"})
+    last_modified = first.headers["Last-Modified"]
+    assert last_modified == "Wed, 31 Dec 1969 23:59:59 GMT", last_modified
+    second = httpx.get(
+        f"{server}/index.html",
+        headers={"Accept-Encoding": "gzip", "If-Modified-Since": last_modified},
+    )
+    assert second.status_code == 304
 
 
 def test_gzip_body_is_compressed_once_per_revision(server: str, monkeypatch):

@@ -280,3 +280,21 @@ def test_generated_world_bad_trash_window_is_refused(tmp_path: Path) -> None:
 
     assert result.returncode != 0
     assert "RE_WORLD_TRASH_DAYS" in result.stderr
+
+
+def test_height_test_trash_entries_are_stamped_before_the_prune() -> None:
+    """A save moved aside must carry the move time, not the bake time.
+
+    run_dedicated_height_test.sh rotates the previous saves into Saves_trash
+    and prunes that trash by mtime. mv preserves the save dir's own mtime, so
+    without a touch a world baked weeks ago is deleted by the prune in the
+    same run that rotated it, taking the only pre-run copy with it.
+    """
+    src = (ROOT / "scripts" / "run_dedicated_height_test.sh").read_text(encoding="utf-8")
+    code = [line for line in src.splitlines() if not line.lstrip().startswith("#")]
+    move = next(i for i, line in enumerate(code) if line.strip() == 'mv "$sv" "$aside"')
+    prune = next(i for i, line in enumerate(code) if "-mtime" in line)
+    assert move < prune
+    assert any(
+        'touch "$aside"' in line for line in code[move:prune]
+    ), "the trash entry must be touched between the move and the -mtime prune"

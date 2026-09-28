@@ -237,7 +237,18 @@ and the release gate requires both to match the tag (`v<version>`) and a dated
 - **`DensityBudget.DistanceBlocks` no longer overflows on distant sites.**
   The squared delta overflowed `long` past a 2^31 block gap, which can be the
   ordinary case for a place on a slid window.
-
+- **`run_dedicated_height_test.sh` no longer prunes the save it just rotated.**
+  The harness moves the previous saves into `Saves_trash` and then deletes
+  trash entries older than `RE_SAVE_TRASH_DAYS` by mtime. `mv` carries the save
+  directory's own mtime, so a world older than the window was deleted by the
+  prune in the same run that set it aside, and the pre-run copy was gone. Each
+  trash entry is now stamped at move time, as `generated-world.sh` already did.
+- **The viewer serves a pre-1970 mtime as one second newer than it is.**
+  `If-Modified-Since` / `Last-Modified` have one-second resolution, so the
+  handler now floors the file mtime instead of truncating it toward zero: a
+  tree unpacked from an archive stamped before the epoch (btrfs holds such
+  mtimes) no longer revalidates as modified and answers 200 for the revision
+  the client already holds.
 - **`make sbom` output is now reproducible.** `scripts/sbom.py` fills the SPDX
   `creationInfo.created` field from `SOURCE_DATE_EPOCH` when it is exported,
   the same convention `scripts/package_zip.sh` already follows. Without it two
