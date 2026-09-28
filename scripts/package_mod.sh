@@ -143,6 +143,18 @@ else
   echo "NOTE: no pack at data/samples/demo_region, run make demo; shipping without Data/tiles." >&2
 fi
 
+# The dashboard reads its map packs from WebMod/data/<pack> at runtime
+# (webmod/src/base.ts DEFAULT_PACK_PATH). `make webmod` only writes the
+# bundle; the pack export is a separate target, so a bundle left over from a
+# build without it ships a dashboard whose Map page 404s. Checked before the
+# C# build so the failure costs nothing.
+if [[ -d "$ROOT/webmod/build" ]] && ! compgen -G "$ROOT/webmod/build/data/*" >/dev/null; then
+  echo "ERROR: webmod/build has no exported pack under webmod/build/data; the packaged" >&2
+  echo "       dashboard Map page would 404. Run 'make webmod-export' (needs 'make demo'" >&2
+  echo "       first), or delete webmod/build to package without the webui." >&2
+  exit 1
+fi
+
 if [[ -n "$GAME_DIR" && -d "$GAME_DIR" ]]; then
   echo "Building C# against $GAME_DIR ..."
   dotnet build "$ROOT/Source/RealEarth/RealEarth.csproj" -c Release -p:GameDir="$GAME_DIR"

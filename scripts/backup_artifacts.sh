@@ -81,7 +81,28 @@ cmd_backup() {
   echo "Backing up into: $archive"
   # shellcheck disable=SC2086 # $dirs is a space-separated path list; quoting
   # it would pass one bogus path to tar.
-  tar -C "$ROOT" -czf "$archive" $dirs
+  # Member order, uid/gid and the gzip header are normalized (gzip -n), so
+  # backing up an unchanged tree twice produces the same bytes and a differing
+  # sha256 means new data rather than a re-run. File mtimes are kept as they
+  # are: the terrarium cache and packed tiles are reused by age.
+  partial="$archive.partial"
+  # --sort/--owner are GNU tar options (bsdtar, which macOS ships as tar, has
+  # neither): fall back to a plain archive there rather than failing the
+  # backup, and say so, because only the normalized form is byte-comparable.
+  tar_opts=()
+  if tar --help 2>&1 | grep -q -- '--sort'; then
+    tar_opts=(--sort=name --owner=0 --group=0 --numeric-owner)
+  else
+    echo "NOTE: this tar has no --sort/--owner (not GNU tar); the archive is not byte-comparable." >&2
+  fi
+  # ${arr[@]+"${arr[@]}"} keeps the empty case legal under set -u on bash 3.2.
+  # shellcheck disable=SC2086 # $dirs is a space-separated path list; tar_opts
+  # must word-split into separate options.
+  if ! tar -C "$ROOT" ${tar_opts[@]+"${tar_opts[@]}"} -cf - $dirs | gzip -n -9 >"$partial"; then
+    rm -f "$partial"
+    die "tar failed while writing $archive"
+  fi
+  mv "$partial" "$archive"
 
   # Integrity gate: a backup whose exit code lies is not a backup. Verify the
   # gzip stream and record the checksum next to the artifact.

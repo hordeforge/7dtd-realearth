@@ -224,7 +224,12 @@ install-streamed:
 
 install-height: height-map-install
 
-package: build webmod sbom
+# The dashboard webui serves its map packs from WebMod/data/<pack>; ship the
+# export with the bundle whenever a pack exists to export. A Baked package with
+# no pack (packaging allows that) still builds, just without the webui data.
+PACK_DEP     := $(shell test -d $(PACK_DEMO) && echo webmod-export)
+
+package: build webmod sbom $(PACK_DEP)
 	@GAME_DIR="$(GAME_DIR)" "$(SCRIPTS)/package_mod.sh" "$(ROOT)/dist/RealEarth"
 	@"$(SCRIPTS)/package_zip.sh" "$(ROOT)/dist/RealEarth"
 	@echo "OK package → $(ROOT)/dist/RealEarth (+ RealEarth-v*.zip, sha256 + buildinfo sidecars, dist/realearth-deps.spdx.json; includes WebMod webui)"

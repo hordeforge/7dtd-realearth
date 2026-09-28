@@ -127,6 +127,19 @@ def test_package_mod_fails_without_the_mod_dll(tmp_path):
     assert "RealEarth.dll" in result.stderr
 
 
+def test_package_mod_fails_when_webmod_pack_export_is_missing(tmp_path):
+    """The dashboard serves its map packs from WebMod/data/<pack>; a bundle
+    built without `make webmod-export` would ship a Map page that 404s."""
+    root = _fake_root(tmp_path)
+    build = root / "webmod" / "build"
+    build.mkdir(parents=True)
+    (build / "bundle.js").write_text("// stub\n", encoding="utf-8")
+    result = _run_package_mod(root, tmp_path / "out", {"MAP_MODE": "Baked"})
+    assert result.returncode == 1, result.stdout + result.stderr
+    assert "make webmod-export" in result.stderr
+    assert not (tmp_path / "out" / "WebMod").exists()
+
+
 def test_install_fails_when_streamed_pack_is_missing(tmp_path):
     """Same rule on the install path, checked before install_mod removes the
     previous install, so `make install` cannot leave a mod with no data."""

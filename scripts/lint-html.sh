@@ -18,7 +18,7 @@ set -euo pipefail
 root="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 # shellcheck disable=SC1091
 source "$root/scripts/toolchain-versions.env"
-cache_dir="${XDG_CACHE_HOME:-$HOME/.cache}/realearth/oxlint-standards"
+cache_dir="${XDG_CACHE_HOME:-$HOME/.cache}/realearth/js-toolchain"
 
 html_files=("$root/viewer/index.html" "$root/viewer/smoke.html")
 css_files=("$root/viewer/css/app.css" "$root/webmod/styling.css")

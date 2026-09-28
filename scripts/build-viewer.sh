@@ -10,9 +10,11 @@
 # resolve through index.html's importmap. That keeps the lazy first-use CDN
 # fetch of three.js intact instead of vendoring it into the build.
 #
-# esbuild runs through bunx pinned by ESBUILD_VERSION (single source of truth:
-# scripts/toolchain-versions.env, shared with build-webmod.sh). Outputs are
-# generated artifacts (gitignored); regenerate after editing sources:
+# esbuild is pinned by ESBUILD_VERSION (single source of truth:
+# scripts/toolchain-versions.env) and installed from the committed lockfile by
+# install-js-toolchain.sh, so the bundler binary itself is hash-verified
+# instead of resolved from the registry on every run. Outputs are generated
+# artifacts (gitignored); regenerate after editing sources:
 # make viewer-build.
 #
 # Override locally: ESBUILD_VERSION=0.28.2 bash scripts/build-viewer.sh
@@ -22,12 +24,15 @@ set -euo pipefail
 root="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 # shellcheck disable=SC1091
 source "$root/scripts/toolchain-versions.env"
+cache_dir="${XDG_CACHE_HOME:-$HOME/.cache}/realearth/js-toolchain"
 src_dir="$root/viewer/src"
 out_dir="$root/viewer/js"
 
+bash "$root/scripts/install-js-toolchain.sh" "$cache_dir" >/dev/null
+
 mkdir -p "$out_dir"
 
-bunx "esbuild@$ESBUILD_VERSION" \
+"$cache_dir/node_modules/.bin/esbuild" \
   "$src_dir/app.ts" \
   "$src_dir/pack.ts" \
   "$src_dir/coerce.ts" \

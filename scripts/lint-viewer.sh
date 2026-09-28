@@ -21,7 +21,7 @@ set -euo pipefail
 root="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 # shellcheck disable=SC1091
 source "$root/scripts/toolchain-versions.env"
-cache_dir="${XDG_CACHE_HOME:-$HOME/.cache}/realearth/oxlint-standards"
+cache_dir="${XDG_CACHE_HOME:-$HOME/.cache}/realearth/js-toolchain"
 src_dir="$root/viewer/src"
 
 # 1. Toolchain: the @rikalabs plugin, the vendored dmmulroy/anti-slop plugin
@@ -29,7 +29,8 @@ src_dir="$root/viewer/src"
 #    npm package), oxlint-tsgolint (the type-aware backend), typescript,
 #    @types/three (globe.ts's importmap import of three), three itself and
 #    vnu-jar, all installed from the committed lockfile with hash
-#    verification. The same cache dir serves the webmod and HTML gates.
+#    verification. The same cache dir also serves build-viewer.sh,
+#    build-webmod.sh, lint-webmod.sh and the HTML gate.
 bash "$root/scripts/install-js-toolchain.sh" "$cache_dir" >/dev/null
 
 # viewer/package.json declares the viewer sources' only external dependency.

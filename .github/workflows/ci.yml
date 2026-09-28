@@ -32,14 +32,14 @@ jobs:
           # Cache uv wheels/venv between runs (default on hosted runners; pinned here
           # so self-hosted forks keep it too).
           enable-cache: true
-      # oxlint/tsgolint/anti-slop/vnu toolchain for the lint-*.sh scripts;
-      # key hashes the shared pin file, the lockfile that fixes the resolved
-      # artifacts, and the scripts that consume them, so a version bump
-      # invalidates it.
+      # esbuild/tsc/oxlint/tsgolint/anti-slop/vnu toolchain for the build-*.sh
+      # and lint-*.sh scripts; key hashes the shared pin file, the lockfile
+      # that fixes the resolved artifacts, and the scripts that consume them,
+      # so a version bump invalidates it.
       - uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9  # v6.1.0
         with:
-          path: ~/.cache/realearth/oxlint-standards
-          key: oxlint-standards-${{ runner.os }}-${{ hashFiles('scripts/toolchain-versions.env', 'scripts/js-toolchain.lock', 'scripts/install-js-toolchain.sh', 'scripts/lint-viewer.sh', 'scripts/lint-webmod.sh', 'scripts/lint-html.sh') }}
+          path: ~/.cache/realearth/js-toolchain
+          key: js-toolchain-${{ runner.os }}-${{ hashFiles('scripts/toolchain-versions.env', 'scripts/js-toolchain.lock', 'scripts/install-js-toolchain.sh', 'scripts/build-viewer.sh', 'scripts/build-webmod.sh', 'scripts/lint-viewer.sh', 'scripts/lint-webmod.sh', 'scripts/lint-html.sh') }}
           restore-keys: |
             oxlint-standards-${{ runner.os }}-
       # No C# build or analysis step: the RealEarth mod DLL needs the proprietary

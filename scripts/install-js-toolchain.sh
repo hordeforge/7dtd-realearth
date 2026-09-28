@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Install the pinned JS build/lint toolchain (oxlint, tsc, vnu, three) into the
+# Install the pinned JS build/lint toolchain (esbuild, tsc, vnu, three) into the
 # shared cache directory, verified against the committed lockfile.
 #
 # The pins in scripts/toolchain-versions.env stay the single source of truth for
@@ -26,6 +26,10 @@ if [[ $# -lt 1 ]]; then
   exit 2
 fi
 cache_dir="$1"
+if ! command -v bun >/dev/null 2>&1; then
+  echo "ERROR: bun is required to install the JS toolchain (https://bun.sh; CI pins 1.4.0)" >&2
+  exit 1
+fi
 mkdir -p "$cache_dir"
 
 # type module: the vendored anti-slop plugin source is ESM, and without the
@@ -37,6 +41,7 @@ cat > "$cache_dir/package.json" <<JSON
     "@oxlint/plugins": "$OXLINT_PLUGINS_VERSION",
     "@rikalabs/oxlint-standards": "$OXLINT_STANDARDS_VERSION",
     "@types/three": "$THREE_TYPES_VERSION",
+    "esbuild": "$ESBUILD_VERSION",
     "oxlint-tsgolint": "$OXLINT_TSGOLINT_VERSION",
     "three": "$THREE_VERSION",
     "typescript": "$TSC_VERSION",

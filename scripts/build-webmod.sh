@@ -10,11 +10,12 @@
 # collide with it on case-insensitive filesystems (macOS, Windows). The
 # packaged mod folder keeps the game-required WebMod name (see package_mod.sh).
 #
-# esbuild runs through bunx pinned by ESBUILD_VERSION (single source of truth:
-# scripts/toolchain-versions.env; the repo does not track
-# package.json/node_modules). After bundling, a bun smoke test asserts the
-# published object shape so a broken entry (missing route/settings keys) fails
-# the build.
+# esbuild is pinned by ESBUILD_VERSION (single source of truth:
+# scripts/toolchain-versions.env; the repo tracks no package.json/node_modules)
+# and installed from the committed lockfile by install-js-toolchain.sh, so the
+# bundler binary that ships in a release is the hash-verified artifact. After
+# bundling, a bun smoke test asserts the published object shape so a broken
+# entry (missing route/settings keys) fails the build.
 #
 # Override locally: ESBUILD_VERSION=0.28.2 bash scripts/build-webmod.sh
 
@@ -23,11 +24,14 @@ set -euo pipefail
 root="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 # shellcheck disable=SC1091
 source "$root/scripts/toolchain-versions.env"
+cache_dir="${XDG_CACHE_HOME:-$HOME/.cache}/realearth/js-toolchain"
 out_dir="$root/webmod/build"
+
+bash "$root/scripts/install-js-toolchain.sh" "$cache_dir" >/dev/null
 
 mkdir -p "$out_dir"
 
-bunx "esbuild@$ESBUILD_VERSION" "$root/webmod/src/index.ts" \
+"$cache_dir/node_modules/.bin/esbuild" "$root/webmod/src/index.ts" \
   --bundle \
   --format=iife \
   --target=es2022 \

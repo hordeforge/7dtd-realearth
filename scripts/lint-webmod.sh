@@ -20,7 +20,7 @@ set -euo pipefail
 root="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 # shellcheck disable=SC1091
 source "$root/scripts/toolchain-versions.env"
-cache_dir="${XDG_CACHE_HOME:-$HOME/.cache}/realearth/oxlint-standards"
+cache_dir="${XDG_CACHE_HOME:-$HOME/.cache}/realearth/js-toolchain"
 src_dir="$root/webmod/src"
 
 # 1. Type check (tsc --strict per webmod/tsconfig.json).
@@ -32,8 +32,8 @@ bunx -p "typescript@$TSC_VERSION" tsc -p "$root/webmod/tsconfig.json" --noEmit
 #    backend) are installed into the shared cache by install-js-toolchain.sh
 #    from the committed lockfile, and oxlint runs next to them because
 #    jsPlugins resolve relative to the config file's directory; a copy of the
-#    config is placed there each run. The same cache dir serves the viewer
-#    (lint-viewer.sh) and the HTML gate (lint-html.sh).
+#    config is placed there each run. The same cache dir also serves build-viewer.sh,
+#    build-webmod.sh, lint-viewer.sh and lint-html.sh.
 bash "$root/scripts/install-js-toolchain.sh" "$cache_dir" >/dev/null
 cp "$root/.oxlintrc.webmod.jsonc" "$cache_dir/oxlintrc.webmod.jsonc"
 cd "$cache_dir"

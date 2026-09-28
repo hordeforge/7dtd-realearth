@@ -5,6 +5,7 @@
 # release attaches must not depend on who ran the build: zipping by hand
 # embeds the maintainer's file mtimes, uid/gid, and directory-listing order,
 # so two builds of the same source never agree byte-for-byte. This script
+# resolves the timestamp origin and hands the folder to package_zip.py, which
 # normalizes every archive field:
 #
 #   - entries added in explicit sorted order (never readdir order)
@@ -75,112 +76,14 @@ export RE_ZIP_EPOCH="$EPOCH" RE_ZIP_EPOCH_ORIGIN="$ORIGIN"
 
 # Pinned JS toolchain versions for the buildinfo record (best effort: the
 # sidecar documents what built this tree, it must not fail the packaging).
-TOOLCHAIN_ENV="$(cd "$(dirname "$0")" && pwd)/toolchain-versions.env"
-export RE_ZIP_TOOLCHAIN_ENV="$TOOLCHAIN_ENV"
+script_dir="$(cd "$(dirname "$0")" && pwd)"
+export RE_ZIP_TOOLCHAIN_ENV="$script_dir/toolchain-versions.env"
 
-# Release-archive name follows ModInfo.xml's version (same parse as
-# .github/workflows/release.yml): dist/RealEarth-v0.3.0.zip.
-VERSION="$(sed -n 's/.*<Version[^>]*value="\([^"]*\)".*/\1/p' "$DIR/ModInfo.xml" | head -1)"
-OUT="${2:-$(dirname "$DIR")/$(basename "$DIR")${VERSION:+-v$VERSION}.zip}"
-
-python3 - "$DIR" "$OUT" <<'PY'
-import hashlib
-import os
-import re
-import stat
-import subprocess
-import sys
-import time
-import zipfile
-from pathlib import Path
-from shutil import copyfileobj
-
-src = Path(sys.argv[1]).resolve()
-dst = Path(sys.argv[2]).resolve()
-
-modinfo = (src / "ModInfo.xml").read_text(encoding="utf-8")
-name_match = re.search(r'<Name[^>]*value="([^"]+)"', modinfo)
-if not name_match:
-    print("ERROR: no <Name value=\"...\"> in ModInfo.xml", file=sys.stderr)
-    sys.exit(2)
-root = name_match.group(1)
-
-epoch = int(os.environ["RE_ZIP_EPOCH"])
-origin = os.environ["RE_ZIP_EPOCH_ORIGIN"]
-# ZIP timestamps start at 1980; older epochs would raise.
-epoch = max(epoch, 315532800)
-date_time = time.gmtime(epoch)[:6]
-
-
-def tool_version(cmd: str) -> str:
-    try:
-        out = subprocess.run([cmd, "--version"], capture_output=True, text=True, timeout=20)
-        return out.stdout.strip().splitlines()[0] if out.returncode == 0 else "unavailable"
-    except (OSError, subprocess.TimeoutExpired):
-        return "unavailable"
-
-
-entries = sorted(src.rglob("*"))
-# A symlink has no content of its own: skipping it would ship an archive
-# quietly missing a file the mod folder has. Name it instead.
-symlinks = [p.relative_to(src).as_posix() for p in entries if p.is_symlink()]
-if symlinks:
-    print("ERROR: symlinks under the mod folder cannot be archived:", file=sys.stderr)
-    for rel in symlinks:
-        print(f"  {rel}", file=sys.stderr)
-    sys.exit(2)
-files = [p for p in entries if p.is_file()]
-if not files:
-    print("ERROR: nothing to archive", file=sys.stderr)
-    sys.exit(2)
-
-dst.parent.mkdir(parents=True, exist_ok=True)
-with zipfile.ZipFile(dst, "w", compression=zipfile.ZIP_DEFLATED, compresslevel=9) as zf:
-    for p in files:
-        rel = p.relative_to(src).as_posix()
-        info = zipfile.ZipInfo(f"{root}/{rel}", date_time=date_time)
-        mode = 0o755 if rel.endswith(".sh") else 0o644
-        info.create_system = 3  # unix: external_attr carries the permission bits
-        info.external_attr = (stat.S_IFREG | mode) << 16
-        info.compress_type = zipfile.ZIP_DEFLATED
-        with zf.open(info, "w") as target, p.open("rb") as handle:
-            copyfileobj(handle, target, length=1 << 20)
-
-digest = hashlib.sha256(dst.read_bytes()).hexdigest()
-# Same format as scripts/backup_artifacts.sh: verifiable by sha256sum -c.
-dst.with_name(dst.name + ".sha256").write_text(f"{digest}  {dst.name}\n", encoding="utf-8")
-
-buildinfo = dst.with_name(dst.name + ".buildinfo.txt")
-env_lines = []
-for var in (
-    "ESBUILD_VERSION", "TSC_VERSION", "OXLINT_VERSION", "OXLINT_TSGOLINT_VERSION",
-    "OXLINT_PLUGINS_VERSION", "OXLINT_STANDARDS_VERSION", "ANTI_SLOP_SHA",
-    "THREE_TYPES_VERSION", "THREE_VERSION", "VNU_VERSION",
-):
-    env_path = os.environ.get("RE_ZIP_TOOLCHAIN_ENV", "")
-    if env_path and Path(env_path).is_file():
-        import re
-        match = re.search(rf'^:{var}:=("?)([^"\n]*)\1\s*$', Path(env_path).read_text(encoding="utf-8"), re.M)
-        if match:
-            env_lines.append(f"{var}={match.group(2)}")
-
-lines = [
-    f"archive={dst.name}",
-    f"archive_sha256={digest}",
-    f"archive_bytes={dst.stat().st_size}",
-    f"mod_name={root}",
-    f"source_dir={src.name}",
-    f"entry_timestamp={time.strftime('%Y-%m-%dT%H:%M:%SZ', time.gmtime(epoch))}",
-    f"entry_timestamp_origin={origin}",
-    f"entry_count={len(files)}",
-    f"python={tool_version('python3')}",
-    f"dotnet={tool_version('dotnet')}",
-    f"uv={tool_version('uv')}",
-    f"bun={tool_version('bun')}",
-    *env_lines,
-]
-buildinfo.write_text("\n".join(lines) + "\n", encoding="utf-8")
-print(f"realearth: zip -> {dst}")
-print(f"realearth: sha256 {digest}")
-print(f"realearth: buildinfo -> {buildinfo}")
-PY
+# The archive bytes (entry order, timestamps, permissions, sidecars) are
+# written by package_zip.py, the same way scripts/sbom.py owns the SPDX
+# inventory: shell resolves the environment, python owns the format. An
+# omitted ZIP_OUT leaves the name to python (ModInfo.xml <Version>).
+if [[ $# -ge 2 ]]; then
+  exec python3 "$script_dir/package_zip.py" "$DIR" "$2"
+fi
+exec python3 "$script_dir/package_zip.py" "$DIR"
