@@ -185,7 +185,17 @@ mkdir -p "$TRASH"
 STAMP="$(date -u +%Y-%m-%d__%H-%M-%S)"
 for sv in "$USERDATA/Saves/HeightTest500" "$USERDATA/Saves/$WORLD_NAME"; do
   if [[ -d "$sv" ]]; then
-    mv "$sv" "$TRASH/${STAMP}__$(basename "$sv")"
+    # The stamp only resolves to a second: a rerun inside that second (a
+    # scripted retry, a CI job that fired twice) would mv the save into the
+    # earlier trash entry instead of beside it, nesting a world inside a
+    # world. Bump a suffix until the name is free, as move_aside does.
+    aside="$TRASH/${STAMP}__$(basename "$sv")"
+    trash_m=1
+    while [[ -e "$aside" ]]; do
+      aside="$TRASH/${STAMP}__$(basename "$sv").${trash_m}"
+      trash_m=$((trash_m + 1))
+    done
+    mv "$sv" "$aside"
   fi
 done
 find "$TRASH" -mindepth 1 -maxdepth 1 -mtime "+$SAVE_TRASH_DAYS" -exec rm -rf {} + 2>/dev/null || true

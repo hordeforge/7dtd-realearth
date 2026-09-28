@@ -71,9 +71,17 @@ and the release gate requires both to match the tag (`v<version>`) and a dated
   rename `GeneratedWorlds/<name>` to
   `GeneratedWorlds_trash/<UTC stamp>__<name>` before writing the new world
   (`scripts/generated-world.sh`). A hand-edited installed world survives an
-  upgrade. Nothing prunes `GeneratedWorlds_trash`; delete entries yourself
-  once the new world is what you want, and watch the disk if you reinstall
-  often.
+  upgrade.
+- **Reinstalling the same world copies nothing.**
+  `install_generated_world` compares the installed tree with the source
+  (path, size and mtime, which `cp -a` preserves) and returns without copying
+  or moving anything when they match, so running an install twice leaves the
+  same state as running it once instead of filling `GeneratedWorlds_trash`
+  with full copies of a world nobody replaced. A world the game wrote to, or
+  a source that changed, is still replaced as before. Trash entries older
+  than `RE_WORLD_TRASH_DAYS` (default 14, `0` prunes on the next run) are
+  removed by the next install of that world; the rest are still there to
+  delete by hand.
 - **A failed bake puts the previous world back.** `bake-world` and the
   generated-world path delete the partial output and rename the
   `<name>.pre-bake-<UTC stamp>` snapshot back into place before re-raising,

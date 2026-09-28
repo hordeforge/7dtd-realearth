@@ -19,7 +19,7 @@ exist elsewhere.
 | `data/samples/*` | Tile packs: `.rte` tiles + `earth.manifest.json` (+ height-test previews) | No. Needs Terrarium tiles (or user-held GeoTIFF) | `make artifacts-backup` |
 | `data/cache/terrarium` | Raw AWS Terrarium source tiles (`RE_TERRARIUM_CACHE`, set by the Makefile). Fetched once, reused forever | Yes, once populated: packs rebuild offline from cached tiles | `make artifacts-backup` |
 | `viewer/data/*` | Viewer/webmod PNG + JSON exports | Yes, from a pack via `export-viewer` | `make artifacts-backup` (always, when present) |
-| `GeneratedWorlds/<name>` (client + dedicated) | Installed world copy, possibly hand-edited or generated with other settings | From `worlds/` only if the repo copy still matches | not archived by default; every install moves the previous tree to `GeneratedWorlds_trash/<UTC stamp>__<name>` (`scripts/generated-world.sh`). Both can be added with `RE_BACKUP_EXTRA_PATHS` |
+| `GeneratedWorlds/<name>` (client + dedicated) | Installed world copy, possibly hand-edited or generated with other settings | From `worlds/` only if the repo copy still matches | not archived by default; an install that changes the world moves the previous tree to `GeneratedWorlds_trash/<UTC stamp>__<name>` (`scripts/generated-world.sh`), an install of an unchanged world copies nothing. Both can be added with `RE_BACKUP_EXTRA_PATHS` |
 | Game-side installs (`Mods/RealEarth`, GeneratedWorlds copies) | Mod DLL, config, installed world/pack copies | Yes: `make install`, install scripts | not backed up (regenerable) |
 | Save games (`$USERDATA/Saves`) | Stock game saves | No. The one genuinely irreplaceable state in this product | **not covered by default.** `RE_BACKUP_EXTRA_PATHS=saves=$USERDATA/Saves`. The test harness only moves old saves to `Saves_trash` with a 7 day window, and prunes that window on the next run |
 | `<Managed>/Assembly-CSharp.dll` | Stock engine DLL | Always recoverable: Steam Verify regenerates it, and the mod never writes it | see [GAME_VERSION](GAME_VERSION.md) |
@@ -45,7 +45,7 @@ up and says so.
 | Bad bake overwrites a good world | Gone; `worlds/` has no history | Bakes never overwrite in place: the previous tree is renamed `<world>.pre-bake-<UTC stamp>` next to it (delete it once happy). Fallback: last archive or re-bake offline from pack + cache |
 | Game update breaks the runtime YDim patch | `heightMode=stock`, peaks clamp ~250 | Rebuild against the new DLL (`make install`/`make build`); no backup to restore because no DLL is edited |
 | Harness run pointed at real userdata deletes saves | Permanent loss | `Saves_trash/<timestamp>` window, 7 days default (`RE_SAVE_TRASH_DAYS`) |
-| Install overwrites a hand-edited `GeneratedWorlds` world | Permanent loss of edits no archive holds | Previous world kept at `GeneratedWorlds_trash/<UTC stamp>__<name>` |
+| Install overwrites a hand-edited `GeneratedWorlds` world | Permanent loss of edits no archive holds | Previous world kept at `GeneratedWorlds_trash/<UTC stamp>__<name>`, pruned after `RE_WORLD_TRASH_DAYS` (default 14) |
 | Backup disk fills (the cache is tens of GB and every run is another full copy) | Later backups fail; if the failure is unnoticed, the only surviving archives are old | `RE_BACKUP_KEEP=N` prunes to the newest N, and only after the new archive passes its checksum gate |
 
 RPO statement: unbounded until an operator runs `make artifacts-backup`. The
@@ -129,11 +129,11 @@ asserts the guardrails: clobber is refused without `RE_FORCE_RESTORE=1`, a
 forced restore moves the old tree aside instead of deleting it, a corrupt
 archive is refused with nothing extracted, `artifacts-status` fails on a
 missing or tampered archive, installing a world into `GeneratedWorlds` moves
-the previous tree to `GeneratedWorlds_trash` with its contents intact, an
-out-of-tree tree round-trips through destroy and restore back to its recorded
-absolute path, a nonexistent extra path fails the backup, and
-`RE_BACKUP_KEEP` leaves exactly N archives. CI runs it on every change to keep
-the claim current (`scripts/artifacts_drill.sh`).
+the previous tree to `GeneratedWorlds_trash` with its contents intact, a second
+install of the same world is a no-op, an out-of-tree tree round-trips through
+destroy and restore back to its recorded absolute path, a nonexistent extra
+path fails the backup, and `RE_BACKUP_KEEP` leaves exactly N archives. CI runs
+it on every change to keep the claim current (`scripts/artifacts_drill.sh`).
 
 Engine DLL recovery is no longer needed for height: the YDim expand is
 hot-patched at boot (no DLL is edited), so a game update at worst needs
@@ -159,8 +159,11 @@ hot-patched at boot (no DLL is edited), so a game update at worst needs
    `install_generated_world` (`scripts/generated-world.sh`), which renames the
    installed `GeneratedWorlds/<name>` to
    `GeneratedWorlds_trash/<UTC stamp>__<name>` before writing the new one.
-   Nothing prunes that directory: delete entries yourself once the new world
-   is what you want.
+   An install of a world that is already in place copies nothing, so a rerun
+   neither re-copies the world nor adds a trash entry. Trash entries older
+   than `RE_WORLD_TRASH_DAYS` (default 14, `0` prunes on the next run) are
+   removed by the next install of that world; newer ones are yours to delete
+   once the new world is what you want.
 5. On a dedicated server, name the state that lives outside the repo before
    you need it: `RE_BACKUP_EXTRA_PATHS="saves=$USERDATA/Saves"`. A save
    game's only other copy is the `Saves_trash` window, and that window closes.

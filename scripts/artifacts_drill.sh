@@ -134,12 +134,22 @@ kept="$(find "$SANDBOX/GeneratedWorlds_trash" -maxdepth 1 -name '*__RealEarth' |
   cd "$kept"
   sha256sum --quiet -c "$SANDBOX/before-install.sha256"
 ) || fail "moved-aside world lost its contents"
-# A second install inside the same second must not nest one world in another.
+# A second install of the same world is a fixed point: nothing copied, nothing
+# moved aside, so a rerun of the install scripts cannot fill the disk.
 install_generated_world "$SANDBOX/worlds/DrillWorld" "$GW" RealEarth >/dev/null ||
   fail "repeat install exited nonzero"
+[[ "$(find "$SANDBOX/GeneratedWorlds_trash" -maxdepth 1 -name '*__RealEarth*' | wc -l)" -eq 1 ]] ||
+  fail "repeat install of the same world copied or moved aside again"
+# A changed source still replaces the tree, and the previous world is kept under
+# a fresh name rather than nested inside the earlier entry.
+printf 'second' >>"$SANDBOX/worlds/DrillWorld/dtm.raw"
+install_generated_world "$SANDBOX/worlds/DrillWorld" "$GW" RealEarth >/dev/null ||
+  fail "install of a changed world exited nonzero"
 [[ "$(find "$SANDBOX/GeneratedWorlds_trash" -maxdepth 1 -name '*__RealEarth*' | wc -l)" -eq 2 ]] ||
-  fail "repeat install reused a trash name and nested the previous world"
-echo "drill: world install keeps the previous tree aside"
+  fail "install of a changed world did not keep the replaced one aside"
+[[ -z "$(find "$SANDBOX/GeneratedWorlds_trash" -mindepth 2 -maxdepth 2 -type d)" ]] ||
+  fail "a repeat install nested one trash entry inside another"
+echo "drill: world install keeps the previous tree aside, rerun is a no-op"
 
 # --- out-of-tree state: saves, installed worlds, install trash -------------
 # The only irreplaceable state on a dedicated server lives outside the repo,
