@@ -18,10 +18,14 @@
   --re-text: #c8d2e0;
   --re-text-bright: #e7eefc;
   --re-text-muted: #8fa0b5;
-  --re-btn-bg: #c0392b;
-  /* Darker, not lighter, on hover: white 13px button text must stay above
-   * 4.5:1 against both states. */
-  --re-btn-bg-hover: #a93226;
+  /* The same accent the standalone viewer uses (viewer/css/app.css), so the
+   * dashboard and the map viewer read as one product. Teal is the action
+   * color, which is why it never shares a hue with the error red below. */
+  --re-accent: #3dd6c6;
+  --re-accent-hover: #2fbfb0;
+  --re-accent-text: #041212;
+  --re-btn-bg: var(--re-accent);
+  --re-btn-bg-hover: var(--re-accent-hover);
   --re-danger-border: rgba(192, 57, 43, 0.6);
   --re-danger-bg: rgba(192, 57, 43, 0.18);
   --re-danger-text: #ffb4a8;
@@ -84,7 +88,9 @@
   background: var(--re-btn-bg);
   border: none;
   border-radius: 4px;
-  color: #fff;
+  /* Dark text on the teal accent, not white: 10.6:1 against #3dd6c6 and 8.3:1
+   * against the hover shade, where white would sit under 2:1. */
+  color: var(--re-accent-text);
   padding: 5px 12px;
   font-size: 13px;
   cursor: pointer;
@@ -177,7 +183,7 @@
 }
 
 .re-tool:hover {
-  border-color: var(--re-text-bright);
+  border-color: var(--re-accent);
 }
 
 .re-stage-message {
@@ -207,12 +213,14 @@
   padding: 10px 12px;
 }
 
+/* Panel headings set as plain small labels, not tracked-out all-caps: the
+ * panels are already boxed, so the caps were a second, competing grouping
+ * cue, and the same caps treatment appears on every admin page. */
 .re-panel h2 {
   margin: 0 0 8px;
   font-size: 13px;
-  text-transform: uppercase;
-  letter-spacing: 0.06em;
-  color: var(--re-text-muted);
+  font-weight: 600;
+  color: var(--re-text-bright);
 }
 
 .re-panel-head {

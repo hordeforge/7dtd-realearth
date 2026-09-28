@@ -47,7 +47,7 @@ body {
 }
 
 #sidebar {
-  background: linear-gradient(180deg, #0f1420 0%, #0b0e14 100%);
+  background: var(--bg);
   border-right: 1px solid var(--border);
   padding: 16px;
   overflow-y: auto;
@@ -94,12 +94,13 @@ body {
   padding: 12px;
 }
 
+/* Plain small labels, matching .re-panel h2 in the dashboard webmod: the
+ * panels are already boxed, so tracked-out all-caps was a second, competing
+ * grouping cue. */
 .panel h2 {
   margin: 0 0 10px;
-  font-size: 0.72rem;
-  text-transform: uppercase;
-  letter-spacing: 0.08em;
-  color: var(--muted);
+  font-size: 0.78rem;
+  color: var(--text);
   font-weight: 600;
 }
 
