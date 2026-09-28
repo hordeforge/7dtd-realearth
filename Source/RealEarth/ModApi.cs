@@ -76,6 +76,10 @@ namespace RealEarth
                 if (Config.LocalWindowSize > Config.WorldHeight)
                     Config.LocalWindowSize = Config.WorldHeight;
 
+                // A re-init replaces the streamer: dispose the old one so its
+                // HttpClient connection pool and decoded hot set are released
+                // rather than stranded until process exit.
+                Streamer?.Dispose();
                 Streamer = new TileStreamer(tileRoot, Coords, Config);
                 Session = new WorldSession(Coords, Config);
                 // Height: product is 1:1 real meters after YDim expand (StockSafe is opt-in only)

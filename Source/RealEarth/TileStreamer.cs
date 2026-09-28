@@ -18,7 +18,7 @@ namespace RealEarth
     /// Hot path (inject/height sample): never blocks on disk/CDN; samples only hot tiles
     /// (fail-closed ocean until prefetch completes). Player focus path may sync-load.
     /// </summary>
-    public sealed class TileStreamer
+    public sealed class TileStreamer : IDisposable
     {
         readonly string _root;
         readonly EarthCoords _coords;
@@ -81,6 +81,26 @@ namespace RealEarth
         /// one entry per failed tile lives for the whole server uptime (map only grows).
         /// </summary>
         const int MissCachePruneThreshold = 4096;
+
+        /// <summary>
+        /// Ceiling on async loads running at once. Each one holds an open HTTP
+        /// response plus an 80 KB read buffer (CDN) or a thread-pool work item
+        /// (disk), and the body deadline is 12 s, so a slow or hostile CDN lets
+        /// the pending set grow with how fast the player covers new tiles: without
+        /// a cap, one stalled origin slide becomes unbounded sockets and buffers.
+        /// Over the cap a tile is left uncached and un-missed, so the next
+        /// focus/sample pass re-requests it once a slot frees. The sync gen path
+        /// takes no slot: it must complete or the chunk bakes ocean columns.
+        /// </summary>
+        internal const int MaxConcurrentAsyncLoads = 8;
+
+        /// <summary>
+        /// Keys currently holding one of the <see cref="MaxConcurrentAsyncLoads"/>
+        /// slots. Tracked per key rather than as a bare counter so a load that
+        /// loses its in-flight claim to a timed-out sync load still returns its
+        /// own slot instead of leaking capacity. Caller holds _lock.
+        /// </summary>
+        readonly HashSet<long> _asyncLoadSlots = new HashSet<long>();
 
         /// <summary>
         /// Lines a failing tile load may print before the rest are counted instead
@@ -553,10 +573,32 @@ namespace RealEarth
             lock (_lock)
             {
                 if (_hot.ContainsKey(key)) return;
+                // Backpressure: leave the tile uncached and un-missed so a later
+                // pass retries it. Caching a miss here would pin the tile on
+                // fail-closed ocean for MissCacheMs because no load ever ran.
+                if (_asyncLoadSlots.Count >= MaxConcurrentAsyncLoads) return;
                 start = _loadInFlight.Add(key);
+                if (start) _asyncLoadSlots.Add(key);
             }
             if (!start) return;
-            DispatchAsyncLoad(() => LoadTileFireAndForget(tx, tz, path, key, fromCdn));
+            try
+            {
+                DispatchAsyncLoad(() => LoadTileFireAndForget(tx, tz, path, key, fromCdn));
+            }
+            catch (Exception ex)
+            {
+                // A dispatcher that throws synchronously (shut-down thread pool, a
+                // harness that rejects the work) never reaches the load's finally,
+                // and the claim would pin this tile for the whole server uptime.
+                bool released;
+                lock (_lock)
+                {
+                    released = _asyncLoadSlots.Remove(key);
+                    _loadInFlight.Remove(key);
+                }
+                if (released)
+                    LogLoadError($"Tile load dispatch failed for {tx},{tz}: {ex.GetType().Name}: {ex.Message}");
+            }
         }
 
         void TryLoadLocalSync(int tx, int tz, string path, long key)
@@ -624,10 +666,14 @@ namespace RealEarth
 
         async Task LoadTileFireAndForget(int tx, int tz, string path, long key, bool fromCdn)
         {
+            // url is resolved inside the try: the finally below owns the in-flight
+            // claim and the concurrency slot, so nothing this method evaluates may
+            // run before it.
+            string? url = null;
             var sw = Stopwatch.StartNew();
-            string? url = fromCdn ? CdnTilePolicy.TileUrl(_cfg.TileCdnBaseUrl, tx, tz) : null;
             try
             {
+                url = fromCdn ? CdnTilePolicy.TileUrl(_cfg.TileCdnBaseUrl, tx, tz) : null;
                 byte[] bytes;
                 RteTile tile;
                 if (fromCdn)
@@ -693,6 +739,9 @@ namespace RealEarth
             {
                 lock (_lock)
                 {
+                    // Paired with the claim QueueLoad took. The slot is what bounds
+                    // concurrent loads, so it must return on every exit path.
+                    _asyncLoadSlots.Remove(key);
                     _loadInFlight.Remove(key);
                 }
             }
@@ -820,6 +869,28 @@ namespace RealEarth
                 _hot.Clear();
                 _missUntilTick.Clear();
             }
+        }
+
+        /// <summary>
+        /// Release the CDN client and the decoded tile cache. The streamer's
+        /// lifetime is the process, so this runs when ModApi replaces the
+        /// instance (a re-init after a game update reload, a dedicated world
+        /// switch under a host that re-runs IModApi.InitMod): without it every
+        /// replacement strands the previous HttpClient's connection pool and
+        /// its ~1.5 MB-per-tile hot set. In-flight loads fail against the
+        /// disposed client and land in the normal miss path.
+        /// </summary>
+        public void Dispose()
+        {
+            lock (_lock)
+            {
+                _hot.Clear();
+                _missUntilTick.Clear();
+                _foci.Clear();
+                _asyncLoadSlots.Clear();
+            }
+            _http.Dispose();
+            GC.SuppressFinalize(this);
         }
     }
 }
