@@ -705,7 +705,7 @@ namespace RealEarth
                         ModApi.Streamer?.InvalidateHotCache();
                         ModApi.Streamer?.EnsureHotAround(
                             ModApi.Session.AbsoluteX, ModApi.Session.AbsoluteZ,
-                            radius: Math.Max(1, ModApi.Config?.StreamRadiusTiles ?? 2),
+                            radius: ModApi.Config.HotRadiusTiles,
                             allowSyncLoad: true);
                         // Close SoloSlide mesh/voxel desync: rewrite already-loaded chunk
                         // columns under the new origin instead of waiting for regen.
@@ -864,7 +864,7 @@ namespace RealEarth
                         $"origin=({session.OriginEarthX},{session.OriginEarthZ})");
                     ModApi.Streamer?.EnsureHotAround(
                         session.AbsoluteX, session.AbsoluteZ,
-                        radius: Math.Max(1, cfg.StreamRadiusTiles), allowSyncLoad: true);
+                        radius: cfg.HotRadiusTiles, allowSyncLoad: true);
                 }
                 else
                 {

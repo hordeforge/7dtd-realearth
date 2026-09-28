@@ -26,7 +26,11 @@ namespace RealEarth
         /// <summary>
         /// Expanded compress (int game Y). Supports maxY up to <see cref="EngineTargetMaxY"/>.
         /// </summary>
-        public static int CompressExpanded(float elevM, int seaLevelY = 100, int maxY = EngineTargetMaxY, int minY = 1)
+        public static int CompressExpanded(
+            float elevM,
+            int seaLevelY = HeightInjectMath.DefaultSeaLevelGameY,
+            int maxY = EngineTargetMaxY,
+            int minY = 1)
         {
             maxY = Math.Min(Math.Max(maxY, 1), EngineTargetMaxY);
             return MetersToGameY(elevM, seaLevelY, maxY, minY, oneToOne: false);
@@ -34,9 +38,13 @@ namespace RealEarth
 
         /// <summary>
         /// 1 m real ≈ 1 game block: gameY = seaLevelY + elevM (clamped).
-        /// Everest ~8849 m → sea+8849 (e.g. 8949 with sea 100); ceiling leaves fly-over room.
+        /// Everest ~8849 m → sea+8849 (24449 with the 16000 anchor); ceiling leaves fly-over room.
         /// </summary>
-        public static int MetersToGameYOneToOne(float elevM, int seaLevelY = 100, int maxY = EngineTargetMaxY, int minY = 1)
+        public static int MetersToGameYOneToOne(
+            float elevM,
+            int seaLevelY = HeightInjectMath.DefaultSeaLevelGameY,
+            int maxY = EngineTargetMaxY,
+            int minY = 1)
         {
             maxY = Math.Min(Math.Max(maxY, 1), EngineTargetMaxY);
             return MetersToGameY(elevM, seaLevelY, maxY, minY, oneToOne: true);

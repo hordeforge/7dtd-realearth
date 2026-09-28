@@ -129,6 +129,37 @@ def sample_point(
     return elev, lc, pop
 
 
+def _fill_chunk_channel(
+    pack_dir: Path,
+    chunk_earth_origin_x: int,
+    chunk_earth_origin_z: int,
+    chunk_size: int,
+    *,
+    grid: EarthGrid | None,
+    cache: TileCache | None,
+    channel: int,
+) -> np.ndarray:
+    """Sample one sample_point channel over a chunk as float64, row=z, col=x.
+
+    channel 0 = elevation m, 1 = landcover, 2 = population. A missing tile
+    reads 0, so a hole is zero in every channel.
+    """
+    pack_dir = Path(pack_dir)
+    g = grid or load_pack_grid(pack_dir)
+    store = cache if cache is not None else {}
+    out = np.zeros((chunk_size, chunk_size), dtype=np.float64)
+    for z in range(chunk_size):
+        for x in range(chunk_size):
+            out[z, x] = sample_point(
+                pack_dir,
+                chunk_earth_origin_x + x,
+                chunk_earth_origin_z + z,
+                grid=g,
+                cache=store,
+            )[channel]
+    return out
+
+
 def fill_chunk_heights(
     pack_dir: Path,
     chunk_earth_origin_x: int,
@@ -146,20 +177,15 @@ def fill_chunk_heights(
     when filling several channels of the same chunk so each overlapping tile
     is read and inflated once.
     """
-    pack_dir = Path(pack_dir)
-    g = grid or load_pack_grid(pack_dir)
-    store = cache if cache is not None else {}
-    elev = np.empty((chunk_size, chunk_size), dtype=np.float64)
-    for z in range(chunk_size):
-        for x in range(chunk_size):
-            e, _, _ = sample_point(
-                pack_dir,
-                chunk_earth_origin_x + x,
-                chunk_earth_origin_z + z,
-                grid=g,
-                cache=store,
-            )
-            elev[z, x] = e
+    elev = _fill_chunk_channel(
+        pack_dir,
+        chunk_earth_origin_x,
+        chunk_earth_origin_z,
+        chunk_size,
+        grid=grid,
+        cache=cache,
+        channel=0,
+    )
     # No compression: 1 m = 1 block (same as engine height mod)
     return compress_elevation(
         elev,
@@ -179,21 +205,16 @@ def fill_chunk_landcover(
     grid: EarthGrid | None = None,
     cache: TileCache | None = None,
 ) -> np.ndarray:
-    pack_dir = Path(pack_dir)
-    g = grid or load_pack_grid(pack_dir)
-    store = cache if cache is not None else {}
-    out = np.zeros((chunk_size, chunk_size), dtype=np.uint8)
-    for z in range(chunk_size):
-        for x in range(chunk_size):
-            _, lc, _ = sample_point(
-                pack_dir,
-                chunk_earth_origin_x + x,
-                chunk_earth_origin_z + z,
-                grid=g,
-                cache=store,
-            )
-            out[z, x] = lc
-    return out
+    lc = _fill_chunk_channel(
+        pack_dir,
+        chunk_earth_origin_x,
+        chunk_earth_origin_z,
+        chunk_size,
+        grid=grid,
+        cache=cache,
+        channel=1,
+    )
+    return lc.astype(np.uint8)
 
 
 def fill_chunk_from_local_window(

@@ -125,7 +125,7 @@ namespace RealEarth
             // Prefetch only (no sticky focusId=0); player tick registers real entity foci.
             ModApi.Streamer?.EnsureHotAround(
                 absoluteX, absoluteZ,
-                radius: Math.Max(1, _cfg.StreamRadiusTiles),
+                radius: _cfg.HotRadiusTiles,
                 allowSyncLoad: true);
         }
 
@@ -480,7 +480,7 @@ namespace RealEarth
             LonLatToEarth(lon, lat, out int ex, out int ez);
             CenterWindowOnAbsolute(ex, ez);
             // Prefetch only (no sticky focusId=0); player tick registers real entity foci.
-            ModApi.Streamer?.EnsureHotAround(ex, ez, radius: Math.Max(1, ModApi.Config?.StreamRadiusTiles ?? 2), allowSyncLoad: true);
+            ModApi.Streamer?.EnsureHotAround(ex, ez, radius: _cfg.HotRadiusTiles, allowSyncLoad: true);
             GetActiveWindowEarthBounds(out int minX, out int minZ, out int maxX, out int maxZ);
             ModApi.Log(
                 $"Spawn absolute lon={lon:0.####} lat={lat:0.####} earth=({ex},{ez}); " +

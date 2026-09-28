@@ -291,6 +291,12 @@ namespace RealEarth
         }
 
         /// <summary>
+        /// Tiles kept hot around a player, floored at 1 (a 0 radius would stream nothing).
+        /// One definition so the prefetch radius cannot drift between call sites.
+        /// </summary>
+        public int HotRadiusTiles => Math.Max(1, StreamRadiusTiles);
+
+        /// <summary>
         /// Startup guard: clamp out-of-range numerics to safe values and collect warnings
         /// for unknown enum-like strings. Runs once at init so bad config fails loud
         /// instead of misbehaving mid-session. Returns one message per issue found.

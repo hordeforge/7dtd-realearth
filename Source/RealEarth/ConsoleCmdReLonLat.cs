@@ -23,14 +23,12 @@ namespace RealEarth
         {
             try
             {
-                int x, z;
+                int x = 0, z = 0;
                 int engineY = -1;
-                if (_params != null && _params.Count >= 2
-                    && int.TryParse(_params[0], out x) && int.TryParse(_params[1], out z))
-                {
-                    // explicit coords
-                }
-                else if (!TryGetLocalPlayerBlock(out x, out engineY, out z))
+                // TryParse assigns x/z on both outcomes, so either path leaves them set.
+                bool explicitCoords = _params != null && _params.Count >= 2
+                    && int.TryParse(_params[0], out x) && int.TryParse(_params[1], out z);
+                if (!explicitCoords && !TryGetLocalPlayerBlock(out x, out engineY, out z))
                 {
                     Out("[RealEarth] relonlat: no local player (join a world first)");
                     return;
@@ -84,47 +82,7 @@ namespace RealEarth
             ModApi.Log(msg);
         }
 
-        static bool TryGetLocalPlayerBlock(out int x, out int y, out int z)
-        {
-            x = y = z = 0;
-            try
-            {
-                var gm = GameManager.Instance;
-                if (gm == null) return false;
-                var world = gm.World;
-                if (world == null) return false;
-                EntityPlayerLocal? local = null;
-                try
-                {
-                    local = world.GetPrimaryPlayer() as EntityPlayerLocal;
-                }
-                catch { /* ignore */ }
-                if (local == null)
-                {
-                    var players = world.Players?.list;
-                    if (players != null)
-                    {
-                        foreach (var p in players)
-                        {
-                            if (p is EntityPlayerLocal epl)
-                            {
-                                local = epl;
-                                break;
-                            }
-                        }
-                    }
-                }
-                if (local == null) return false;
-                var pos = local.position;
-                x = (int)Math.Floor(pos.x);
-                y = (int)Math.Floor(pos.y);
-                z = (int)Math.Floor(pos.z);
-                return true;
-            }
-            catch
-            {
-                return false;
-            }
-        }
+        static bool TryGetLocalPlayerBlock(out int x, out int y, out int z) =>
+            LocalPlayerBlocks.TryGet(out x, out y, out z);
     }
 }

@@ -457,7 +457,7 @@ namespace RealEarth
             }
             catch
             {
-                return (ModApi.Config?.SeaLevelGameY ?? 100) + 20;
+                return (ModApi.Config?.SeaLevelGameY ?? HeightInjectMath.DefaultSeaLevelGameY) + 20;
             }
         }
 

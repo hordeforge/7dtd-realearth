@@ -101,6 +101,13 @@ SPACING_BLOCKS: dict[str, int] = {
     "rural_scatter": 220,
 }
 
+# Squared degree radius a settlement must sit inside to name a density peak
+# (~0.35 deg ≈ 30 km at mid-latitudes, loose match).
+MAX_SETTLEMENT_SNAP_DEG_SQ = 0.35**2
+
+# Side of a 7DTD world chunk in blocks; the prefab budget is per chunk.
+WORLD_CHUNK_BLOCKS = 16
+
 
 @dataclass(frozen=True, slots=True)
 class CityCore:
@@ -435,17 +442,19 @@ def detect_city_cores(
                 if d < best_d:
                     best_d = d
                     best = s
-            # ~0.35 deg ≈ 30 km at mid-latitudes, loose match
-            if best is not None and best_d < (0.35**2):
-                name = best.name
-                pop_est = max(pop_est, best.population)
-                # Prefer explicit map extent on the settlement (polygon/bbox/radius).
-                if best.edge_radius_m is not None and best.edge_radius_m > 0:
-                    edge_m = float(best.edge_radius_m)
-                    edge_src = "map"
+        # ~0.35 deg ≈ 30 km at mid-latitudes, loose match
+        snapped = best is not None and best_d < MAX_SETTLEMENT_SNAP_DEG_SQ
+        if snapped:
+            assert best is not None
+            name = best.name
+            pop_est = max(pop_est, best.population)
+            # Prefer explicit map extent on the settlement (polygon/bbox/radius).
+            if best.edge_radius_m is not None and best.edge_radius_m > 0:
+                edge_m = float(best.edge_radius_m)
+                edge_src = "map"
         band = density_to_band(peak)
-        if settlements and best is not None and best_d < (0.35**2):
-            band = best.band if best.population else band
+        if snapped and best is not None and best.population:
+            band = best.band
         if edge_m <= 0:
             edge_m = urban_radius_m_from_population(pop_est)
             edge_src = "population_fallback"
@@ -511,8 +520,8 @@ def stamp_prefabs_from_density(
 
     def try_add(stamp: PrefabStamp) -> bool:
         """P6: enforce DensityBudget.ClampPrefabsInChunk per world chunk."""
-        cx = stamp.world_x // 16
-        cz = stamp.world_z // 16
+        cx = stamp.world_x // WORLD_CHUNK_BLOCKS
+        cz = stamp.world_z // WORLD_CHUNK_BLOCKS
         key = (cx, cz)
         n = chunk_counts.get(key, 0)
         allowed = clamp_prefabs_in_chunk(n + 1, max_prefabs_per_chunk)
