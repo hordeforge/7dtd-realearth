@@ -95,3 +95,13 @@ def test_rejects_malformed_assignment(tmp_path: Path, pair: str):
     src = write_template(tmp_path)
     with pytest.raises(SystemExit, match="NAME=VALUE"):
         server_config.main([str(src), str(tmp_path / "live.xml"), pair])
+
+
+def test_help_documents_invocation_and_example(capsys: pytest.CaptureFixture[str]) -> None:
+    with pytest.raises(SystemExit) as exc:
+        server_config.main(["--help"])
+    assert exc.value.code == 0
+    out = capsys.readouterr().out
+    assert "NAME=VALUE" in out
+    assert "examples:" in out
+    assert "python3 -m realearth.server_config SRC DEST" in out

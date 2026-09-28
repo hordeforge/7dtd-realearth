@@ -34,8 +34,15 @@ ARTIFACT_DIRS=(worlds data/samples data/cache viewer/data)
 die() { echo "ERROR: $*" >&2; exit 1; }
 
 usage() {
-  grep '^#' "$0" | sed -n '2,27p'
-  exit "${1:-0}"
+  # Print this file's header comment (everything between the shebang and the
+  # first code line) with the leading '# ' stripped. A fixed line range would
+  # shift or truncate the help the next time a note is added above it.
+  awk 'NR == 1 { next } /^#/ { sub(/^# ?/, ""); print; next } { exit }' "$0"
+}
+
+usage_error() {
+  usage >&2
+  exit 2
 }
 
 present_dirs() {
@@ -106,7 +113,8 @@ cmd_backup() {
 }
 
 cmd_list() {
-  local archive="${1:?usage: backup_artifacts.sh list ARCHIVE}"
+  [[ $# -ge 1 ]] || { echo "ERROR: list needs an ARCHIVE" >&2; usage_error; }
+  local archive="$1"
   [[ -f "$archive" ]] || die "no such archive: $archive"
   tar -tzf "$archive"
 }
@@ -156,7 +164,8 @@ cmd_status() {
 }
 
 cmd_restore() {
-  local archive="${1:?usage: backup_artifacts.sh restore ARCHIVE}"
+  [[ $# -ge 1 ]] || { echo "ERROR: restore needs an ARCHIVE" >&2; usage_error; }
+  local archive="$1"
   [[ -f "$archive" ]] || die "no such archive: $archive"
 
   local sum="${archive}.sha256"
@@ -204,6 +213,7 @@ case "${1:-}" in
   list)    shift; cmd_list "$@" ;;
   restore) shift; cmd_restore "$@" ;;
   status)  cmd_status ;;
-  -h|--help|help|"") usage 0 ;;
-  *) die "unknown command: $1 (use backup|list|restore|status)" ;;
+  -h|--help|help|"") usage ;;
+  # 2, not 1: a mistyped command is a usage error, and scripts branch on that.
+  *) echo "ERROR: unknown command: $1 (use backup|list|restore|status)" >&2; usage_error ;;
 esac

@@ -369,3 +369,44 @@ def test_every_command_has_help_text() -> None:
         assert result.exit_code == 0, name
         # Docstring summary must be non-empty and not a bare placeholder.
         assert result.stdout.split("Options:")[0].strip(), name
+
+
+def test_short_help_flag_is_available_everywhere() -> None:
+    """-h answers on the group and on every subcommand, argparse CLIs included."""
+    runner = CliRunner()
+    assert runner.invoke(main, ["-h"]).exit_code == 0
+    # lonlat/wrap-check override context_settings to keep negative positionals;
+    # the -h alias must survive that override.
+    for name in main.commands:
+        assert runner.invoke(main, [name, "-h"]).exit_code == 0, name
+
+
+def test_corrupt_manifest_is_a_clean_error(tmp_path: Path) -> None:
+    result = CliRunner().invoke(main, ["list-tiles", str(tmp_path)])
+    assert result.exit_code == 1
+    assert "Traceback" not in result.stderr
+    (tmp_path / "earth.manifest.json").write_text("not json", encoding="utf-8")
+    corrupt = CliRunner().invoke(main, ["list-tiles", str(tmp_path)])
+    assert corrupt.exit_code == 1
+    assert "Traceback" not in corrupt.stderr
+    assert "not valid JSON" in corrupt.stderr
+    assert "earth.manifest.json" in corrupt.stderr
+
+
+def test_verify_build_reports_bad_json_without_traceback(tmp_path: Path) -> None:
+    (tmp_path / "build.json").write_text("{oops", encoding="utf-8")
+    result = CliRunner().invoke(main, ["verify-build", "--pack", str(tmp_path)])
+    assert result.exit_code == 1
+    assert "Traceback" not in result.stderr
+    assert "build.json" in result.stderr
+
+
+def test_verify_build_rejects_input_without_file_field(tmp_path: Path) -> None:
+    (tmp_path / "build.json").write_text(
+        json.dumps({"schema": "realearth.build.v1", "inputs": {"dem": {}}}),
+        encoding="utf-8",
+    )
+    result = CliRunner().invoke(main, ["verify-build", "--pack", str(tmp_path)])
+    assert result.exit_code == 1
+    assert "Traceback" not in result.stderr
+    assert "dem" in result.stderr

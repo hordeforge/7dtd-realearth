@@ -15,7 +15,17 @@ root="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 # shellcheck disable=SC1091
 source "$root/scripts/toolchain-versions.env"
 
-cache_dir="${1:?usage: install-js-toolchain.sh CACHE_DIR}"
+case "${1:-}" in
+  -h | --help)
+    awk 'NR == 1 { next } /^#/ { sub(/^# ?/, ""); print; next } { exit }' "${BASH_SOURCE[0]}"
+    exit 0
+    ;;
+esac
+if [[ $# -lt 1 ]]; then
+  echo "ERROR: install-js-toolchain.sh needs a CACHE_DIR" >&2
+  exit 2
+fi
+cache_dir="$1"
 mkdir -p "$cache_dir"
 
 # type module: the vendored anti-slop plugin source is ESM, and without the

@@ -23,7 +23,23 @@ import re
 import sys
 from pathlib import Path
 
-from realearth import DEFAULT_LOCAL_WINDOW_SIZE, PLANET_CANVAS_MIN_WIDTH, JsonDict
+from realearth import (
+    DEFAULT_LOCAL_WINDOW_SIZE,
+    PLANET_CANVAS_MIN_WIDTH,
+    JsonDict,
+    __version__,
+)
+
+# The docstring carries the KEY=VALUE / KEY?=VALUE contract and the invocation
+# example; argparse would otherwise show only line 1 of it.
+_EPILOG = """\
+examples:
+  PYTHONPATH=tools python3 -m realearth.mod_config write DEST ROOT
+  PYTHONPATH=tools python3 -m realearth.mod_config write DEST ROOT \\
+      --sync-manifest --sync-bbox MapMode=Streamed TileSize=512
+  PYTHONPATH=tools python3 -m realearth.mod_config write DEST ROOT \\
+      --fresh EngineMaxGameY?=29000
+"""
 
 
 def parse_scalar(text: str) -> object:
@@ -155,12 +171,28 @@ def build_config(root: Path, fresh: bool, template: Path | None = None) -> JsonD
 
 
 def main(argv: list[str] | None = None) -> int:
-    parser = argparse.ArgumentParser(description=__doc__.splitlines()[0])
-    p_write = parser.add_subparsers(dest="command", required=True).add_parser(
-        "write", help="write DEST/Config/realearth.json"
+    parser = argparse.ArgumentParser(
+        prog="realearth.mod_config",
+        description=__doc__.strip(),
+        epilog=_EPILOG,
+        formatter_class=argparse.RawDescriptionHelpFormatter,
     )
-    p_write.add_argument("dest", type=Path, help="installed mod directory")
-    p_write.add_argument("root", type=Path, help="repository root holding Config/ templates")
+    parser.add_argument("--version", action="version", version=f"%(prog)s {__version__}")
+    p_write = parser.add_subparsers(dest="command", required=True).add_parser(
+        "write",
+        help="write DEST/Config/realearth.json",
+        description=(
+            "Load the repo config template, apply KEY=VALUE overrides, then write "
+            "DEST/Config/realearth.json. KEY=VALUE sets unconditionally; KEY?=VALUE "
+            "only fills a key the templates did not provide."
+        ),
+        formatter_class=argparse.RawDescriptionHelpFormatter,
+    )
+    p_write.add_argument("dest", type=Path, help="installed mod directory", metavar="DEST")
+    p_write.add_argument(
+        "root", type=Path, help="repository root holding Config/ templates", metavar="ROOT"
+    )
+    p_write.add_argument("overrides", nargs="*", metavar="KEY[?]=VALUE")
     p_write.add_argument(
         "--fresh",
         action="store_true",
@@ -198,7 +230,6 @@ def main(argv: list[str] | None = None) -> int:
         action="store_true",
         help="apply spawn point and engine ceiling from DEST/Data/tiles/height_test.json",
     )
-    p_write.add_argument("overrides", nargs="*", metavar="KEY[?]=VALUE")
     args = parser.parse_args(argv)
 
     cfg = build_config(args.root, args.fresh, args.template)
@@ -213,7 +244,12 @@ def main(argv: list[str] | None = None) -> int:
             spawn_from_bbox=args.spawn_from_bbox,
         )
         if not synced:
-            print(f"note: no manifest at {args.dest / 'Data' / 'tiles' / 'earth.manifest.json'}")
+            # stderr, so a script reading the `config ->` line off stdout is not
+            # handed a status line ahead of it.
+            print(
+                f"note: no manifest at {args.dest / 'Data' / 'tiles' / 'earth.manifest.json'}",
+                file=sys.stderr,
+            )
     if args.height_test_meta:
         apply_height_test_meta(args.dest, cfg)
     reject_unknown_keys(cfg, known_config_keys(args.root))

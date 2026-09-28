@@ -9,7 +9,7 @@ from pathlib import Path
 
 import click
 
-from realearth import DEFAULT_SEA_LEVEL_GAME_Y, __version__
+from realearth import DEFAULT_SEA_LEVEL_GAME_Y, JsonDict, __version__
 from realearth.coords import EarthGrid, block_to_lonlat, lonlat_to_block
 from realearth.region import build_region, world_tile_indices_for_bbox
 from realearth.settlements import (
@@ -19,11 +19,41 @@ from realearth.settlements import (
 )
 from realearth.tile_format import read_manifest, read_tile, tile_path
 
+# `-h` matches the argparse-based helper CLIs (realearth.mod_config,
+# realearth.server_config) so every RealEarth entry point answers it.
+_CONTEXT: dict[str, object] = {"help_option_names": ["-h", "--help"]}
 
-@click.group()
+
+def _ctx(**extra: object) -> dict[str, object]:
+    """Group context settings merged with a per-command override."""
+    return {**_CONTEXT, **extra}
+
+
+@click.group(context_settings=_CONTEXT)
 @click.version_option(__version__, prog_name="realearth")
 def main() -> None:
     """RealEarth tools: real-world data → 7 Days to Die tiles / heightmaps."""
+
+
+def _read_json(path: Path, label: str) -> JsonDict:
+    """Load a JSON object, reporting a bad or truncated file as a clean error.
+
+    Pack manifests come from interrupted downloads and half-finished builds, so
+    a decode failure is ordinary input, not a crash: name the file and the
+    parser's complaint instead of a traceback full of interpreter paths.
+    """
+    try:
+        data = json.loads(path.read_text(encoding="utf-8"))
+    except json.JSONDecodeError as exc:
+        raise click.ClickException(
+            f"{label} is not valid JSON ({path}): {exc.msg} at line {exc.lineno} "
+            f"column {exc.colno}"
+        ) from exc
+    except OSError as exc:
+        raise click.ClickException(f"cannot read {label} ({path}): {exc.strerror}") from exc
+    if not isinstance(data, dict):
+        raise click.ClickException(f"{label} must hold a JSON object, got {type(data).__name__}")
+    return data
 
 
 def _require_finite(name: str, value: float) -> None:
@@ -83,19 +113,27 @@ def verify_build_cmd(pack: str) -> None:
     bpath = root / "build.json"
     if not bpath.is_file():
         raise click.ClickException(f"no build.json in {root} (run build-region first)")
-    b = json.loads(bpath.read_text(encoding="utf-8"))
+    b = _read_json(bpath, "build.json")
     if b.get("schema") != "realearth.build.v1":
         raise click.ClickException(f"unexpected build schema: {b.get('schema')}")
+    inputs = b.get("inputs") or {}
+    if not isinstance(inputs, dict):
+        raise click.ClickException("build.json 'inputs' must be a JSON object")
     ok = True
-    for key, meta in (b.get("inputs") or {}).items():
-        src = root.parent / meta["file"]
+    for key, meta in inputs.items():
+        rel = meta.get("file") if isinstance(meta, dict) else None
+        if not isinstance(rel, str) or not rel:
+            raise click.ClickException(
+                f"build.json input {key!r} has no 'file' field naming its source"
+            )
+        src = root.parent / rel
         if not src.is_file():
-            click.echo(f"MISSING input {key}: {meta['file']} (expected at {src})")
+            click.echo(f"MISSING input {key}: {rel} (expected at {src})")
             ok = False
             continue
         actual = hashlib.sha256(src.read_bytes()).hexdigest()
-        match = actual == meta["sha256"]
-        click.echo(f"{'OK ' if match else 'MISMATCH'} {key}: {meta['file']} ({actual[:12]})")
+        match = actual == meta.get("sha256")
+        click.echo(f"{'OK ' if match else 'MISMATCH'} {key}: {rel} ({actual[:12]})")
         ok = ok and match
     if not ok:
         raise click.ClickException("build manifest inputs do not match on-disk files")
@@ -104,7 +142,7 @@ def verify_build_cmd(pack: str) -> None:
 
 # Numeric positionals may be negative (-74.006); without this Click reads the
 # leading dash as an option and every Americas longitude fails.
-@main.command("lonlat", context_settings={"ignore_unknown_options": True})
+@main.command("lonlat", context_settings=_ctx(ignore_unknown_options=True))
 @click.argument("lon", type=float)
 @click.argument("lat", type=float)
 def lonlat_cmd(lon: float, lat: float) -> None:
@@ -310,6 +348,9 @@ def list_tiles_cmd(pack_dir: str) -> None:
             f"no earth.manifest.json in {pack_dir} "
             f"(create a pack first: realearth build-region ... --out {pack_dir})"
         )
+    # Decode first so a truncated pack reports the file and the parser's
+    # position, not a json traceback.
+    _read_json(man_path, "earth.manifest.json")
     m = read_manifest(man_path)
     click.echo(json.dumps(m.to_dict(), indent=2))
 
@@ -384,7 +425,7 @@ def planet_tiles_cmd(west: float, south: float, east: float, north: float, tile_
         click.echo(f"... and {len(tiles) - 50} more", err=True)
 
 
-@main.command("wrap-check", context_settings={"ignore_unknown_options": True})
+@main.command("wrap-check", context_settings=_ctx(ignore_unknown_options=True))
 @click.argument("x", type=int)
 def wrap_check_cmd(x: int) -> None:
     """Show wrapped X on the full Earth grid (antimeridian)."""
@@ -498,7 +539,7 @@ def _install_height_test(
     ht = pack_dir / "height_test.json"
     summit_lon, summit_lat = 86.925, 27.988
     if ht.is_file():
-        meta = json.loads(ht.read_text(encoding="utf-8"))
+        meta = _read_json(ht, "height_test.json")
         world_name = _safe_name_component(meta, "name", world_name)
         engine_max_game_y = int(meta.get("engine_max_game_y") or engine_max_game_y)
         summit_lon = float(meta.get("summit_lon") or summit_lon)
@@ -526,7 +567,7 @@ def _install_height_test(
                 shutil.copy2(src, dest_tiles / name)
         cfg_path = mod / "Config" / "realearth.json"
         if cfg_path.is_file():
-            cfg = json.loads(cfg_path.read_text(encoding="utf-8"))
+            cfg = _read_json(cfg_path, "installed realearth.json")
             cfg["MapMode"] = "Streamed"
             cfg["EnableEngineHeightMod"] = True
             cfg["EngineMaxGameY"] = int(engine_max_game_y)
@@ -545,7 +586,7 @@ def _install_height_test(
             cfg["DebugRevealFullMap"] = True
             man_path = pack_dir / "earth.manifest.json"
             if man_path.is_file():
-                man = json.loads(man_path.read_text(encoding="utf-8"))
+                man = _read_json(man_path, "earth.manifest.json")
                 ww = int(man.get("world_width") or 512)
                 wh = int(man.get("world_height") or 512)
                 cfg["WorldWidth"] = ww
@@ -917,4 +958,6 @@ def serve_cmd(port: int, bind: str, root: str | None, no_browser: bool) -> None:
 
 
 if __name__ == "__main__":
-    main(sys.argv[1:])
+    # Without this the usage and error lines read "python -m realearth.cli"
+    # while --version and every error message name the installed `realearth`.
+    main(sys.argv[1:], prog_name="realearth")

@@ -24,6 +24,16 @@ from xml.etree import ElementTree as ET
 # properties match that so a written file still diffs cleanly against a template.
 INDENT = "\t"
 
+# The docstring already spells out the invocation; the epilog adds a copy-paste
+# example so --help is usable without reading the source.
+_EPILOG = """\
+examples:
+  PYTHONPATH=tools python3 -m realearth.server_config SRC DEST \\
+      GameWorld=RealEarth ServerVisibility=0
+  PYTHONPATH=tools python3 -m realearth.server_config SRC DEST \\
+      --userdata /srv/7dtd/userdata
+"""
+
 
 def split_prolog(text: str) -> tuple[str, str]:
     """Split SRC text at <ServerSettings>. ElementTree drops everything before the
@@ -73,7 +83,12 @@ def parse_assignment(pair: str) -> tuple[str, str]:
 
 
 def main(argv: list[str] | None = None) -> int:
-    parser = argparse.ArgumentParser(description=__doc__.splitlines()[0])
+    parser = argparse.ArgumentParser(
+        prog="realearth.server_config",
+        description=__doc__.strip(),
+        epilog=_EPILOG,
+        formatter_class=argparse.RawDescriptionHelpFormatter,
+    )
     parser.add_argument("src", type=Path, help="serverconfig template to read")
     parser.add_argument("dest", type=Path, help="serverconfig to write")
     parser.add_argument(

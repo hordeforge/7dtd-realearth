@@ -26,7 +26,25 @@
 
 set -euo pipefail
 
-DIR="${1:?usage: package_zip.sh MOD_DIR [ZIP_OUT]}"
+usage() {
+  # Header comment, '# ' stripped; a fixed line range would shift whenever a
+  # note is added above it.
+  awk 'NR == 1 { next } /^#/ { sub(/^# ?/, ""); print; next } { exit }' "$0"
+}
+
+case "${1:-}" in
+  -h | --help)
+    usage
+    exit 0
+    ;;
+esac
+if [[ $# -lt 1 ]]; then
+  echo "ERROR: package_zip.sh needs MOD_DIR (and optionally ZIP_OUT)" >&2
+  usage >&2
+  exit 2
+fi
+
+DIR="$1"
 if [[ ! -d "$DIR" ]]; then
   echo "ERROR: not a directory: $DIR" >&2
   exit 2

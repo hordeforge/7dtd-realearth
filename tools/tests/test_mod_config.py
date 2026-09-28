@@ -159,3 +159,28 @@ def test_height_test_meta_low_ceiling_keeps_default(tmp_path: Path):
     cfg: dict = {"EngineMaxGameY": 11000}
     mod_config.apply_height_test_meta(dest, cfg)
     assert cfg["EngineMaxGameY"] == 11000
+
+
+def test_help_documents_the_override_contract(capsys: pytest.CaptureFixture[str]) -> None:
+    """--help carries the KEY=VALUE / KEY?=VALUE rule and a copyable example."""
+    with pytest.raises(SystemExit) as exc:
+        mod_config.main(["--help"])
+    assert exc.value.code == 0
+    out = capsys.readouterr().out
+    assert "KEY?=VALUE" in out
+    assert "examples:" in out
+    with pytest.raises(SystemExit):
+        mod_config.main(["write", "--help"])
+    assert "KEY[?]=VALUE" in capsys.readouterr().out
+
+
+def test_missing_manifest_note_goes_to_stderr(
+    tmp_path: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
+    """The `config ->` result line must not be preceded by a status note."""
+    dest = tmp_path / "dest"
+    rc = mod_config.main(["write", str(dest), str(ROOT / "Config" / "_missing"), "--sync-manifest"])
+    assert rc == 0
+    captured = capsys.readouterr()
+    assert "note: no manifest" in captured.err
+    assert captured.out.startswith("config -> ")
