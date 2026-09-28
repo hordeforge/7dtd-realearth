@@ -58,3 +58,41 @@ def test_generated_worlds_targets_include_proton_roaming_on_this_machine():
         assert expected in targets
         # Must not be ONLY native path when Proton exists
         assert any("compatdata" in str(t) for t in targets)
+
+
+def test_steam_dir_override_finds_a_library_outside_the_default_layout(
+    monkeypatch, tmp_path
+) -> None:
+    """A Steam library anywhere but ~/.local/share must still resolve.
+
+    The install scripts take their GeneratedWorlds targets from this module, so
+    a hardcoded ~/.local/share path would drop the Proton client target on a
+    machine whose Steam lives elsewhere.
+    """
+    home = tmp_path / "home"
+    home.mkdir()
+    steam = tmp_path / "srv" / "SteamLibrary"
+    roaming = (
+        steam
+        / "steamapps"
+        / "compatdata"
+        / STEAM_APPID
+        / "pfx"
+        / "drive_c"
+        / "users"
+        / "steamuser"
+        / "AppData"
+        / "Roaming"
+        / "7DaysToDie"
+    )
+    roaming.mkdir(parents=True)
+
+    monkeypatch.setenv("HOME", str(home))
+    monkeypatch.setenv("STEAM_DIR", str(steam))
+
+    assert proton_userdata() == roaming
+    assert primary_client_userdata() == roaming
+    targets = client_generated_worlds_targets(prefer_proton=True, also_native=True)
+    assert roaming / "GeneratedWorlds" in targets
+    # The Proton path is the play path, so it cannot be the only thing missing.
+    assert any("compatdata" in str(t) for t in targets)

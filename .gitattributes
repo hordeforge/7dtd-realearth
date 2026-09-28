@@ -1,3 +1,8 @@
+# Auto-detect text so a contributor on a core.autocrlf checkout does not push
+# CRLF into sources the gates parse byte for byte. Binary rules below win where
+# a path matches both.
+* text=auto
+
 # Line endings: shell scripts must stay LF or bash fails on `\r`.
 *.sh text eol=lf
 Makefile text eol=lf
@@ -9,3 +14,8 @@ Makefile text eol=lf
 *.exe binary
 *.rte binary
 *.raw binary
+# main.ttw (baked world, read by the game) and the release archive.
+*.ttw binary
+*.zip binary
+*.jar binary
+

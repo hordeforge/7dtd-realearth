@@ -126,7 +126,7 @@ def detect_client_versions() -> tuple[str, str]:
     # Proton log roots follow every known Steam root (STEAM_DIR, .steam/steam,
     # ...), not just the default ~/.local/share/Steam library; native Linux
     # userdata stays the second candidate.
-    from realearth.proton_paths import STEAM_APPID, steam_roots
+    from realearth.proton_paths import STEAM_APPID, native_linux_userdata, steam_roots
 
     proton_log_dir = (
         Path("steamapps")
@@ -142,7 +142,7 @@ def detect_client_versions() -> tuple[str, str]:
         / "logs"
     )
     log_roots = [root / proton_log_dir for root in steam_roots()]
-    log_roots.append(Path.home() / ".local" / "share" / "7DaysToDie")
+    log_roots.append(native_linux_userdata())
     logs: list[Path] = []
     for root in log_roots:
         if root.is_dir():
@@ -277,18 +277,28 @@ def write_splats(path3: Path, path4: Path, size: int, lc: np.ndarray) -> None:
 
 
 def _find_ttw_template() -> Path | None:
-    """Prefer a main.ttw from the current game install (Pregen), then any GeneratedWorlds."""
-    home = Path.home()
-    steam_common = home / ".local" / "share" / "Steam" / "steamapps" / "common"
+    """Prefer a main.ttw from the current game install (Pregen), then any GeneratedWorlds.
+
+    The install roots come from realearth.proton_paths, so a Steam library
+    outside the default ~/.local/share layout (SEVENDTD_GAME_DIR /
+    SEVENDTD_SERVER_DIR) yields the same install the operator is running, not
+    a missing template or one borrowed from a second game copy.
+    """
+    from realearth.proton_paths import (
+        client_game_dir,
+        dedicated_server_dir,
+        native_linux_userdata,
+    )
+
     ttw_tail = ("Data", "Worlds", "Pregen06k01", "main.ttw")
     preferred = [
-        steam_common.joinpath("7 Days To Die", *ttw_tail),
-        steam_common.joinpath("7 Days to Die Dedicated Server", *ttw_tail),
+        client_game_dir().joinpath(*ttw_tail),
+        dedicated_server_dir().joinpath(*ttw_tail),
     ]
     for p in preferred:
         if p.exists():
             return p
-    sample = home / ".local" / "share" / "7DaysToDie" / "GeneratedWorlds"
+    sample = native_linux_userdata() / "GeneratedWorlds"
     if sample.is_dir():
         for p in sample.glob("*/main.ttw"):
             return p

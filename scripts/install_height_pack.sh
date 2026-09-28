@@ -111,18 +111,35 @@ install_one() {
 install_one "$GAME_DIR"
 install_one "$DS_DIR"
 
-# Worlds for New Game / dedicated
+# Worlds for New Game / dedicated. Targets come from realearth.proton_paths,
+# the same resolver install_proton.sh uses, so a Steam library outside the
+# default ~/.local/share layout (or a STEAM_DIR override) is honoured instead of
+# silently dropping the Proton client target.
+if ! command -v python3 >/dev/null; then
+  echo "ERROR: python3 is required to resolve world install targets" >&2
+  exit 1
+fi
+if [[ -d "$ROOT/tools/.venv" ]]; then
+  # shellcheck disable=SC1091
+  source "$ROOT/tools/.venv/bin/activate"
+fi
+mapfile -t RESOLVE < <(PYTHONPATH="$ROOT/tools${PYTHONPATH:+:$PYTHONPATH}" python3 -m realearth.proton_paths)
+WORLD_TARGETS=()
+for line in "${RESOLVE[@]}"; do
+  case "$line" in
+    TARGET\ *) WORLD_TARGETS+=("${line#TARGET }") ;;
+  esac
+done
+# The dedicated test runs out of a cache userdata, not a Steam tree.
+WORLD_TARGETS+=("$HOME/.cache/realearth-dedicated/GeneratedWorlds")
+
 INSTALLED_WORLDS=0
-for gw in \
-  "$HOME/.local/share/Steam/steamapps/compatdata/251570/pfx/drive_c/users/steamuser/AppData/Roaming/7DaysToDie/GeneratedWorlds" \
-  "$HOME/.local/share/7DaysToDie/GeneratedWorlds" \
-  "$HOME/.cache/realearth-dedicated/GeneratedWorlds"
-do
-  if [[ -d "$WORLD" ]]; then
+if [[ -d "$WORLD" ]]; then
+  for gw in "${WORLD_TARGETS[@]}"; do
     install_generated_world "$WORLD" "$gw" "$WORLD_NAME"
     INSTALLED_WORLDS=$((INSTALLED_WORLDS + 1))
-  fi
-done
+  done
+fi
 
 if [[ ! -d "$WORLD" ]]; then
   echo "WARN: baked world missing: $WORLD, run make height-map / height-map-500 first" >&2

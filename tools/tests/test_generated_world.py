@@ -182,3 +182,37 @@ def test_failed_generated_bake_restores_previous_world(tmp_path: Path, monkeypat
     assert (out / "map_info.xml").read_text(encoding="utf-8") == "<MapInfo/>"
     assert sorted(p.name for p in tmp_path.iterdir()) == ["RealEarthTest", "pack"]
     assert "restored" in capsys.readouterr().err
+
+
+def test_ttw_template_lookup_follows_the_install_root_overrides(
+    monkeypatch, tmp_path: Path
+) -> None:
+    """A Steam library outside ~/.local/share must still supply the ttw.
+
+    The install scripts resolve the game and dedicated trees through
+    SEVENDTD_GAME_DIR / SEVENDTD_SERVER_DIR. A lookup that only probes the
+    default Steam path bakes the world from a missing or wrong install.
+    """
+    from realearth.generated_world import _find_ttw_template
+
+    tail = ("Data", "Worlds", "Pregen06k01")
+    client = tmp_path / "srv" / "Client"
+    dedicated = tmp_path / "srv" / "Dedicated"
+    for root, marker in ((client, b"client"), (dedicated, b"dedicated")):
+        target = root.joinpath(*tail, "main.ttw")
+        target.parent.mkdir(parents=True)
+        target.write_bytes(b"ttw\x00" + marker)
+
+    home = tmp_path / "home"
+    home.mkdir()
+    monkeypatch.setenv("HOME", str(home))
+    monkeypatch.delenv("STEAM_DIR", raising=False)
+
+    # Both knobs stay pointed at a tree this test owns, so a real game install
+    # on the machine running the suite can never win the lookup.
+    monkeypatch.setenv("SEVENDTD_GAME_DIR", str(client))
+    assert _find_ttw_template() == client.joinpath(*tail, "main.ttw")
+
+    monkeypatch.setenv("SEVENDTD_GAME_DIR", str(tmp_path / "srv" / "NoClientHere"))
+    monkeypatch.setenv("SEVENDTD_SERVER_DIR", str(dedicated))
+    assert _find_ttw_template() == dedicated.joinpath(*tail, "main.ttw")

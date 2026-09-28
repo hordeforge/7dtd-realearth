@@ -20,6 +20,16 @@ DEFAULT_CLIENT_GAME_DIR = (
     Path.home() / ".local" / "share" / "Steam" / "steamapps" / "common" / "7 Days To Die"
 )
 
+DEFAULT_DEDICATED_SERVER_DIR = (
+    Path.home()
+    / ".local"
+    / "share"
+    / "Steam"
+    / "steamapps"
+    / "common"
+    / "7 Days to Die Dedicated Server"
+)
+
 
 def client_game_dir() -> Path:
     """Client game install directory for this machine.
@@ -33,6 +43,20 @@ def client_game_dir() -> Path:
     if env:
         return Path(env)
     return DEFAULT_CLIENT_GAME_DIR
+
+
+def dedicated_server_dir() -> Path:
+    """Dedicated server install directory for this machine.
+
+    SEVENDTD_SERVER_DIR is the dedicated-side twin of SEVENDTD_GAME_DIR: the
+    start/install scripts export it, so anything resolving a server tree in
+    Python has to read the same variable or it picks a different install than
+    the one the operator named.
+    """
+    env = os.environ.get("SEVENDTD_SERVER_DIR")
+    if env:
+        return Path(env)
+    return DEFAULT_DEDICATED_SERVER_DIR
 
 
 def steam_roots() -> list[Path]:

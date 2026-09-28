@@ -82,8 +82,8 @@ def test_pack_file_reads_declare_utf8_encoding():
     assert "File.ReadAllText(path, Encoding.UTF8)" in city
     session = _read("SessionStateStore.cs")
     assert "File.ReadAllText(p, Encoding.UTF8)" in session
-    modapi = _read("ModApi.cs")
-    assert "File.ReadAllText(manPath, Encoding.UTF8)" in modapi
+    manifest = _read("PackManifest.cs")
+    assert "File.ReadAllText(manPath, Encoding.UTF8)" in manifest
 
 
 def test_seed_place_literals_are_nfc():
