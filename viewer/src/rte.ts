@@ -10,6 +10,8 @@
 // zlib sections are standard zlib (0x78 header), so the browser's native
 // DecompressionStream("deflate") inflates them without a vendored library.
 
+import { readCapped } from "./cappedStream.js";
+
 export const RTE_MAGIC = "RTE1";
 // Elevation is stored as u16 with a +11000 m offset (signed meters ASL).
 export const RTE_ELEV_OFFSET_M = 11_000;
@@ -41,7 +43,8 @@ export const RTE_FORMAT_VERSION = 1;
 // A header claiming more samples than this would size the Float32Array below
 // from attacker-controlled dimensions. Same ceiling the C# decoder enforces
 // (RteTile.MaxTileSamples); real packs use 512x512 tiles.
-export const RTE_MAX_TILE_SAMPLES = 4096 * 4096;
+const MAX_TILE_EDGE = 4096;
+export const RTE_MAX_TILE_SAMPLES = MAX_TILE_EDGE * MAX_TILE_EDGE;
 
 export type RteHeader = {
   tx: number;
@@ -94,11 +97,9 @@ export function parseRteHeader(bytes: Uint8Array): RteHeader {
 }
 
 // Read one length-prefixed zlib section at `offset`, inflating it under a hard
-// output cap. Returns the inflated bytes and the offset of the next section.
-//
-// The cap is enforced while the stream is read, not after it: a section that
-// inflates to far more than its header claims (a decompression bomb) is
-// cancelled at the first chunk past the cap instead of being buffered whole.
+// output cap so a section that inflates to far more than its header claims (a
+// decompression bomb) is cancelled at the first chunk past the cap. Returns the
+// inflated bytes and the offset of the next section.
 async function readSection(
   bytes: Uint8Array,
   offset: number,
@@ -117,32 +118,9 @@ async function readSection(
   // DecompressionStream is available in all modern browsers; "deflate" matches
   // Python zlib.compress (zlib wrapper, not raw deflate).
   const stream = new Blob([section]).stream().pipeThrough(new DecompressionStream("deflate"));
-  const reader = stream.getReader();
-  const chunks: Array<Uint8Array> = [];
-  let total = 0;
-  for (;;) {
-    const { done, value } = await reader.read();
-    if (done) {
-      break;
-    }
-    if (value === undefined) {
-      continue;
-    }
-    total += value.byteLength;
-    if (total > expectedBytes) {
-      await reader.cancel();
-      throw new Error(`RTE section inflates past its declared size (${expectedBytes})`);
-    }
-    chunks.push(value);
-  }
-  if (total !== expectedBytes) {
-    throw new Error(`RTE section size mismatch (${total} != ${expectedBytes})`);
-  }
-  const data = new Uint8Array(total);
-  let at = 0;
-  for (const chunk of chunks) {
-    data.set(chunk, at);
-    at += chunk.byteLength;
+  const data = await readCapped(stream, expectedBytes, `RTE section at offset ${offset}`);
+  if (data.length !== expectedBytes) {
+    throw new Error(`RTE section size mismatch (${data.length} != ${expectedBytes})`);
   }
   return { data, nextOffset: end };
 }

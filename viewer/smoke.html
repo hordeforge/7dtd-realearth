@@ -167,7 +167,7 @@
           const bomb = await deflate(new Uint8Array(65_536));
           await rejectsAsync(
             () => decodeRteTile(hostileTile(2, 2, 1, bomb)),
-            "inflates past its declared size",
+            "exceeds the 8 byte cap",
             "a decompression bomb"
           );
         });

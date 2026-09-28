@@ -28,6 +28,17 @@ namespace RealEarth.EngineHeight
 
         static long Key(int chunkX, int chunkZ) => ((long)chunkX << 32) ^ (uint)chunkZ;
 
+        // Absolute Earth coords -> section key plus the in-section slot, folded
+        // so coordinates either side of a section edge share a column.
+        static void Locate(int earthX, int earthZ, out long key, out int lx, out int lz)
+        {
+            key = Key(
+                EngineReflection.FloorDiv(earthX, SectionBlocks),
+                EngineReflection.FloorDiv(earthZ, SectionBlocks));
+            lx = SessionOriginPolicy.FoldCoord(earthX, SectionBlocks);
+            lz = SessionOriginPolicy.FoldCoord(earthZ, SectionBlocks);
+        }
+
         /// <summary>
         /// Store surface meters by already-resolved absolute Earth coords. Avoids a
         /// second LocalToEarth remap when the caller (the per-block sample hot path)
@@ -35,11 +46,7 @@ namespace RealEarth.EngineHeight
         /// </summary>
         public void SetSurfaceMetersEarth(int earthX, int earthZ, float elevM)
         {
-            int cx = EngineReflection.FloorDiv(earthX, SectionBlocks);
-            int cz = EngineReflection.FloorDiv(earthZ, SectionBlocks);
-            int lx = SessionOriginPolicy.FoldCoord(earthX, SectionBlocks);
-            int lz = SessionOriginPolicy.FoldCoord(earthZ, SectionBlocks);
-            long key = Key(cx, cz);
+            Locate(earthX, earthZ, out long key, out int lx, out int lz);
             lock (_lock)
             {
                 if (!_columns.TryGetValue(key, out var col))
@@ -71,11 +78,7 @@ namespace RealEarth.EngineHeight
         public bool TryGetSurfaceMetersEarth(int earthX, int earthZ, out float elevM)
         {
             elevM = 0;
-            int cx = EngineReflection.FloorDiv(earthX, SectionBlocks);
-            int cz = EngineReflection.FloorDiv(earthZ, SectionBlocks);
-            int lx = SessionOriginPolicy.FoldCoord(earthX, SectionBlocks);
-            int lz = SessionOriginPolicy.FoldCoord(earthZ, SectionBlocks);
-            long key = Key(cx, cz);
+            Locate(earthX, earthZ, out long key, out int lx, out int lz);
             lock (_lock)
             {
                 if (!_columns.TryGetValue(key, out var col))
