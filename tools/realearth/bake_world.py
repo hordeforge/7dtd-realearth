@@ -7,6 +7,8 @@ or GeneratedWorlds-style folders. This is MapMode=Baked: fully usable as one lar
 from __future__ import annotations
 
 import json
+import shutil
+import sys
 from datetime import UTC, datetime
 from pathlib import Path
 
@@ -81,6 +83,39 @@ def snapshot_existing_output(out_dir: Path) -> Path | None:
     return aside
 
 
+def rollback_failed_bake(out_dir: Path, snapshot: Path | None) -> None:
+    """Undo a bake that raised: drop the partial output, put the previous world back.
+
+    `snapshot_existing_output` already moved the last good world aside, so a
+    failure part-way through would otherwise leave a half-written `out_dir`
+    that looks like a finished world plus an aside directory nobody was told
+    about. Always reports on stderr: the caller only re-raises.
+    """
+    if out_dir.is_dir():
+        try:
+            shutil.rmtree(out_dir)
+        except OSError as ex:
+            print(
+                f"ERROR: partial bake output could not be removed ({out_dir}): {ex}\n"
+                f"       delete it by hand before the next bake; it is incomplete.",
+                file=sys.stderr,
+            )
+    if snapshot is None:
+        return
+    if not snapshot.is_dir():
+        return
+    try:
+        snapshot.rename(out_dir)
+    except OSError as ex:
+        print(
+            f"ERROR: previous world could not be restored into {out_dir} ({ex}).\n"
+            f"       The last good world is at {snapshot}; move it back by hand.",
+            file=sys.stderr,
+        )
+        return
+    print(f"Previous world restored to {out_dir} (was {snapshot}).", file=sys.stderr)
+
+
 def bake_world_from_pack(
     pack_dir: Path,
     out_dir: Path,
@@ -90,10 +125,31 @@ def bake_world_from_pack(
     sea_level_y: int = DEFAULT_SEA_LEVEL_GAME_Y,
 ) -> JsonDict:
     """Stitch pack tiles and bake one continuous world of `size`×`size` blocks."""
-    size = snap_world_size(size)
-    pack_dir = Path(pack_dir)
     out_dir = Path(out_dir)
     pre_bake_snapshot = snapshot_existing_output(out_dir)
+    try:
+        return _bake_from_pack(
+            Path(pack_dir),
+            out_dir,
+            size=snap_world_size(size),
+            name=name,
+            sea_level_y=sea_level_y,
+            pre_bake_snapshot=pre_bake_snapshot,
+        )
+    except BaseException:
+        rollback_failed_bake(out_dir, pre_bake_snapshot)
+        raise
+
+
+def _bake_from_pack(
+    pack_dir: Path,
+    out_dir: Path,
+    *,
+    size: int,
+    name: str | None,
+    sea_level_y: int,
+    pre_bake_snapshot: Path | None,
+) -> JsonDict:
     out_dir.mkdir(parents=True, exist_ok=True)
 
     data = mosaic_pack(pack_dir)

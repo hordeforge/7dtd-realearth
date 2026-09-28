@@ -151,3 +151,34 @@ def test_population_byte_roundtrip_bands():
         byte = int(population_to_byte(np.array([people_km2]))[0])
         decoded = 10.0 ** (byte / 50.0) - 1.0
         assert density_to_band(decoded) == want_band
+
+
+def test_failed_generated_bake_restores_previous_world(tmp_path: Path, monkeypatch, capsys):
+    """A GeneratedWorlds bake that raises must put the last good world back."""
+    pack = tmp_path / "pack"
+    build_region(
+        -105.2,
+        39.6,
+        -104.9,
+        39.9,
+        pack,
+        resolution_m=120.0,
+        source="synthetic",
+        name="GenWorldTest",
+        max_dim=128,
+        also_export_7dtd=False,
+    )
+    out = tmp_path / "RealEarthTest"
+    out.mkdir()
+    (out / "map_info.xml").write_text("<MapInfo/>", encoding="utf-8")
+
+    def boom(pack_dir):
+        raise RuntimeError("mosaic failed")
+
+    monkeypatch.setattr("realearth.generated_world.mosaic_pack", boom)
+    with pytest.raises(RuntimeError):
+        bake_generated_world(pack, out, size=2048, ttw_template=None)
+
+    assert (out / "map_info.xml").read_text(encoding="utf-8") == "<MapInfo/>"
+    assert sorted(p.name for p in tmp_path.iterdir()) == ["RealEarthTest", "pack"]
+    assert "restored" in capsys.readouterr().err

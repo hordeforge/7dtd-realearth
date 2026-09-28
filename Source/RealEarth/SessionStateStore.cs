@@ -305,8 +305,24 @@ namespace RealEarth
                 foreach (var p in SessionCandidatePaths(path))
                 {
                     if (!File.Exists(p)) continue;
-                    string json = File.ReadAllText(p, Encoding.UTF8);
-                    if (!SessionSnapshot.TryParse(json, out var snap)) continue;
+                    // Per-path isolation, matching TrySave: an unreadable or
+                    // corrupt primary must not skip the fallback snapshot.
+                    string json;
+                    SessionSnapshot snap;
+                    try
+                    {
+                        json = File.ReadAllText(p, Encoding.UTF8);
+                    }
+                    catch (Exception ex)
+                    {
+                        ModApi.LogWarn("SessionStateStore read failed " + p + ": " + ex.GetType().Name + ": " + ex.Message);
+                        continue;
+                    }
+                    if (!SessionSnapshot.TryParse(json, out snap))
+                    {
+                        ModApi.LogWarn("SessionStateStore unparsable snapshot " + p + "; trying next path");
+                        continue;
+                    }
                     // The mod Config fallback is global across worlds; without this gate a
                     // new world would restore the previous world's absolute position
                     // (spawn far from the intended config spawn). Unknown scopes on either

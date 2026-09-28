@@ -20,7 +20,12 @@ import numpy as np
 from PIL import Image
 
 from realearth import DEFAULT_SEA_LEVEL_GAME_Y, JsonDict
-from realearth.bake_world import resize_arrays, snap_world_size, snapshot_existing_output
+from realearth.bake_world import (
+    resize_arrays,
+    rollback_failed_bake,
+    snap_world_size,
+    snapshot_existing_output,
+)
 from realearth.density import (
     apply_urban_from_density,
     detect_city_cores,
@@ -331,6 +336,33 @@ def bake_generated_world(
     pack_dir = Path(pack_dir)
     out_dir = Path(out_dir)
     pre_bake_snapshot = snapshot_existing_output(out_dir)
+    try:
+        return _bake_generated(
+            pack_dir,
+            out_dir,
+            size=size,
+            name=name,
+            sea_level_y=sea_level_y,
+            ttw_template=ttw_template,
+            game_version=game_version,
+            pre_bake_snapshot=pre_bake_snapshot,
+        )
+    except BaseException:
+        rollback_failed_bake(out_dir, pre_bake_snapshot)
+        raise
+
+
+def _bake_generated(
+    pack_dir: Path,
+    out_dir: Path,
+    *,
+    size: int,
+    name: str,
+    sea_level_y: int,
+    ttw_template: Path | None,
+    game_version: str | None,
+    pre_bake_snapshot: Path | None,
+) -> JsonDict:
     out_dir.mkdir(parents=True, exist_ok=True)
 
     data = mosaic_pack(pack_dir)
