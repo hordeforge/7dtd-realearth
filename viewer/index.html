@@ -7,9 +7,10 @@
   <link rel="icon" type="image/svg+xml" href="favicon.svg">
   <link rel="stylesheet" href="css/app.css">
   <!-- three.js resolves from the vendored copy under vendor/three (offline,
-       no CDN dependency); the preconnect is harmless if never used. Keep
-       vendor/three in sync with node_modules via scripts/vendor-three.sh. -->
-  <link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin>
+       no CDN dependency, no third-party script origin). Keep vendor/three in
+       sync with the locked npm copy and verified hashes via
+       scripts/vendor-three.sh + scripts/toolchain-versions.env. -->
+
   <script type="importmap">
   {
     "imports": {

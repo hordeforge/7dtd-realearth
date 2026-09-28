@@ -70,10 +70,12 @@ Thumbs.db
 
 # scratch
 .scratch/
-# Dependency lockfiles are tracked (tools/uv.lock); only stray *.lock guard
-# files from editors and half-finished tool runs are ignored.
+# Dependency lockfiles are tracked (tools/uv.lock, scripts/js-toolchain.lock);
+# only stray *.lock guard files from editors and half-finished tool runs are
+# ignored.
 *.lock
 !tools/uv.lock
+!scripts/js-toolchain.lock
 !bun.lock
 .coverage
 .coverage.*

@@ -66,8 +66,10 @@ class ViewerHandler(http.server.SimpleHTTPRequestHandler):
         self.send_header("Referrer-Policy", "no-referrer")
         self.send_header(
             "Content-Security-Policy",
+            # No remote script origin: three.js is served from the vendored
+            # copy under viewer/vendor/three, so script-src needs only 'self'.
             "default-src 'self'; "
-            "script-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net; "
+            "script-src 'self' 'unsafe-inline'; "
             "style-src 'self' 'unsafe-inline'; "
             "img-src 'self' data: blob:; "
             "connect-src 'self'; "

@@ -33,12 +33,13 @@ jobs:
           # so self-hosted forks keep it too).
           enable-cache: true
       # oxlint/tsgolint/anti-slop/vnu toolchain for the lint-*.sh scripts;
-      # key hashes the shared pin file plus the scripts that consume it, so a
-      # version bump invalidates it.
+      # key hashes the shared pin file, the lockfile that fixes the resolved
+      # artifacts, and the scripts that consume them, so a version bump
+      # invalidates it.
       - uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9  # v6.1.0
         with:
           path: ~/.cache/realearth/oxlint-standards
-          key: oxlint-standards-${{ runner.os }}-${{ hashFiles('scripts/toolchain-versions.env', 'scripts/lint-viewer.sh', 'scripts/lint-webmod.sh', 'scripts/lint-html.sh') }}
+          key: oxlint-standards-${{ runner.os }}-${{ hashFiles('scripts/toolchain-versions.env', 'scripts/js-toolchain.lock', 'scripts/install-js-toolchain.sh', 'scripts/lint-viewer.sh', 'scripts/lint-webmod.sh', 'scripts/lint-html.sh') }}
           restore-keys: |
             oxlint-standards-${{ runner.os }}-
       # C# analysis gate. The RealEarth mod DLL itself needs the proprietary

@@ -74,6 +74,19 @@ def test_if_modified_since_answers_304(server: str):
     assert second.status_code == 304
 
 
+def test_security_headers_allow_no_remote_script_origin(server: str):
+    # three.js is served from the vendored copy, so the served CSP must not
+    # whitelist a third-party origin: a remote script-src entry is a remote
+    # code-execution path into the viewer origin.
+    res = httpx.get(f"{server}/index.html", headers={"Accept-Encoding": "identity"})
+    csp = res.headers["Content-Security-Policy"]
+    assert "https://" not in csp
+    assert "'self'" in csp
+    assert "frame-ancestors 'none'" in csp
+    assert res.headers["X-Content-Type-Options"] == "nosniff"
+    assert res.headers["X-Frame-Options"] == "DENY"
+
+
 def test_parallel_requests_are_concurrent(server: str):
     paths = ["/index.html", "/tiny.txt", "/tile.png"] * 4
     responses: list[httpx.Response] = []

@@ -8,9 +8,9 @@
 #      type-aware rules through the oxlint-tsgolint binary.
 #
 # tsc/oxlint run through bunx. The pins live in scripts/toolchain-versions.env,
-# the single source of truth shared by every build/lint script (the repo
-# deliberately does not track package.json/node_modules; same policy as
-# ../zdtd-server/scripts/lint-webui.sh).
+# the single source of truth shared by every build/lint script; the resolved
+# artifacts are recorded (with hashes) in scripts/js-toolchain.lock and
+# installed by scripts/install-js-toolchain.sh.
 # Override locally: TSC_VERSION=5.9.3 bash scripts/lint-webmod.sh
 #
 # Requires: bun (bunx), python3 (already a make check requirement).
@@ -29,56 +29,12 @@ bunx -p "typescript@$TSC_VERSION" tsc -p "$root/webmod/tsconfig.json" --noEmit
 # 2. Lint the sources with oxlint. The @rikalabs plugin, the vendored
 #    dmmulroy/anti-slop plugin source (pinned by ANTI_SLOP_SHA; the project is
 #    vendored source, not an npm package), and oxlint-tsgolint (the type-aware
-#    backend) are fetched into the cache (no-op when the pinned versions are
-#    already present) and oxlint runs next to them because jsPlugins resolve
-#    relative to the config file's directory; a copy of the config is placed
-#    there each run. The pinned packages are installed with one additive
-#    `bun add` invocation: it merges the pins into the cache manifest and
-#    never prunes what a sibling script installed. @oxlint/plugins is the
-#    plugin API the anti-slop source imports; without it the plugin cannot
-#    load. The same cache dir serves the viewer (lint-viewer.sh).
-# GitHub archive downloads fail intermittently; retry with deterministic
-# backoff so a transient 5xx does not turn the lint stage red.
-fetch_retry() {
-  local url="$1" out="$2" attempt delay
-  for attempt in 1 2 3; do
-    if curl -fsSL "$url" -o "$out"; then
-      return 0
-    fi
-    rm -f "$out"
-    delay=$((attempt * 2))
-    echo "realearth: lint-webmod: fetch failed (attempt $attempt), retrying in ${delay}s" >&2
-    sleep "$delay"
-  done
-  return 1
-}
-
-mkdir -p "$cache_dir"
-if [ ! -d "$cache_dir/anti-slop-src" ]; then
-  fetch_retry "https://github.com/dmmulroy/anti-slop/archive/$ANTI_SLOP_SHA.tar.gz" \
-    "$cache_dir/anti-slop.tar.gz"
-  # Integrity gate: the archive has no upstream checksum manifest, so verify
-  # against the pin in toolchain-versions.env before anything extracts it.
-  if ! echo "${ANTI_SLOP_SHA256}  $cache_dir/anti-slop.tar.gz" | sha256sum -c - >/dev/null 2>&1; then
-    rm -f "$cache_dir/anti-slop.tar.gz"
-    echo "realearth: lint-webmod: anti-slop tarball sha256 mismatch (expected $ANTI_SLOP_SHA256)" >&2
-    exit 1
-  fi
-  mkdir -p "$cache_dir/anti-slop-src"
-  tar xzf "$cache_dir/anti-slop.tar.gz" -C "$cache_dir/anti-slop-src" --strip-components=2 "anti-slop-$ANTI_SLOP_SHA/src"
-fi
-# bun add resolves from its cache when warm instead of re-fetching on every
-# run; cold cache fetches as usual.
-# type module: the vendored anti-slop plugin source is ESM; without the field
-# the runtime reparses it with a MODULE_TYPELESS_PACKAGE_JSON warning.
-[ -f "$cache_dir/package.json" ] || printf '{"type":"module"}\n' > "$cache_dir/package.json"
-( cd "$cache_dir" && bun add --silent \
-    "@rikalabs/oxlint-standards@$OXLINT_STANDARDS_VERSION" \
-    "oxlint-tsgolint@$OXLINT_TSGOLINT_VERSION" \
-    "@oxlint/plugins@$OXLINT_PLUGINS_VERSION" ) >/dev/null 2>&1 || {
-  echo "realearth: lint-webmod: could not install @rikalabs/oxlint-standards@$OXLINT_STANDARDS_VERSION + oxlint-tsgolint@$OXLINT_TSGOLINT_VERSION + @oxlint/plugins@$OXLINT_PLUGINS_VERSION into $cache_dir (offline?)" >&2
-  exit 1
-}
+#    backend) are installed into the shared cache by install-js-toolchain.sh
+#    from the committed lockfile, and oxlint runs next to them because
+#    jsPlugins resolve relative to the config file's directory; a copy of the
+#    config is placed there each run. The same cache dir serves the viewer
+#    (lint-viewer.sh) and the HTML gate (lint-html.sh).
+bash "$root/scripts/install-js-toolchain.sh" "$cache_dir" >/dev/null
 cp "$root/.oxlintrc.webmod.jsonc" "$cache_dir/oxlintrc.webmod.jsonc"
 cd "$cache_dir"
 # tsgolint is not on the user's PATH; oxlint finds it via PATH lookup.

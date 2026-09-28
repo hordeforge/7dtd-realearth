@@ -115,8 +115,11 @@ when the client accepts them, and sends `Cache-Control: no-cache` so edited pack
 revalidate via `If-Modified-Since` 304s. For a shared deployment, any static HTTP
 server can host `viewer/` as long as it sends JSON, JavaScript, and PNG files
 with normal MIME types and permits the viewer to fetch its data paths. The globe
-imports Three.js from a public CDN, so a strict Content Security Policy or
-offline deployment must vendor/allow that dependency.
+imports Three.js from the vendored copy in `vendor/three/` through the
+importmap, so the viewer needs no third-party script origin and works offline
+under a `script-src 'self'` policy. `scripts/vendor-three.sh` refreshes that
+copy from the locked npm package and verifies the file hashes pinned in
+`scripts/toolchain-versions.env`.
 
 ## Troubleshooting
 

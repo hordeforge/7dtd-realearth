@@ -6,6 +6,8 @@ deterministic SPDX document (same inputs, same bytes modulo the timestamp):
 
   tools/uv.lock                                        Python pipeline packages
   scripts/toolchain-versions.env                       JS build/lint toolchain pins
+                                                        (and the sha256 of the
+                                                        vendored three.js files)
 
 No third-party libraries here: uv.lock is TOML (stdlib tomllib), the pins
 file is KEY=VALUE shell.
@@ -72,40 +74,91 @@ def python_packages() -> list[dict[str, Any]]:
 
 
 def toolchain_packages() -> list[dict[str, Any]]:
-    """Pinned JS build/lint toolchain (bunx-fetched npm packages)."""
+    """Pinned JS toolchain (npm packages the build/lint scripts install).
+
+    every pin in scripts/toolchain-versions.env that names an npm package, so a
+    new pin cannot be added without appearing in the release inventory.
+    """
     env_text = (REPO / "scripts" / "toolchain-versions.env").read_text(encoding="utf-8")
     pins = {
         m.group(1): m.group(2)
-        for m in re.finditer(r'^: "\$\{([A-Z_]+):=([^}]*)\}"', env_text, re.MULTILINE)
+        for m in re.finditer(r'^: "\$\{([A-Z0-9_]+):=([^}]*)\}"', env_text, re.MULTILINE)
     }
     npms = [
-        ("esbuild", pins.get("ESBUILD_VERSION")),
-        ("typescript", pins.get("TSC_VERSION")),
-        ("oxlint", pins.get("OXLINT_VERSION")),
-        ("@types/three", pins.get("THREE_TYPES_VERSION")),
-        ("vnu-jar", pins.get("VNU_VERSION")),
+        ("esbuild", "ESBUILD_VERSION", False),
+        ("typescript", "TSC_VERSION", False),
+        ("oxlint", "OXLINT_VERSION", False),
+        ("oxlint-tsgolint", "OXLINT_TSGOLINT_VERSION", False),
+        ("@oxlint/plugins", "OXLINT_PLUGINS_VERSION", False),
+        ("@rikalabs/oxlint-standards", "OXLINT_STANDARDS_VERSION", False),
+        ("@types/three", "THREE_TYPES_VERSION", False),
+        ("three", "THREE_VERSION", True),
+        ("vnu-jar", "VNU_VERSION", False),
     ]
     out: list[dict[str, Any]] = []
-    for name, version in npms:
+    for name, pin, shipped in npms:
+        version = pins.get(pin)
         if not version:
             continue
         purl_name = name.replace("@", "%40").replace("/", "%2f")
+        if shipped:
+            comment = (
+                "shipped in release artifacts: vendored under viewer/vendor/three/ "
+                "and served through viewer/index.html's importmap; file hashes "
+                "pinned as THREE_*_SHA256 in scripts/toolchain-versions.env"
+            )
+            checksums = [
+                {"algorithm": "SHA256", "checksumValue": pins[hash_pin]}
+                for hash_pin in ("THREE_MODULE_SHA256", "THREE_ORBIT_CONTROLS_SHA256")
+                if pins.get(hash_pin)
+            ]
+        else:
+            comment = (
+                "build/lint toolchain installed from scripts/js-toolchain.lock "
+                "(or bunx); version-pinned in scripts/toolchain-versions.env; "
+                "not shipped in release artifacts"
+            )
+            checksums = []
         out.append(
             {
                 "SPDXID": None,
                 "name": f"npm:{name}",
                 "versionInfo": version,
-                "downloadLocation": "https://registry.npmjs.org/",
+                # SPDX 2.3: the npm registry is not the artifact. The exact
+                # tarball URL is not recorded in-tree, so say so rather than
+                # point at a page that is not the package.
+                "downloadLocation": "NOASSERTION",
                 "licenseConcluded": "NOASSERTION",
-                "comment": (
-                    "build/lint toolchain fetched via bunx; version-pinned in "
-                    "scripts/toolchain-versions.env; not shipped in release artifacts"
-                ),
-                "checksums": [],
+                "comment": comment,
+                "checksums": checksums,
                 "externalRefs": [_purl_ref(f"pkg:npm/{purl_name}@{version}")],
             }
         )
+    out.extend(_anti_slop_package(pins))
     return out
+
+
+def _anti_slop_package(pins: dict[str, str]) -> list[dict[str, Any]]:
+    """The anti-slop oxlint plugin: git-pinned source, not an npm release."""
+    commit = pins.get("ANTI_SLOP_SHA")
+    if not commit:
+        return []
+    sha256 = pins.get("ANTI_SLOP_SHA256", "")
+    return [
+        {
+            "SPDXID": None,
+            "name": "github:dmmulroy/anti-slop",
+            "versionInfo": commit,
+            "downloadLocation": (f"https://github.com/dmmulroy/anti-slop/archive/{commit}.tar.gz"),
+            "licenseConcluded": "NOASSERTION",
+            "comment": (
+                "oxlint plugin source vendored into the lint toolchain cache by "
+                "scripts/install-js-toolchain.sh; not shipped in release artifacts"
+            ),
+            "checksums": ([{"algorithm": "SHA256", "checksumValue": sha256}] if sha256 else []),
+            "externalRefs": [_purl_ref(f"pkg:github/dmmulroy/anti-slop@{commit}")],
+        }
+    ]
 
 
 def build() -> dict[str, Any]:
@@ -162,11 +215,17 @@ def build() -> dict[str, Any]:
                 "relationshipType": "DESCRIBES",
                 "relatedSpdxElement": ROOT_SPDX_ID,
             },
-            {
-                "spdxElementId": ROOT_SPDX_ID,
-                "relationshipType": "DEPENDS_ON",
-                "relatedSpdxElement": f"SPDXRef-{i + 1:03d}",
-            },
+            # One DEPENDS_ON per entry: a consumer or vuln scanner follows
+            # relationships, so a single one would hide the whole inventory.
+            *(
+                {
+                    "spdxElementId": ROOT_SPDX_ID,
+                    "relationshipType": "DEPENDS_ON",
+                    "relatedSpdxElement": pkg["SPDXID"],
+                }
+                for pkg in packages
+                if pkg["SPDXID"] != ROOT_SPDX_ID
+            ),
         ],
     }
 
