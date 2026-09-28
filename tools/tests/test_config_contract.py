@@ -87,7 +87,12 @@ def test_shipped_configs_match_product_defaults():
 
 
 def test_config_validate_exists_and_runs_at_init():
-    """RealEarthConfig.Validate() must clamp/warn and be called right after Load."""
+    """RealEarthConfig.Validate() must clamp/warn and be called during init.
+
+    The manifest overlay sits between Load and Validate on purpose: pack
+    earth.manifest.json overrides world size and bbox, so Validate has to see
+    the final values (ModApi.InitMod). Pin that order, not adjacency.
+    """
     src = _read("Source/RealEarth/RealEarthConfig.cs")
     assert "public IReadOnlyList<string> Validate()" in src
     # Enum-like strings must list valid values in the warning text.
@@ -96,12 +101,12 @@ def test_config_validate_exists_and_runs_at_init():
     # Unload radius must be forced above stream radius (thrash guard).
     assert "UnloadRadiusTiles = StreamRadiusTiles + 1" in src
     api = _read("Source/RealEarth/ModApi.cs")
-    m = re.search(
-        r'RealEarthConfig\.Load\(Path\.Combine\(ModPath, "Config", "realearth\.json"\)\);\n'
-        r"\s*foreach \(var warning in Config\.Validate\(\)\)",
-        api,
-    )
-    assert m, "InitMod must run Config.Validate() immediately after Load"
+    load = api.index('RealEarthConfig.Load(Path.Combine(ModPath, "Config", "realearth.json"));')
+    manifest = api.index("TryApplyPackManifest(tileRoot, Config);")
+    validate = api.index("foreach (var warning in Config.Validate())")
+    assert (
+        load < manifest < validate
+    ), "InitMod must Load, then apply the pack manifest, then run Config.Validate()"
 
 
 def test_config_validate_cross_field_guards():

@@ -122,6 +122,9 @@ if [[ -f "$ROOT/docs/MULTIPLAYER_STREAMING.md" ]]; then
   cp "$ROOT/docs/MULTIPLAYER_STREAMING.md" "$OUT/Docs/"
 fi
 
+# Streamed mode samples Data/tiles at runtime and nothing else supplies them
+# (TileCdnBaseUrl stays empty in a packaged config), so a Streamed folder
+# without a pack renders nothing. That is a broken release, not a warning.
 if [[ -d "$ROOT/data/samples/demo_region" ]]; then
   mkdir -p "$OUT/Data/tiles"
   cp -a "$ROOT/data/samples/demo_region/." "$OUT/Data/tiles/"
@@ -132,6 +135,10 @@ if [[ -d "$ROOT/data/samples/demo_region" ]]; then
     --template "$OUT/Config/realearth.json" \
     --sync-manifest --max-window "$LOCAL_WINDOW_SIZE" \
     TilePackPath=Data/tiles
+elif [[ "$MAP_MODE" == "Streamed" ]]; then
+  echo "ERROR: no tile pack at data/samples/demo_region; a Streamed package samples" >&2
+  echo "       Data/tiles at runtime. Run 'make demo' before 'make package'." >&2
+  exit 1
 else
   echo "NOTE: no pack at data/samples/demo_region, run make demo; shipping without Data/tiles." >&2
 fi
@@ -152,8 +159,11 @@ if [[ -n "$GAME_DIR" && -d "$GAME_DIR" ]]; then
     exit 1
   fi
 else
-  echo "NOTE: set SEVENDTD_GAME_DIR to build RealEarth.dll into the package."
-  echo "      Heightmap export under Data/tiles/export_7dtd still works without the DLL."
+  # 7DTD loads the mod through RealEarth.dll; a folder without it starts as an
+  # empty mod. Set SEVENDTD_GAME_DIR so the DLL is compiled into the package.
+  echo "ERROR: set SEVENDTD_GAME_DIR (or GAME_DIR) to the game install so RealEarth.dll" >&2
+  echo "       is built into the package; a mod folder without it loads nothing." >&2
+  exit 1
 fi
 
 # Stock dashboard webui (WebMod auto-served by the game webserver). Build

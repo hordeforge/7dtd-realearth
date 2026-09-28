@@ -60,8 +60,6 @@ export RE_ZIP_EPOCH="$EPOCH" RE_ZIP_EPOCH_ORIGIN="$ORIGIN"
 TOOLCHAIN_ENV="$(cd "$(dirname "$0")" && pwd)/toolchain-versions.env"
 export RE_ZIP_TOOLCHAIN_ENV="$TOOLCHAIN_ENV"
 
-OUT="${2:-$(dirname "$DIR")/$(basename "$DIR").zip}"
-
 # Release-archive name follows ModInfo.xml's version (same parse as
 # .github/workflows/release.yml): dist/RealEarth-v0.3.0.zip.
 VERSION="$(sed -n 's/.*<Version[^>]*value="\([^"]*\)".*/\1/p' "$DIR/ModInfo.xml" | head -1)"
@@ -104,10 +102,16 @@ def tool_version(cmd: str) -> str:
         return "unavailable"
 
 
-files = sorted(
-    p for p in src.rglob("*")
-    if p.is_file() and not p.is_symlink()
-)
+entries = sorted(src.rglob("*"))
+# A symlink has no content of its own: skipping it would ship an archive
+# quietly missing a file the mod folder has. Name it instead.
+symlinks = [p.relative_to(src).as_posix() for p in entries if p.is_symlink()]
+if symlinks:
+    print("ERROR: symlinks under the mod folder cannot be archived:", file=sys.stderr)
+    for rel in symlinks:
+        print(f"  {rel}", file=sys.stderr)
+    sys.exit(2)
+files = [p for p in entries if p.is_file()]
 if not files:
     print("ERROR: nothing to archive", file=sys.stderr)
     sys.exit(2)

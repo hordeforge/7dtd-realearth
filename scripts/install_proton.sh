@@ -47,6 +47,16 @@ case "$MAP_MODE" in
     ;;
 esac
 
+# Streamed samples Data/tiles at runtime and the installed config points there
+# with no CDN base URL, so a missing pack installs a mod that renders nothing.
+# Checked with the other validation, before install_mod's rm -rf, so a refused
+# run leaves the previous install in place.
+if [[ "$MAP_MODE" == "Streamed" && ! -d "$ROOT/data/samples/demo_region" ]]; then
+  echo "ERROR: no tile pack at data/samples/demo_region; a Streamed install samples" >&2
+  echo "       Data/tiles at runtime. Run 'make demo' before installing." >&2
+  exit 1
+fi
+
 # The installed Config/realearth.json is generated through realearth.mod_config
 # (MAP_MODE + product defaults); skipping it would silently install template
 # defaults that ignore them, so python3 is a hard requirement.

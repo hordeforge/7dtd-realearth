@@ -123,3 +123,19 @@ def test_refuses_folder_without_modinfo(tmp_path) -> None:
     )
     assert result.returncode == 2
     assert "ModInfo.xml" in result.stderr
+
+
+def test_refuses_symlinks_it_could_only_silently_drop(tmp_path) -> None:
+    """A symlink carries no bytes into the zip; skipping it would ship an
+    archive quietly missing a file, so the script names it and stops."""
+    mod = make_mod(tmp_path / "RealEarth")
+    (mod / "Config" / "linked.xml").symlink_to(mod / "Config" / "realearth.json")
+    result = subprocess.run(
+        ["bash", str(SCRIPT), str(mod), str(tmp_path / "out.zip")],
+        capture_output=True,
+        text=True,
+        check=False,
+    )
+    assert result.returncode == 2
+    assert "Config/linked.xml" in result.stderr
+    assert not (tmp_path / "out.zip").exists()
