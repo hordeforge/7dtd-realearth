@@ -159,6 +159,32 @@ def test_missing_config_is_reported_not_silent():
     ), "the synthesized-defaults warning must fire right after the load"
 
 
+def test_shipped_reveal_radius_within_csharp_clamp():
+    """Every shipped config must survive RealEarthConfig.Validate unchanged.
+
+    Validate clamps DebugMapRevealRadiusChunks to [0, 64], so a shipped
+    profile above the bound loads as a different value than the file says,
+    with only a log warning: the dev template shipped 128 while the clamp was
+    added and was silently downgraded on every load.
+    """
+    src = _read("Source/RealEarth/RealEarthConfig.cs")
+    checks = re.findall(r"if \(DebugMapRevealRadiusChunks ([<>]) (\d+)\)", src)
+    assert len(checks) == 2, "DebugMapRevealRadiusChunks clamp checks not found"
+    bounds = {op: int(value) for op, value in checks}
+    assert bounds.get(">") is not None and bounds.get("<") is not None
+    upper, lower = bounds[">"], bounds["<"]
+    for name in (
+        "realearth.json",
+        "realearth.mp.json",
+        "realearth.advanced_height.json",
+    ):
+        value = json.loads(_read(f"Config/{name}"))["DebugMapRevealRadiusChunks"]
+        assert lower <= value <= upper, (
+            f"{name} sets DebugMapRevealRadiusChunks={value}, "
+            f"which RealEarthConfig.Validate clamps to [{lower}, {upper}]"
+        )
+
+
 def test_shipped_config_keys_exist_in_csharp_loader():
     """Every shipped realearth.json key must map to a C# [DataMember].
 

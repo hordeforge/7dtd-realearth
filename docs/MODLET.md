@@ -117,7 +117,7 @@ Shipped configs keep both off (`Config/realearth.advanced_height.json` is the de
 | Key | Default | Meaning |
 |---|---|---|
 | `DebugRevealFullMap` | `false` | Fill FOW for host extent once after load (dev: `true`) |
-| `DebugMapRevealRadiusChunks` | `0` (off) | ~2048 m radius around player, tracks travel (dev: `128`) |
+| `DebugMapRevealRadiusChunks` | `0` (off) | Radius around player that tracks travel, 16 m per chunk, clamped to `[0, 64]` on load (dev template: `64`, ~1024 m) |
 
 F1: `rereveal`.
 

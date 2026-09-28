@@ -15,6 +15,23 @@ and the release gate requires both to match the tag (`v<version>`) and a dated
 
 ### Added
 
+- **`build-region` and `bake-world` take `--seed`.** The RNG seed that drives
+  synthetic elevation, density, prefab placement and splat noise was a
+  module constant; it is now a flag that defaults to that same value, so an
+  existing command line produces the same pack. `build-region` records the
+  seed in the build manifest under `source_params.seed`, and `verify-build`
+  prints it with the `--seed` command that replays the build.
+- **`make artifacts-backup` archives state outside the repo.**
+  `RE_BACKUP_EXTRA_PATHS=saves=/abs/path` (newline-separated
+  `label=/abs/path` entries) stores each tree under
+  `realearth-extra/<label>/` with its absolute target recorded beside it, and
+  `make artifacts-restore ARCHIVE=...` puts it back on that path. A named path
+  that does not exist fails the backup rather than producing an archive that
+  claims to be complete. `RE_BACKUP_KEEP=N` keeps only the newest N archives
+  and prunes the rest, but only after the new archive passes its checksum
+  check, so a failed backup never deletes the last good one. The knobs are in
+  `.env.example`; the state inventory and RPO table in
+  `docs/BACKUP_RESTORE.md` list what this does and does not cover.
 - **Fuzz harnesses for the settlement parsers.** Seeded mutation targets cover
   `load_settlements_geojson` and the tile POI blob, asserting that malformed
   input is rejected with `ValueError` or yields only real coordinates, and that
@@ -40,9 +57,9 @@ and the release gate requires both to match the tag (`v<version>`) and a dated
 - **Every environment variable the scripts read is in `.env.example`.** The
   dedicated-server and load-test knobs (`RE_DEDICATED_USERDATA`, `RE_WORLD_NAME`,
   `RE_SERVER_SOAK`, `RE_SCENARIO_PACK`, `RE_VIEWER_SMOKE_PORT`, …) and the
-  backup knobs (`RE_BACKUP_DIR`, `RE_SAVE_TRASH_DAYS`) were previously
-  discoverable only by reading the scripts. All are optional and all have
-  working defaults.
+  backup knobs (`RE_BACKUP_DIR`, `RE_BACKUP_KEEP`, `RE_BACKUP_EXTRA_PATHS`,
+  `RE_SAVE_TRASH_DAYS`) were previously discoverable only by reading the
+  scripts. All are optional and all have working defaults.
 
 ### Changed
 
@@ -51,7 +68,31 @@ and the release gate requires both to match the tag (`v<version>`) and a dated
   `config: no realearth.json at <path>` (and names a failed write) so a
   server whose Config directory was not installed is not mistaken for a
   configured one running the full-planet defaults.
-
+- **`DebugMapRevealRadiusChunks` is clamped to `[0, 64]` on load.** Before
+  this, the debug FOW radius (the knob that wins over
+  `MapExploreRevealRadiusChunks`) was unbounded, and `MapReveal` allocates a
+  fresh map-sized buffer plus a reflective call per chunk on the player tick,
+  so the cost scaled as the square of the value. A config that set `128` (the
+  value the shipped dev template and `docs/MODLET.md` used) loaded unclamped
+  before and now loads as `64` with a warning in the log. The dev template
+  (`Config/realearth.advanced_height.json`) and the `docs/MODLET.md` row now
+  say `64`; raise the bound in `RealEarthConfig.Validate` if you need more.
+- **A pack that declares a non-1:1 `meters_per_block` warns at load.** The
+  runtime maps 1 m to 1 block on every product path, so a coarser pack is
+  vertically exaggerated by that factor. The field was read and ignored; the
+  mod now names the factor in a warning instead of dropping it silently.
+- **The height inject path no longer pays reflection per voxel.** The apply
+  loop writes every cell of every column, and each write went through
+  `MethodInfo.Invoke` with a fresh argument array. The setter is now bound
+  once per chunk type with `CreateDelegate`, with the value boxed once at
+  resolve time, and a signature that does not bind falls back to `Invoke`, so
+  an unexpected game build still injects. On the build side, `build-region`
+  hashes a source DEM in 1 MiB blocks instead of reading a multi-gigabyte
+  GeoTIFF whole, which had doubled peak RSS mid-run.
+- **The viewer fetches less per pack.** The raw 16-bit elevation PNG (megabytes
+  of transfer plus a main-thread decode) is now loaded on the first cursor
+  probe instead of during pack load, and `viewer_server` answers HTTP/1.1 so a
+  page load pays one handshake instead of one per asset.
 - **CI runs the whole Python suite, not a hand-picked subset.** The `tools`
   job ran 13 of the 49 test files, so a test file no job invoked could sit
   unmaintained: the UTF-8 pack-read assertion still pointed at `ModApi.cs`
