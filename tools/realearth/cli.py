@@ -13,7 +13,7 @@ from realearth import DEFAULT_SEA_LEVEL_GAME_Y, JsonDict, __version__
 from realearth.coords import EarthGrid, block_to_lonlat, lonlat_to_block
 from realearth.density import PREFAB_SEED
 from realearth.elevation import SYNTHETIC_SEED
-from realearth.region import build_region, world_tile_indices_for_bbox
+from realearth.region import build_region, sha256_file, world_tile_indices_for_bbox
 from realearth.settlements import (
     SEED_SETTLEMENTS,
     decode_poi_blob,
@@ -109,8 +109,6 @@ def info_cmd() -> None:
 )
 def verify_build_cmd(pack: str) -> None:
     """Verify a pack's build.json: schema, and input hashes vs on-disk files."""
-    import hashlib
-
     root = Path(pack)
     bpath = root / "build.json"
     if not bpath.is_file():
@@ -133,7 +131,7 @@ def verify_build_cmd(pack: str) -> None:
             click.echo(f"MISSING input {key}: {rel} (expected at {src})")
             ok = False
             continue
-        actual = hashlib.sha256(src.read_bytes()).hexdigest()
+        actual = sha256_file(src)
         match = actual == meta.get("sha256")
         click.echo(f"{'OK ' if match else 'MISMATCH'} {key}: {rel} ({actual[:12]})")
         ok = ok and match

@@ -57,6 +57,24 @@ def _place_name_key(name: str) -> str:
     return normalize_place_name(name).casefold()
 
 
+_HASH_BLOCK_BYTES = 1 << 20
+
+
+def sha256_file(path: Path) -> str:
+    """SHA-256 of a file, read in blocks.
+
+    Source DEMs are Copernicus/GEBCO GeoTIFFs of hundreds of MB to several GB,
+    and build_region calls this while the run still holds every float64 grid of
+    the region; read_bytes would double peak RSS for a value that is only ever
+    streamed into the hash.
+    """
+    digest = hashlib.sha256()
+    with path.open("rb") as fh:
+        for block in iter(lambda: fh.read(_HASH_BLOCK_BYTES), b""):
+            digest.update(block)
+    return digest.hexdigest()
+
+
 def build_region(
     west: float,
     south: float,
@@ -320,7 +338,7 @@ def build_region(
             source_file = Path(input_path)
             build["inputs"][input_key] = {
                 "file": source_file.name,
-                "sha256": hashlib.sha256(source_file.read_bytes()).hexdigest(),
+                "sha256": sha256_file(source_file),
             }
     (out_dir / "build.json").write_text(
         json.dumps(build, indent=2, ensure_ascii=False) + "\n", encoding="utf-8"

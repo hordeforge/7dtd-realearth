@@ -16,6 +16,109 @@ namespace RealEarth
     /// </summary>
     public static class ChunkTerrainInject
     {
+        /// <summary>
+        /// Reflection dispatch for one engine chunk setter, bound once per chunk type.
+        ///
+        /// The apply loop writes every cell of every column: a 16x16 chunk under the
+        /// default dual-fill ceiling is a few hundred thousand setter calls, and
+        /// MethodInfo.Invoke costs an order of magnitude more than a direct call
+        /// (per-argument type check plus a target/args walk) on top of the boxing its
+        /// argument array already forces. CreateDelegate on an open-instance
+        /// Action&lt;object,...&gt; binds the same MethodInfo once and then dispatches
+        /// directly. Binding is signature-driven and every mismatch falls through to
+        /// the original Invoke path, so an unexpected game build keeps working.
+        /// </summary>
+        sealed class Setter4
+        {
+            public readonly MethodInfo Method;
+            readonly Action<object, int, int, int, sbyte>? _signed;
+            readonly Action<object, int, int, int, byte>? _unsigned;
+            readonly Action<object, int, int, int, object>? _reference;
+            readonly object[] _args;
+
+            public Setter4(MethodInfo method)
+            {
+                Method = method;
+                _args = new object[4];
+                Type tail = method.GetParameters()[3].ParameterType;
+                try
+                {
+                    if (tail == typeof(sbyte))
+                        _signed = (Action<object, int, int, int, sbyte>)method.CreateDelegate(
+                            typeof(Action<object, int, int, int, sbyte>));
+                    else if (tail == typeof(byte))
+                        _unsigned = (Action<object, int, int, int, byte>)method.CreateDelegate(
+                            typeof(Action<object, int, int, int, byte>));
+                    else if (tail.IsClass || tail.IsInterface)
+                        _reference = (Action<object, int, int, int, object>)method.CreateDelegate(
+                            typeof(Action<object, int, int, int, object>));
+                }
+                catch
+                {
+                    // Signature does not bind: Call keeps using Invoke.
+                }
+            }
+
+            /// <summary>
+            /// <paramref name="value"/> is boxed once at resolve time, so the typed
+            /// paths only unbox it here; nothing is allocated per cell.
+            /// </summary>
+            public void Call(object target, int a, int b, int c, object value)
+            {
+                if (_signed != null && value is sbyte sv) { _signed(target, a, b, c, sv); return; }
+                if (_unsigned != null && value is byte bv) { _unsigned(target, a, b, c, bv); return; }
+                if (_reference != null) { _reference(target, a, b, c, value); return; }
+                _args[0] = a;
+                _args[1] = b;
+                _args[2] = c;
+                _args[3] = value;
+                Method.Invoke(target, _args);
+            }
+        }
+
+        /// <summary>Same binding for the (x, z, value) setters: SetHeight, SetBiomeId.</summary>
+        sealed class Setter3
+        {
+            public readonly MethodInfo Method;
+            /// <summary>True when the value parameter is a byte (byte-scaled SetHeight).</summary>
+            public readonly bool ValueIsByte;
+            readonly Action<object, int, int, int>? _int;
+            readonly Action<object, int, int, byte>? _byte;
+            readonly object[] _args;
+
+            public Setter3(MethodInfo method)
+            {
+                Method = method;
+                var ps = method.GetParameters();
+                Type tail = ps[ps.Length - 1].ParameterType;
+                ValueIsByte = tail == typeof(byte);
+                _args = new object[3];
+                try
+                {
+                    if (ValueIsByte)
+                        _byte = (Action<object, int, int, byte>)method.CreateDelegate(
+                            typeof(Action<object, int, int, byte>));
+                    else if (tail == typeof(int))
+                        _int = (Action<object, int, int, int>)method.CreateDelegate(
+                            typeof(Action<object, int, int, int>));
+                }
+                catch
+                {
+                    // Signature does not bind: Call keeps using Invoke.
+                }
+            }
+
+            public void Call(object target, int a, int b, object value)
+            {
+                if (_byte != null && value is byte bv) { _byte(target, a, b, bv); return; }
+                if (_int != null && value is int iv) { _int(target, a, b, iv); return; }
+                _args[0] = a;
+                _args[1] = b;
+                _args[2] = value;
+                Method.Invoke(target, _args);
+            }
+        }
+
         static int _injectLogBudget = 24;
         static object? _airBlock;
         static object? _solidBlock;
@@ -344,16 +447,17 @@ namespace RealEarth
                 airDens = Convert.ChangeType((sbyte)127, densType);
             }
 
-            object[]? heightArgs = setHeight != null ? new object[3] : null;
-            bool heightIsByte = false;
-            if (setHeight != null)
-            {
-                var hps = setHeight.GetParameters();
-                heightIsByte = hps.Length >= 3 && hps[2].ParameterType == typeof(byte);
-            }
-            object[]? blockArgs = setBlock != null ? new object[4] : null;
-            object[]? densArgs = setDensity != null ? new object[4] : null;
-            object[]? biomeArgs = setBiomeId != null ? new object[3] : null;
+            // Bound once per apply, then the cell loop below dispatches straight
+            // through them instead of re-entering MethodInfo.Invoke per voxel.
+            var heightSetter = setHeight != null ? new Setter3(setHeight) : null;
+            var blockSetter = setBlock != null ? new Setter4(setBlock) : null;
+            var densSetter = setDensity != null ? new Setter4(setDensity) : null;
+            var biomeSetter = setBiomeId != null ? new Setter3(setBiomeId) : null;
+            bool heightIsByte = heightSetter != null && heightSetter.ValueIsByte;
+            bool haveHeight = heightSetter != null;
+            bool haveBlock = blockSetter != null;
+            bool haveDens = densSetter != null;
+            bool haveBiome = biomeSetter != null;
 
             bool any = false;
             int columns = 0;
@@ -373,16 +477,13 @@ namespace RealEarth
                     object? solid = PickSolidBlock(lc, dirtBlock, snowBlock, sandBlock, solidBlock)
                         ?? solidBlock;
 
-                    if (setHeight != null && heightArgs != null)
+                    if (haveHeight)
                     {
                         try
                         {
-                            heightArgs[0] = x;
-                            heightArgs[1] = z;
-                            heightArgs[2] = heightIsByte
+                            heightSetter!.Call(chunk, x, z, heightIsByte
                                 ? (object)(byte)Math.Min(255, surface)
-                                : surface;
-                            setHeight.Invoke(chunk, heightArgs);
+                                : surface);
                         }
                         catch { /* optional */ }
                     }
@@ -392,14 +493,11 @@ namespace RealEarth
                     // Stock ids (biomes.xml): snow=1, pine_forest=3, desert=5, water=6,
                     // radiated=7, wasteland=8, burnt_forest=9. Missing/bare columns
                     // default to pine_forest (green), never water-on-land.
-                    if (setBiomeId != null && biomeArgs != null)
+                    if (haveBiome)
                     {
                         try
                         {
-                            biomeArgs[0] = x;
-                            biomeArgs[1] = z;
-                            biomeArgs[2] = ChunkTerrainSampler.LandcoverToBiomeId(lc);
-                            setBiomeId.Invoke(chunk, biomeArgs);
+                            biomeSetter!.Call(chunk, x, z, ChunkTerrainSampler.LandcoverToBiomeId(lc));
                         }
                         catch { /* optional */ }
                     }
@@ -413,15 +511,11 @@ namespace RealEarth
 
                     void WriteColumnCell(int y, bool solidCell)
                     {
-                        if (setDensity != null && densArgs != null && solidDens != null && airDens != null)
+                        if (haveDens && solidDens != null && airDens != null)
                         {
                             try
                             {
-                                densArgs[0] = x;
-                                densArgs[1] = y;
-                                densArgs[2] = z;
-                                densArgs[3] = solidCell ? solidDens : airDens;
-                                setDensity.Invoke(chunk, densArgs);
+                                densSetter!.Call(chunk, x, y, z, solidCell ? solidDens : airDens);
                                 any = true;
                                 colAny = true;
                             }
@@ -430,15 +524,11 @@ namespace RealEarth
                                 failures++;
                             }
                         }
-                        if (blockArgs != null && solid != null && airBlock != null)
+                        if (haveBlock && solid != null && airBlock != null)
                         {
                             try
                             {
-                                blockArgs[0] = x;
-                                blockArgs[1] = y;
-                                blockArgs[2] = z;
-                                blockArgs[3] = solidCell ? solid : airBlock;
-                                setBlock!.Invoke(chunk, blockArgs);
+                                blockSetter!.Call(chunk, x, y, z, solidCell ? solid : airBlock);
                                 any = true;
                                 colAny = true;
                             }

@@ -94,7 +94,15 @@ def write_dtm_raw(path: Path, elev_u16: np.ndarray) -> None:
 
 
 def crc32_file(path: Path) -> int:
-    return zlib.crc32(path.read_bytes()) & 0xFFFFFFFF
+    # Streamed: dtm.raw is size * size * 2 bytes (134 MB at 8192), and the bake
+    # already holds several float64 grids, so reading the file whole is the run
+    # that tips peak RSS into swap. zlib.crc32 takes the running value, so the
+    # digest is identical.
+    crc = 0
+    with path.open("rb") as fh:
+        for block in iter(lambda: fh.read(_HASH_BLOCK_BYTES), b""):
+            crc = zlib.crc32(block, crc)
+    return crc & 0xFFFFFFFF
 
 
 def write_checksums(world_dir: Path, names: list[str]) -> None:
@@ -109,6 +117,7 @@ def write_checksums(world_dir: Path, names: list[str]) -> None:
 
 # Fallback when client logs are missing (must match installed Steam major).
 _DEFAULT_MAP_INFO_VERSION = "V.3.0.1"
+_HASH_BLOCK_BYTES = 1 << 20
 _DEFAULT_TTW_VERSION = "V 3.0.1 (b4)"
 
 _CLIENT_VERSION_RE = re.compile(
