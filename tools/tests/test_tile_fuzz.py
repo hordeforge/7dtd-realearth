@@ -19,7 +19,7 @@ import zlib
 
 import numpy as np
 
-from realearth.settlements import encode_poi_blob
+from realearth.settlements import decode_poi_blob, encode_poi_blob
 from realearth.tile_format import (
     FLAG_HAS_LANDCOVER,
     FLAG_HAS_POPULATION,
@@ -191,3 +191,45 @@ def test_fuzz_poi_flags_without_sections_stay_bounded():
             raw += body
         outcome = _decode_mutant(raw)
         assert outcome in ("ok", "rejected")
+
+
+def test_fuzz_poi_section_carries_only_decodable_blobs():
+    # The POI section is a raw blob inside the tile, so a hostile pack controls
+    # the JSON it holds. The tile decoder must still land on invariants, and the
+    # blob must either decode to dicts or raise ValueError: nothing deeper.
+    rng = random.Random(_SEED + 2)
+    seed_blobs = [
+        encode_poi_blob([{"name": "Testville", "band": "town", "local_x": 0, "local_z": 0}]),
+        b"",
+        b"{}",
+        b'{"pois":[]}',
+        b'{"pois":null}',
+        b"null",
+        b"\xff\xfe",
+        b"[" * 64 + b"]" * 64,
+    ]
+    for i in range(200):
+        blob = bytearray(rng.choice(seed_blobs))
+        mode = i % 3
+        if mode == 0:
+            del blob[rng.randrange(len(blob) + 1) :]
+        elif mode == 1:
+            for _ in range(rng.randint(1, 6)):
+                if not blob:
+                    break
+                blob[rng.randrange(len(blob))] ^= 1 << rng.randrange(8)
+        else:
+            blob = bytearray(rng.randbytes(rng.randrange(0, 48)))
+        tile = _random_tile(rng)
+        tile.poi_blob = bytes(blob)
+        packed = encode_tile(tile)
+        try:
+            back = decode_tile(packed)
+        except ValueError:
+            continue
+        _assert_decoded_invariants(back)
+        try:
+            pois = decode_poi_blob(back.poi_blob)
+        except ValueError:
+            continue
+        assert all(isinstance(p, dict) for p in pois)

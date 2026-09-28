@@ -18,6 +18,16 @@ from realearth import JsonDict
 # so a hostile pack cannot carry CR/LF into the runtime's server-log output.
 _CONTROL_CHARS_RE = re.compile(r"[\x00-\x1f\x7f-\x9f]")
 
+# GeoJSON rings nest one level per polygon part; a real export never goes past a
+# handful. Beyond this the nesting is malformed, and walking it further only
+# costs memory.
+MAX_COORD_NESTING = 64
+LON_LIMIT = 180.0
+LAT_LIMIT = 90.0
+# A tile's POI blob holds a handful of settlements; 1 MiB is orders of magnitude
+# above any real tile and keeps a hostile pack from turning decode into work.
+MAX_POI_BLOB_BYTES = 1 << 20
+
 
 def normalize_place_name(name: str) -> str:
     """Canonical form for place-name identity: NFC so NFD input (macOS filenames,
@@ -115,9 +125,12 @@ def _prop_float(props: JsonDict, *keys: str) -> float | None:
     for k in keys:
         if k in props and props[k] is not None and props[k] != "":
             try:
-                return float(props[k])
+                v = float(props[k])
             except (TypeError, ValueError):
                 continue
+            # NaN/Inf in a size field poisons every downstream radius; drop it.
+            if math.isfinite(v):
+                return v
     return None
 
 
@@ -138,11 +151,17 @@ def edge_radius_m_from_properties(props: JsonDict, lon: float, lat: float) -> fl
     # bbox as [west, south, east, north] or separate keys
     bbox = props.get("bbox") or props.get("extent")
     if isinstance(bbox, (list, tuple)) and len(bbox) >= 4:
+        try:
+            west, south, east, north = (float(v) for v in bbox[:4])
+        except (TypeError, ValueError):
+            return None
+        if not all(math.isfinite(v) for v in (west, south, east, north)):
+            return None
         return edge_radius_m_from_bbox(
-            float(bbox[0]),
-            float(bbox[1]),
-            float(bbox[2]),
-            float(bbox[3]),
+            west,
+            south,
+            east,
+            north,
             center_lon=lon,
             center_lat=lat,
         )
@@ -187,15 +206,50 @@ SEED_SETTLEMENTS: list[Settlement] = [
 
 
 def _collect_ring_coords(c: Any, lons: list[float], lats: list[float]) -> None:
-    """Flatten nested GeoJSON coordinate arrays into lon/lat lists."""
-    if not c:
-        return
-    if isinstance(c[0], (int, float)):
-        lons.append(float(c[0]))
-        lats.append(float(c[1]))
-    else:
-        for part in c:
-            _collect_ring_coords(part, lons, lats)
+    """Flatten nested GeoJSON coordinate arrays into lon/lat lists.
+
+    Iterative with an explicit nesting limit: a hostile or broken export can
+    nest rings arbitrarily deep, and a recursive walk turns that into a
+    RecursionError that takes the whole build down.
+    """
+    stack: list[tuple[Any, int]] = [(c, 0)]
+    while stack:
+        node, depth = stack.pop()
+        if not node or depth > MAX_COORD_NESTING:
+            continue
+        head = node[0]
+        if isinstance(head, (int, float)) and not isinstance(head, bool):
+            if len(node) >= 2:
+                lon, lat = float(node[0]), float(node[1])
+                if math.isfinite(lon) and math.isfinite(lat):
+                    lons.append(lon)
+                    lats.append(lat)
+            continue
+        if isinstance(node, (list, tuple)):
+            stack.extend((part, depth + 1) for part in node)
+
+
+def _lon_lat(value: float) -> bool:
+    """True when a coordinate is a real position on the globe."""
+    return (
+        math.isfinite(value)
+        and LON_LIMIT >= value >= -LON_LIMIT
+        and LAT_LIMIT >= value >= -LAT_LIMIT
+    )
+
+
+def _prop_int(props: JsonDict, *keys: str) -> int:
+    for k in keys:
+        raw = props.get(k)
+        if raw is None or raw == "":
+            continue
+        try:
+            pop = int(raw)
+        except (TypeError, ValueError):
+            continue
+        if pop > 0:
+            return pop
+    return 0
 
 
 def load_settlements_geojson(path: Path) -> list[Settlement]:
@@ -204,26 +258,45 @@ def load_settlements_geojson(path: Path) -> list[Settlement]:
     Expected properties: name, population (optional), kind (optional).
     Geometry: Point [lon, lat], or Polygon/MultiPolygon (centroid + edge from bbox).
     Map extent: edge_radius_m / radius_km / bbox / west|south|east|north.
+
+    The file is external input (downloaded map data, a pack from a mirror), so
+    every field is type-checked: a feature that is not a well-formed Point or
+    Polygon with finite in-range coordinates is skipped rather than raising
+    deep inside the parse. Only unparsable JSON raises (ValueError).
     """
     data = json.loads(path.read_text(encoding="utf-8"))
+    if not isinstance(data, dict):
+        raise ValueError(f"{path}: not a GeoJSON object")
+    features = data.get("features")
+    if features is None:
+        return []
+    if not isinstance(features, list):
+        raise ValueError(f"{path}: 'features' is not a list")
     out: list[Settlement] = []
-    for feat in data.get("features", []):
-        geom = feat.get("geometry") or {}
+    for feat in features:
+        if not isinstance(feat, dict):
+            continue
+        geom = feat.get("geometry")
+        props = feat.get("properties")
+        geom = geom if isinstance(geom, dict) else {}
+        props = props if isinstance(props, dict) else {}
         gtype = geom.get("type")
-        props = feat.get("properties") or {}
         lon = lat = None
         edge_from_poly: float | None = None
 
         if gtype == "Point":
-            coords = geom.get("coordinates") or []
-            if len(coords) < 2:
+            coords = geom.get("coordinates")
+            if not isinstance(coords, (list, tuple)) or len(coords) < 2:
                 continue
-            lon, lat = float(coords[0]), float(coords[1])
+            try:
+                lon, lat = float(coords[0]), float(coords[1])
+            except (TypeError, ValueError):
+                continue
         elif gtype in ("Polygon", "MultiPolygon"):
             # Centroid + edge from polygon envelope (real urban area polygons).
             lons: list[float] = []
             lats: list[float] = []
-            _collect_ring_coords(geom.get("coordinates") or [], lons, lats)
+            _collect_ring_coords(geom.get("coordinates"), lons, lats)
             if not lons:
                 continue
             lon = sum(lons) / len(lons)
@@ -239,8 +312,11 @@ def load_settlements_geojson(path: Path) -> list[Settlement]:
         else:
             continue
 
+        if lon is None or lat is None or not (_lon_lat(lon) and _lon_lat(lat)):
+            continue
+
         name = str(props.get("name") or props.get("NAME") or "unknown")
-        pop = int(props.get("population") or props.get("POP_MAX") or 0)
+        pop = _prop_int(props, "population", "POP_MAX")
         kind = str(props.get("kind") or props.get("featurecla") or "city")
         edge = edge_radius_m_from_properties(props, lon, lat)
         if edge is None:
@@ -351,6 +427,21 @@ def encode_poi_blob(plan: list[JsonDict]) -> bytes:
 
 
 def decode_poi_blob(blob: bytes) -> list[JsonDict]:
+    """Decode a tile's POI blob. Only ValueError escapes a malformed blob.
+
+    The blob travels inside a .rte tile, so a pack from a mirror or a share
+    controls it: oversized, non-UTF-8, non-object and non-list payloads are all
+    rejected here rather than surfacing as AttributeError/TypeError deeper in
+    the pipeline.
+    """
     if not blob:
         return []
-    return list(json.loads(blob.decode("utf-8")).get("pois", []))
+    if len(blob) > MAX_POI_BLOB_BYTES:
+        raise ValueError(f"poi blob too large: {len(blob)} > {MAX_POI_BLOB_BYTES} bytes")
+    doc = json.loads(blob.decode("utf-8"))
+    if not isinstance(doc, dict):
+        raise ValueError("poi blob is not a JSON object")
+    pois = doc.get("pois", [])
+    if not isinstance(pois, list):
+        raise ValueError("poi blob 'pois' is not a list")
+    return [p for p in pois if isinstance(p, dict)]

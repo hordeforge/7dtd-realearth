@@ -15,6 +15,10 @@ and the release gate requires both to match the tag (`v<version>`) and a dated
 
 ### Added
 
+- **Fuzz harnesses for the settlement parsers.** Seeded mutation targets cover
+  `load_settlements_geojson` and the tile POI blob, asserting that malformed
+  input is rejected with `ValueError` or yields only real coordinates, and that
+  `decode_poi_blob(encode_poi_blob(plan))` round-trips.
 - **Viewer opacity readout.** The Opacity slider now shows its value as a
   percentage next to the control; previously the handle position was the only
   feedback.
@@ -84,6 +88,13 @@ and the release gate requires both to match the tag (`v<version>`) and a dated
   stage with the re-lock note instead of installing a different artifact, so
   `TSC_VERSION=... bash scripts/lint-viewer.sh` only works for a version the
   lock already contains.
+- **Settlement parsers reject malformed map data instead of crashing.**
+  `load_settlements_geojson` now skips features whose geometry or properties
+  are not well formed (deeply nested rings, non-numeric population, non-finite
+  or out-of-range coordinates) rather than raising `RecursionError`,
+  `AttributeError`, or `ValueError` from inside the parse; only unparsable JSON
+  raises. `decode_poi_blob` follows the same contract as `decode_tile`:
+  oversized, non-UTF-8, or structurally wrong POI blobs raise `ValueError`.
 - **`reinject` now reports tile-load latency and log suppression.** Tile
   load counters carry avg / last / max milliseconds per source (disk, CDN),
   and a new `suppressedLogLines(...)` line shows how many failure lines the
