@@ -40,6 +40,7 @@ from realearth.settlements import (
     SEED_SETTLEMENTS,
     Settlement,
     edge_radius_m_from_properties,
+    normalize_place_name,
 )
 from realearth.viewer_export import mosaic_pack
 
@@ -408,7 +409,11 @@ def _bake_generated(
             edge = edge_radius_m_from_properties(s, lon, lat)
             settles.append(
                 Settlement(
-                    name=s["name"],
+                    # A pack can be written on macOS (NFD) or hand-edited; the
+                    # name is identity text (cities.json, core-name snapping),
+                    # so apply the same NFC canonical form every other ingestion
+                    # point does.
+                    name=normalize_place_name(str(s["name"])),
                     lon=lon,
                     lat=lat,
                     population=int(s.get("population") or 0),

@@ -340,9 +340,13 @@ def build_region(
             if measured > 0:
                 edge = measured
                 src = "density"
-        # Match named core if closer measurement available
+        # Match named core if closer measurement available. Key comparison
+        # (NFC + casefold), same identity rule the POI plan and the duplicate
+        # row check below use: a raw == misses the match for an NFD or
+        # differently-cased spelling of the same place.
+        s_key = _place_name_key(s.name)
         for c in cores:
-            if c.name == s.name and c.edge_radius_m > 0:
+            if _place_name_key(c.name) == s_key and c.edge_radius_m > 0:
                 edge = c.edge_radius_m
                 src = c.edge_source
                 break
