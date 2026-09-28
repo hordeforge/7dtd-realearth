@@ -8,6 +8,7 @@ from __future__ import annotations
 import json
 import struct
 import zlib
+from collections.abc import Iterable
 from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any
@@ -236,6 +237,56 @@ def u16_to_elevation_m(u: np.ndarray) -> np.ndarray:
     return u.astype(np.float32) - ELEV_OFFSET_M
 
 
+def _manifest_int(d: dict[str, Any], key: str, default: int) -> int:
+    """Read an integer manifest member; ValueError on anything else.
+
+    The manifest ships inside a pack that can come from a shared pack or a CDN
+    mirror, so a member is untrusted. `1e999` parses as inf and `int(inf)`
+    raises OverflowError, which no caller catches, and `null` raises TypeError:
+    both would abort a pipeline run with a traceback instead of a clean error.
+    """
+    raw = d.get(key, default)
+    try:
+        return int(raw)
+    except (TypeError, ValueError, OverflowError) as exc:
+        # OverflowError is the `1e999` path: json parses it to inf, int(inf) raises.
+        raise ValueError(f"manifest {key} must be a finite integer, got {raw!r}") from exc
+
+
+def _manifest_float(d: dict[str, Any], key: str, default: float) -> float:
+    """Read a float manifest member; ValueError on non-numeric or non-finite."""
+    raw = d.get(key, default)
+    try:
+        value = float(raw)
+    except (TypeError, ValueError, OverflowError) as exc:
+        raise ValueError(f"manifest {key} must be a number, got {raw!r}") from exc
+    if value != value or value in (float("inf"), float("-inf")):
+        raise ValueError(f"manifest {key} must be finite, got {raw!r}")
+    return value
+
+
+def _manifest_list(d: dict[str, Any], key: str) -> list[Any]:
+    """Read a list manifest member; ValueError when it is not iterable."""
+    raw = d.get(key, [])
+    if isinstance(raw, (str, bytes)) or not isinstance(raw, Iterable):
+        raise ValueError(f"manifest {key} must be a list, got {raw!r}")
+    return list(raw)
+
+
+def _manifest_bbox(d: dict[str, Any]) -> dict[str, Any] | None:
+    """Read the optional bbox object; ValueError when it is not an object.
+
+    Consumers index the four members directly (lonlat_to_pack_block), so a
+    string or list bbox has to be refused here rather than at the call site.
+    """
+    raw = d.get("bbox")
+    if raw is None:
+        return None
+    if not isinstance(raw, dict):
+        raise ValueError(f"manifest bbox must be an object, got {raw!r}")
+    return raw
+
+
 @dataclass
 class Manifest:
     name: str = "RealEarth"
@@ -269,18 +320,22 @@ class Manifest:
 
     @classmethod
     def from_dict(cls, d: dict[str, Any]) -> Manifest:
+        # json.loads returns whatever the file held: null, a list or a bare
+        # string decode fine and would raise AttributeError on the first get.
+        if not isinstance(d, dict):
+            raise ValueError(f"manifest must be a JSON object, got {type(d).__name__}")
         return cls(
             name=d.get("name", "RealEarth"),
-            version=int(d.get("version", 1)),
-            tile_size=int(d.get("tile_size", 512)),
-            world_width=int(d.get("world_width", 40_075_017)),
-            world_height=int(d.get("world_height", 20_003_931)),
+            version=_manifest_int(d, "version", 1),
+            tile_size=_manifest_int(d, "tile_size", 512),
+            world_width=_manifest_int(d, "world_width", 40_075_017),
+            world_height=_manifest_int(d, "world_height", 20_003_931),
             crs=d.get("crs", "EPSG:4326"),
-            sea_level_game_y=int(d.get("sea_level_game_y", DEFAULT_SEA_LEVEL_GAME_Y)),
-            meters_per_block=float(d.get("meters_per_block", 1.0)),
-            bbox=d.get("bbox"),
-            tiles=list(d.get("tiles", [])),
-            sources=list(d.get("sources", [])),
+            sea_level_game_y=_manifest_int(d, "sea_level_game_y", DEFAULT_SEA_LEVEL_GAME_Y),
+            meters_per_block=_manifest_float(d, "meters_per_block", 1.0),
+            bbox=_manifest_bbox(d),
+            tiles=_manifest_list(d, "tiles"),
+            sources=_manifest_list(d, "sources"),
             notes=d.get("notes", ""),
         )
 

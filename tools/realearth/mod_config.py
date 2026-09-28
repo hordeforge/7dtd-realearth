@@ -104,6 +104,22 @@ def reject_unknown_keys(cfg: JsonDict, known: frozenset[str] | None) -> None:
         )
 
 
+def _as_finite_float(raw: object, key: str) -> float:
+    """Coerce a manifest number; ValueError on non-numeric or non-finite.
+
+    The manifest arrives with a pack, so its members are untrusted. `1e999`
+    parses to inf and `null` in a bbox raises TypeError on float(); both abort
+    an install run with a traceback instead of naming the bad member.
+    """
+    try:
+        value = float(raw)  # type: ignore[arg-type]
+    except (TypeError, ValueError, OverflowError) as exc:
+        raise ValueError(f"manifest {key} must be a number, got {raw!r}") from exc
+    if value != value or value in (float("inf"), float("-inf")):
+        raise ValueError(f"manifest {key} must be finite, got {raw!r}")
+    return value
+
+
 def sync_manifest_dimensions(
     dest: Path,
     cfg: JsonDict,
@@ -116,9 +132,11 @@ def sync_manifest_dimensions(
     if not manifest_path.is_file():
         return False
     manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
-    cfg["WorldWidth"] = int(manifest.get("world_width") or 512)
-    cfg["WorldHeight"] = int(manifest.get("world_height") or 512)
-    cfg["TileSize"] = int(manifest.get("tile_size") or 512)
+    if not isinstance(manifest, dict):
+        raise ValueError(f"manifest must be a JSON object, got {type(manifest).__name__}")
+    cfg["WorldWidth"] = int(_as_finite_float(manifest.get("world_width") or 512, "world_width"))
+    cfg["WorldHeight"] = int(_as_finite_float(manifest.get("world_height") or 512, "world_height"))
+    cfg["TileSize"] = int(_as_finite_float(manifest.get("tile_size") or 512, "tile_size"))
     window = min(cfg["WorldWidth"], cfg["WorldHeight"])
     cfg["LocalWindowSize"] = min(window, max_window) if max_window else window
     # Wrap follows the synced canvas, matching PackManifest.TryApplyPackManifest: a
@@ -128,8 +146,10 @@ def sync_manifest_dimensions(
         bbox = manifest.get("bbox") or {}
         for key in ("west", "south", "east", "north"):
             if key in bbox:
-                cfg[f"Bbox{key.capitalize()}"] = float(bbox[key])
-        if spawn_from_bbox and len(bbox) == 4:
+                cfg[f"Bbox{key.capitalize()}"] = _as_finite_float(bbox[key], f"bbox.{key}")
+        # Every member must be present: a bbox of four unrelated keys would
+        # otherwise key the centre on a Bbox* member that was never written.
+        if spawn_from_bbox and all(k in bbox for k in ("west", "south", "east", "north")):
             cfg["DefaultSpawnLon"] = (cfg["BboxWest"] + cfg["BboxEast"]) * 0.5
             cfg["DefaultSpawnLat"] = (cfg["BboxSouth"] + cfg["BboxNorth"]) * 0.5
     return True
