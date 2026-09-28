@@ -5,7 +5,7 @@
 
 import { asRecord, asString, errorMessage } from "./coerce.js";
 import { DEFAULT_ELEV_SCALE_M, isSafePackPath, loadPack, packMetaFrom } from "./pack.js";
-import type { ElevRawCanvas, LoadedPack } from "./pack.js";
+import type { ElevRawCanvas, ElevRawLoader, LoadedPack } from "./pack.js";
 import type {
   CatalogEntry,
   ElevRawMeta,
@@ -130,6 +130,12 @@ type ViewerState = {
   images: Record<string, HTMLImageElement>;
   elevRaw: ElevRawCanvas | null;
   elevMeta: ElevRawMeta | null;
+  // Lazy raw-elevation source of the adopted pack, and whether its fetch and
+  // canvas decode is still in flight.
+  elevRawLoader: ElevRawLoader | null;
+  elevRawPending: boolean;
+  // last probe fix, so a late raw-elevation load can repaint the readout
+  probePoint: ProbePoint | null;
   map2d: Map2D | null;
   // live instance once the dynamic globe import resolved; null otherwise
   globeInstance: GlobeView | null;
@@ -150,6 +156,9 @@ const state: ViewerState = {
   images: {},
   elevRaw: null,
   elevMeta: null,
+  elevRawLoader: null,
+  elevRawPending: false,
+  probePoint: null,
   map2d: null,
   globeInstance: null,
   globeReady: null,
@@ -257,7 +266,9 @@ function elevationAt(u: number, v: number): string {
   const elevRaw = state.elevRaw;
   const elevMeta = state.elevMeta;
   if (elevRaw === null || elevMeta === null) {
-    return "—";
+    // The raw elevation PNG is fetched on the first probe; until it lands the
+    // readout says so instead of showing a plain dash.
+    return state.elevRawPending ? "…" : "—";
   }
   const x = Math.min(elevRaw.width - 1, Math.max(0, Math.floor(u * elevRaw.width)));
   const y = Math.min(elevRaw.height - 1, Math.max(0, Math.floor(v * elevRaw.height)));
@@ -268,7 +279,28 @@ function elevationAt(u: number, v: number): string {
   return `${elev.toFixed(0)} m (approx)`;
 }
 
+// The raw elevation export is a full-resolution PNG plus a same-size canvas
+// decode, and only this probe reads it, so it is requested on the first
+// cursor move instead of during pack load. Re-entrant calls share the one
+// in-flight load; a failure leaves elevRaw null and the probe shows "—".
+function requestElevRaw(): void {
+  const loader = state.elevRawLoader;
+  if (loader === null || state.elevRaw !== null || state.elevRawPending) {
+    return;
+  }
+  state.elevRawPending = true;
+  void loader().then((elevRaw) => {
+    state.elevRaw = elevRaw;
+    state.elevRawPending = false;
+    const point = state.probePoint;
+    if (point !== null) {
+      els.pElev.textContent = elevationAt(point.u, point.v);
+    }
+  });
+}
+
 function updateProbe(point: ProbePoint | null): void {
+  state.probePoint = point;
   if (point === null) {
     els.pLon.textContent = "—";
     els.pLat.textContent = "—";
@@ -279,6 +311,9 @@ function updateProbe(point: ProbePoint | null): void {
   els.pLon.textContent = `${point.lon.toFixed(PROBE_LON_LAT_DECIMALS)}°`;
   els.pLat.textContent = `${point.lat.toFixed(PROBE_LON_LAT_DECIMALS)}°`;
   els.pUv.textContent = `${point.u.toFixed(PROBE_UV_DECIMALS)}, ${point.v.toFixed(PROBE_UV_DECIMALS)}`;
+  if (state.elevMeta !== null) {
+    requestElevRaw();
+  }
   els.pElev.textContent = elevationAt(point.u, point.v);
 }
 
@@ -710,7 +745,9 @@ function adoptPack(pack: LoadedPack): void {
   state.meta = pack.meta;
   state.images = pack.images;
   state.settlements = pack.settlements;
-  state.elevRaw = pack.elevRaw;
+  state.elevRaw = null;
+  state.elevRawLoader = pack.loadElevRaw;
+  state.elevRawPending = false;
   state.elevMeta = pack.meta.elev_raw;
   state.globeNeedsFrame = true;
   globeLayerNote = "";

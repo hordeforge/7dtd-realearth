@@ -39,6 +39,12 @@ export type ElevRawCanvas = {
   height: number;
 };
 
+// Fetch + decode of the raw elevation image, memoized per pack. The export is
+// a full-resolution 16-bit PNG that also becomes a same-size canvas, so it
+// costs megabytes of transfer and a main-thread decode that only the cursor
+// probe reads; callers invoke this on first probe, not during loadPack.
+export type ElevRawLoader = () => Promise<ElevRawCanvas | null>;
+
 export type LoadedLayer = {
   id: string;
   image: HTMLImageElement;
@@ -51,7 +57,8 @@ export type LoadedPack = {
   // Webmod: ordered layer list (find / first).
   layers: Array<LoadedLayer>;
   settlements: Array<Settlement>;
-  elevRaw: ElevRawCanvas | null;
+  // Lazy raw elevation: resolved by loadElevRaw() on first probe use.
+  loadElevRaw: ElevRawLoader;
   elevMeta: ElevRawMeta | null;
   warnings: Array<string>;
   path: string;
@@ -237,17 +244,10 @@ async function loadSettlements(url: string): Promise<Array<Settlement>> {
   return response.json().then(settlementListFrom).catch(() => []);
 }
 
-async function loadElevRaw(
-  base: string,
-  elevMeta: ElevRawMeta | null,
-  warnings: Array<string>
-): Promise<ElevRawCanvas | null> {
+async function decodeElevRaw(url: string, warnings: Array<string>): Promise<ElevRawCanvas | null> {
   // Missing or undecodable raw elevation degrades the cursor probe to
   // "no data"; it never fails the pack.
-  if (elevMeta === null) {
-    return null;
-  }
-  const image = await loadImage(`${base}/${elevMeta.file}`).catch((error: unknown) => {
+  const image = await loadImage(url).catch((error: unknown) => {
     warnings.push(errorMessage(error));
     return null;
   });
@@ -265,6 +265,21 @@ async function loadElevRaw(
   return { ctx, width: canvas.width, height: canvas.height };
 }
 
+function elevRawLoader(
+  base: string,
+  elevMeta: ElevRawMeta | null,
+  warnings: Array<string>
+): ElevRawLoader {
+  let pending: Promise<ElevRawCanvas | null> | null = null;
+  return () => {
+    if (elevMeta === null) {
+      return Promise.resolve(null);
+    }
+    pending ??= decodeElevRaw(`${base}/${elevMeta.file}`, warnings);
+    return pending;
+  };
+}
+
 // path is optional: the standalone viewer passes a full relative base like
 // "data/demo"; the webmod passes MOD_BASE_URL plus a pack path.
 export async function loadPack(baseUrl: string, path?: string): Promise<LoadedPack> {
@@ -277,17 +292,16 @@ export async function loadPack(baseUrl: string, path?: string): Promise<LoadedPa
   // sample dims and meters_per_block); a broken viewer.json throws here.
   const meta = packMetaFrom(await fetchJson(`${base}viewer.json`));
   const warnings: Array<string> = [];
-  const [settlements, { images, layers }, elevRaw] = await Promise.all([
+  const [settlements, { images, layers }] = await Promise.all([
     loadSettlements(`${base}settlements.json`),
     loadLayerImages(base, meta.layers),
-    loadElevRaw(base, meta.elev_raw, warnings),
   ]);
   return {
     meta,
     images,
     layers,
     settlements,
-    elevRaw,
+    loadElevRaw: elevRawLoader(base, meta.elev_raw, warnings),
     elevMeta: meta.elev_raw,
     warnings,
     path: safe,

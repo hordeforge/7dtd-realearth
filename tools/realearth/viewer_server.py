@@ -78,6 +78,15 @@ class ViewerHandler(http.server.SimpleHTTPRequestHandler):
     )
     _MIN_COMPRESS_BYTES = 1024
 
+    # HTTP/1.1 keeps the socket open between responses, so one page load pays
+    # one TCP handshake instead of one per asset. The stock HTTP/1.0 answer
+    # closes the connection after every file, and a viewer page pulls the HTML,
+    # the CSS, the module graph and a pack's images and JSON. Every response
+    # this handler writes ends in either a Content-Length (200 and HEAD) or no
+    # body at all (304), and the stock send_error answers carry
+    # `Connection: close`, so a persistent connection is always framed.
+    protocol_version = "HTTP/1.1"
+
     def log_message(self, format: str, *args: object) -> None:
         # skip boring 200s; sanitize control chars to block log injection via crafted paths
         if len(args) >= 2 and str(args[1]).startswith("2"):

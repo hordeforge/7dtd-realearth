@@ -10,7 +10,7 @@ import { legendFor } from "./legend";
 import { Map2D } from "./map2d";
 import type { MapFlags } from "./map2d";
 import { loadPack } from "./pack";
-import type { LoadedPack } from "./pack";
+import type { ElevRawCanvas, LoadedPack } from "./pack";
 import { getDefaultPackPath } from "./settings-store";
 import { packStore } from "./store";
 import type { ElementFactory, ProbePoint, ReactApi, Settlement, WebModComponentProps } from "./types";
@@ -26,6 +26,15 @@ const DASH = "-";
 const ZOOM_BUTTON_STEP = 1.25;
 const ZOOM_BUTTON_STEP_OUT = 1 / ZOOM_BUTTON_STEP;
 const OPACITY_PERCENT_SCALE = 100;
+// Last probe fix, so a late raw-elevation load can repaint the readout.
+let lastProbePoint: ProbePoint | null = null;
+// Raw elevation canvas, fetched on the first probe: the export is a
+// full-resolution PNG plus a same-size canvas decode that nothing else reads,
+// so it stays off the pack-load path. Module-level because the probe runs
+// outside the component render; a failed load leaves the canvas null and the
+// readout shows the dash.
+let elevRawCanvas: ElevRawCanvas | null = null;
+let elevRawPending = false;
 
 type MapPageRefs = {
   map: { current: Map2D | null };
@@ -90,16 +99,36 @@ function initialPackPath(): string {
 }
 
 function elevationText(pack: LoadedPack | null, point: ProbePoint): string {
-  if (pack === null || pack.elevRaw === null || pack.elevMeta === null) {
-    return DASH;
+  if (pack === null || elevRawCanvas === null || pack.elevMeta === null) {
+    return elevRawPending ? "..." : DASH;
   }
-  const elev = pack.elevRaw;
+  const elev = elevRawCanvas;
   const x = Math.min(elev.width - 1, Math.max(0, Math.trunc(point.u * elev.width)));
   const y = Math.min(elev.height - 1, Math.max(0, Math.trunc(point.v * elev.height)));
   const { data } = elev.ctx.getImageData(x, y, 1, 1);
   const t = (data[0] ?? 0) / BYTE_MAX;
   const meters = pack.elevMeta.offset_m + t * pack.elevMeta.scale_m;
   return `${meters.toFixed(0)} m (approx)`;
+}
+
+// The raw elevation export is a full-resolution PNG plus a same-size canvas
+// decode that only the cursor probe reads, so it is fetched on the first
+// probe instead of with the pack.
+function resetElevRaw(): void {
+  elevRawCanvas = null;
+  elevRawPending = false;
+}
+
+function ensureElevRaw(pack: LoadedPack | null, repaint: () => void): void {
+  if (pack === null || pack.elevMeta === null || elevRawCanvas !== null || elevRawPending) {
+    return;
+  }
+  elevRawPending = true;
+  void pack.loadElevRaw().then((elevRaw) => {
+    elevRawCanvas = elevRaw;
+    elevRawPending = false;
+    repaint();
+  });
 }
 
 function updateProbe(
@@ -115,15 +144,18 @@ function updateProbe(
   const elevEl = probeEl.querySelector<HTMLElement>(".re-probe-elev");
   const uvEl = probeEl.querySelector<HTMLElement>(".re-probe-uv");
   if (point === null) {
+    lastProbePoint = null;
     setText(lonEl, DASH);
     setText(latEl, DASH);
     setText(elevEl, DASH);
     setText(uvEl, DASH);
     return;
   }
+  lastProbePoint = point;
   setText(lonEl, `${point.lon.toFixed(PROBE_COORD_PRECISION)} deg`);
   setText(latEl, `${point.lat.toFixed(PROBE_COORD_PRECISION)} deg`);
   setText(uvEl, `${point.u.toFixed(PROBE_UV_PRECISION)}, ${point.v.toFixed(PROBE_UV_PRECISION)}`);
+  ensureElevRaw(pack, () => updateProbe(probeEl, lastProbePoint, pack));
   setText(elevEl, elevationText(pack, point));
 }
 
@@ -524,6 +556,7 @@ export function MapPage(props: WebModComponentProps): unknown {
     const generation = ++loadGeneration.current;
     setLoadError("");
     setStatusText(refs.status, "Loading...");
+    resetElevRaw();
     void loadPack(MOD_BASE_URL, path)
       .then((loaded) => {
         if (generation !== loadGeneration.current) {

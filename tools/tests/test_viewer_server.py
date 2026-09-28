@@ -151,6 +151,31 @@ def test_security_headers_allow_no_remote_script_origin(server: str):
     assert res.headers["X-Frame-Options"] == "DENY"
 
 
+def test_connections_are_reused_across_assets(server: str):
+    # One page load fetches many files; HTTP/1.0 would open a socket per asset.
+    with httpx.Client() as client:
+        first = client.get(f"{server}/index.html", headers={"Accept-Encoding": "gzip"})
+        second = client.get(f"{server}/tiny.txt", headers={"Accept-Encoding": "gzip"})
+    assert first.http_version == "HTTP/1.1"
+    assert second.http_version == "HTTP/1.1"
+    assert first.extensions["network_stream"] is second.extensions["network_stream"]
+
+
+def test_conditional_get_keeps_the_connection_open(server: str):
+    first = httpx.get(f"{server}/index.html", headers={"Accept-Encoding": "gzip"})
+    with httpx.Client() as client:
+        fresh = client.get(
+            f"{server}/index.html",
+            headers={"Accept-Encoding": "gzip", "If-None-Match": first.headers["ETag"]},
+        )
+        after = client.get(f"{server}/tiny.txt")
+    # A bodyless 304 must still frame the persistent connection, or the next
+    # request on it is read as the tail of a body that never ends.
+    assert fresh.status_code == 304
+    assert after.status_code == 200
+    assert after.content == SMALL_TXT
+
+
 def test_parallel_requests_are_concurrent(server: str):
     paths = ["/index.html", "/tiny.txt", "/tile.png"] * 4
     responses: list[httpx.Response] = []

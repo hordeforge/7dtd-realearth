@@ -91,7 +91,7 @@ function packCard(h: ElementFactory, pack: LoadedPack | null): unknown {
     ["Sea level (game y)", String(meta.sea_level_game_y)],
     ["Tiles", String(meta.tiles.length)],
     ["Settlements", String(meta.settlement_count)],
-    ["Elevation probe", pack.elevRaw === null ? "not exported" : "raw PNG"],
+    ["Elevation probe", pack.elevMeta === null ? "not exported" : "raw PNG"],
   ];
   return h("section", { className: "re-panel" }, h("h2", null, "Pack"), infoList(h, rows));
 }
