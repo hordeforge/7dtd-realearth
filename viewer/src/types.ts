@@ -79,10 +79,11 @@ export type CatalogEntry = {
   name: string;
 };
 
-// One fix of the optional player position feed (data/player.json).
-export type PlayerFix = LonLatPoint & {
-  name: string;
-};
+// One fix of the optional player position feed (data/player.json). Coordinates
+// only: the marker needs a position, and anything naming the player (game name,
+// Steam ID, IP) would put personal data in a file the server hands to every
+// browser that opens the map.
+export type PlayerFix = LonLatPoint;
 
 export type KeyValueEntry = {
   name: string;

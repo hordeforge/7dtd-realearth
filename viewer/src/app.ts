@@ -400,7 +400,8 @@ function finiteNumberIn(candidate: unknown, min: number, max: number): number | 
 }
 
 // Boundary parse of one data/player.json fix; anything malformed or out of
-// range means "no known player position".
+// range means "no known player position". Only coordinates are read, so a feed
+// that names the player cannot leak that name into the page.
 function playerFrom(candidate: unknown): PlayerFix | null {
   const record = asRecord(candidate);
   const lon = finiteNumberIn(record.lon, -LON_LIMIT_DEGREES, LON_LIMIT_DEGREES);
@@ -408,8 +409,7 @@ function playerFrom(candidate: unknown): PlayerFix | null {
   if (lon === null || lat === null) {
     return null;
   }
-  const name = asString(record.name);
-  return { name: name === "" ? "Player" : name, lon, lat };
+  return { lon, lat };
 }
 
 // Deep link format: ?player=lat,lon (Google-Maps-style order).
@@ -774,7 +774,7 @@ function applyPlayer(player: PlayerFix | null): void {
   els.playerHud.hidden = player === null;
   if (player !== null) {
     els.playerHud.textContent =
-      `${player.name} · ${player.lat.toFixed(TOOLTIP_COORD_DECIMALS)}°, ` +
+      `${player.lat.toFixed(TOOLTIP_COORD_DECIMALS)}°, ` +
       `${player.lon.toFixed(TOOLTIP_COORD_DECIMALS)}°`;
   }
   state.map2d?.setPlayer(player);
