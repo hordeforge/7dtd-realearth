@@ -29,15 +29,15 @@
 ### A Binary / install
 - YDim expand, layers, Y-bound IL
 - Client + dedicated parity
-- Backup / re-apply after Steam Verify
+- No expand backup/restore step: the runtime transpiler writes no engine DLL, so Steam Verify cannot undo it. Gate each install on the live boot log line `RealEarth YDim expand active`
 - `.7rg` tall-Y validation (**Needed**, with P0/P1 soak)
 
 ### B Harmony / inject
 - Height query override (all concrete APIs)
 - GenerateTerrain postfix inject
 - Chunk index / ensure tiles
-- Fail-closed missing tiles + counters (**this tranche**)
-- Inject patch bind stats (**this tranche**)
+- Fail-closed missing tiles + counters (**Partial**, [MODIFICATIONS](MODIFICATIONS.md) §B)
+- Inject patch bind stats (**shipped**: `InjectPatchStats`, `reinject` console)
 - Biome paint, POI/sleeper Y, light/stability (after P1)
 
 ### C Coordinate / stream
@@ -117,5 +117,6 @@ See sibling `7dtd-loadgen/docs/REALEARTH.md`.
 
 ## Changelog
 
+- **2026-09-28:** Layer A checklist dropped the removed expand backup/restore step (runtime transpiler writes no DLL); the gate is now the boot log line.
 - **2026-09-28:** P8 row relabelled: AbsoluteHeightStore is the shipped sparse core, the P8 tranche itself stays Later.
 - **2026-07-19:** Ownership header; live inject/MP evidence bar; related docs.

@@ -442,7 +442,7 @@ RealEarth should **not** depend on third-party C# for terrain inject (version he
 | Confirm light/sun/density loops use expanded YMask | Tall darkness/crashes | P1 after expand |
 | `.7rg` tall column packing | Save bloat / corruption | P1 soak |
 | Optional sparse section storage | RAM for planet+tall | P8 / later |
-| Refuse load if YDim stock while config demands 1:1 | Operator safety | Easy Harmony check (partially logged today) |
+| Refuse load if YDim stock while config demands 1:1 | Operator safety | **Open** (detection shipped, hard refusal not: it warns and caps, see [MODIFICATIONS](MODIFICATIONS.md) §B) |
 | Dedicated + client hash matrix | MP desync prevention | Ops tooling |
 
 ---
@@ -454,7 +454,6 @@ RealEarth should **not** depend on third-party C# for terrain inject (version he
 | GHSL/WorldPop/built-up production packs | Density stamps, edge radii |
 | OSM roads/rivers extract → stamp corridors | Fidelity |
 | Urban area polygons (Natural Earth / OSM) → `edge_radius_m` | City discovery |
-| Antimeridian-safe region builder | Pacific packs |
 | Lat-corrected spacing for stamps | High-lat cities |
 | Reproducible manifests (URL, hash, license, params) | Audits |
 | Planet tile farm + CDN layout | Streamed planet |
@@ -487,7 +486,7 @@ No Harmony required for pure pack quality; **runtime still needs inject** to sho
 
 ### Slice 3: Places feel real
 
-1. Density stamps with surface Y (B prefab + D prefabs.xml / runtime stamps).  
+1. Density stamps with surface Y (B prefab + D prefabs.xml / runtime stamps): **Partial** (placement at real surface Y is **Done** via `RuntimePoiInject`; band coverage live soak open).  
 2. Sleeper Y validation (B): **Partial** (best-effort re-pin after stamp; live soak open).  
 3. XML spawn/gamestage scales by biome (C): **Partial** (`Config/spawning.xml` commercial/downtown maxcount + `Config/gamestages.xml` `difficultyBonus` 1.2→1.35; live soak open).  
 4. City labels edge from pack density (done path; more map data E).
@@ -504,9 +503,9 @@ No Harmony required for pure pack quality; **runtime still needs inject** to sho
 
 ### Slice 5: UX
 
-1. XUi_InGame lon/lat + globe sketch (C + B).  
-2. Production FOW (B config).  
-3. Persist discoveries (Sys).
+1. XUi_InGame lon/lat + globe sketch (C + B): **Partial** (cvar HUD live via `ShowLonLatHud`; in-game map grid open, 3D globe stays viewer QA).  
+2. Production FOW (B config): **Partial** (`MapExploreRevealRadiusChunks=8`, `DebugRevealFullMap` off; MP package sync open).  
+3. Persist discoveries (Sys): **Done** (`discoveredCities` round-trips through `SessionStateStore`).
 
 ### Slice 6: Scale / fidelity later
 
@@ -585,7 +584,7 @@ Support XML only: keep `nav_objects`; add real **biomes/spawn/gamestage/weather/
 Expand RealEarth’s single DLL: finish **height + GenerateTerrain**, then **biome paint, decoration/POI Y, save/load session, chunk delta, light/stability if broken**, then **map/XUi** and **MP guardrails**. Discover targets from live `Assembly-CSharp` using research dumps as a checklist.
 
 **What binary work remains?**  
-Y expand validation, light/Y-mask completeness, save format, optional sparse Y later. Re-apply after every Steam update on **client and dedicated**.
+Y expand validation, light/Y-mask completeness, save format, optional sparse Y later. Re-install the mod after every Steam update on **client and dedicated**; the expand itself re-binds at boot and no engine DLL is written.
 
 ## Related docs
 
@@ -598,4 +597,5 @@ Y expand validation, light/Y-mask completeness, save format, optional sparse Y l
 
 ## Changelog
 
+- **2026-09-28:** Shipped slice-3/5 work given its measured status; dropped the done antimeridian row from §6; the stock-YDim refusal row now names MODIFICATIONS §B instead of a stale note.
 - **2026-07-19:** Ownership header; related docs.

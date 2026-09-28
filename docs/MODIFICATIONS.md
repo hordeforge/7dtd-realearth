@@ -58,7 +58,7 @@ Stock terrain and world gen do not know about Earth DEM. Expand alone still yiel
 | **Height query override** | All concrete height APIs (see research `terrain-height.md`); never interface-only; **byte returns stay lossy** | **Done** (live 3.2.0 b9: heightQ=7 failed=0) |
 | **Terrain generate rewrite** | `GenerateTerrain` / provider fill → solid+density from RealEarth | **Done** (live 3.2.0 b9: gen=4 bound; 28 per-chunk `Height inject` lines to `maxH=8778 sessionPeak=8778` `blocks=True` with 6 loadgen bots joined) |
 | **Fail-closed missing tiles** | No fake DEM peaks when `.rte` missing | **Partial** (`TileSamplePolicy` on sampler + EngineHeight product path; live `failClosed=True` on 3.2.0, no missing-tile event yet) |
-| **Expand product guard** | Refuse real-height claims on stock YDim | **Done** (live 3.2.0: `heightMode=ydim-expanded expanded=True`) |
+| **Expand product guard** | Refuse real-height claims on stock YDim | **Partial** (detection is live: `heightMode=ydim-expanded expanded=True`; on stock YDim it warns and caps to `AllocatableColumnMaxY`, it does not refuse to load or skip inject. Hard refusal is open: [GAP_HARMONY_MODLETS](GAP_HARMONY_MODLETS.md) §5) |
 | **Session origin policy** | SoloSlide / SharedFixed / fold | **Partial** (`SessionOriginPolicy` wired into WorldSession; SharedFixed active live, multi-player proof open) |
 | **Surface-Y stamps** | Prefab Y on real DEM surface | **Done** (live 3.2.0: `RuntimePoiInject` places prefabs via `PrefabCache`/`PrefabInstance.CopyIntoWorld` at real surface Y, e.g. farm_11 at y=4698) |
 | **Session snapshot** | Absolute origin save/reload JSON | **Done** (live 3.2.0: snapshot written; restart restored `absolute=(255,280)` via `SessionStateStore loaded`; same scope re-saved) |
@@ -184,17 +184,7 @@ Geography without people is empty wilderness. Separate from height.
 
 ## Priority (P0-P8)
 
-```text
-P0  Y-expand correct (A) · re-validate every update
-P1  Height + GenerateTerrain inject live 3.2.0 b9 (B) - Done
-P2  Streamed session, tile bubble, fail-closed tiles (C)
-P3  Density stamps + biome underlay on real surface (E + B)
-P4  Save/reload + build deltas (F)
-P5  SharedFixed co-located MP proof (F)
-P6  Density/sim budgets + net soak (G)
-P7  Planet farm + CDN (D)
-P8  Sparse Y / roads / climate (Later; altitude hypoxia/cold Partial)
-```
+Order, outcomes, and per-tranche gates are owned by [IMPLEMENTATION_PLAN](IMPLEMENTATION_PLAN.md); do not restate them here. Per-surface status stays in the tables above.
 
 Implementation how-to and API choice: [GAP_HARMONY_MODLETS](GAP_HARMONY_MODLETS.md). Tickets: [TODO](../TODO.md).
 
@@ -222,6 +212,6 @@ AI/mesh optim → `7dtd-server-optimizer`. Load bots → `7dtd-loadgen`. Google 
 
 ## Changelog
 
-- **2026-09-28:** Geodesic row moved to the standard status vocabulary (Later, idea backlog).
+- **2026-09-28:** Expand product guard row downgraded to Partial: stock YDim warns and caps, it does not refuse; the open hard refusal stays in GAP §5. Geodesic row moved to the standard status vocabulary (Later, idea backlog); P0-P8 order now points at IMPLEMENTATION_PLAN instead of a second copy.
 - **2026-08-25:** Sparse Y scaffold row moved to Removed (dead code); globe/world map UI marked viewer-only after in-game scaffold removal.
 - **2026-07-18:** Related docs hub links; status remains sole home for Done/Partial/Needed.
