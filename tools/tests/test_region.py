@@ -241,3 +241,25 @@ def test_rebuild_with_identical_parameters_is_byte_identical(tmp_path: Path):
     build_region(-105.2, 39.6, -104.9, 39.9, pack, **kwargs)
     second = pack_bytes(pack)
     assert first == second
+
+
+def test_synthetic_seed_is_recorded_and_selects_the_pack(tmp_path: Path):
+    """The synthetic source is the pipeline's only randomness. The seed must reach
+    the build manifest, else a pack cannot be re-derived from its own provenance,
+    and two different seeds must produce two different packs."""
+    kwargs = {
+        "resolution_m": 120.0,
+        "source": "synthetic",
+        "name": "Seeded",
+        "max_dim": 256,
+        "also_export_7dtd": False,
+    }
+    a, b, c = (tmp_path / n for n in ("a", "b", "c"))
+    build_region(-105.2, 39.6, -104.9, 39.9, a, seed=7, **kwargs)
+    build_region(-105.2, 39.6, -104.9, 39.9, b, seed=7, **kwargs)
+    build_region(-105.2, 39.6, -104.9, 39.9, c, seed=8, **kwargs)
+
+    recorded = json.loads((a / "build.json").read_text(encoding="utf-8"))
+    assert recorded["source_params"]["seed"] == 7
+    assert pack_bytes(a) == pack_bytes(b), "same seed must replay byte-for-byte"
+    assert pack_bytes(a) != pack_bytes(c), "seed must select the pack"

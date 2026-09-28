@@ -177,6 +177,22 @@ def test_per_tick_throttles_run_on_the_injected_clock():
         ), f"{rel}: raw Environment.TickCount left in a time-driven decision"
 
 
+def test_raw_wall_clock_reads_only_appear_as_seam_defaults():
+    """Environment.TickCount may appear in runtime sources only as the default
+    value of a TickNow seam. Anywhere else it is a wall-clock read the virtual
+    clock cannot reach, so replaying the same seed diverges at that point."""
+    for path in sorted(SRC.glob("*.cs")):
+        code = re.sub(r"///.*|//.*", "", path.read_text(encoding="utf-8"))
+        raw = code.count("Environment.TickCount")
+        if not raw:
+            continue
+        seam = code.count("Func<int> TickNow { get; set; }")
+        assert raw == seam, (
+            f"{path.name}: {raw} raw Environment.TickCount read(s) but {seam} "
+            "TickNow seam(s); every read must go through the seam"
+        )
+
+
 def test_async_tile_load_dispatch_and_claim_wait_are_injectable():
     """The two places the streamer hands control to the OS: the fire-and-forget
     load dispatch (completion order = hot-set contents) and the in-flight claim

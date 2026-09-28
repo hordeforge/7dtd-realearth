@@ -216,3 +216,29 @@ def test_ttw_template_lookup_follows_the_install_root_overrides(
     monkeypatch.setenv("SEVENDTD_GAME_DIR", str(tmp_path / "srv" / "NoClientHere"))
     monkeypatch.setenv("SEVENDTD_SERVER_DIR", str(dedicated))
     assert _find_ttw_template() == dedicated.joinpath(*tail, "main.ttw")
+
+
+def test_bake_replays_byte_for_byte_from_one_seed(tmp_path: Path) -> None:
+    """Prefab placement and splat noise are the bake's only randomness, so one
+    seed must reproduce the same world and a different seed a different one."""
+    pack = tmp_path / "pack"
+    build_region(
+        -105.2,
+        39.6,
+        -104.9,
+        39.9,
+        pack,
+        resolution_m=400.0,
+        source="synthetic",
+        name="SeedPack",
+        max_dim=128,
+        also_export_7dtd=False,
+    )
+    bakes = {}
+    for label, seed in (("a", 3), ("b", 3), ("c", 4)):
+        out = tmp_path / label
+        bake_generated_world(pack, out, size=2048, name="SeedWorld", seed=seed)
+        bakes[label] = (out / "prefabs.xml").read_bytes(), (out / "splat3.png").read_bytes()
+
+    assert bakes["a"] == bakes["b"], "same seed must replay the same world"
+    assert bakes["a"] != bakes["c"], "seed must select prefab placement and splats"

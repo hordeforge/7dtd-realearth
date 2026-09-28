@@ -44,6 +44,15 @@ namespace RealEarth
         static int _sessionBlocksApplied;
         static int _sessionReinjectedChunks;
 
+        /// <summary>
+        /// Millisecond tick source with Environment.TickCount semantics (unchecked
+        /// wrap-safe deltas), injectable so the inject-duration log field can be
+        /// stepped by virtual time in a deterministic harness. Without it the same
+        /// chunk run logs a different `ms=` value every replay, so an inject
+        /// transcript can never be diffed field by field.
+        /// </summary>
+        internal static Func<int> TickNow { get; set; } = static () => Environment.TickCount;
+
         /// <summary>Highest maxH seen this session (for dedicated gates / diagnostics).</summary>
         public static int SessionPeakHeight => Volatile.Read(ref _sessionPeakHeight);
         public static int SessionInjectCount => Volatile.Read(ref _sessionInjectCount);
@@ -163,7 +172,7 @@ namespace RealEarth
 
             // Wrap-safe tick delta: answers "how long did inject hold the gen thread"
             // without a per-chunk allocation.
-            int startTick = Environment.TickCount;
+            int startTick = TickNow();
             int n = ChunkTerrainSampler.VanillaChunkSize * ChunkTerrainSampler.VanillaChunkSize;
             var heights = new int[n];
             var landcover = new byte[n];
@@ -221,7 +230,7 @@ namespace RealEarth
                     $"expanded={EngineHeight.EngineHeightMod.EngineExpanded} " +
                     $"biome={ChunkTerrainSampler.LandcoverToBiomeName(lc)} " +
                     $"hotTiles={streamer.HotTileCount} blocks={applied} " +
-                    $"ms={unchecked(Environment.TickCount - startTick)}");
+                    $"ms={unchecked(TickNow() - startTick)}");
             }
         }
 

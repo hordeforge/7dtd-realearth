@@ -27,6 +27,7 @@ from realearth.density import (
     write_cities_json,
 )
 from realearth.elevation import (
+    SYNTHETIC_SEED,
     fetch_region_geotiff,
     fetch_region_open_meteo,
     fetch_region_terrarium,
@@ -75,12 +76,15 @@ def build_region(
     corridors: Path | None = None,
     population_geotiff: Path | None = None,
     built_geotiff: Path | None = None,
+    seed: int = SYNTHETIC_SEED,
 ) -> Manifest:
     """Generate tiles covering a bbox and optional vanilla heightmap export.
 
     resolution_m: meters per sample (1.0 = 1:1). Larger = coarser/faster.
     source: 'synthetic' | 'open_meteo' | 'terrarium' | 'geotiff' | 'gebco'
     geotiff: path required when source='geotiff'|'gebco' (Copernicus/SRTM/GEBCO GeoTIFF)
+    seed: RNG seed for source='synthetic'; recorded in the build manifest so the
+    pack can be re-derived bit-identically.
     """
     out_dir = Path(out_dir)
     out_dir.mkdir(parents=True, exist_ok=True)
@@ -119,7 +123,7 @@ def build_region(
         else:
             sources = [f"GeoTIFF DEM: {Path(geotiff).name} (e.g. Copernicus GLO-30 / SRTM)"]
     elif source == "synthetic":
-        elev = synthetic_elevation(width, height)
+        elev = synthetic_elevation(width, height, seed=seed)
         sources = ["synthetic procedural (offline demo)"]
     else:
         raise ValueError(f"unknown source: {source} (use synthetic|open_meteo|terrarium|geotiff)")
@@ -295,6 +299,7 @@ def build_region(
         "source_params": {
             "terrarium_zoom": terrarium_zoom,
             "max_dim": max_dim,
+            "seed": seed,
         },
         "inputs": {},
         "landcover": "heuristic from elevation+latitude (classify_from_elevation_and_lat)",

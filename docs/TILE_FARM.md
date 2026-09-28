@@ -46,6 +46,7 @@ Every `build-region` run writes `build.json` next to `earth.manifest.json`:
   "resolution_m": 30.0,
   "samples": {"width": ..., "height": ...},
   "source": "terrarium",
+  "source_params": {"terrarium_zoom": 10, "max_dim": 4096, "seed": 42},
   "inputs": {"geotiff": {"file": "copernicus.tif", "sha256": "..."}},
   "attribution": [...]
 }
@@ -60,6 +61,10 @@ realearth verify-build --pack data/samples/region_a
 A pack is re-derivable when its build.json + input files (hashes checked) +
 tool version are known. Publish the manifest alongside the pack so consumers
 can audit provenance before trusting the data.
+
+`--source synthetic` is procedural, so its `--seed` (default 42, recorded as
+`source_params.seed`) is the only value that selects the pack; the other
+elevation sources read their inputs and ignore it.
 
 ## 4. Storage layout
 

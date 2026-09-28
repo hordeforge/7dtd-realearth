@@ -359,11 +359,18 @@ def fetch_region_geotiff(
     return vals
 
 
+#: Seed for the procedural (synthetic) elevation source. It is the only
+#: randomness in the offline pipeline, so a build manifest that records it can be
+#: replayed sample-for-sample; callers pass it explicitly rather than relying on
+#: the keyword default.
+SYNTHETIC_SEED = 42
+
+
 def synthetic_elevation(
     width: int,
     height: int,
     *,
-    seed: int = 42,
+    seed: int = SYNTHETIC_SEED,
     base: float = 120.0,
     peak: float = 900.0,
     sea_fraction: float = 0.15,

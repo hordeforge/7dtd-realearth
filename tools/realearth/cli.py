@@ -11,6 +11,8 @@ import click
 
 from realearth import DEFAULT_SEA_LEVEL_GAME_Y, JsonDict, __version__
 from realearth.coords import EarthGrid, block_to_lonlat, lonlat_to_block
+from realearth.density import PREFAB_SEED
+from realearth.elevation import SYNTHETIC_SEED
 from realearth.region import build_region, world_tile_indices_for_bbox
 from realearth.settlements import (
     SEED_SETTLEMENTS,
@@ -137,7 +139,12 @@ def verify_build_cmd(pack: str) -> None:
         ok = ok and match
     if not ok:
         raise click.ClickException("build manifest inputs do not match on-disk files")
-    click.echo(f"build.json ok (schema v1, tool {b.get('tool_version')}, source {b.get('source')})")
+    seed = (b.get("source_params") or {}).get("seed")
+    replay = f", seed {seed} (replay with --seed {seed})" if seed is not None else ""
+    click.echo(
+        f"build.json ok (schema v1, tool {b.get('tool_version')}, "
+        f"source {b.get('source')}{replay})"
+    )
 
 
 # Numeric positionals may be negative (-74.006); without this Click reads the
@@ -234,6 +241,13 @@ def lonlat_cmd(lon: float, lat: float) -> None:
     default=None,
     help="GeoJSON FeatureCollection of road/river/rail LineStrings (deterministic rules)",
 )
+@click.option(
+    "--seed",
+    type=int,
+    default=SYNTHETIC_SEED,
+    show_default=True,
+    help="RNG seed for --source synthetic (recorded in the build manifest)",
+)
 @click.option("--no-export", is_flag=True, help="Skip heightmap/biomes PNG export")
 def build_region_cmd(
     west: float,
@@ -252,6 +266,7 @@ def build_region_cmd(
     built_geotiff: str | None,
     terrarium_zoom: int,
     corridors: str | None,
+    seed: int,
     no_export: bool,
 ) -> None:
     """Build a regional tile pack + optional 7DTD heightmap export.
@@ -294,6 +309,7 @@ def build_region_cmd(
         population_geotiff=Path(population_geotiff) if population_geotiff else None,
         built_geotiff=Path(built_geotiff) if built_geotiff else None,
         corridors=Path(corridors) if corridors else None,
+        seed=seed,
     )
     click.echo(f"Wrote {len(manifest.tiles)} tiles → {out_dir}")
     click.echo(f"Samples: {manifest.world_width} x {manifest.world_height}")
@@ -828,6 +844,13 @@ def window_slide_cmd(
     default=None,
     help="Optional main.ttw template (defaults to first GeneratedWorlds sample)",
 )
+@click.option(
+    "--seed",
+    type=int,
+    default=PREFAB_SEED,
+    show_default=True,
+    help="RNG seed for prefab placement and splat noise in --generated worlds",
+)
 def bake_world_cmd(
     pack_dir: str,
     out_dir: str,
@@ -836,6 +859,7 @@ def bake_world_cmd(
     sea_level_y: int,
     generated: bool,
     ttw_template: str | None,
+    seed: int,
 ) -> None:
     """Bake ONE continuous playable map for in-game use (single save / single world)."""
     from realearth.bake_world import (
@@ -855,8 +879,9 @@ def bake_world_cmd(
             name=world_name,
             sea_level_y=sea_level_y,
             ttw_template=Path(ttw_template) if ttw_template else None,
+            seed=seed,
         )
-        click.echo(f"GeneratedWorld → {out_dir}")
+        click.echo(f"GeneratedWorld → {out_dir} (seed {seed})")
         if meta.get("pre_bake_snapshot"):
             click.echo(f"  previous output moved aside → {meta['pre_bake_snapshot']}")
         click.echo(f"  size: {meta['size']} x {meta['size']}  dtm_bytes={meta['dtm_bytes']}")

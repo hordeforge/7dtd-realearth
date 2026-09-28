@@ -485,6 +485,11 @@ def _game_y_as_int32(game_y: np.ndarray) -> np.ndarray:
     return gy.astype(np.int32, copy=False)
 
 
+#: Seed for prefab placement. It is the only randomness in a world bake, so the
+#: whole bake is replayed by passing this value in.
+PREFAB_SEED = 7
+
+
 def stamp_prefabs_from_density(
     density_byte: np.ndarray,
     game_y: np.ndarray,
@@ -492,7 +497,7 @@ def stamp_prefabs_from_density(
     world_size: int,
     sea_level: int = DEFAULT_SEA_LEVEL_GAME_Y,
     cores: list[CityCore] | None = None,
-    seed: int = 7,
+    seed: int = PREFAB_SEED,
     max_prefabs_per_chunk: int = 4,
 ) -> list[PrefabStamp]:
     """Place vanilla POIs denser where population/built-up is high.

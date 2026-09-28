@@ -27,6 +27,7 @@ from realearth.bake_world import (
     snapshot_existing_output,
 )
 from realearth.density import (
+    PREFAB_SEED,
     apply_urban_from_density,
     detect_city_cores,
     stamp_prefabs_from_density,
@@ -148,7 +149,13 @@ def detect_client_versions() -> tuple[str, str]:
         if root.is_dir():
             logs.extend(root.glob("output_log_client__*.txt"))
             logs.extend(root.glob("**/output_log*.txt"))
-    logs = sorted({p.resolve() for p in logs if p.is_file()}, key=lambda p: p.stat().st_mtime)
+    # Path is the tie-break: two logs written in the same mtime tick would
+    # otherwise be ordered by set iteration (PYTHONHASHSEED), so the same log
+    # tree could yield different versions across runs.
+    logs = sorted(
+        {p.resolve() for p in logs if p.is_file()},
+        key=lambda p: (p.stat().st_mtime, str(p)),
+    )
     for log in reversed(logs):
         try:
             text = log.read_text(encoding="utf-8", errors="replace")
@@ -252,13 +259,15 @@ def write_radiation(path: Path, size: int) -> None:
     Image.fromarray(img, mode="RGBA").save(path)
 
 
-def write_splats(path3: Path, path4: Path, size: int, lc: np.ndarray) -> None:
+def write_splats(
+    path3: Path, path4: Path, size: int, lc: np.ndarray, *, seed: int = PREFAB_SEED
+) -> None:
     """Simple splat maps: mostly empty with slight biome tint."""
     # splat3 often encodes dirt/stone/ore weights in RGBA channels
     s3 = np.zeros((size, size, 4), dtype=np.uint8)
     s4 = np.zeros((size, size, 4), dtype=np.uint8)
     # leave mostly zero (default terrain look); slight variation
-    rng = np.random.default_rng(42)
+    rng = np.random.default_rng(seed)
     noise = rng.integers(0, 20, size=(size, size), dtype=np.uint8)
     s3[:, :, 0] = noise
     Image.fromarray(s3, mode="RGBA").save(path3)
@@ -331,11 +340,14 @@ def bake_generated_world(
     name: str = "RealEarth",
     sea_level_y: int = DEFAULT_SEA_LEVEL_GAME_Y,
     ttw_template: Path | None = None,
+    seed: int = PREFAB_SEED,
 ) -> JsonDict:
     """Build a full GeneratedWorlds-compatible continuous map from a tile pack.
 
     Cities: density channel + city cores → vanilla POI stamps in prefabs.xml
     (dense where population/built-up is high).
+    seed: RNG seed for the prefab placement and the splat noise, so one seed
+    reproduces the same world.
     """
     size = snap_world_size(size)
     pack_dir = Path(pack_dir)
@@ -350,6 +362,7 @@ def bake_generated_world(
             sea_level_y=sea_level_y,
             ttw_template=ttw_template,
             pre_bake_snapshot=pre_bake_snapshot,
+            seed=seed,
         )
     except BaseException:
         rollback_failed_bake(out_dir, pre_bake_snapshot)
@@ -365,6 +378,7 @@ def _bake_generated(
     sea_level_y: int,
     ttw_template: Path | None,
     pre_bake_snapshot: Path | None,
+    seed: int,
 ) -> JsonDict:
     out_dir.mkdir(parents=True, exist_ok=True)
 
@@ -441,13 +455,13 @@ def _bake_generated(
         min_separation_px=max(12, size // 64),
     )
     stamps = stamp_prefabs_from_density(
-        pop_r, game_y, world_size=size, sea_level=sea_level_y, cores=cores
+        pop_r, game_y, world_size=size, sea_level=sea_level_y, cores=cores, seed=seed
     )
     write_prefabs_xml(out_dir / "prefabs.xml", stamps)
     write_cities_json(out_dir / "cities.json", cores, stamps)
 
     write_radiation(out_dir / "radiation.png", size)
-    write_splats(out_dir / "splat3.png", out_dir / "splat4.png", size, lc_r)
+    write_splats(out_dir / "splat3.png", out_dir / "splat4.png", size, lc_r, seed=seed)
     # 3.x worlds also ship splat1/2 + water_info (empty OK)
     Image.fromarray(np.zeros((size, size, 4), dtype=np.uint8), mode="RGBA").save(
         out_dir / "splat1.png"
