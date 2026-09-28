@@ -400,6 +400,12 @@ def inspect_tile_cmd(pack_dir: str, tx: int, tz: int) -> None:
     t = read_tile(path)
     elev = t.elevation_m
     click.echo(f"tile ({tx},{tz}) shape={elev.shape}")
+    if t.tile_x != tx or t.tile_z != tz:
+        # Samplers key by path and read this header for nothing, so a mis-filed
+        # pack looks healthy here and serves another region's terrain at runtime.
+        click.echo(
+            f"MISFILED: header names tile ({t.tile_x},{t.tile_z}); samplers treat this as a hole"
+        )
     click.echo(
         f"elev m: min={float(elev.min()):.1f} "
         f"max={float(elev.max()):.1f} mean={float(elev.mean()):.1f}"

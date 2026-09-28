@@ -112,3 +112,45 @@ def test_streamer_releases_its_http_client():
     modapi = _read("ModApi.cs")
     assign = modapi.index("Streamer = new TileStreamer")
     assert 0 < modapi.index("Streamer?.Dispose();") < assign
+
+
+def test_every_load_path_rejects_a_tile_stored_under_another_key():
+    """A payload is only a valid entry for the key it was requested under.
+
+    The .rte header names its own (tx, tz). A CDN origin that maps paths to
+    the wrong object, or a tile store copied by hand, yields a body that
+    decodes cleanly and is a different location's terrain. Caching it, and
+    publishing it to the durable store, serves that terrain for the process
+    uptime and every later load, so every decode that can reach _hot or the
+    tile store must check the header first and fall into the miss path.
+    """
+    src = _read("TileStreamer.cs")
+    publishes = [
+        ("void TryLoadCdnSync", "void PublishTileBytes"),
+        ("async Task LoadTileFireAndForget", "void EvictOutsideAllFoci"),
+        ("void TryLoadLocalSync", "void MarkMiss"),
+    ]
+    for start, end in publishes:
+        body = _body_between(src, start, end)
+        assert "MatchesTile" in body, f"{start} decodes without checking the tile key"
+        check = body.index("MatchesTile")
+        assert check < body.index("_hot[key] = tile"), f"{start}: check must precede the hot insert"
+        if "PublishTileBytes" in body:
+            publish = body.index("PublishTileBytes")
+            assert check < publish, f"{start}: check must precede the durable publish"
+
+
+def test_offline_sampler_applies_the_same_key_check():
+    """The baked-world path shares the runtime one: a mis-filed tile must read
+    as a hole there too, or the wrong terrain lands in a baked world instead."""
+    src = (ROOT / "tools" / "realearth" / "streamed_chunk.py").read_text(encoding="utf-8")
+    guard = _body_between(src, "def load_tile_for_key", "def sample_point")
+    assert "read_tile(path)" in guard
+    assert "tile.tile_x != tx or tile.tile_z != tz" in guard
+
+
+def test_tile_identity_check_is_a_header_comparison():
+    """The check compares the decoded header against the requested key, so it
+    holds for every load path without each one re-deriving the comparison."""
+    rte = _read("RteTile.cs")
+    assert "public bool MatchesTile(int tx, int tz) => TileX == tx && TileZ == tz;" in rte

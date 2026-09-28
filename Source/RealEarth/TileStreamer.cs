@@ -242,6 +242,12 @@ namespace RealEarth
                 {
                     // Last player left: drop hot set (process-lifetime leak otherwise).
                     _hot.Clear();
+                    // Miss deadlines belong to the same session as the hot set: a
+                    // tile that failed for the player who just left may have been
+                    // written to the durable store since, and the deadline would
+                    // keep the next session on fail-closed ocean for the rest of
+                    // its window.
+                    _missUntilTick.Clear();
                     return;
                 }
             }
@@ -498,13 +504,23 @@ namespace RealEarth
                     return;
                 }
                 var dir = Path.GetDirectoryName(path);
-                if (!string.IsNullOrEmpty(dir))
-                    Directory.CreateDirectory(dir);
                 // Validate the full payload BEFORE durable publish: a body that passes
                 // the magic check but fails decode must never reach the tile store,
                 // where File.Exists would shadow the CDN on every later attempt and
                 // pin this tile on fail-closed ocean until manual cleanup.
                 var tile = RteTile.Decode(bytes);
+                if (!tile.MatchesTile(tx, tz))
+                {
+                    TileLoadStats.AddBadPayload();
+                    TileLoadStats.AddCdnFail();
+                    LogLoadError(
+                        $"CDN sync tile {tx},{tz} url={url}: header names tile {tile.TileX},{tile.TileZ}");
+                    MarkMiss(key);
+                    lock (_lock) { _loadInFlight.Remove(key); }
+                    return;
+                }
+                if (!string.IsNullOrEmpty(dir))
+                    Directory.CreateDirectory(dir);
                 PublishTileBytes(path, bytes);
                 lock (_lock)
                 {
@@ -610,6 +626,18 @@ namespace RealEarth
             {
                 var sw = Stopwatch.StartNew();
                 var tile = RteTile.Load(path);
+                if (!tile.MatchesTile(tx, tz))
+                {
+                    // Same contract as the async disk path: a mis-filed payload reads
+                    // as missing rather than being cached under the requested key.
+                    TileLoadStats.AddBadPayload();
+                    TileLoadStats.AddDiskFail();
+                    LogLoadError(
+                        $"Load tile {tx},{tz} path={path}: header names tile {tile.TileX},{tile.TileZ}");
+                    MarkMiss(key);
+                    lock (_lock) { _loadInFlight.Remove(key); }
+                    return;
+                }
                 lock (_lock)
                 {
                     _hot[key] = tile;
@@ -699,6 +727,15 @@ namespace RealEarth
                     // Decode before publish (same rationale as the sync CDN path):
                     // only fully validated payloads may enter the durable tile store.
                     tile = RteTile.Decode(bytes);
+                    if (!tile.MatchesTile(tx, tz))
+                    {
+                        TileLoadStats.AddBadPayload();
+                        TileLoadStats.AddCdnFail();
+                        LogLoadError(
+                            $"CDN tile {tx},{tz} url={url}: header names tile {tile.TileX},{tile.TileZ}");
+                        MarkMiss(key);
+                        return;
+                    }
                     PublishTileBytes(path, bytes);
                 }
                 else
@@ -706,6 +743,17 @@ namespace RealEarth
                     // Disk decode off inject thread.
                     bytes = await Task.Run(() => File.ReadAllBytes(path)).ConfigureAwait(false);
                     tile = RteTile.Decode(bytes);
+                    if (!tile.MatchesTile(tx, tz))
+                    {
+                        // A file under this path that names another tile (copied or
+                        // hand-seeded store) would otherwise be cached under this key.
+                        TileLoadStats.AddBadPayload();
+                        TileLoadStats.AddDiskFail();
+                        LogLoadError(
+                            $"Tile {tx},{tz} path={path}: header names tile {tile.TileX},{tile.TileZ}");
+                        MarkMiss(key);
+                        return;
+                    }
                 }
 
                 lock (_lock)

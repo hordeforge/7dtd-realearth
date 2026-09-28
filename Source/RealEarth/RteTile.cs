@@ -133,6 +133,14 @@ namespace RealEarth
             };
         }
 
+        /// <summary>
+        /// Whether the payload header names this tile. Every .rte carries the
+        /// (tx, tz) it was written for; a payload that does not match the key it
+        /// was fetched under belongs to another location, and serving it under
+        /// the requested key reads one region's terrain as another's.
+        /// </summary>
+        public bool MatchesTile(int tx, int tz) => TileX == tx && TileZ == tz;
+
         public float ElevationAt(int localX, int localZ)
         {
             if (localX < 0 || localZ < 0 || localX >= Width || localZ >= Height)

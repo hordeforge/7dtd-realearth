@@ -145,6 +145,11 @@ def mosaic_pack(pack_dir: Path) -> PackMosaic:
             missing.append(f"({tx},{tz})")
             continue
         tile = read_tile(path)
+        if tile.tile_x != tx or tile.tile_z != tz:
+            # A payload filed under a key it does not name would land in another
+            # region of the mosaic; count it with the missing tiles instead.
+            missing.append(f"({tx},{tz}) misfiled")
+            continue
         y0, x0 = tz * ts, tx * ts
         th, tw = tile.height, tile.width
         elev[y0 : y0 + th, x0 : x0 + tw] = tile.elevation_m
@@ -162,7 +167,7 @@ def mosaic_pack(pack_dir: Path) -> PackMosaic:
         shown = ", ".join(missing[:10])
         more = f" … and {len(missing) - 10} more" if len(missing) > 10 else ""
         print(
-            f"WARNING: {len(missing)}/{len(man.tiles)} manifest tiles missing under "
+            f"WARNING: {len(missing)}/{len(man.tiles)} manifest tiles missing or misfiled under "
             f"{pack_dir}: {shown}{more} (those areas read as ocean)",
             file=sys.stderr,
         )

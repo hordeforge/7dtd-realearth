@@ -291,6 +291,12 @@ Each channel is a u32 length prefix followed by its zlib blob. Decoders
 (`tile_format.py` / `RteTile.cs`) reject `version > 1` so a future layout change
 fails closed instead of misdecoding as v1 terrain.
 
+`tile_x` / `tile_z` name the tile the payload holds, and every load path checks
+them against the key it fetched the payload under (`RteTile.MatchesTile`,
+`streamed_chunk.load_tile_for_key`). A body stored under a path it does not
+name is another location's terrain: it is treated as a missing tile rather than
+cached in memory or published into the tile store.
+
 On disk:
 
 ```text

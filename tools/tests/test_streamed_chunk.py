@@ -183,3 +183,44 @@ def test_sample_point_clamps_into_smaller_tile(tmp_path: Path):
     # never out-of-bounds.
     outside = sample_point(tmp_path, 400, 400, grid=grid)
     assert outside == (0.0, 0, 0)
+
+
+def test_sample_point_rejects_a_tile_misfiled_under_another_key(tmp_path: Path):
+    """The .rte header names the tile it holds; samplers key by path.
+
+    A payload stored under (0,0) that names (5,7) is another location's
+    terrain. Serving it would read one region as another, and the caller's
+    cache would pin the mismatch for the run, so it must read as a hole.
+    """
+    from realearth.coords import EarthGrid
+    from realearth.tile_format import EarthTile, write_tile
+
+    grid = EarthGrid(tile_size=64)
+    elev = np.full((64, 64), 300.0, dtype=np.float32)
+    lc = np.full((64, 64), 9, dtype=np.uint8)
+    # Written under (0,0), header names (1,1).
+    write_tile(tile_path(tmp_path, 0, 0), EarthTile(1, 1, elev, landcover=lc))
+
+    assert sample_point(tmp_path, 30, 30, grid=grid) == (0.0, 0, 0)
+
+    # The same payload under its own key is served normally: the guard is on
+    # the key, not on the bytes.
+    write_tile(tile_path(tmp_path, 1, 1), EarthTile(1, 1, elev, landcover=lc))
+    assert sample_point(tmp_path, 64 + 30, 64 + 30, grid=grid) == (300.0, 9, 0)
+
+
+def test_misfiled_tile_never_reaches_the_chunk_cache(tmp_path: Path):
+    """A mis-filed payload must not be memoized under the requested key.
+
+    Caching it would hand the same wrong terrain to every later column of the
+    fill instead of leaving the existing miss handling in charge.
+    """
+    from realearth.streamed_chunk import load_tile_for_key
+    from realearth.tile_format import EarthTile, write_tile
+
+    elev = np.full((64, 64), 300.0, dtype=np.float32)
+    write_tile(tile_path(tmp_path, 0, 0), EarthTile(4, 9, elev))
+    assert load_tile_for_key(tmp_path, 0, 0) is None
+    assert load_tile_for_key(tmp_path, 4, 9) is None
+    write_tile(tile_path(tmp_path, 4, 9), EarthTile(4, 9, elev))
+    assert load_tile_for_key(tmp_path, 4, 9) is not None

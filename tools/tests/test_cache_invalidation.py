@@ -114,3 +114,19 @@ def test_focus_map_has_a_stale_sweep():
     assert re.search(r"FocusStaleMs\s*=\s*[\d_]+", src)
     sweep = _body_between(src, "bool SweepStaleFociLocked(int now)", "int FoldPackZ")
     assert "FocusStaleMs" in sweep
+
+
+def test_last_focus_leaving_drops_the_miss_cache_too():
+    """The hot set and the miss deadlines share one session.
+
+    Clearing only the hot set leaves up to MissCacheMs of deadlines from a
+    player who has left, so the next session reads tiles that may have been
+    written to the durable store since as fail-closed ocean.
+    """
+    src = _read("TileStreamer.cs")
+    body = _body_between(src, "public void RemoveFocus(int focusId)", "bool SweepStaleFociLocked")
+    clear = body.index("if (_foci.Count == 0)")
+    done = body.index("return;", clear)
+    branch = body[clear:done]
+    assert "_hot.Clear()" in branch
+    assert "_missUntilTick.Clear()" in branch

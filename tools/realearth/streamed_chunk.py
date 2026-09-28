@@ -84,6 +84,24 @@ def lonlat_to_pack_block(lon: float, lat: float, manifest: Manifest) -> tuple[in
     return x, g.clamp_z(z)
 
 
+def load_tile_for_key(pack_dir: Path, tx: int, tz: int) -> EarthTile | None:
+    """Read the tile stored at (tx, tz), or None when it is absent or mis-filed.
+
+    The .rte header names the tile it holds. A payload stored under a path it
+    does not name (a copied or hand-seeded tile store, a mirror that serves one
+    object for every path) would be sampled as this location's terrain, and the
+    caller's cache would pin that for the whole run. Treat it as a hole, the
+    same as a missing file, so the existing miss handling owns the retry.
+    """
+    path = tile_path(pack_dir, tx, tz)
+    if not path.is_file():
+        return None
+    tile = read_tile(path)
+    if tile.tile_x != tx or tile.tile_z != tz:
+        return None
+    return tile
+
+
 def sample_point(
     pack_dir: Path,
     earth_x: int,
@@ -112,8 +130,7 @@ def sample_point(
     key = (tx, tz)
     store = cache if cache is not None else {}
     if key not in store:
-        p = tile_path(pack_dir, tx, tz)
-        store[key] = read_tile(p) if p.is_file() else None
+        store[key] = load_tile_for_key(pack_dir, tx, tz)
     tile = store[key]
     if tile is None:
         return 0.0, 0, 0
