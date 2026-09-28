@@ -161,7 +161,8 @@ Generic engine machines (gmUpdate, AI LOD, path, chunk flags, net bands): [resea
 ## Changelog
 
 - **2026-09-28:** Flat doc list completed (CITY_MAPDATA_TO_7DTD, TILE_FARM, TERRAIN_PERSISTENCE were only in the ownership table); `Removed` added to the status tag list.
-- **2026-09-28:** THREAT_MODEL re-verified against code: dropped the disk-patcher build boundary (no such tool in the tree; expand is the Harmony runtime transpiler), retired the CDN three.js threat (vendored + CI hash gate), corrected drifted line references, recorded the dead CSP script-src grant.
+- **2026-09-28:** THREAT_MODEL re-verified against code: dropped the disk-patcher build boundary (no such tool in the tree; expand is the Harmony runtime transpiler), retired the CDN three.js threat (vendored + CI hash gate), then re-audited every line reference and removed the dead CSP `script-src` grant, which the code does not make.
+- **2026-09-28:** THREAT_MODEL gained E5/B8, the mod session-state JSON read out of a shared world save (unbounded read, hand-rolled parser), and SECURITY.md now names that surface in scope.
 - **2026-08-26:** BACKUP_RESTORE registered (durability posture: state inventory, artifact archives, RPO/RTO).
 - **2026-08-23:** THREAT_MODEL + SECURITY registered (threat model owns attack-surface documentation).
 - **2026-07-19:** ENGINE_LIMITATIONS §7b + link generic research engine-limitations map.

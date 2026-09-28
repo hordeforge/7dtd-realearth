@@ -13,7 +13,12 @@ lists the known surfaces (tile decoder, CDN fetch path, viewer, install tooling)
 
 ## In scope
 
-- `.rte` tile decoding and the runtime CDN fetch path (`Source/RealEarth/RteTile.cs`, `Source/RealEarth/TileStreamer.cs`)
+- `.rte` tile decoding, pack manifest parsing, and the runtime CDN fetch path
+  (`Source/RealEarth/RteTile.cs`, `Source/RealEarth/PackManifest.cs`, `Source/RealEarth/TileStreamer.cs`)
+- The mod's on-disk session state (`Source/RealEarth/SessionStateStore.cs`,
+  `Source/RealEarth/WorldSavePath.cs`). `realearth.session.json` is written into the world save
+  directory, so a save shared between players arrives as untrusted input. Reports about a crafted
+  or oversized session file are in scope.
 - The web viewer and WebMod bundle (`viewer/src`, `viewer/index.html`, `webmod/src`).
   three.js is vendored into `viewer/vendor/three` and hash-checked against the pinned
   `node_modules` copy by `scripts/vendor-three.sh --check`, so the viewer loads no
