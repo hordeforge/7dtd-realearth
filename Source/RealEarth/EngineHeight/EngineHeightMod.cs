@@ -11,8 +11,17 @@ namespace RealEarth.EngineHeight
     /// </summary>
     public static class EngineHeightMod
     {
-        public static WorldConstantsProbe? Probe { get; private set; }
-        public static EngineHeightPolicy? Policy { get; private set; }
+        // Probe / Policy / ProductHeightBlocked are read on the chunk-generation thread
+        // and by the height-query hooks (AllocatableColumnMaxY decides the column cap),
+        // while Init runs on the init thread. They are volatile so a reader cannot see
+        // a new Policy paired with the previous Probe, which would cap some chunks at
+        // 255 and others at 32767 in the same world.
+        static volatile WorldConstantsProbe? _probe;
+        static volatile EngineHeightPolicy? _policy;
+        static volatile bool _productHeightBlocked;
+
+        public static WorldConstantsProbe? Probe { get => _probe; private set => _probe = value; }
+        public static EngineHeightPolicy? Policy { get => _policy; private set => _policy = value; }
         public static AbsoluteHeightStore Store { get; } = new AbsoluteHeightStore();
         public static bool Active => Policy != null && Policy.Enabled;
         /// <summary>
@@ -20,11 +29,14 @@ namespace RealEarth.EngineHeight
         /// and StockSafe is off. Heights still inject but clamp to AllocatableColumnMaxY;
         /// never claim Everest-scale columns without expand.
         /// </summary>
-        public static bool ProductHeightBlocked { get; private set; }
+        public static bool ProductHeightBlocked { get => _productHeightBlocked; private set => _productHeightBlocked = value; }
 
         public static void Init(RealEarthConfig cfg)
         {
-            Probe = WorldConstantsProbe.Probe();
+            // Probe publishes first: a reader that sees the fresh Policy must also see
+            // the Probe it was built from (volatile stores are release-ordered).
+            var probe = WorldConstantsProbe.Probe();
+            Probe = probe;
             ProductHeightBlocked = false;
 
             // Cap configured MaxGameY

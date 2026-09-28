@@ -34,6 +34,73 @@ def test_packaged_config_ships_debug_fow_off():
     assert '"DebugMapRevealRadiusChunks?=0"' in src
 
 
+def test_init_publishes_config_only_after_in_place_clamps():
+    """Config is read by the chunk-generation thread and the tile-load workers.
+
+    InitMod clamps LocalWindowSize and lets EngineHeightMod.Init settle
+    EngineMaxGameY / the one-to-one flag on the config object in place, so
+    publishing Config before those writes would let a worker sample a
+    half-applied profile (some chunks capped at 255, others at 32767).
+    """
+    api = _read("Source/RealEarth/ModApi.cs")
+    load = api.index("RealEarthConfig cfg = loadedConfig.Config;")
+    clamp = api.index("cfg.LocalWindowSize = cfg.WorldWidth;", load)
+    height = api.index("EngineHeightMod.Init(cfg);", clamp)
+    publish = api.index("Config = cfg;", height)
+    first_use = api.index("new EarthCoords(", height)
+    assert load < clamp < height < first_use < publish, (
+        "InitMod must clamp the config and run the engine-height policy before "
+        "publishing it, and only then hand the config to EarthCoords/TileStreamer/"
+        "WorldSession"
+    )
+
+
+def test_cross_thread_statics_are_volatile():
+    """Statics the gen thread and tile-load workers read must be published, not
+    plain: a stale Config/Streamer or a stale BuildGuard verdict is exactly what
+    the fail-closed gate and the height cap exist to prevent."""
+    api = _read("Source/RealEarth/ModApi.cs")
+    for field in (
+        "static volatile string _modPath",
+        "static volatile RealEarthConfig? _config",
+        "static volatile TileStreamer? _streamer",
+        "static volatile EarthCoords? _coords",
+        "static volatile WorldSession? _session",
+    ):
+        assert field in api, f"ModApi.{field} must be volatile"
+
+    height = _read("Source/RealEarth/EngineHeight/EngineHeightMod.cs")
+    assert "static volatile WorldConstantsProbe? _probe" in height
+    assert "static volatile EngineHeightPolicy? _policy" in height
+    assert "static volatile bool _productHeightBlocked" in height
+
+    transpiler = _read("Source/RealEarth/RuntimeYDimTranspiler.cs")
+    assert "public static volatile bool IsActive;" in transpiler
+    assert "public static volatile int PatchCount;" in transpiler
+
+    guard = _read("Source/RealEarth/BuildGuard.cs")
+    assert "public static volatile bool Blocked;" in guard
+    assert "public static volatile bool Guarded;" in guard
+
+
+def test_lazy_reflection_resolve_publishes_last():
+    """A "resolved" flag written before the handles it guards is a check-then-act
+    race: a second thread returns early and caches a permanently empty handle set.
+    Both HUD tick resolvers must set the flag after publishing the handles."""
+    for rel, marker in (
+        ("Source/RealEarth/AltitudeClimateTick.cs", "AltitudeClimateTick resolve"),
+        ("Source/RealEarth/LonLatHudTick.cs", "LonLatHudTick resolve"),
+    ):
+        src = _read(rel)
+        guard = src.index("if (_resolved) return;")
+        catch = src.index("catch (Exception ex)", guard)
+        publish = src.index("_resolved = true;", catch)
+        assert guard < catch < publish, (
+            f"{rel}: _resolved must be set after the resolve body, never before it"
+        )
+        assert src.index(marker) > 0
+
+
 def test_no_shell_script_embeds_python():
     """Config writing lives in realearth.mod_config / realearth.server_config.
 
@@ -107,8 +174,8 @@ def test_config_validate_exists_and_runs_at_init():
     # the shipped placeholders.
     api = _read("Source/RealEarth/ModApi.cs")
     load = api.index("RealEarthConfig.Load(configPath)")
-    manifest = api.index("TryApplyPackManifest(tileRoot, Config);")
-    validate = api.index("foreach (var warning in Config.Validate())")
+    manifest = api.index("TryApplyPackManifest(tileRoot, cfg);")
+    validate = api.index("foreach (var warning in cfg.Validate())")
     first_use = api.index("new EarthCoords(", validate)
     assert load < manifest < validate < first_use, (
         "InitMod must Load, then apply the pack manifest, then run Config.Validate() "

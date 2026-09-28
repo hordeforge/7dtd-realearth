@@ -11,12 +11,26 @@ namespace RealEarth
     /// </summary>
     public class ModApi : IModApi
     {
-        public static string ModPath { get; private set; } = "";
-        public static RealEarthConfig Config { get; private set; } = new RealEarthConfig();
-        public static TileStreamer? Streamer { get; private set; }
-        public static EarthCoords Coords { get; private set; } = new EarthCoords();
-        public static WorldSession? Session { get; private set; }
-        public static Mod? ModInstance { get; private set; }
+        // These are read by the chunk-generation thread and the async tile-load workers,
+        // not just by the init thread, so each one is a volatile backing field. A plain
+        // auto-property lets a worker read a stale reference across a re-init (old
+        // Streamer, previous world's Config) and, because Config's fields are clamped
+        // in place during init, lets it read a half-applied one. Config is assigned only
+        // after every in-place mutation below has run, so a reader never sees a config
+        // that is still being rewritten.
+        static volatile string _modPath = "";
+        static volatile RealEarthConfig? _config = new RealEarthConfig();
+        static volatile TileStreamer? _streamer;
+        static volatile EarthCoords? _coords = new EarthCoords();
+        static volatile WorldSession? _session;
+        static volatile Mod? _modInstance;
+
+        public static string ModPath { get => _modPath; private set => _modPath = value; }
+        public static RealEarthConfig Config { get => _config!; private set => _config = value; }
+        public static TileStreamer? Streamer { get => _streamer; private set => _streamer = value; }
+        public static EarthCoords Coords { get => _coords!; private set => _coords = value; }
+        public static WorldSession? Session { get => _session; private set => _session = value; }
+        public static Mod? ModInstance { get => _modInstance; private set => _modInstance = value; }
 
         public void InitMod(Mod _modInstance)
         {
@@ -42,7 +56,10 @@ namespace RealEarth
 
                 var configPath = Path.Combine(ModPath, "Config", "realearth.json");
                 var loadedConfig = RealEarthConfig.Load(configPath);
-                Config = loadedConfig.Config;
+                // Local until every in-place clamp below has run: Config is read from the
+                // chunk-generation thread, so publishing it first would expose a config
+                // whose WorldWidth/LocalWindowSize/EngineMaxGameY are still being written.
+                RealEarthConfig cfg = loadedConfig.Config;
                 if (loadedConfig.SynthesizedDefaults)
                     // Not fatal: a fresh install has no config yet and the defaults
                     // are the shipped profile. But say so, because every value the
@@ -54,48 +71,64 @@ namespace RealEarth
                             ? "The default file could NOT be written (permissions or a read-only install); "
                               + "the mod stays unconfigured until one is placed there."
                             : "Edit that file to configure the server."));
-                foreach (var key in Config.FindUnknownMemberNames(configPath))
+                foreach (var key in cfg.FindUnknownMemberNames(configPath))
                     LogWarn($"config: key '{key}' is not a RealEarth config key; it is ignored.");
 
-                var tileRoot = Path.IsPathRooted(Config.TilePackPath)
-                    ? Config.TilePackPath
-                    : Path.Combine(ModPath, Config.TilePackPath);
+                var tileRoot = Path.IsPathRooted(cfg.TilePackPath)
+                    ? cfg.TilePackPath
+                    : Path.Combine(ModPath, cfg.TilePackPath);
 
                 // Regional packs (demo): earth.manifest.json overrides world size so
                 // local 0-based .rte tiles sample correctly in Streamed mode.
                 // Validate runs after the manifest so wrap auto-enable sees final
                 // WorldWidth / regional bbox (not the shipped demo placeholders).
-                PackManifest.TryApplyPackManifest(tileRoot, Config);
-                foreach (var warning in Config.Validate())
+                PackManifest.TryApplyPackManifest(tileRoot, cfg);
+                foreach (var warning in cfg.Validate())
                     LogWarn($"config: {warning}");
+
+                // Host canvas cannot exceed pack extent
+                if (cfg.LocalWindowSize > cfg.WorldWidth)
+                    cfg.LocalWindowSize = cfg.WorldWidth;
+                if (cfg.LocalWindowSize > cfg.WorldHeight)
+                    cfg.LocalWindowSize = cfg.WorldHeight;
+
+                // Height: product is 1:1 real meters after YDim expand (StockSafe is opt-in only).
+                // Runs before publication because Init also clamps EngineMaxGameY and
+                // settles the one-to-one flag in place on cfg.
+                EngineHeight.EngineHeightMod.Init(cfg);
 
                 // Effective profile after the manifest and the clamps above, so a
                 // log read shows what the session actually runs, not the file.
                 Log(
-                    $"config: mode={Config.MapMode} world={Config.WorldWidth}x{Config.WorldHeight} " +
-                    $"tile={Config.TileSize} window={Config.LocalWindowSize} " +
-                    $"stream={Config.StreamRadiusTiles}/{Config.UnloadRadiusTiles} " +
-                    $"wrap={(Config.EnableLongitudeWrap ? "on" : "off")} " +
-                    $"regionalBbox={Config.HasRegionalBbox} " +
-                    $"seaY={Config.SeaLevelGameY} maxY={Config.EngineMaxGameY} " +
-                    $"heightMod={(Config.EnableEngineHeightMod ? (Config.EngineHeightStockSafe ? "stocksafe" : "1:1") : "off")} " +
-                    $"pack={Config.TilePackPath}");
+                    $"config: mode={cfg.MapMode} world={cfg.WorldWidth}x{cfg.WorldHeight} " +
+                    $"tile={cfg.TileSize} window={cfg.LocalWindowSize} " +
+                    $"stream={cfg.StreamRadiusTiles}/{cfg.UnloadRadiusTiles} " +
+                    $"wrap={(cfg.EnableLongitudeWrap ? "on" : "off")} " +
+                    $"regionalBbox={cfg.HasRegionalBbox} " +
+                    $"seaY={cfg.SeaLevelGameY} maxY={cfg.EngineMaxGameY} " +
+                    $"heightMod={(cfg.EnableEngineHeightMod ? (cfg.EngineHeightStockSafe ? "stocksafe" : "1:1") : "off")} " +
+                    $"pack={cfg.TilePackPath}");
 
-                Coords = new EarthCoords(Config.WorldWidth, Config.WorldHeight, Config.TileSize);
-                // Host canvas cannot exceed pack extent
-                if (Config.LocalWindowSize > Config.WorldWidth)
-                    Config.LocalWindowSize = Config.WorldWidth;
-                if (Config.LocalWindowSize > Config.WorldHeight)
-                    Config.LocalWindowSize = Config.WorldHeight;
+                // Build the whole generation of world objects off to the side, then
+                // publish them back to back. The chunk-generation thread and the
+                // tile-load workers read Config/Coords/Streamer/Session; publishing one
+                // at a time let them sample a new Config against the previous world's
+                // Session and Streamer.
+                var coords = new EarthCoords(cfg.WorldWidth, cfg.WorldHeight, cfg.TileSize);
+                // A re-init replaces the streamer. The old one is disposed only after
+                // the new generation is published, so no worker can pick up a streamer
+                // whose HttpClient and hot set are already released.
+                var previousStreamer = Streamer;
+                var streamer = new TileStreamer(tileRoot, coords, cfg);
+                var session = new WorldSession(coords, cfg);
 
-                // A re-init replaces the streamer: dispose the old one so its
-                // HttpClient connection pool and decoded hot set are released
-                // rather than stranded until process exit.
-                Streamer?.Dispose();
-                Streamer = new TileStreamer(tileRoot, Coords, Config);
-                Session = new WorldSession(Coords, Config);
-                // Height: product is 1:1 real meters after YDim expand (StockSafe is opt-in only)
-                EngineHeight.EngineHeightMod.Init(Config);
+                Coords = coords;
+                Config = cfg;
+                Streamer = streamer;
+                Session = session;
+                // Releases the previous HttpClient connection pool and its
+                // ~1.5 MB-per-tile hot set rather than stranding them until process exit.
+                previousStreamer?.Dispose();
                 // Product runtime hot-patch: when opted in on a stock engine,
                 // install the Harmony transpilers now (pre-world) so EngineExpanded
                 // below reflects the patched capacity. Disk-patched installs are
@@ -190,13 +223,25 @@ namespace RealEarth
             }
         }
 
-        // Lazy-resolved once; volatile because Log is called from the main thread and
-        // async tile-load workers concurrently, and a stale flag could pair with a
-        // null delegate and permanently fall back to Console output.
-        static volatile MethodInfo? _logOut;
-        static volatile MethodInfo? _logWarn;
-        static volatile MethodInfo? _logError;
-        static volatile bool _logResolved;
+        // Lazy-resolved once under a lock: Log is called from the main thread and from
+        // async tile-load workers concurrently, and three separate volatile fields plus
+        // a "resolved" flag is a check-then-act -- two threads can resolve at once and
+        // publish a half-filled set, and a resolution that runs before Assembly-CSharp
+        // is loadable latches empty delegates so the mod logs to Console forever. The
+        // triple is resolved and published as one immutable object instead.
+        sealed class LogMethods
+        {
+            public readonly MethodInfo? Out;
+            public readonly MethodInfo? Warn;
+            public readonly MethodInfo? Error;
+            public LogMethods(MethodInfo? o, MethodInfo? w, MethodInfo? e)
+            {
+                Out = o; Warn = w; Error = e;
+            }
+        }
+
+        static readonly object _logGate = new object();
+        static volatile LogMethods? _logMethods;
 
         enum LogLevel { Info, Warn, Error }
 
@@ -214,30 +259,20 @@ namespace RealEarth
                 // Prefer game logger when present (MethodInfo resolved once; hot-path callers
                 // log from budgeted per-chunk/per-tick paths). Game Log.Warning / Log.Error
                 // let operators filter RealEarth failures out of the flat game log.
-                if (!_logResolved)
-                {
-                    var logType = Type.GetType("Log, Assembly-CSharp");
-                    if (logType != null)
-                    {
-                        _logOut = logType.GetMethod("Out", new[] { typeof(string) });
-                        _logWarn = logType.GetMethod("Warning", new[] { typeof(string) });
-                        _logError = logType.GetMethod("Error", new[] { typeof(string) });
-                    }
-                    _logResolved = true;
-                }
-                MethodInfo? m = level == LogLevel.Error ? _logError
-                    : level == LogLevel.Warn ? _logWarn
-                    : _logOut;
+                var methods = _logMethods ?? ResolveLogMethods();
+                MethodInfo? m = level == LogLevel.Error ? methods.Error
+                    : level == LogLevel.Warn ? methods.Warn
+                    : methods.Out;
                 if (m != null)
                 {
                     m.Invoke(null, new object[] { Prefix() + msg });
                     return;
                 }
-                if (_logOut != null)
+                if (methods.Out != null)
                 {
                     // Host logger has no Warning/Error overload: stay on the game log
                     // channel and let the prefix carry the level.
-                    _logOut.Invoke(null, new object[] { Prefix() + msg });
+                    methods.Out.Invoke(null, new object[] { Prefix() + msg });
                     return;
                 }
             }
@@ -253,6 +288,29 @@ namespace RealEarth
             catch
             {
                 // ignore
+            }
+        }
+
+        /// <summary>
+        /// Resolve the host logger overloads once. A miss is NOT cached: Assembly-CSharp
+        /// may not be loadable yet on the first log line, and latching an empty set there
+        /// would pin every later line to Console output for the process lifetime.
+        /// </summary>
+        static LogMethods ResolveLogMethods()
+        {
+            lock (_logGate)
+            {
+                var cached = _logMethods;
+                if (cached != null) return cached;
+                var logType = Type.GetType("Log, Assembly-CSharp");
+                if (logType == null)
+                    return new LogMethods(null, null, null);
+                var resolved = new LogMethods(
+                    logType.GetMethod("Out", new[] { typeof(string) }),
+                    logType.GetMethod("Warning", new[] { typeof(string) }),
+                    logType.GetMethod("Error", new[] { typeof(string) }));
+                _logMethods = resolved;
+                return resolved;
             }
         }
 

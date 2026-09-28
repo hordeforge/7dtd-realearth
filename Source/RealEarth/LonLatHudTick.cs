@@ -23,10 +23,12 @@ namespace RealEarth
         /// </summary>
         internal static Func<int> TickNow { get; set; } = static () => Environment.TickCount;
 
-        static MethodInfo? _setCustomVar;
-        static PropertyInfo? _buffsProp;
-        static bool _resolved;
-        static bool _loggedMissing;
+        // Handles are volatile and the resolution flag publishes last (see EnsureMethods),
+        // so no caller can observe "resolved" paired with a half-filled handle set.
+        static volatile MethodInfo? _setCustomVar;
+        static volatile PropertyInfo? _buffsProp;
+        static volatile bool _resolved;
+        static volatile bool _loggedMissing;
 
         /// <summary>
         /// Publish lon/lat cvars for a local/primary player. Throttled; no-ops
@@ -83,32 +85,43 @@ namespace RealEarth
         static void EnsureMethods(Type entityType)
         {
             if (_resolved) return;
-            _resolved = true;
+            // Resolve into locals, then publish the flag last: a reader that sees
+            // _resolved set must see the handles, and a throw mid-resolve leaves the
+            // flag clear so the next tick retries rather than latching a partial cache.
+            PropertyInfo? buffsProp;
+            MethodInfo? setCustomVar;
             try
             {
-                for (Type? t = entityType; t != null && _buffsProp == null; t = t.BaseType)
+                buffsProp = null;
+                for (Type? t = entityType; t != null && buffsProp == null; t = t.BaseType)
                 {
-                    _buffsProp = ReflectCache.Prop(t, "Buffs")
+                    buffsProp = ReflectCache.Prop(t, "Buffs")
                         ?? ReflectCache.PropPub(t, "Buffs");
                 }
-                if (_buffsProp == null) return;
-
-                Type buffsType = _buffsProp.PropertyType;
-                foreach (var m in buffsType.GetMethods(BindingFlags.Instance | BindingFlags.Public))
+                setCustomVar = null;
+                if (buffsProp != null)
                 {
-                    if (m.Name != "SetCustomVar" || _setCustomVar != null)
-                        continue;
-                    var ps = m.GetParameters();
-                    if (ps.Length >= 2
-                        && ps[0].ParameterType == typeof(string)
-                        && ps[1].ParameterType == typeof(float))
-                        _setCustomVar = m;
+                    Type buffsType = buffsProp.PropertyType;
+                    foreach (var m in buffsType.GetMethods(BindingFlags.Instance | BindingFlags.Public))
+                    {
+                        if (m.Name != "SetCustomVar" || setCustomVar != null)
+                            continue;
+                        var ps = m.GetParameters();
+                        if (ps.Length >= 2
+                            && ps[0].ParameterType == typeof(string)
+                            && ps[1].ParameterType == typeof(float))
+                            setCustomVar = m;
+                    }
                 }
             }
             catch (Exception ex)
             {
                 ModApi.LogError($"LonLatHudTick resolve: {ex.GetType().Name}: {ex.Message}");
+                return;
             }
+            _buffsProp = buffsProp;
+            _setCustomVar = setCustomVar;
+            _resolved = true;
         }
 
         static void SetCVar(object buffs, string name, float value)

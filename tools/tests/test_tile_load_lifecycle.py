@@ -100,9 +100,10 @@ def test_load_returns_its_slot_on_every_exit_path():
 
 
 def test_streamer_releases_its_http_client():
-    """The streamer owns an HttpClient, which owns a connection pool. Assigning
-    a new streamer over an old one used to strand the previous pool and its
-    decoded hot set for the process lifetime."""
+    """The streamer owns an HttpClient, which owns a connection pool. A re-init
+    used to strand the previous pool and its decoded hot set for the process
+    lifetime. The old streamer is captured, then disposed only after the new
+    generation is published, so a worker never picks up a released instance."""
     src = _read("TileStreamer.cs")
     assert "public sealed class TileStreamer : IDisposable" in src
     dispose = _body_between(src, "public void Dispose()", "\n    }\n}")
@@ -110,8 +111,13 @@ def test_streamer_releases_its_http_client():
     assert "GC.SuppressFinalize(this)" in dispose
 
     modapi = _read("ModApi.cs")
-    assign = modapi.index("Streamer = new TileStreamer")
-    assert 0 < modapi.index("Streamer?.Dispose();") < assign
+    capture = modapi.index("var previousStreamer = Streamer;")
+    assign = modapi.index("Streamer = streamer;")
+    release = modapi.index("previousStreamer?.Dispose();")
+    assert capture < assign < release, (
+        "InitMod must capture the outgoing streamer, publish the new one, and only "
+        "then dispose the old one"
+    )
 
 
 def test_every_load_path_rejects_a_tile_stored_under_another_key():

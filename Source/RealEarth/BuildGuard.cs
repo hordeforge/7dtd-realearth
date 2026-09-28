@@ -23,19 +23,23 @@ namespace RealEarth
                 {"a01a95393b24b75adf1e4b3ee1391ba19fa61e6bad79271fa95d8df721720837", "V3.2.0 (b9) live dedi"},
             };
 
+        // Volatile: Init publishes the verdict on the init thread while
+        // RuntimeHooks.EnforceInjectGate reads Blocked (and console/init paths read the
+        // rest). A stale false on an unreviewed build lets height inject run, which is
+        // exactly what the guard exists to stop.
         /// <summary>True once Init has run (the hash verdict lives in BuildKnown/Blocked).</summary>
-        public static bool Guarded;
+        public static volatile bool Guarded;
 
         /// <summary>True when the current DLL hash is in the reviewed allowlist.</summary>
-        public static bool BuildKnown;
+        public static volatile bool BuildKnown;
 
         /// <summary>Sha256 of the Assembly-CSharp.dll that was checked (lowercase hex).</summary>
-        public static string CurrentSha = "";
+        public static volatile string CurrentSha = "";
 
         /// <summary>True when an unknown build should be refused (fail-closed).</summary>
-        public static bool Blocked;
+        public static volatile bool Blocked;
 
-        static string? _assemblyPath;
+        static volatile string? _assemblyPath;
 
         /// <summary>Path to the loaded Assembly-CSharp.dll, or "" when it is not loaded yet.</summary>
         public static string AssemblyPath
@@ -68,9 +72,12 @@ namespace RealEarth
         /// </summary>
         public static bool Init(bool allowUnknownBuild)
         {
+            // Fail closed for the whole hash window: a reader on another thread that
+            // runs before the verdict lands must see "blocked", not the previous
+            // world's "allowed". Every exit below overwrites this with the real verdict.
             Guarded = true;
             BuildKnown = false;
-            Blocked = false;
+            Blocked = true;
             try
             {
                 string path = AssemblyPath;

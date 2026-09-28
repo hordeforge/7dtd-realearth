@@ -27,11 +27,16 @@ namespace RealEarth
         public const int TargetLayers = TargetYDim / 4; // 8192
         public const int TargetVolumeBits = 16 * 16 * TargetYDim; // 8388608
 
-        /// <summary>True after a full transpiler set installed on a stock engine.</summary>
-        public static bool IsActive;
+        /// <summary>
+        /// True after a full transpiler set installed on a stock engine. Volatile: it
+        /// flips on the init thread while the chunk-generation thread reads it through
+        /// EngineHeightMod.AllocatableColumnMaxY. A stale false caps injected columns at
+        /// the stock ceiling for every chunk generated before the next read.
+        /// </summary>
+        public static volatile bool IsActive;
 
-        /// <summary>Count of methods transpiled (diagnostics).</summary>
-        public static int PatchCount;
+        /// <summary>Count of methods transpiled (diagnostics). Volatile for the same reason.</summary>
+        public static volatile int PatchCount;
 
         static readonly object Gate = new object();
         static bool _tried;

@@ -51,12 +51,15 @@ namespace RealEarth
         /// </summary>
         internal static Func<int> TickNow { get; set; } = static () => Environment.TickCount;
 
-        static MethodInfo? _addBuff;
-        static MethodInfo? _removeBuff;
-        static MethodInfo? _setCustomVar;
-        static PropertyInfo? _buffsProp;
-        static bool _resolved;
-        static bool _loggedMissing;
+        // Resolution flag publishes last (see EnsureMethods) and every handle is
+        // volatile, so a caller on another thread can never observe "resolved" paired
+        // with a half-filled handle set.
+        static volatile MethodInfo? _addBuff;
+        static volatile MethodInfo? _removeBuff;
+        static volatile MethodInfo? _setCustomVar;
+        static volatile PropertyInfo? _buffsProp;
+        static volatile bool _resolved;
+        static volatile bool _loggedMissing;
 
         /// <summary>
         /// Apply altitude climate for a local player. Safe to call every tick;
@@ -175,50 +178,67 @@ namespace RealEarth
         static void EnsureMethods(Type entityType)
         {
             if (_resolved) return;
-            _resolved = true;
+            // Resolve into locals, then publish the flag last: a reader that sees
+            // _resolved set must see the full handle set, and a throw mid-resolve must
+            // leave the flag clear so the next tick retries instead of latching a
+            // half-resolved cache.
+            PropertyInfo? buffsProp;
+            MethodInfo? addBuff;
+            MethodInfo? removeBuff;
+            MethodInfo? setCustomVar;
             try
             {
-                _buffsProp = ReflectCache.Prop(entityType, "Buffs")
+                buffsProp = ReflectCache.Prop(entityType, "Buffs")
                     ?? ReflectCache.PropPub(entityType, "Buffs");
                 // Walk base types for EntityAlive.Buffs.
-                for (Type? t = entityType; t != null && _buffsProp == null; t = t.BaseType)
+                for (Type? t = entityType; t != null && buffsProp == null; t = t.BaseType)
                 {
-                    _buffsProp = ReflectCache.Prop(t, "Buffs")
+                    buffsProp = ReflectCache.Prop(t, "Buffs")
                         ?? ReflectCache.PropPub(t, "Buffs");
                 }
-                if (_buffsProp == null) return;
-
-                Type buffsType = _buffsProp.PropertyType;
-                foreach (var m in buffsType.GetMethods(BindingFlags.Instance | BindingFlags.Public))
+                addBuff = null;
+                removeBuff = null;
+                setCustomVar = null;
+                if (buffsProp != null)
                 {
-                    if (m.Name == "AddBuff" && _addBuff == null)
+                    Type buffsType = buffsProp.PropertyType;
+                    foreach (var m in buffsType.GetMethods(BindingFlags.Instance | BindingFlags.Public))
                     {
-                        var ps = m.GetParameters();
-                        // Prefer: AddBuff(string, Vector3i, int, bool, bool, float)
-                        if (ps.Length == 6 && ps[0].ParameterType == typeof(string))
-                            _addBuff = m;
-                        else if (ps.Length == 1 && ps[0].ParameterType == typeof(string) && _addBuff == null)
-                            _addBuff = m;
-                    }
-                    else if (m.Name == "RemoveBuff" && _removeBuff == null)
-                    {
-                        var ps = m.GetParameters();
-                        if (ps.Length >= 1 && ps[0].ParameterType == typeof(string))
-                            _removeBuff = m;
-                    }
-                    else if (m.Name == "SetCustomVar" && _setCustomVar == null)
-                    {
-                        var ps = m.GetParameters();
-                        if (ps.Length >= 2 && ps[0].ParameterType == typeof(string)
-                            && ps[1].ParameterType == typeof(float))
-                            _setCustomVar = m;
+                        if (m.Name == "AddBuff" && addBuff == null)
+                        {
+                            var ps = m.GetParameters();
+                            // Prefer: AddBuff(string, Vector3i, int, bool, bool, float)
+                            if (ps.Length == 6 && ps[0].ParameterType == typeof(string))
+                                addBuff = m;
+                            else if (ps.Length == 1 && ps[0].ParameterType == typeof(string))
+                                addBuff = m;
+                        }
+                        else if (m.Name == "RemoveBuff" && removeBuff == null)
+                        {
+                            var ps = m.GetParameters();
+                            if (ps.Length >= 1 && ps[0].ParameterType == typeof(string))
+                                removeBuff = m;
+                        }
+                        else if (m.Name == "SetCustomVar" && setCustomVar == null)
+                        {
+                            var ps = m.GetParameters();
+                            if (ps.Length >= 2 && ps[0].ParameterType == typeof(string)
+                                && ps[1].ParameterType == typeof(float))
+                                setCustomVar = m;
+                        }
                     }
                 }
             }
             catch (Exception ex)
             {
                 ModApi.LogError($"AltitudeClimateTick resolve: {ex.GetType().Name}: {ex.Message}");
+                return;
             }
+            _buffsProp = buffsProp;
+            _addBuff = addBuff;
+            _removeBuff = removeBuff;
+            _setCustomVar = setCustomVar;
+            _resolved = true;
         }
 
         static void SetCVar(object buffs, string name, float value)

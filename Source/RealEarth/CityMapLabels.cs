@@ -236,90 +236,26 @@ namespace RealEarth
 
             try
             {
+                bool discovered;
                 lock (_cityGate)
                 {
-                    if (!force && _tickThrottle > 0)
+                    discovered = DiscoverPass(playerLocalX, playerLocalZ, force);
+                }
+                // Soft gap 32: persist immediately so dedicated/shared session files pick
+                // up discoveries without waiting for logout/origin-slide. Deliberately
+                // outside _cityGate: this writes two files, and holding the gate across
+                // that I/O stalls the next player tick and any console `recities`.
+                if (discovered)
+                {
+                    try
                     {
-                        _tickThrottle--;
-                        return;
+                        var session = ModApi.Session;
+                        if (session != null)
+                            SessionStateStore.TrySave(session, cfg);
                     }
-                    _tickThrottle = 15; // ~0.25s at 60fps-ish ticks; cheap distance checks
-
-                    if (!EnsureCatalog())
-                        return;
-                    if (_catalog == null || _catalog.Count == 0)
-                        return;
-
-                    object? mgr = GetNavObjectManager();
-                    if (mgr == null)
-                        return;
-                    MethodInfo? reg = ResolveRegister(mgr.GetType());
-                    if (reg == null)
-                        return;
-
-                    var session = ModApi.Session;
-                    if (session == null)
-                        return;
-
-                    // P6 budget: honor config but hard-cap (never ClampPrefabsInArea(cfg,cfg) identity).
-                    const int hardMaxLabels = 500;
-                    int maxLabels = Math.Min(Math.Max(1, cfg.CityMapMaxLabels), hardMaxLabels);
-                    int minPop = Math.Max(0, cfg.CityMapMinPopulation);
-                    float scale = cfg.CityMapDiscoverRadiusScale > 0.05f
-                        ? cfg.CityMapDiscoverRadiusScale
-                        : 1f;
-
-                    // Re-place discovered pins if handles were dropped (e.g. origin slide).
-                    // Marker position is always the city center, never the player.
-                    foreach (var name in _discovered)
+                    catch
                     {
-                        Place? p = FindByName(name);
-                        if (p == null) continue;
-                        if (!_navByName.ContainsKey(p.Name))
-                            EnsureMarker(mgr, reg, session, p);
-                    }
-
-                    if (_discovered.Count >= maxLabels)
-                        return;
-
-                    foreach (var p in _catalog)
-                    {
-                        if (_discovered.Count >= maxLabels)
-                            break;
-                        if (p.Population < minPop && minPop > 0)
-                            continue;
-                        if (_discovered.Contains(p.Name))
-                            continue;
-
-                        LonLatToLocalCached(session, p, out int cx, out int cz);
-                        long dx = (long)playerLocalX - cx;
-                        long dz = (long)playerLocalZ - cz;
-                        long distSq = dx * dx + dz * dz;
-                        double edge = ScaledEdgeRadiusBlocks(p.EdgeRadiusBlocks, scale);
-
-                        // Reaching the edge is enough to discover; pin at center.
-                        // Squared compare avoids a sqrt per place per window.
-                        if (distSq <= edge * edge)
-                        {
-                            if (EnsureMarker(mgr, reg, session, p))
-                            {
-                                _discovered.Add(p.Name);
-                                ModApi.Log(
-                                    $"CityMapLabels: discovered '{p.Name}' " +
-                                    $"(dist={(int)Math.Sqrt(distSq):0} edge={edge:0} center=({cx},{cz})).");
-                                // Soft gap 32: persist immediately so dedicated/shared
-                                // session files pick up discoveries without waiting for
-                                // logout/origin-slide. Wire MP package sync still open.
-                                try
-                                {
-                                    SessionStateStore.TrySave(session, ModApi.Config);
-                                }
-                                catch
-                                {
-                                    // never break discovery tick
-                                }
-                            }
-                        }
+                        // never break discovery tick
                     }
                 }
             }
@@ -327,6 +263,92 @@ namespace RealEarth
             {
                 ModApi.LogWarn($"CityMapLabels tick: {ex.GetType().Name}: {ex.Message}");
             }
+        }
+
+        /// <summary>
+        /// One gated discovery pass. Returns true when at least one city was newly
+        /// discovered, so the caller can persist outside the gate.
+        /// </summary>
+        static bool DiscoverPass(int playerLocalX, int playerLocalZ, bool force)
+        {
+            if (!force && _tickThrottle > 0)
+            {
+                _tickThrottle--;
+                return false;
+            }
+            _tickThrottle = 15; // ~0.25s at 60fps-ish ticks; cheap distance checks
+
+            if (!EnsureCatalog())
+                return false;
+            if (_catalog == null || _catalog.Count == 0)
+                return false;
+
+            object? mgr = GetNavObjectManager();
+            if (mgr == null)
+                return false;
+            MethodInfo? reg = ResolveRegister(mgr.GetType());
+            if (reg == null)
+                return false;
+
+            var cfg = ModApi.Config;
+            if (cfg == null)
+                return false;
+            var session = ModApi.Session;
+            if (session == null)
+                return false;
+
+            // P6 budget: honor config but hard-cap (never ClampPrefabsInArea(cfg,cfg) identity).
+            const int hardMaxLabels = 500;
+            int maxLabels = Math.Min(Math.Max(1, cfg.CityMapMaxLabels), hardMaxLabels);
+            int minPop = Math.Max(0, cfg.CityMapMinPopulation);
+            float scale = cfg.CityMapDiscoverRadiusScale > 0.05f
+                ? cfg.CityMapDiscoverRadiusScale
+                : 1f;
+
+            // Re-place discovered pins if handles were dropped (e.g. origin slide).
+            // Marker position is always the city center, never the player.
+            foreach (var name in _discovered)
+            {
+                Place? p = FindByName(name);
+                if (p == null) continue;
+                if (!_navByName.ContainsKey(p.Name))
+                    EnsureMarker(mgr, reg, session, p);
+            }
+
+            if (_discovered.Count >= maxLabels)
+                return false;
+
+            bool discovered = false;
+            foreach (var p in _catalog)
+            {
+                if (_discovered.Count >= maxLabels)
+                    break;
+                if (p.Population < minPop && minPop > 0)
+                    continue;
+                if (_discovered.Contains(p.Name))
+                    continue;
+
+                LonLatToLocalCached(session, p, out int cx, out int cz);
+                long dx = (long)playerLocalX - cx;
+                long dz = (long)playerLocalZ - cz;
+                long distSq = dx * dx + dz * dz;
+                double edge = ScaledEdgeRadiusBlocks(p.EdgeRadiusBlocks, scale);
+
+                // Reaching the edge is enough to discover; pin at center.
+                // Squared compare avoids a sqrt per place per window.
+                if (distSq <= edge * edge)
+                {
+                    if (EnsureMarker(mgr, reg, session, p))
+                    {
+                        _discovered.Add(p.Name);
+                        discovered = true;
+                        ModApi.Log(
+                            $"CityMapLabels: discovered '{p.Name}' " +
+                            $"(dist={(int)Math.Sqrt(distSq):0} edge={edge:0} center=({cx},{cz})).");
+                    }
+                }
+            }
+            return discovered;
         }
 
         /// <summary>After origin slide: keep discovered pins, recompute local positions.</summary>
