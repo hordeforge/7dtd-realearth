@@ -28,7 +28,9 @@ jobs:
     steps:
       # Actions pinned by full commit SHA (tag in comment) so a moved tag or a
       # compromised major-version release cannot inject code into the pipeline.
-      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1  # v7.0.1
+      # This workflow is linted by its own gate before anything it verifies.
+      - run: make lint-yaml
       - name: Check the tag matches ModInfo.xml and the tools package
         shell: bash
         run: |

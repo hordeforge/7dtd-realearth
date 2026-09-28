@@ -66,11 +66,15 @@ target-version = "py311"
 # `return None`, no return-else); PIE/RSE drop dead constructs; ISC bans
 # same-line implicit string concatenation; ICN/TID keep import style single;
 # FLY prefers f-strings in joins; YTT pins truthy sys/version checks.
+# FA requires the future annotations import, so PEP 604 `X | None` annotations
+# keep working on the 3.11 floor; INT keeps plain imports out of `if
+# TYPE_CHECKING` branches and binds that block to one top-level import.
 select = ["E", "F", "W", "I", "B", "UP", "C4", "SIM"]
 extend-select = [
   "RUF100", "PLE", "PLW", "SLF", "PGH", "T10",
   "A", "N", "DTZ", "PERF", "RET", "PIE", "RSE",
   "ISC", "ICN", "TID", "FLY", "YTT", "Q",
+  "FA", "INT",
 ]
 
 [tool.ruff.lint.per-file-ignores]

@@ -39,6 +39,8 @@ make help
 make setup                 # uv sync tools + check game path
 make test                  # Python tests
 make lint                  # Ruff + black --check (tools/, scripts/) + mypy (tools/realearth, scripts/)
+make lint-shell            # ShellCheck over scripts/*.sh
+make lint-yaml             # yamllint over the .github/ workflows
 make test-mp               # multiplayer origin/bubble unit tests
 make build                 # RealEarth.dll
 make install               # build + install mod (hot-patches YDim expand at boot)

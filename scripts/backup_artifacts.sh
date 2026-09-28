@@ -67,7 +67,8 @@ cmd_backup() {
   fi
 
   echo "Backing up into: $archive"
-  # shellcheck disable=SC2086
+  # shellcheck disable=SC2086 # $dirs is a space-separated path list; quoting
+  # it would pass one bogus path to tar.
   tar -C "$ROOT" -czf "$archive" $dirs
 
   # Integrity gate: a backup whose exit code lies is not a backup. Verify the
@@ -83,7 +84,7 @@ cmd_backup() {
   size="$(du -h "$archive" | cut -f1)"
   echo "OK: $archive ($size, verified)"
   echo "Contents:"
-  # shellcheck disable=SC2086
+  # shellcheck disable=SC2086 # same path-list split as the tar call above.
   tar -tzf "$archive" | cut -d/ -f1-2 | sort -u | sed 's/^/  /'
   if [[ "$BACKUP_DIR" == "$ROOT"/backups* ]]; then
     echo "WARNING: archive lives on the same disk as the data it protects." >&2

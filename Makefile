@@ -17,7 +17,7 @@ SHELL := /bin/bash
 	artifacts-backup artifacts-restore \
 	viewer viewer-build serve viewer-lint viewer-smoke \
 	webmod webmod-export webmod-lint html-lint \
-	lint-shell info check clean clean-build \
+	lint-shell lint-yaml info check clean clean-build \
 
 # ---------------------------------------------------------------------------
 # Paths / knobs (override on the command line: make install GAME_DIR=...)
@@ -88,6 +88,9 @@ RUFF          := cd $(TOOLS) && $(UV) run --locked --extra dev ruff check $(PY_S
 BLACK         := cd $(TOOLS) && $(UV) run --locked --extra dev black --check --config pyproject.toml $(PY_SOURCES)
 MYPY          := cd $(TOOLS) && $(UV) run --locked --extra dev mypy realearth ../scripts
 
+# GitHub YAML the yamllint gate covers. Keep in step with what CI lints.
+YAML          := .github/dependabot.yml .github/workflows/ci.yml .github/workflows/release.yml
+
 # ---------------------------------------------------------------------------
 # Help
 # ---------------------------------------------------------------------------
@@ -131,9 +134,10 @@ help:
 	@echo "    Single test: cd tools && uv run --locked --extra dev pytest tests/test_coords.py -k name"
 	@echo "    make lint               Ruff + black --check + mypy over tools/ and scripts/"
 	@echo "    make lint-shell         ShellCheck over scripts/*.sh (CI gate)"
+	@echo "    make lint-yaml          yamllint over the GitHub workflows (CI gate)"
 	@echo ""
 	@echo "  CI parity (what .github/workflows/ci.yml runs beyond the targets above)"
-	@echo "    make shellcheck         Lint scripts/*.sh"
+	@echo "    make lint-shell         Lint scripts/*.sh"
 	@echo ""
 	@echo "  Viewer"
 	@echo "    make viewer             Export demo pack into viewer/data/demo"
@@ -322,6 +326,14 @@ lint-shell:
 	@shellcheck "$(SCRIPTS)"/*.sh
 	@echo "OK shellcheck ($(SCRIPTS)/*.sh)"
 
+# yamllint gate over the GitHub YAML (.yamllint holds the config, its header
+# the reason for each deviation from the default preset). Both workflows run
+# it, so a pipeline file is linted by the same commit that changes it.
+lint-yaml:
+	@command -v yamllint >/dev/null || { echo "ERROR: yamllint not found (apt/brew install yamllint; CI requires it)" >&2; exit 1; }
+	@yamllint $(YAML)
+	@echo "OK yamllint ($(YAML))"
+
 test-height:
 	@$(PYTEST) tests/test_height_mod_case.py tests/test_height_10k.py \
 		tests/test_height_test_map.py tests/test_engine_constants.py \
@@ -355,8 +367,8 @@ coverage:
 
 # Mirrors ci.yml (tools job) as far as a game-less machine allows: build needs
 # the installed game assemblies, everything else here is what CI checks.
-check: setup test-fast lint-python lint-shell build viewer-build viewer-lint viewer-smoke webmod-lint html-lint
-	@echo "OK check (setup + test-fast + lint-python + lint-shell + build + viewer-build + viewer-lint + viewer-smoke + webmod-lint + html-lint)"
+check: setup test-fast lint-python lint-shell lint-yaml build viewer-build viewer-lint viewer-smoke webmod-lint html-lint
+	@echo "OK check (setup + test-fast + lint-python + lint-shell + lint-yaml + build + viewer-build + viewer-lint + viewer-smoke + webmod-lint + html-lint)"
 
 # ---------------------------------------------------------------------------
 # Viewer

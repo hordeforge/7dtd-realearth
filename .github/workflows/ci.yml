@@ -22,8 +22,8 @@ jobs:
     steps:
       # Actions pinned by full commit SHA (tag in comment) so a moved tag or a
       # compromised major-version release cannot inject code into the pipeline.
-      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
-      - uses: astral-sh/setup-uv@20cfd1bf945f4377ade1205e4dbc17946fc9a30d # v10.0.1
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1  # v7.0.1
+      - uses: astral-sh/setup-uv@20cfd1bf945f4377ade1205e4dbc17946fc9a30d  # v10.0.1
         with:
           # Pin the uv binary itself (the action otherwise installs whatever
           # is latest at run time). Matches tools/pyproject.toml
@@ -35,7 +35,7 @@ jobs:
       # oxlint/tsgolint/anti-slop/vnu toolchain for the lint-*.sh scripts;
       # key hashes the shared pin file plus the scripts that consume it, so a
       # version bump invalidates it.
-      - uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+      - uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9  # v6.1.0
         with:
           path: ~/.cache/realearth/oxlint-standards
           key: oxlint-standards-${{ runner.os }}-${{ hashFiles('scripts/toolchain-versions.env', 'scripts/lint-viewer.sh', 'scripts/lint-webmod.sh', 'scripts/lint-html.sh') }}
@@ -46,6 +46,9 @@ jobs:
       # can only be built on a machine with the game installed (see
       # AGENTS.md "Build / install"); stubs would manufacture false confidence.
       - run: shellcheck scripts/*.sh
+      # The GitHub YAML lints itself: a workflow is code too, and a broken
+      # step name or tab indent otherwise surfaces as a runtime surprise.
+      - run: make lint-yaml
       # Restore is only a backup if it has been proven: roundtrip drill on
       # synthetic state (sandboxed, no game install needed).
       - run: make artifacts-drill
@@ -53,7 +56,7 @@ jobs:
       - run: make -C tools lint
       # The lint scripts install oxlint, tsc and vnu into a shared cache at
       # pinned versions; the runner preinstalls node and java, but not bun.
-      - uses: oven-sh/setup-bun@0c5077e51419868618aeaa5fe8019c62421857d6 # v2.2.0
+      - uses: oven-sh/setup-bun@0c5077e51419868618aeaa5fe8019c62421857d6  # v2.2.0
         with:
           # Pin the bun runtime (bunx resolves esbuild/tsc/oxlint through it);
           # unpinned, every CI run picks up whatever bun released that day.
@@ -72,8 +75,8 @@ jobs:
     steps:
       # Actions pinned by full commit SHA (tag in comment) so a moved tag or a
       # compromised major-version release cannot inject code into the pipeline.
-      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
-      - uses: astral-sh/setup-uv@20cfd1bf945f4377ade1205e4dbc17946fc9a30d # v10.0.1
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1  # v7.0.1
+      - uses: astral-sh/setup-uv@20cfd1bf945f4377ade1205e4dbc17946fc9a30d  # v10.0.1
         with:
           version: "0.12.6"
           enable-cache: true

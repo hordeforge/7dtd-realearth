@@ -1,0 +1,21 @@
+# yamllint config for the GitHub workflow and dependabot YAML (.github/).
+# Gated by `make lint-yaml` and by the ci.yml / release.yml workflows, so a
+# malformed or tab-indented pipeline file fails the same run that gates code.
+#
+# Deviations from the default preset, each with a reason:
+#   line-length  off: the pinned action lines carry an SHA plus a tag comment
+#                 and do not wrap; the default 80-column cap only forces
+#                 unreadable continuations.
+#   document-start off: the workflows open with `name:`.
+#   truthy[check-keys] off: GitHub's `on:` key is a string, not the YAML 1.1
+#                 boolean `on`; the default rule wants it written as "on".
+#   comments-indentation off: the pipelines annotate steps inline; forcing a
+#                 column here would reflow every explanation.
+extends: default
+
+rules:
+  line-length: disable
+  document-start: disable
+  truthy:
+    check-keys: false
+  comments-indentation: disable
