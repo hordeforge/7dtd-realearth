@@ -12,7 +12,7 @@ namespace RealEarth
     ///
     /// Streamed inject path:
     ///   1) GetTerrainHeightByteAt / GetTerrainHeightAt → RealEarth sample (height source)
-    ///   2) GenerateTerrain(World, Chunk, ...) postfix → rewrite density from FillChunkHeights
+    ///   2) GenerateTerrain(World, Chunk, ...) postfix → rewrite density from FillChunkColumns
     ///   3) Player tick → absolute stream + origin slide
     /// </summary>
     public static class RuntimeHooks
@@ -309,7 +309,7 @@ namespace RealEarth
         /// <summary>
         /// Primary Streamed inject: override EVERY concrete GetTerrainHeight* so RWG host
         /// (TerrainGeneratorWithBiomeResource) and FromRaw/DTM all sample RealEarth Y.
-        /// No patch-count cap: 3.0.1 has 8+ height methods across generators.
+        /// No patch-count cap: the target build exposes 8+ height methods across generators.
         /// </summary>
         static int TryPatchTerrainHeightQueries()
         {
@@ -486,7 +486,9 @@ namespace RealEarth
         }
 
         /// <summary>
-        /// Streamed product path: hard-gate when no height/gen inject bound (stock RWG under RealEarth skin).
+        /// Fail-closed inject gate. BuildGuard.Blocked wins (unknown Assembly-CSharp,
+        /// any MapMode). Otherwise Streamed needs a height or gen bind, and the
+        /// product tall path needs the GenerateTerrain rewrite.
         /// </summary>
         public static void EnforceInjectGate()
         {
@@ -887,7 +889,7 @@ namespace RealEarth
                     }
                     ModApi.Log(
                         $"Spawn sample pack-center earth=({mid},{midZ}) gameY={h} " +
-                        $"(sea={cfg.SeaLevelGameY}; H500 fixture ~500 / Everest ~8949 / trench floor ~5000; " +
+                        $"(sea={cfg.SeaLevelGameY}; H500 fixture ~500 / Everest ~24849 / trench floor ~5000; " +
                         "focus not stomped)");
                 }
 
@@ -987,7 +989,7 @@ namespace RealEarth
         {
             try
             {
-                // Full 1:1 game Y as float (can be 8949) for APIs that do not use byte heightmaps
+                // Full 1:1 game Y as float (up to EngineMaxGameY) for APIs that do not use byte heightmaps
                 if (ChunkTerrainInject.TryOverrideHeightInt(__0, __1, out int h))
                     __result = h;
             }
@@ -1018,7 +1020,7 @@ namespace RealEarth
         {
             try
             {
-                // Full int height (up to 11000) when engine-height mod is active
+                // Full int height (up to EngineMaxGameY, default 29000) when engine-height mod is active
                 if (ChunkTerrainInject.TryOverrideHeightInt(__0, __1, out int h))
                     __result = h;
             }

@@ -26,9 +26,10 @@ namespace RealEarth
         }
 
         /// <summary>
-        /// Missing .rte tile: never invent land peaks. Fail-closed returns ocean floor
-        /// (sea - depth). When failClosed is false, same placeholder (product default
-        /// still avoids stock RWG; only logging/severity differs at call site).
+        /// Missing .rte tile: never invent land peaks. Returns meters ASL for the
+        /// ocean-floor placeholder (-depthBelowSea, 8 m by default); the caller maps
+        /// that through the sea level to a game Y. Missing-tile policy
+        /// (FailClosedMissingTiles) lives in TileSamplePolicy, not here.
         /// </summary>
         public static float MissingTileElevM(int seaLevelY, int depthBelowSea = DefaultMissingDepthBelowSea)
         {

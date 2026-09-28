@@ -1,4 +1,4 @@
-# RealEarth critical engine surfaces (V3.1.0)
+# RealEarth critical engine surfaces (V3.2.0 b9)
 
 **Owns:** managed engine surfaces the Streamed product depends on (product-facing RE).  
 **Not:** product Done/Partial tables ([MODIFICATIONS](MODIFICATIONS.md)), Streamed architecture lessons ([realearth-runtime](realearth-runtime.md)), pure generic loop RE ([research INDEX](../../7dtd-engine-research/docs/INDEX.md)).  
@@ -7,11 +7,11 @@
 **Generic engine hub:** [`../../7dtd-engine-research/docs/INDEX.md`](../../7dtd-engine-research/docs/INDEX.md) (loop, terrain-height, save-region without product policy).  
 **Height overview:** [`../../7dtd-engine-research/docs/world/terrain-height.md`](../../7dtd-engine-research/docs/world/terrain-height.md).  
 **Save deep-dive:** [`../../7dtd-engine-research/docs/world/save-region.md`](../../7dtd-engine-research/docs/world/save-region.md).  
-**Dump:** [`../../7dtd-engine-research/il/realearth-surfaces-v3.1.0/`](../../7dtd-engine-research/il/realearth-surfaces-v3.1.0/).  
+**Dump:** [`../../7dtd-engine-research/il/realearth-surfaces-v3.2.0/`](../../7dtd-engine-research/il/realearth-surfaces-v3.2.0/).  
 **Product hub:** [`INDEX.md`](INDEX.md).  
 **Status:** [`MODIFICATIONS.md`](MODIFICATIONS.md) only.
 
-**Pin note (2026-07-18):** live dedi stock `ChunkBlockYDim=256`. Expanded dump `terrain-v3.0.1` is historical (Steam Verify undoes expand).
+**Pin note (2026-08-28):** live dedi stock `ChunkBlockYDim=256`; the product expand hot-patches it to 32768 at boot, and Steam Verify does not undo that (no DLL is written).
 
 ## 0. What this document closes
 
@@ -491,7 +491,7 @@ World.OnUpdateTick / ChunkManager (see loop)
 | Dump | `ChunkBlockYDim` | When |
 |---|---:|---|
 | `terrain-stock-v3.0.1` | 256 | Stock backup |
-| `terrain-v3.0.1` | 16384 | Expanded (2026-07-16) |
+| `terrain-v3.0.1` | 16384 | Historical dump (superseded by YDim 32768) |
 | `realearth-surfaces-v3.0.1` (live dedi) | **256** | **2026-07-18 stock again** |
 
 **Ops lesson:** Steam Verify / updates restore stock. Product `ExpandProductGuard` and `engine-audit` must refuse 1:1 claims on stock YDim. Re-expand client + dedicated after every update.
@@ -540,11 +540,11 @@ DS="${SEVENDTD_SERVER_DIR:-$HOME/.local/share/Steam/steamapps/common/7 Days to D
 ASM="$DS/7DaysToDieServer_Data/Managed/Assembly-CSharp.dll"
 cd 7dtd-server-container-optimizer/tools
 mcs -r:Mono.Cecil.dll -out:DumpRealEarthSurfaces.exe DumpRealEarthSurfaces.cs
-mono DumpRealEarthSurfaces.exe "$ASM" ../../7dtd-engine-research/il/realearth-surfaces-v3.1.0
+mono DumpRealEarthSurfaces.exe "$ASM" ../../7dtd-engine-research/il/realearth-surfaces-v3.2.0
 # also: DumpTerrain.exe for WorldConstants-focused set
 ```
 
-After expand re-apply, regenerate **both** `terrain-*` and `realearth-surfaces-*` and re-check §10.
+After a game update (and a fresh `make install`, which hot-patches the expand at boot), regenerate **both** `terrain-*` and `realearth-surfaces-*` and re-check §10.
 
 ---
 

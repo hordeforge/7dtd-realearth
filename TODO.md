@@ -72,15 +72,15 @@ provenance and distinguish prototypes from verified in-game behavior.
   plug + 48-block crust + air above FullSolidBlockFillMaxSurface.)
 - [x] Test engine patch, backup, idempotent reapply, restore, and Steam-update
   recovery for both client and dedicated server.
-  (tests/test_engine_expand_lifecycle.py: full Managed-dir copy in temp,
-  real EngineHeightPatcher.exe - expand, verify, stale-marker backup
-  refresh, restore, fresh re-expand, idempotent no-op reapply.)
+  (Superseded 2026-09-20 by the runtime transpiler: no engine DLL is written, so backup/restore/idempotent-reapply no longer exist as operations. The current gate is the live boot check `RealEarth YDim expand active` in `scripts/run_dedicated_height_test.sh`.)
 - [x] Sandbox H500 dedicated soak under disk YDim expand (srv-a, SharedFixed,
   6 loadgen wander bots): `sessionPeak=500`, `GetBlockNoDamage` count=0,
   no GenerateChunks crash, `JOIN_SUMMARY pass=6 fail=0` (EXIT=0). Runtime
   hot-patch alone is not product-complete (method-only leaves len=64;
   ctor rewrite crashes fillSameValue). Evidence:
-  `.scratch/sandbox_h500_disk_join.log`, srv-a `server.log`.
+  `.scratch/sandbox_h500_disk_join.log`, srv-a `server.log`. Note: this ran
+  against the since-removed disk patcher; the shipped runtime transpiler must
+  be re-soaked to claim the same result.
 - [ ] Validate physics, pathing, zombies, prefabs, weather, rendering, and saves
   above the stock height ceiling.
 - [x] Add automated inspection that refuses an unknown assembly build unless the

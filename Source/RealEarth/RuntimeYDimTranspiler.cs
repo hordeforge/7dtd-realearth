@@ -106,11 +106,12 @@ namespace RealEarth
         }
 
         /// <summary>
-        /// Harmony transpiler for a Y-bound method. Rewrites the same literals as
-        /// the disk patcher (64 -> layers in storage types, 65536 -> volume bits
-        /// in WaterDataHandle, 256 -> YDim and 255 -> YMask where the pattern
-        /// matches), keyed by the method this transpiler is attached to (injected
-        /// __originalMethod), so no cross-method context guessing is needed.
+        /// Harmony transpiler for one Assembly-CSharp method. Rewrites the literals the old
+        /// disk patcher used (64 -> layer count in layer-storage types, 65536 -> volume bits
+        /// in WaterDataHandle, 256 -> YDim, 255 -> YMask), but selects them from the declaring
+        /// TYPE name plus a list of Y-bound method names rather than from per-method facts: a
+        /// type-name hit rewrites every matching literal in that type. Types with UnsafeChunkData
+        /// 256/255 XZ strides are skipped.
         /// </summary>
         public static IEnumerable<CodeInstruction> Transpile(
             IEnumerable<CodeInstruction> instructions, MethodBase __originalMethod)
@@ -242,7 +243,8 @@ namespace RealEarth
                     bool isLayer = IsLayerStorageName(tname);
                     if (!isLayer && !IsTypeWithYBoundMethods(tname))
                         continue;
-                    // Y-bound accessors / loops (ctors intentionally skipped; see class summary).
+                    // Y-bound accessors / loops. Constructors are deliberately not patched; the
+                    // reason is at the end of this method.
                     foreach (var method in type.GetMethods(
                         BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Static))
                     {

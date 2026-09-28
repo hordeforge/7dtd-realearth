@@ -75,7 +75,7 @@ Never mark Done without live measure (GAP evidence checklist).
 
 | File | Role |
 |---|---|
-| [`../README.md`](../README.md) | Quick start, Makefile, v0.1 status |
+| [`../README.md`](../README.md) | Quick start, Makefile, current feature status |
 | [`../DESIGN.md`](../DESIGN.md) | Architecture, phases, idea backlog §18 |
 | [`../AGENTS.md`](../AGENTS.md) | Repo rules for agents |
 | [`../TODO.md`](../TODO.md) | Executable backlog |

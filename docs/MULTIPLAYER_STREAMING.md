@@ -80,7 +80,7 @@ With true dynamic tile→chunk inject, prefer:
 
 **SharedFixed** (default for MP): do not slide origin when any player is online; wrap or soft-limit travel, or use a large baked playable region.
 
-**SharedSlide** (partial): currently slides only when the player count is 1, same as SoloSlide; proximity-based convoy sliding is not implemented yet.
+**SharedSlide** is retired: `Validate()` rewrites it to `SoloSlide` (it always behaved identically). Use `SharedFixed` for co-located multiplayer combat coords. See [MODLET](MODLET.md).
 
 **SoloSlide**: single-player only origin slide (current `WorldSession.TickPlayerLocal` behavior).
 

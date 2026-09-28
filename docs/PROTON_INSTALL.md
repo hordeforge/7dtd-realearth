@@ -53,7 +53,7 @@ export SEVENDTD_GAME_DIR="$HOME/.local/share/Steam/steamapps/common/7 Days To Di
 If product height is required, the mod hot-patches the YDim expand at boot
 (`EngineHeightRuntimePatch=true`), so no extra expand step is needed.
 
-Earlier verification (before the current V3.1.0 pin, see [GAME_VERSION](GAME_VERSION.md)): dedicated **V 3.0.1 (b4)** loaded RealEarth + `World.Load: RealEarth`.
+Earlier verification (before the current V3.2.0 pin, see [GAME_VERSION](GAME_VERSION.md)): dedicated **V 3.0.1 (b4)** loaded RealEarth + `World.Load: RealEarth`.
 
 ## One-shot install
 
@@ -101,7 +101,7 @@ uv run --locked python -m realearth.cli bake-world --pack ../data/samples/demo_r
 | Doc | Role |
 |---|---|
 | [MODLET](MODLET.md) | Product install + expand |
-| [GAME_VERSION](GAME_VERSION.md) | V3.1.0 pin |
+| [GAME_VERSION](GAME_VERSION.md) | V3.2.0 pin |
 | [SINGLE_WORLD](SINGLE_WORLD.md) | Baked vs Streamed |
 | [HEIGHT_LIMITS](HEIGHT_LIMITS.md) | Expand for real height |
 

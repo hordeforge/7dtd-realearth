@@ -22,7 +22,7 @@ exist elsewhere.
 | `GeneratedWorlds/<name>` (client + dedicated) | Installed world copy, possibly hand-edited or generated with other settings | From `worlds/` only if the repo copy still matches | not archived; every install moves the previous tree to `GeneratedWorlds_trash/<UTC stamp>__<name>` (`scripts/generated-world.sh`) |
 | Game-side installs (`Mods/RealEarth`, GeneratedWorlds copies) | Mod DLL, config, installed world/pack copies | Yes: `make install`, install scripts | not backed up (regenerable) |
 | Save games (`$USERDATA/Saves`) | Stock game saves | No, but owned by the stock game (see BackupMod notes in GAP_HARMONY_MODLETS) | test harness moves old saves to `Saves_trash` with a 7 day window instead of deleting |
-| `<Managed>/Assembly-CSharp.dll.re_stock_bak` | Stock engine DLL pre-expand | Recoverable twice over: the backup file itself, plus Steam Verify regenerating stock bytes | see [GAME_VERSION](GAME_VERSION.md) |
+| `<Managed>/Assembly-CSharp.dll` | Stock engine DLL | Always recoverable: Steam Verify regenerates it, and the mod never writes it | see [GAME_VERSION](GAME_VERSION.md) |
 
 The terrarium cache matters most for the remote-data-loss disaster: with it,
 every pack and world stays rebuildable even if the AWS dataset changes or

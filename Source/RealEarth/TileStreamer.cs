@@ -557,7 +557,9 @@ namespace RealEarth
                     PruneExpiredMissesLocked();
                     // A storm can exceed the threshold with nothing expired yet (more
                     // distinct failing tiles inside one MissCacheMs window than the
-                    // bound); drop insertion-order heads so the map stays bounded.
+                    // bound); drop entries until the map is back under the bound. Which
+                    // entries go is unspecified (Dictionary order); every value is a miss
+                    // deadline, so any is equally droppable.
                     while (_missUntilTick.Count >= MissCachePruneThreshold)
                     {
                         long head = 0;

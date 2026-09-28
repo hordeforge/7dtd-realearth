@@ -2,7 +2,7 @@
 
 **Owns:** stock engine blockers for **1:1 Earth** (severity + RealEarth attack path).  
 **Not:** generic dedicated ceilings that apply to any server ([research engine-limitations](../../7dtd-engine-research/docs/meta/engine-limitations.md)), product surface status ([MODIFICATIONS](MODIFICATIONS.md)), vertical product policy ([HEIGHT_LIMITS](HEIGHT_LIMITS.md)), Streamed lessons ([realearth-runtime](realearth-runtime.md)).  
-**Game:** 7 Days to Die V3.1.0 (Unity Mono, stock dedicated/client).  
+**Game:** 7 Days to Die V3.2.0 (b9) (Unity Mono, stock dedicated/client).  
 **Product goal:** 1:1 real Earth geography + population density (see [`../DESIGN.md`](../DESIGN.md)). **Hub:** [INDEX](INDEX.md).
 
 This is a **limitation map**, not a build plan. Each row: what the stock engine assumes, why it blocks 1:1 Earth, how hard it is, and how RealEarth attacks it.
@@ -36,9 +36,9 @@ Those still bind RealEarth (metro density, tall inject, MP soak) but are not Ear
 | Fall damage / kill planes / spawn Y | Spawn and physics | Extreme falls, bad spawn on peaks, water at wrong band | **Soft→Hard** | **Partial**: `FallSpawnRetune` (`SnapSpawnToSurface` + `FallDamageModifierScale` + `KillPlaneRescue`/`KillPlaneDepthBlocks`); `FindSpawnPointAtXZ` YDim-expanded; live soak open |
 | Prefabs authored for ~255 roofs | POI library | Tall mountains + short prefabs look wrong; paste Y may clip | **Soft** | Stamp relative to surface; optional tall-aware packs later |
 | Saves (`.7rg`) may assume stock packing | Region format | Tall worlds may bloat, fail, or desync clients | **Hard** | Expand client+dedicated identically; test save/reload; watch region size |
-| Client/server YDim mismatch | Two installs | Desync / crash | **Ops** | Always expand **both** game trees after Verify |
+| Client/server YDim mismatch | Two installs | Desync / crash | **Ops** | Install the mod on **both** game trees; each hot-patches the same YDim at boot |
 
-**Product policy already chosen:** no height compression; `gameY = seaLevelY(100) + elev_m`. That makes Y expand mandatory, not optional.
+**Product policy already chosen:** no height compression; `gameY = SeaLevelGameY(16000) + elev_m`. That makes Y expand mandatory, not optional.
 
 ---
 
@@ -115,7 +115,7 @@ These are **engine + content** limits, not DEM bugs:
 |---|---|---|---|
 | Single main-thread heavy sim (stock shape) | Tall mesh + dense POIs hitch | **Hard** | Less work near players; do not fork full multithreaded sim in RealEarth |
 | Mono + large managed heaps | GC spikes on stream | **Hard** | Tile cache bounds; unload policy; measure |
-| Steam Verify restores stock DLL | Expand undone | **Ops** | Re-run expand after every update; backup path |
+| Steam Verify restores stock DLL | Expand undone | **Ops** | Re-run `make install` after each update so the mod matches the new assemblies; no expand backup or restore step exists |
 | Proton vs dedicated two trees | Mismatch | **Ops** | Install scripts touch client + dedicated |
 | Full-planet data size (TB-class at 1 m) | Disk/CDN | **Ops** | Regional packs + progressive zoom; not one download |
 
@@ -200,7 +200,7 @@ Even after expand + stream + inject:
 2. **Static tall columns** remain RAM-heavy until sparse Y exists.  
 3. **True planet online** needs CDN, deltas, and MP origin policy beyond co-located groups.  
 4. **Population 1:1** is geographic intensity, not cadastral city rebuild.  
-5. **Trench / deep ocean** is not a product goal (seaLevelY ≈ 100); bathymetry is optional later.
+5. **Trench / deep ocean** is anchored and soaked (`gameY 5000` at -11 km ASL via `make height-map-trench`); global bathymetry coverage is still optional later.
 
 ---
 

@@ -26,11 +26,10 @@ namespace RealEarth
         }
 
         /// <summary>
-        /// Resolve elev meters after TrySample. On miss: count + ocean elev placeholder.
-        /// Height overrides always replace stock RWG when inject is bound; FailClosedMissingTiles
-        /// does not re-enable vanilla hills (only affects logging severity). True passthrough
-        /// requires inject unbound.
-        /// Returns true if DEM was present.
+        /// Resolve elev meters after a streamer sample. On miss: count the miss and
+        /// return the ocean-floor placeholder; never pass a zero through as terrain.
+        /// FailClosedMissingTiles only gates the budgeted warning.
+        /// Returns true if the DEM sample was present.
         /// </summary>
         public static bool ResolveElev(
             bool sampleOk,

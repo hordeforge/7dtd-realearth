@@ -175,7 +175,7 @@ Geography without people is empty wilderness. Separate from height.
 |---|---|---|
 | **net48 mod build against live Managed** | API match | **Done** scripts; **Needed** after each update |
 | **Proton GeneratedWorlds path** | Client New Game list | **Done** install path |
-| **Package `Tools/` expand with mod** | Ship expand with product | **Done** packaging intent |
+| **Ship the expand inside the mod DLL** | Expand travels with the product | **Done** (`RealEarth.dll` carries `RuntimeYDimTranspiler`; `make package` ships it) |
 | **Compatibility matrix** (DLL hash, YDim, Harmony) | Refuse silent wrong build | **Done** ([COMPATIBILITY](COMPATIBILITY.md)) |
 | **EAC off documentation** | Modded servers | **Done** notes |
 | **Retarget checklist** after TFP patch | Hooks + expand sites | **Needed** (formalize) |
@@ -186,7 +186,7 @@ Geography without people is empty wilderness. Separate from height.
 
 ```text
 P0  Y-expand correct (A) · re-validate every update
-P1  Height + GenerateTerrain inject live 3.1.0 (B)
+P1  Height + GenerateTerrain inject live 3.2.0 b9 (B) - Done
 P2  Streamed session, tile bubble, fail-closed tiles (C)
 P3  Density stamps + biome underlay on real surface (E + B)
 P4  Save/reload + build deltas (F)

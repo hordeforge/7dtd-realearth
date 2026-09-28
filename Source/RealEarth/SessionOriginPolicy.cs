@@ -40,6 +40,7 @@ namespace RealEarth
         }
 
         /// <summary>
+        /// Host window already covers the pack: there is nothing to slide.
         /// SharedFixed never slides.
         /// SoloSlide only when player count is known and ≤ 1.
         /// Unknown count (&lt; 0) fails closed (no slide) so MP cannot desync on bad reflection.

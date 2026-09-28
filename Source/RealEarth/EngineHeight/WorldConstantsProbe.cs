@@ -4,7 +4,7 @@ using System.Reflection;
 namespace RealEarth.EngineHeight
 {
     /// <summary>
-    /// Reads vanilla vertical world constants from Assembly-CSharp (3.0.x WorldConstants).
+    /// Reads vanilla vertical world constants from Assembly-CSharp (WorldConstants).
     /// Values are compile-time literals (inlined as ldc in IL) so they cannot simply be
     /// rewritten via Field.SetValue, so expanding them needs selective IL/transpilers or a fork.
     /// </summary>

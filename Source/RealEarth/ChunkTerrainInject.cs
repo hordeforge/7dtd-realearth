@@ -8,9 +8,11 @@ namespace RealEarth
 {
     /// <summary>
     /// Inject RealEarth 1:1 heights into the live engine (no compression).
-    /// With engine-expand (YDim=32768), columns are filled solid up to true gameY
-    /// (e.g. Everest ≈ 24849 at sea 16000; airliner band to 29000). Stock 250 is
-    /// ignored when the engine is expanded.
+    /// With engine-expand (YDim=32768) sampled surfaces reach true gameY
+    /// (Everest ~24849 at sea 16000; ceiling 29000), but the block/density fill
+    /// is banded: full solid 0..EffectiveFullDualFillMaxSurface (default 520);
+    /// above that only a bedrock plug, a 48-block crust and an air clear.
+    /// Stock 250 is ignored when the engine is expanded.
     /// </summary>
     public static class ChunkTerrainInject
     {
@@ -96,7 +98,9 @@ namespace RealEarth
         {
             if (InjectBlocked) return false;
             if (ModApi.Session == null) return false;
-            // ProductHeightBlocked still injects (clamped to stock YDim); expand banner is separate.
+            // ProductHeightBlocked is not a gate here: blocked product height still
+            // injects, clamped by AllocatableColumnMaxY. The flag only drives the
+            // expand banner in EngineHeightMod.Init and WorldReadyPostfix.
             if (EngineHeight.EngineHeightMod.Active) return true;
             return ModApi.Session.IsStreamed;
         }
@@ -479,10 +483,11 @@ namespace RealEarth
 
         /// <summary>
         /// Re-inject loaded chunks around a local block position after an origin slide.
-        /// Loaded chunks keep pre-slide Earth columns until the engine regenerates them
-        /// (SoloSlide mesh/voxel desync); rewrite columns in place so terrain matches the
-        /// new origin immediately. SetBlock dirty flags refresh meshes. Bounded by radius
-        /// and maxChunks so a slide never hitches gen. Never throws to callers.
+        /// Loaded chunks keep pre-slide Earth columns until the engine regenerates them,
+        /// which desyncs meshes and voxels in SoloSlide; rewriting columns in place makes
+        /// terrain match the new origin immediately, and SetBlock dirty flags refresh
+        /// meshes. Bounded by radiusBlocks (default 128) and maxChunks (default 96) so a
+        /// slide never hitches gen. Everything after the inject gate runs inside a try.
         /// </summary>
         /// <param name="world">Engine World instance (reflection, no hard reference).</param>
         /// <param name="centerLocalXZ">Post-slide local player block coords.</param>

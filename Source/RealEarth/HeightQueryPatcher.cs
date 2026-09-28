@@ -20,7 +20,7 @@ namespace RealEarth
             "GetHeightAt",
         };
 
-        /// <summary>Type name tokens that own terrain height queries on 3.0.x.</summary>
+        /// <summary>Type name tokens that own terrain height queries on the target build.</summary>
         public static readonly string[] PreferredConcreteTypeNames =
         {
             "TerrainGeneratorWithBiomeResource", // RWG / host Streamed path

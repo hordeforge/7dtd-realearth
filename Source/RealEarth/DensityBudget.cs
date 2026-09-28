@@ -17,7 +17,7 @@ namespace RealEarth
         /// <summary>Mid band: stamp allowed, sleeper weight reduced (blocks).</summary>
         public const int MidBandMeters = 384;
 
-        /// <summary>Far band: drop stamp (blocks). Beyond this, no new POI places.</summary>
+        /// <summary>Far band: sleeper weight drops to 0 (blocks). No new POI places beyond this.</summary>
         public const int FarBandMeters = 768;
 
         public static int ClampPrefabsInChunk(int requested, int maxPerChunk = DefaultMaxPrefabsPerChunk)
@@ -45,7 +45,8 @@ namespace RealEarth
         }
 
         /// <summary>
-        /// True when a stamp at this distance is allowed (near or mid). Far band drops.
+        /// True when a stamp at this distance is allowed. Stamps stay allowed
+        /// through the far band; only sleeper weight drops there (see SleeperWeight).
         /// </summary>
         public static bool AllowStampAtDistance(int distanceBlocks)
         {

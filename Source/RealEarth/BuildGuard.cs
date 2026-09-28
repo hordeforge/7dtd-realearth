@@ -23,7 +23,7 @@ namespace RealEarth
                 {"a01a95393b24b75adf1e4b3ee1391ba19fa61e6bad79271fa95d8df721720837", "V3.2.0 (b9) live dedi"},
             };
 
-        /// <summary>True after init; the DLL was hashed and checked.</summary>
+        /// <summary>True once Init has run (the hash verdict lives in BuildKnown/Blocked).</summary>
         public static bool Guarded;
 
         /// <summary>True when the current DLL hash is in the reviewed allowlist.</summary>
@@ -37,7 +37,7 @@ namespace RealEarth
 
         static string? _assemblyPath;
 
-        /// <summary>Path to Assembly-CSharp.dll as loaded (or the mod's game dir).</summary>
+        /// <summary>Path to the loaded Assembly-CSharp.dll, or "" when it is not loaded yet.</summary>
         public static string AssemblyPath
         {
             get

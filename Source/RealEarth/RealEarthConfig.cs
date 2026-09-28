@@ -93,16 +93,16 @@ namespace RealEarth
         [DataMember] public float CityMapDiscoverRadiusScale { get; set; } = 1.0f;
 
         /// <summary>
-        /// When a .rte tile is missing/corrupt: sample as ocean-floor placeholder and count misses.
-        /// Height overrides always replace stock RWG while inject is bound; this flag only
-        /// controls miss logging (true = log first misses). See TileSamplePolicy.
+        /// Gate the budgeted missing-tile warning. Height overrides still replace
+        /// stock RWG when inject is bound; this never re-enables vanilla hills.
         /// </summary>
         [DataMember] public bool FailClosedMissingTiles { get; set; } = true;
 
         /// <summary>
         /// Max surface Y for full solid block+density fill via reflection.
-        /// 0 = default 520 (safe). Tall peaks above this use density-full + block crust.
-        /// Raise only if you accept gen cost (e.g. 2000); do not set 11000 without a fast path.
+        /// 0 = default 520 (safe). Above it each column gets a bedrock plug, a
+        /// 48-block crust and an air clear; the interior is left unwritten.
+        /// Values above 2048 are clamped.
         /// </summary>
         [DataMember] public int FullSolidBlockFillMaxSurface { get; set; } = 0;
 
@@ -119,8 +119,9 @@ namespace RealEarth
         [DataMember] public bool PreferTraderStamp { get; set; } = true;
 
         /// <summary>
-        /// Max runtime POI stamps per session (area budget). Values above the hard
-        /// budget cap (DensityBudget.DefaultMaxPrefabsPerKm2 = 80) clamp to 80.
+        /// Max runtime POI stamps per session (area budget). Values above
+        /// DensityBudget.DefaultMaxPrefabsPerKm2 (80) are clamped to 80 by
+        /// RuntimePoiInject; Validate only warns. Default 80.
         /// </summary>
         [DataMember] public int RuntimePoiMaxPerArea { get; set; } = 80;
 
@@ -340,8 +341,9 @@ namespace RealEarth
             else if (LocalWindowSize < 256)
             {
                 warnings.Add(
-                    $"LocalWindowSize ({LocalWindowSize}) < 256: the recenter band cannot form " +
-                    "(margin would cover the whole window), so origin slides stay off. " +
+                    $"LocalWindowSize ({LocalWindowSize}) < 256: the recenter band is under " +
+                    "64 blocks of half-window, so origin slides fire on tiny drifts " +
+                    "(entity remap, hot-cache invalidate, chunk reinject). " +
                     "Raise LocalWindowSize (512-1024 recommended).");
             }
             if (SeaLevelGameY <= 0)

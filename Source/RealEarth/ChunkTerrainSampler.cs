@@ -16,7 +16,7 @@ namespace RealEarth
             return SampleGameHeight(ModApi.Session, ModApi.Streamer, ModApi.Config, localX, localZ);
         }
 
-        /// <summary>Full int height (up to EngineMaxGameY / 11000 when engine-height mod is on).</summary>
+        /// <summary>Full int height (up to EngineMaxGameY, default 29000) when engine-height mod is on.</summary>
         public static int SampleGameHeightInt(int localX, int localZ)
         {
             if (EngineHeight.EngineHeightMod.Active)
@@ -42,7 +42,7 @@ namespace RealEarth
             int localX,
             int localZ)
         {
-            // Engine-height path: sparse absolute meters + policy (up to 11000, byte-scaled for stock APIs)
+            // Engine-height path: sparse absolute meters + policy (up to EngineMaxGameY, byte-scaled for stock APIs)
             if (EngineHeight.EngineHeightMod.Active)
                 return EngineHeight.EngineHeightMod.SampleGameHeight(localX, localZ);
 
@@ -60,7 +60,7 @@ namespace RealEarth
         }
 
         /// <summary>
-        /// Fill int heights for a chunk (supports 11000). heights[z * chunkSize + x] = game Y.
+        /// Fill int heights for a chunk (up to EngineMaxGameY). heights[z * chunkSize + x] = game Y.
         /// </summary>
         public static void FillChunkHeightsInt(
             WorldSession? session,

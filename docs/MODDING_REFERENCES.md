@@ -6,7 +6,7 @@
 
 
 Living index of community + official modding sites for **RealEarth**.  
-**Last updated:** 2026-08-09 · Target game **V3.1.0**
+**Last updated:** 2026-08-09 · Target game **V3.2.0 (b9)**
 
 **Practices and boundaries (workspace-wide):** see
 [`../../MODDING_BEST_PRACTICES.md`](../../MODDING_BEST_PRACTICES.md).

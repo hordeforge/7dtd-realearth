@@ -113,7 +113,7 @@ Implications:
 |---|---|---|
 | Offline `tools/realearth` | Pack build, bake, viewer export, engine audit helpers | Live game loop |
 | Runtime `Source/RealEarth` | Coords, stream, inject, config, height policy | Fake clients (see `7dtd-loadgen`) |
-| YDim expand (`Tools/`) | Raise column ceiling in `Assembly-CSharp` | Optimizer / APM |
+| YDim expand (`Source/RealEarth/RuntimeYDimTranspiler.cs`) | Raise the column ceiling in `Assembly-CSharp` at boot | Optimizer / APM |
 | Vanilla engine | Chunks, net, combat, save format | Planetary DEM |
 
 ---
@@ -460,7 +460,7 @@ These are engineering constraints, not a retreat from the 1:1 goal.
 
 ```text
 ModInfo.xml
-Config/                 # realearth.json, biomes, rwg helpers
+Config/                 # realearth*.json profiles + nav_objects / spawning / gamestages / buffs / XUi_InGame
 Source/RealEarth/       # runtime mod (net48)
 tools/realearth/        # offline pipeline (uv)
 viewer/                 # web QA map

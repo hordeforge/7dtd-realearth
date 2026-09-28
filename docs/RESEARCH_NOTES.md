@@ -6,9 +6,9 @@
 
 
 Living notes for the RealEarth 7DTD project. 
-**Last updated:** 2026-07-15 
+**Last updated:** 2026-09-28 
 
-**Target game:** 7 Days to Die **V3.1.0 Stable** (“Henpocalypse” line)
+**Target game:** 7 Days to Die **V3.2.0 (b9)** (“Henpocalypse” line)
 
 Sources: official site blogs, TFP forums, wiki.gg, 7daystodiemods.com, Steam guides, Nexus, community reports. 
 Modding site index: [MODDING_REFERENCES.md](MODDING_REFERENCES.md). 
@@ -27,8 +27,10 @@ Re-verify Harmony targets and XML paths against a live install after every major
 | **2026-03** | Studio | TFP joins Behaviour Interactive | More resourcing expected; TFP still leads design |
 | **2026-06** | **3.0** | **Dead Hot Summer** | 150 sandbox options, Magnitude, Sign-Tech, 60+ POIs, **modding breaks**, RWG perf |
 | **2026-07** | **3.0.1** | Stable hotfix | Sign-Tech, cosmetics, airdrop night, RWG preview crash, region edge cases |
+| 2026-08 | 3.1.0 (b14) | Henpocalypse | Previous pin, superseded by 3.2.0 |
+| 2026-08-28 | 3.2.0 (b9) | Current pin | Streamed inject bound and soaked live; Harmony targets rediscovered against this build |
 
-**Pin RealEarth to 3.1.0.** Do not claim 3.0.1 as current.
+**Pin RealEarth to 3.2.0 (b9).** Do not claim 3.0.1 or 3.1.0 as current.
 
 Official index: https://7daystodie.com/ 
 News & announcements: https://community.thefunpimps.com/forums/news-announcements.7/
@@ -417,7 +419,7 @@ No known maintained **true planetary streaming** 7DTD mod as of research date. R
 
 ### Immediate
 
-- [x] Pin target version **3.0.1** in notes (superseded: product now pinned to **3.1.0**, see §Version) 
+- [x] Pin target version **3.0.1** in notes (superseded: product now pinned to **3.2.0 (b9)**, see §Version) 
 - [x] Update README/DESIGN version strings (now **V3.1.0**, not 3.0.1) 
 - [ ] Color-pick real `biomes.png` on 3.0.1 install → fix `landcover.py` 
 - [ ] Verify Custom Height Map Importer works on 3.0.1 (or find successor) 

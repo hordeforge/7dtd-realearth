@@ -10,7 +10,7 @@ That host is **not** the whole planet and is **not** “always fully meshed.” 
 
 - Absolute / pack position is continuous.
 - Host origin slides so you stay near the center (`SoloSlide`).
-- `.rte` tiles stream in a small bubble; **all concrete** `GetTerrainHeight*` methods are Harmony-patched (including RWG `TerrainGeneratorWithBiomeResource`, not only the first 4), plus `GenerateTerrain` rewrite of **SetBlock + SetDensity** from `FillChunkHeights`.
+- `.rte` tiles stream in a small bubble; **all concrete** `GetTerrainHeight*` methods are Harmony-patched (including RWG `TerrainGeneratorWithBiomeResource`, not only the first 4), plus `GenerateTerrain` rewrite of **SetBlock + SetDensity** from `FillChunkColumns`.
 - Vanilla view/sim distance decides which game chunks are really hot (often much less than 1024).
 
 ## Setup (Streamed)

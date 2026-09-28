@@ -1,6 +1,6 @@
 # RealEarth install (mod + YDim expand)
 
-**Owns:** install steps, expand Tools/, shipped config keys.  
+**Owns:** install steps, expand verification (runtime hot-patch, no separate step), shipped config keys.  
 **Not:** architecture ([DESIGN](../DESIGN.md)), gap research ([GAP](GAP_HARMONY_MODLETS.md)), product status tables ([MODIFICATIONS](MODIFICATIONS.md)), Streamed deep-dive ([realearth-runtime](realearth-runtime.md)).  
 **Hub:** [INDEX](INDEX.md).
 
@@ -83,6 +83,8 @@ All optional; defaults shown. Scripts fail fast when numeric values are invalid.
 | `RE_TERRARIUM_CACHE` | unset (no caching) / `<repo>/data/cache/terrarium` via make | offline tile cache for the Python pipeline (`tools`) |
 | `RE_SAVE_TRASH_DAYS` | `7` | `run_dedicated_height_test.sh` save-trash window |
 | `STEAM_DIR` | auto-detect | `tools/` Proton path resolution |
+| `RE_ROOT` | repo root | `backup_artifacts.sh`; operate on another tree instead of this checkout |
+| `RE_VIEWER_SMOKE_PORT` | `8765` | `test-viewer-smoke.sh`; set when 8765 is already taken |
 
 ### Main keys
 
@@ -102,6 +104,9 @@ All optional; defaults shown. Scripts fail fast when numeric values are invalid.
 | `EngineHeightStockSafe` | `false` | Opt-in compress for stock engines; **not** product path |
 | `EngineMaxGameY` | `29000` | 1:1 ceiling (sea + airliner cruise + headroom) after expand |
 | `SpawnLongitude` / `SpawnLatitude` | `0` | Degrees; `0,0` falls back to `DefaultSpawn*` |
+| `DefaultSpawnLon` / `DefaultSpawnLat` | `-104.9903` / `39.7392` (Denver) | Degrees; used when `SpawnLongitude`/`SpawnLatitude` are `0,0`. `mod_config --spawn-from-bbox` overwrites them with the pack bbox centre |
+| `EnableRuntimePoiInject` | `true` | Stamp prefabs and POIs on the real surface at runtime (`RuntimePoiInject`) |
+| `RuntimePoiMaxPerArea` | `80` | Density cap per area; clamped at inject time to the hard cap 80 (`DensityBudget.DefaultMaxPrefabsPerKm2`) |
 
 ## Debug map FOW (config keys)
 

@@ -65,7 +65,7 @@ namespace RealEarth
                 Session = new WorldSession(Coords, Config);
                 // Height: product is 1:1 real meters after YDim expand (StockSafe is opt-in only)
                 EngineHeight.EngineHeightMod.Init(Config);
-                // Experimental runtime hot-patch: when opted in on a stock engine,
+                // Product runtime hot-patch: when opted in on a stock engine,
                 // install the Harmony transpilers now (pre-world) so EngineExpanded
                 // below reflects the patched capacity. Disk-patched installs are
                 // left untouched (the engine already reports expanded).
@@ -229,7 +229,7 @@ namespace RealEarth
         public static void LogWarn(string msg) => Emit(LogLevel.Warn, msg);
 
         /// <summary>
-        /// Experimental runtime YDim hot-patch: create the Harmony instance
+        /// Product runtime YDim hot-patch: create the Harmony instance
         /// (same recipe as RuntimeHooks) and install the transpiler set, then
         /// re-init EngineHeightMod so EngineExpanded/allocY reflect IsActive.
         /// </summary>

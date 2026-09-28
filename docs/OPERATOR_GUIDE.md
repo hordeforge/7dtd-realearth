@@ -150,5 +150,7 @@ heights that stock cannot represent (see §8).
 
 ## Changelog
 
-- **2026-08-29:** Initial guide (install-full, verify markers, trench soak
-  variant, rollback, save-compat caveats).
+- **2026-08-29:** Initial guide (install, expand verification, trench soak
+  variant, rollback, save-compat caveats). Later install-full and
+  marker-verification steps were removed with the disk patcher; section 3
+  documents the boot-time hot patch.

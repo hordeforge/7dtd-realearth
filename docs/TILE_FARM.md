@@ -41,7 +41,7 @@ Every `build-region` run writes `build.json` next to `earth.manifest.json`:
 ```json
 {
   "schema": "realearth.build.v1",
-  "tool_version": "0.3.0",
+  "tool_version": "0.5.1",
   "bbox": {...},
   "resolution_m": 30.0,
   "samples": {"width": ..., "height": ...},
@@ -79,7 +79,7 @@ Sizing guidance:
 |---|---|---|
 | Demo region (~0.3 deg) | 4 | ~1 MB |
 | Country (~10 deg) | ~500 | ~100 MB |
-| Full Earth at 1:1 | 60k x 30k grid | TB-class (do not materialize as one pack) |
+| Full Earth at 1:1 | 78,272 x 39,070 grid | TB-class (do not materialize as one pack) |
 
 Full-planet strategy: regional packs + progressive resolution, never one giant
 mosaic. The viewer's in-browser `.rte` streaming (relief layer) exists for

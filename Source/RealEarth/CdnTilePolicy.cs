@@ -26,9 +26,8 @@ namespace RealEarth
             if (uri.Host.Contains("..")) return null;
             // Normalize via the validated absolute URI to avoid double-slash tricks.
             string baseNorm = uri.ToString().TrimEnd('/');
-            // Ensure the original trimmed prefix matches the normalized absolute (prevents
-            // credential smuggling via @ or extra authority not captured by Uri.Host).
-            // Uri.ToString() percent-encodes, so compare hosts instead of full strings.
+            // Re-check the scheme after normalization: Uri.ToString() of a validated
+            // absolute https URI always starts with "https://", so anything else is refused.
             if (!baseNorm.StartsWith("https://", StringComparison.OrdinalIgnoreCase)) return null;
             return baseNorm + "/tiles/" + tz + "/" + tx + ".rte";
         }

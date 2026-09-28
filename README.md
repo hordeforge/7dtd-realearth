@@ -26,9 +26,9 @@ Debug FOW / city names: see [MODLET](docs/MODLET.md) config keys (details in [CI
 | Demo region builder (synthetic or Open-Meteo DEM) | Done |
 | Settlement/population stamping plan | Done |
 | **Web map viewer** (flat + globe) | Done |
-| **One continuous in-game map** (Baked bake-world + Streamed session) | Done (Baked fully playable; Streamed hooks need live retarget) |
+| **One continuous in-game map** (Baked bake-world + Streamed session) | Done (both live on 3.2.0 b9) |
 | C# WorldSession + streamer + runtime Harmony discovery | Done |
-| Per-build terrain density inject | Needs your 3.2.0 `Assembly-CSharp` retarget |
+| Per-build terrain density inject | Done (live dedicated on 3.2.0 b9; re-run `make install` after each game update) |
 | Full-planet tile farm | Pipeline-ready; data download is on you |
 
 **In-game as one large map:** see [docs/SINGLE_WORLD.md](docs/SINGLE_WORLD.md).
@@ -109,7 +109,7 @@ data/samples/demo_region/
 3. Remap `biomes.png` colors if your game’s biome palette differs (see `tools/realearth/landcover.py`).
 4. Generate the world in-game.
 
-Product height is **real meters** (seaLevelY + elev_m) after **YDim expand**. Stock engines alone are ~0-255 and are not the ship path. Sea level defaults to game Y=100 (shallow ocean floor; players will not survive deep underwater).
+Product height is **real meters** (`gameY = SeaLevelGameY + elev_m`) after **YDim expand**. Stock engines alone are ~0-255 and are not the ship path. Sea level defaults to game Y=16000, which leaves about 12 km of headroom above sea and about 16 km of real depth below it (a -11 km trench maps to gameY 5000).
 
 ## Full Earth / streaming mode (Phase 2+)
 
@@ -147,7 +147,7 @@ Do **not** delete `Mods/0_TFP_Harmony/` (vanilla; required for C# mods).
 - `LocalWindowSize` – sliding host canvas (default **1024**; not fully meshed - view distance is smaller)
 - `MultiplayerOriginMode` – `SoloSlide` (window follows you) / `SharedFixed` (MP freeze)
 
-**Important:** Harmony method names change every major 7DTD update. `HarmonyBootstrap` loads patches from the assembly; concrete `[HarmonyPatch]` targets must be filled in for your `Assembly-CSharp.dll` (search chunk terrain generation). Until then, use the heightmap export path.
+**Important:** Harmony method names change on every major 7DTD update. The concrete `[HarmonyPatch]` targets in this tree are bound and verified on V3.2.0 (b9) (see [COMPATIBILITY](docs/COMPATIBILITY.md)), and `BuildGuard` refuses an unknown `Assembly-CSharp.dll` rather than injecting blind. After a game update, re-run `make install` and confirm `injectOk=True productOk=True` in the log.
 
 ## CLI reference
 
@@ -202,7 +202,7 @@ Horizontal and vertical 1 m/block (expand required for height); planet is virtua
 
 ## Honest limits (summary)
 
-Planet cannot load as one mesh; Streamed inject needs live retarget; tall Y needs expand; lon/lat is equirectangular (high-lat distortion). Details: [ENGINE_LIMITATIONS](docs/ENGINE_LIMITATIONS.md), [LON_LAT](docs/LON_LAT.md), [GAP](docs/GAP_HARMONY_MODLETS.md). Ideas: [DESIGN §18](DESIGN.md). Status: [MODIFICATIONS](docs/MODIFICATIONS.md) · [TODO](TODO.md).
+Planet cannot load as one mesh; tall Y needs the expand re-applied via `make install` after game updates; lon/lat is equirectangular (high-lat distortion). Details: [ENGINE_LIMITATIONS](docs/ENGINE_LIMITATIONS.md), [LON_LAT](docs/LON_LAT.md), [GAP](docs/GAP_HARMONY_MODLETS.md). Ideas: [DESIGN §18](DESIGN.md). Status: [MODIFICATIONS](docs/MODIFICATIONS.md) · [TODO](TODO.md).
 
 ## Configuration profiles
 

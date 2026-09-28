@@ -114,7 +114,7 @@ make dedicated-height-test
 
 ### Tier 2b: data / policy foundation (always on with the mod)
 
-**Stock vs expanded (measured on V3.1.0 b14; values identical to the earlier V3.0.1 measurements):** see workspace [`7dtd-engine-research/docs/world/terrain-height.md`](../../7dtd-engine-research/docs/world/terrain-height.md).
+**Stock vs expanded (constants re-verified live on V3.2.0 b9; values identical to the earlier V3.1.0 b14 and V3.0.1 measurements):** see workspace [`7dtd-engine-research/docs/world/terrain-height.md`](../../7dtd-engine-research/docs/world/terrain-height.md).
 
 **Why the hot patch is the default:** `WorldConstants.ChunkBlockYDim` is a `const` (inlined `ldc` literals, no field to set). A Harmony-transpiler hot patch rewrites those literals at JIT time, and **was validated live on a stock dedicated server** (2026-08-30): 342 method transpilers, `expanded=True allocY=29000`, H500 peak injected, 0 crashes. It is the product path (`EngineHeightRuntimePatch=true`). Full analysis: [`7dtd-engine-research/docs/world/hot-patch-height.md`](../../7dtd-engine-research/docs/world/hot-patch-height.md).
 

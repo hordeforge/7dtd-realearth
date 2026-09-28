@@ -50,7 +50,7 @@ on height query (worldX, worldZ):
   return seaLevelY + elev_m
 
 on GenerateTerrain(chunk):
-  FillChunkHeights + density rewrite
+  FillChunkColumns + density rewrite
 ```
 
 Code: `WorldSession`, `TileStreamer`, `ChunkTerrainSampler`, `ChunkTerrainInject`.  
