@@ -51,6 +51,24 @@ RE_ROOT="$SANDBOX" "$HERE/backup_artifacts.sh" list "$archive" >/dev/null ||
   fail "list step exited nonzero"
 echo "drill: backup + list ok ($(basename "$archive"))"
 
+# --- status must fail when there is no backup, and on a tampered archive ---
+if RE_ROOT="$SANDBOX" RE_BACKUP_DIR="$SANDBOX/no-archives" \
+  "$HERE/backup_artifacts.sh" status >/dev/null 2>&1; then
+  fail "status passed with no archive at all"
+fi
+RE_ROOT="$SANDBOX" "$HERE/backup_artifacts.sh" status >/dev/null 2>&1 ||
+  fail "status failed on a fresh verified archive"
+orig_size="$(stat -c %s "$archive")"
+printf 'tamper' >>"$archive"
+if RE_ROOT="$SANDBOX" "$HERE/backup_artifacts.sh" status >/dev/null 2>&1; then
+  fail "status passed on an archive whose checksum no longer matches"
+fi
+# Undo the tamper so the restore steps below still use the original bytes.
+truncate -s "$orig_size" "$archive"
+RE_ROOT="$SANDBOX" "$HERE/backup_artifacts.sh" status >/dev/null 2>&1 ||
+  fail "status failed after the tampered bytes were removed"
+echo "drill: status rejects missing and tampered archives"
+
 # --- destroy everything, then try restore against a conflicting tree ---
 rm -rf "$SANDBOX/worlds" "$SANDBOX/data/samples" "$SANDBOX/data/cache" \
   "$SANDBOX/data/cache" "$SANDBOX/viewer/data"
@@ -90,5 +108,32 @@ fi
 [[ ! -e "$SANDBOX/worlds" ]] ||
   fail "failed restore left a partial extraction behind"
 echo "drill: corrupt archive refused, nothing extracted"
+
+# --- installing a world must not delete the one already in GeneratedWorlds ---
+# shellcheck source=scripts/generated-world.sh
+source "$HERE/generated-world.sh"
+GW="$SANDBOX/GeneratedWorlds"
+mkdir -p "$GW/RealEarth" "$SANDBOX/worlds/DrillWorld"
+head -c 256 /dev/urandom >"$GW/RealEarth/hand-tuned.bin"
+head -c 65536 /dev/urandom >"$SANDBOX/worlds/DrillWorld/dtm.raw"
+(
+  cd "$GW/RealEarth"
+  find . -type f -print0 | sort -z | xargs -0 sha256sum
+) >"$SANDBOX/before-install.sha256"
+install_generated_world "$SANDBOX/worlds/DrillWorld" "$GW" RealEarth >/dev/null ||
+  fail "install_generated_world exited nonzero"
+[[ -f "$GW/RealEarth/dtm.raw" ]] || fail "install did not place the baked world"
+kept="$(find "$SANDBOX/GeneratedWorlds_trash" -maxdepth 1 -name '*__RealEarth' | head -n1)"
+[[ -n "$kept" ]] || fail "previous GeneratedWorlds entry was not kept aside"
+(
+  cd "$kept"
+  sha256sum --quiet -c "$SANDBOX/before-install.sha256"
+) || fail "moved-aside world lost its contents"
+# A second install inside the same second must not nest one world in another.
+install_generated_world "$SANDBOX/worlds/DrillWorld" "$GW" RealEarth >/dev/null ||
+  fail "repeat install exited nonzero"
+[[ "$(find "$SANDBOX/GeneratedWorlds_trash" -maxdepth 1 -name '*__RealEarth*' | wc -l)" -eq 2 ]] ||
+  fail "repeat install reused a trash name and nested the previous world"
+echo "drill: world install keeps the previous tree aside"
 
 echo "DRILL OK: backup -> destroy -> restore roundtrip proven"

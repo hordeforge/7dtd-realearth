@@ -3,6 +3,8 @@
 # World data goes into the Proton Windows Roaming folder (NOT native ~/.local/share).
 set -euo pipefail
 ROOT="$(cd "$(dirname "$0")/.." && pwd)"
+# shellcheck source=scripts/generated-world.sh
+source "$ROOT/scripts/generated-world.sh"
 GAME_DIR="${SEVENDTD_GAME_DIR:-$HOME/.local/share/Steam/steamapps/common/7 Days To Die}"
 DS_DIR="${SEVENDTD_SERVER_DIR:-$HOME/.local/share/Steam/steamapps/common/7 Days to Die Dedicated Server}"
 # Locate a .NET SDK: explicit env, then the usual local caches (mirrors Makefile).
@@ -163,10 +165,7 @@ else
   INSTALLED=()
   for gw in "${TARGETS[@]}"; do
     dest="$gw/RealEarth"
-    mkdir -p "$gw"
-    rm -rf "$dest"
-    cp -a "$WORLD_SRC" "$dest"
-    echo "Installed world → $dest"
+    install_generated_world "$WORLD_SRC" "$gw" RealEarth
     INSTALLED+=("$dest")
   done
 

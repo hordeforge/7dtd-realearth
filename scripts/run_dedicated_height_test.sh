@@ -3,12 +3,14 @@
 # Dedicated servers do not pause when empty (unlike client listen-host).
 set -euo pipefail
 ROOT="$(cd "$(dirname "$0")/.." && pwd)"
+# shellcheck source=scripts/generated-world.sh
+source "$ROOT/scripts/generated-world.sh"
 GAME_DIR="${SEVENDTD_GAME_DIR:-$HOME/.local/share/Steam/steamapps/common/7 Days To Die}"
 DS_DIR="${SEVENDTD_SERVER_DIR:-$HOME/.local/share/Steam/steamapps/common/7 Days to Die Dedicated Server}"
 USERDATA="${RE_DEDICATED_USERDATA:-$HOME/.cache/realearth-dedicated}"
 CONFIG="$ROOT/scripts/serverconfig_height_test.xml"
 WORLD_NAME="${RE_WORLD_NAME:-RealEarth_H500}"
-# WORLD_NAME lands in rm -rf targets and generated configs: restrict it to a
+# WORLD_NAME lands in filesystem targets and generated configs: restrict it to a
 # single plain directory name so it cannot traverse or break quoting.
 case "$WORLD_NAME" in
   ""|*[!A-Za-z0-9._-]*|[!A-Za-z0-9]*)
@@ -155,14 +157,12 @@ fi
 # Install world into dedicated userdata GeneratedWorlds
 mkdir -p "$USERDATA/GeneratedWorlds" "$USERDATA/Saves"
 if [[ -d "$ROOT/worlds/$WORLD_NAME" ]]; then
-  rm -rf "$USERDATA/GeneratedWorlds/$WORLD_NAME"
-  cp -a "$ROOT/worlds/$WORLD_NAME" "$USERDATA/GeneratedWorlds/$WORLD_NAME"
-  echo "World → $USERDATA/GeneratedWorlds/$WORLD_NAME"
+  install_generated_world "$ROOT/worlds/$WORLD_NAME" "$USERDATA/GeneratedWorlds" "$WORLD_NAME"
 fi
 # Also native Linux GeneratedWorlds (some server builds look there)
 if [[ -d "$HOME/.local/share/7DaysToDie/GeneratedWorlds" ]]; then
-  rm -rf "$HOME/.local/share/7DaysToDie/GeneratedWorlds/$WORLD_NAME"
-  cp -a "$ROOT/worlds/$WORLD_NAME" "$HOME/.local/share/7DaysToDie/GeneratedWorlds/$WORLD_NAME"
+  install_generated_world \
+    "$ROOT/worlds/$WORLD_NAME" "$HOME/.local/share/7DaysToDie/GeneratedWorlds" "$WORLD_NAME"
 fi
 
 # Fresh save for clean load: move old saves into a trash window instead of

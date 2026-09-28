@@ -14,7 +14,7 @@ SHELL := /bin/bash
 	height-test height-map height-map-500 height-map-trench height-map-install height-map-500-install \
 	engine-audit dedicated-height-test \
 	demo bake bake-height package sbom \
-	artifacts-backup artifacts-restore \
+	artifacts-backup artifacts-restore artifacts-status \
 	viewer viewer-build serve viewer-lint viewer-smoke \
 	webmod webmod-export webmod-lint html-lint \
 	lint-shell lint-yaml info check clean clean-build \
@@ -124,6 +124,7 @@ help:
 	@echo "    make sbom               SPDX dependency inventory → dist/"
 	@echo "    make artifacts-backup   Verified archive of worlds/packs/cache (docs/BACKUP_RESTORE.md)"
 	@echo "    make artifacts-restore ARCHIVE=path.tar.gz   Restore artifact archive"
+	@echo "    make artifacts-status   Newest archive age + checksum check"
 	@echo "    make artifacts-drill    Prove backup/restore roundtrip in a sandbox"
 	@echo ""
 	@echo "  Tests"
@@ -292,6 +293,13 @@ artifacts-restore:
 	@test -n "$(ARCHIVE)" || { echo "ERROR: pass ARCHIVE=path/to/realearth-artifacts-*.tar.gz" >&2; exit 1; }
 	@chmod +x "$(SCRIPTS)/backup_artifacts.sh"
 	@"$(SCRIPTS)/backup_artifacts.sh" restore "$(ARCHIVE)"
+
+# Freshness and integrity of the newest archive. Exits nonzero when no archive
+# exists, the newest is older than RE_BACKUP_MAX_AGE_DAYS, or its checksum no
+# longer matches. Nothing schedules a backup, so run this to find out.
+artifacts-status:
+	@chmod +x "$(SCRIPTS)/backup_artifacts.sh"
+	@"$(SCRIPTS)/backup_artifacts.sh" status
 
 # Prove the backup/restore roundtrip on synthetic state inside a temp
 # sandbox (clobber guard, forced-restore move-aside, corrupt-archive

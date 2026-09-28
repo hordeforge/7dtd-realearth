@@ -11,11 +11,15 @@
 #   scripts/backup_artifacts.sh backup              # write a verified archive
 #   scripts/backup_artifacts.sh list ARCHIVE        # show contents
 #   scripts/backup_artifacts.sh restore ARCHIVE     # extract back into the repo
+#   scripts/backup_artifacts.sh status              # freshness / off-host check
 #
 # Environment:
 #   RE_BACKUP_DIR    archive destination (default <repo>/backups).
 #                    IMPORTANT: the default shares the repo disk's failure
 #                    domain. Copy archives off-host after each run.
+#   RE_BACKUP_MAX_AGE_DAYS  status fails when the newest archive is older
+#                    (default 7). Nothing schedules a backup, so freshness is
+#                    only ever asserted by asking.
 #   RE_FORCE_RESTORE set to 1 to overwrite existing artifacts during restore.
 #   RE_ROOT         operate on this tree instead of the repo (used by the
 #                   artifacts-drill sandbox; never point it at anything else).
@@ -23,13 +27,14 @@ set -euo pipefail
 
 ROOT="${RE_ROOT:-$(cd "$(dirname "$0")/.." && pwd)}"
 BACKUP_DIR="${RE_BACKUP_DIR:-$ROOT/backups}"
+MAX_AGE_DAYS="${RE_BACKUP_MAX_AGE_DAYS:-7}"
 
 ARTIFACT_DIRS=(worlds data/samples data/cache viewer/data)
 
 die() { echo "ERROR: $*" >&2; exit 1; }
 
 usage() {
-  grep '^#' "$0" | sed -n '2,22p'
+  grep '^#' "$0" | sed -n '2,27p'
   exit "${1:-0}"
 }
 
@@ -106,6 +111,50 @@ cmd_list() {
   tar -tzf "$archive"
 }
 
+# Report whether a fresh, verified archive exists. Nothing schedules a backup,
+# so "the last run exited 0" is the only evidence an operator ever gets; this
+# answers the question that actually matters after a bake or a disk scare.
+cmd_status() {
+  local rc=0 newest age_days now
+  case "$MAX_AGE_DAYS" in
+    ""|*[!0-9]*)
+      echo "ERROR: RE_BACKUP_MAX_AGE_DAYS must be a non-negative integer (got: $MAX_AGE_DAYS)" >&2
+      exit 2
+      ;;
+  esac
+  if [[ ! -d "$BACKUP_DIR" ]]; then
+    echo "NO BACKUP: $BACKUP_DIR does not exist; run scripts/backup_artifacts.sh backup" >&2
+    return 1
+  fi
+  newest="$(find "$BACKUP_DIR" -maxdepth 1 -type f -name 'realearth-artifacts-*.tar.gz' \
+    -printf '%T@ %p\n' | sort -rn | head -n1 | cut -d' ' -f2-)"
+  if [[ -z "$newest" ]]; then
+    echo "NO BACKUP: no realearth-artifacts-*.tar.gz under $BACKUP_DIR" >&2
+    return 1
+  fi
+  now="$(date -u +%s)"
+  age_days=$(( (now - $(stat -c %Y "$newest")) / 86400 ))
+  if (( age_days > MAX_AGE_DAYS )); then
+    echo "STALE: newest archive $newest is ${age_days}d old (limit ${MAX_AGE_DAYS}d)" >&2
+    rc=1
+  else
+    echo "fresh: $newest (${age_days}d old, limit ${MAX_AGE_DAYS}d)"
+  fi
+  if [[ -f "${newest}.sha256" ]]; then
+    if ! (cd "$(dirname "$newest")" && sha256sum -c "$(basename "${newest}.sha256")" >/dev/null); then
+      echo "CORRUPT: checksum mismatch on $newest" >&2
+      rc=1
+    fi
+  else
+    echo "CORRUPT: no .sha256 sidecar for $newest" >&2
+    rc=1
+  fi
+  if [[ "$BACKUP_DIR" == "$ROOT"/backups* ]]; then
+    echo "SAME-DISK: $BACKUP_DIR shares the repo disk; instance loss takes the archives too" >&2
+  fi
+  return "$rc"
+}
+
 cmd_restore() {
   local archive="${1:?usage: backup_artifacts.sh restore ARCHIVE}"
   [[ -f "$archive" ]] || die "no such archive: $archive"
@@ -154,6 +203,7 @@ case "${1:-}" in
   backup)  cmd_backup ;;
   list)    shift; cmd_list "$@" ;;
   restore) shift; cmd_restore "$@" ;;
+  status)  cmd_status ;;
   -h|--help|help|"") usage 0 ;;
-  *) die "unknown command: $1 (use backup|list|restore)" ;;
+  *) die "unknown command: $1 (use backup|list|restore|status)" ;;
 esac

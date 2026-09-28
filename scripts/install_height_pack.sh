@@ -5,6 +5,8 @@
 #   ./scripts/install_height_pack.sh everest
 set -euo pipefail
 ROOT="$(cd "$(dirname "$0")/.." && pwd)"
+# shellcheck source=scripts/generated-world.sh
+source "$ROOT/scripts/generated-world.sh"
 KIND="${1:-h500}"
 GAME_DIR="${SEVENDTD_GAME_DIR:-$HOME/.local/share/Steam/steamapps/common/7 Days To Die}"
 DS_DIR="${SEVENDTD_SERVER_DIR:-$HOME/.local/share/Steam/steamapps/common/7 Days to Die Dedicated Server}"
@@ -117,10 +119,7 @@ for gw in \
   "$HOME/.cache/realearth-dedicated/GeneratedWorlds"
 do
   if [[ -d "$WORLD" ]]; then
-    mkdir -p "$gw"
-    rm -rf "${gw:?}/$WORLD_NAME"
-    cp -a "$WORLD" "$gw/$WORLD_NAME"
-    echo "World → $gw/$WORLD_NAME"
+    install_generated_world "$WORLD" "$gw" "$WORLD_NAME"
     INSTALLED_WORLDS=$((INSTALLED_WORLDS + 1))
   fi
 done
