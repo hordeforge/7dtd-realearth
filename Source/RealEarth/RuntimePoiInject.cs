@@ -163,6 +163,24 @@ namespace RealEarth
             }
         }
 
+        /// <summary>
+        /// The stamp path keeps its own memoized copy of the settlements catalog
+        /// (see _placesCache), separate from the one CityMapLabels holds. Both
+        /// read the same settlements.json, so every catalog reset must drop this
+        /// copy too: otherwise the label pass reloads the pack while stamping
+        /// keeps planning from the list read before the reset, and the two passes
+        /// disagree on which places exist. Budgets and _placed stay: a place that
+        /// is already stamped in the world must not be stamped again because the
+        /// catalog was re-read.
+        /// </summary>
+        public static void InvalidatePlacesCatalog()
+        {
+            lock (_stampGate)
+            {
+                _placesCache = null;
+            }
+        }
+
         /// <summary>Player tick: stamp nearby city cores under DensityBudget.</summary>
         public static void TickPlayer(int playerLocalX, int playerLocalZ)
         {
