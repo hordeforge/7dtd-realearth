@@ -100,15 +100,21 @@ def test_config_validate_exists_and_runs_at_init():
         assert token in src
     # Unload radius must be forced above stream radius (thrash guard).
     assert "UnloadRadiusTiles = StreamRadiusTiles + 1" in src
+    # InitMod must validate at load time, before the config is handed to
+    # EarthCoords / TileStreamer / WorldSession. The manifest step sits between
+    # Load and Validate on purpose: wrap auto-enable reads the manifest's
+    # WorldWidth and regional bbox, so validating earlier would clamp against
+    # the shipped placeholders.
     api = _read("Source/RealEarth/ModApi.cs")
     load = api.index('RealEarthConfig.Load(Path.Combine(ModPath, "Config", "realearth.json"));')
     manifest = api.index("TryApplyPackManifest(tileRoot, Config);")
     validate = api.index("foreach (var warning in Config.Validate())")
+    first_use = api.index("new EarthCoords(", validate)
     assert (
-        load < manifest < validate
+        load < manifest < validate < first_use
     ), (
         "InitMod must Load, then apply the pack manifest, then run Config.Validate() "
-        "in InitMod, after the pack manifest"
+        "in InitMod, after the pack manifest and before the config is used"
     )
 
 

@@ -398,11 +398,9 @@ namespace RealEarth
                     // dualFull: full solid [0,surface). Tall: crust+plug only (never full-column Reflect to Everest).
                     bool dualFull = surface <= dualMax;
                     int crustLo = dualFull ? 0 : Math.Max(0, surface - TallCrustDepth);
-                    // Air-clear stock RWG above surface (capped; not full YDim).
-                    int airClearHi = Math.Min(columnMax - 1, surface + 128);
-                    int yWriteLo = dualFull ? 0 : Math.Min(crustLo, 4);
-                    // Density+blocks share the same write band for tall (crust+plug+air), not 0..surface.
-                    int yWriteHi = airClearHi;
+                    // Air-clear stock RWG above surface (capped; not full YDim). Density and
+                    // blocks share the same band for tall columns (crust+plug+air), not 0..surface.
+                    int yWriteHi = Math.Min(columnMax - 1, surface + 128);
 
                     void WriteColumnCell(int y, bool solidCell)
                     {
