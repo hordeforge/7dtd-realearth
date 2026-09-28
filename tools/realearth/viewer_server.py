@@ -53,7 +53,7 @@ class ViewerHandler(http.server.SimpleHTTPRequestHandler):
     `no-cache` so regenerated packs revalidate via ETag/If-Modified-Since 304s
     instead of serving stale heuristically cached copies.
 
-    Compressed bodies are memoized per (path, mtime, size) by `_gzip_body`,
+    Compressed bodies are memoized per (path, mtime, size) by `gzip_body`,
     so a static asset is deflated once per revision instead of once per
     request: the vendored three.js module costs ~19 ms of CPU per gzip at
     level 6 and is re-requested on every page load.

@@ -399,7 +399,7 @@ def test_runtime_poi_inject():
     inject = _read("ChunkTerrainInject.cs")
     assert "RuntimePoiInject.OnChunkGenerated" in inject
     assert "TryRepinSleeperVolumesNear" in inject
-    assert "StampSurfaceY.SleeperRootY" in inject
+    assert "StampSurfaceY.PrefabRootY" in inject
     poi = _read("RuntimePoiInject.cs")
     assert "public static void TryRepinSleeperVolumesNear" in poi
 

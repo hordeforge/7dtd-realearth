@@ -311,7 +311,7 @@ namespace RealEarth
             {
                 float weight = distBlocks < 0 ? 1f : DensityBudget.SleeperWeight(distBlocks);
                 if (weight > 0f)
-                    TryRepinSleeperVolumesNear(localX, localZ, StampSurfaceY.SleeperRootY(surface));
+                    TryRepinSleeperVolumesNear(localX, localZ, StampSurfaceY.PrefabRootY(surface));
             }
             if (ConsumeLogBudget())
             {

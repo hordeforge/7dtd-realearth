@@ -202,7 +202,7 @@ namespace RealEarth
                     int surface = ChunkTerrainSampler.SampleGameHeightInt(localX, localZ);
                     if (surface > 0)
                         RuntimePoiInject.TryRepinSleeperVolumesNear(
-                            localX, localZ, StampSurfaceY.SleeperRootY(surface));
+                            localX, localZ, StampSurfaceY.PrefabRootY(surface));
                 }
             }
             catch { /* never break inject */ }

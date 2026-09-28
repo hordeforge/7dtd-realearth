@@ -206,3 +206,20 @@ def test_wrap_threshold_matches_runtime_auto_enable():
         "RealEarthConfig.Validate auto-enables longitude wrap at WorldWidth >= 40,000,000; "
         "a lower offline threshold ships wrap=true for packs the mod rejects at init"
     )
+
+
+def test_manifest_keys_read_by_the_mod_exist_in_the_writer():
+    """Every earth.manifest.json key the C# overlay reads must be one the
+    offline pipeline writes.
+
+    PackManifest deserializes into a typed DTO, so a renamed or dropped writer
+    key reads as null and the pack silently loads at the shipped world size.
+    """
+    from realearth.tile_format import Manifest
+
+    written = Manifest(bbox={"west": 0.0, "south": 0.0, "east": 1.0, "north": 1.0}).to_dict()
+    src = _read("Source/RealEarth/PackManifest.cs")
+    read = set(re.findall(r'\[DataMember\(Name = "(\w+)"\)\]', src))
+    assert {"world_width", "world_height", "tile_size", "sea_level_game_y", "bbox"} <= read
+    missing = sorted(k for k in read if k not in written and k not in written["bbox"])
+    assert not missing, f"PackManifest reads manifest keys the writer never emits: {missing}"

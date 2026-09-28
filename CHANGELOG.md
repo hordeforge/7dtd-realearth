@@ -151,14 +151,32 @@ and the release gate requires both to match the tag (`v<version>`) and a dated
   `package.json`, and `viewer/node_modules` is a symlink the lint script
   creates. It now names the command that actually populates that path and
   sources `scripts/toolchain-versions.env` for the pinned three version.
-
-### Fixed
-
 - **Cross-thread state that the player tick and the console path share.**
   The Harmony bind counters read by `reinject` and the inject gate are now
   updated and read atomically, the runtime-POI tick throttle claims its slot
   with `Interlocked` instead of a check-then-decrement, and `recities here`
   restores the temporary discover radius in a `finally`.
+- **The viewer server class doc named the wrong cache.** It credited
+  `_gzip_body`; the memoizing function is `gzip_body` and has no underscore
+  prefix.
+- **`earth.manifest.json` is parsed by the platform, not a scanner.**
+  `PackManifest` hand-rolled a JSON reader that searched for `"key"` anywhere
+  in the file and pulled digits off after the colon, so a key appearing inside
+  a string value could be picked up, and an exponent or escaped form was
+  mishandled. It now deserializes into a typed DTO with
+  `DataContractJsonSerializer`, the same reader `RealEarthConfig.Load` already
+  uses. Absent keys stay `null` so the shipped config value survives.
+  A test now pins every key the mod reads to a key the offline writer emits.
+
+### Removed
+
+- **`LocalPlayerBlocks`** (C#). It had no caller anywhere in the repo and
+  duplicated `ConsoleOut.TryGetLocalPlayerBlock` line for line; the F1 `re*`
+  commands all use the latter.
+- **`StampSurfaceY.SleeperRootY`** (C#). A second name for
+  `PrefabRootY` with identical math and no default differences. The two
+  sleeper repin call sites in `ChunkTerrainInject` and `RuntimePoiInject` now
+  name `PrefabRootY` directly.
 
 ## [0.5.1] - 2026-09-21
 

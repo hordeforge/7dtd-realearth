@@ -14,12 +14,5 @@ namespace RealEarth
             int y = surfaceGameY + foundationOffsetBlocks;
             return y < 1 ? 1 : y;
         }
-
-        /// <summary>
-        /// Sleeper volume root Y on the same surface as the prefab stamp.
-        /// Same math as PrefabRootY; separate name keeps the call site explicit.
-        /// </summary>
-        public static int SleeperRootY(int surfaceGameY, int foundationOffsetBlocks = 0)
-            => PrefabRootY(surfaceGameY, foundationOffsetBlocks);
     }
 }

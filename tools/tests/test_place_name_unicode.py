@@ -83,7 +83,11 @@ def test_pack_file_reads_declare_utf8_encoding():
     session = _read("SessionStateStore.cs")
     assert "File.ReadAllText(p, Encoding.UTF8)" in session
     manifest = _read("PackManifest.cs")
-    assert "File.ReadAllText(manPath, Encoding.UTF8)" in manifest
+    assert "DataContractJsonSerializer" in manifest
+    assert "ReadAllText" not in manifest, (
+        "PackManifest must hand the manifest stream to DataContractJsonSerializer "
+        "(UTF-8 with BOM detection), not decode it as platform-default text"
+    )
 
 
 def test_seed_place_literals_are_nfc():
