@@ -38,6 +38,13 @@ const BBOX_DECIMALS = 2;
 const TOOLTIP_COORD_DECIMALS = 3;
 const COLOR_PATTERN = /^#(?:[0-9a-f]{3}|[0-9a-f]{6})$/iu;
 const INVALID_COLOR_HEX = "#808080";
+// The globe draws a sphere with no canvas overlay, so the flat-map-only
+// controls do nothing there; they are disabled with this reason attached.
+const FLAT_ONLY_HINT = "Flat map only. Switch to Flat map to use this.";
+const OPACITY_PERCENT_SCALE = 100;
+// Set when the globe falls back from the flat-only streamed layer, so the
+// "Loaded" status does not immediately overwrite the explanation.
+let globeLayerNote = "";
 
 type LegendRow = readonly [color: string, label: string];
 
@@ -106,7 +113,12 @@ const els = {
   pLat: requiredElement(HTMLElement, "#pLat"),
   pElev: requiredElement(HTMLElement, "#pElev"),
   pUv: requiredElement(HTMLElement, "#pUv"),
+  opacityValue: requiredElement(HTMLOutputElement, "#opacityValue"),
+  gridField: requiredElement(HTMLElement, "#gridField"),
+  opacityField: requiredElement(HTMLElement, "#opacityField"),
 };
+
+type StatusTone = "info" | "error";
 
 type ViewerMode = "flat" | "globe";
 
@@ -145,13 +157,20 @@ const state: ViewerState = {
   globeNeedsFrame: true,
 };
 
-function setStatus(message: string): void {
+function setStatus(message: string, tone: StatusTone = "info"): void {
   els.statusHud.textContent = message;
+  els.statusHud.classList.toggle("error", tone === "error");
 }
 
 function readyStatus(): string {
   const layerCount = state.meta === null ? 0 : state.meta.layers.length;
   return `Loaded · ${layerCount} layers`;
+}
+
+// The opacity slider has no visible value of its own; the readout is what
+// tells the user where the handle sits.
+function updateOpacityReadout(): void {
+  els.opacityValue.textContent = `${Math.round(Number(els.opacity.value) * OPACITY_PERCENT_SCALE)}%`;
 }
 
 function renderLegend(layerId: string): void {
@@ -444,12 +463,42 @@ async function renderStreamedRte(meta: PackMeta): Promise<void> {
   setStatus(readyStatus());
 }
 
+// The globe draws a sphere with no canvas overlay, so the flat-map-only
+// controls do nothing there. Disable them with a reason instead of letting a
+// user move a slider and see no result.
 function setModeButtons(mode: ViewerMode): void {
   els.btnFlat.classList.toggle("active", mode === "flat");
   els.btnGlobe.classList.toggle("active", mode === "globe");
   els.btnFlat.setAttribute("aria-pressed", String(mode === "flat"));
   els.btnGlobe.setAttribute("aria-pressed", String(mode === "globe"));
   els.btnSpinToggle.disabled = mode !== "globe";
+  const flat = mode === "flat";
+  els.showGrid.disabled = !flat;
+  els.opacity.disabled = !flat;
+  els.gridField.classList.toggle("disabled", !flat);
+  els.opacityField.classList.toggle("disabled", !flat);
+  els.gridField.title = flat ? "" : FLAT_ONLY_HINT;
+  els.opacityField.title = flat ? "" : FLAT_ONLY_HINT;
+}
+
+// The globe has no streamed renderer. Leaving "Streamed elevation" selected
+// while it quietly paints a mosaic reads as a broken layer, so switch to a
+// mosaic layer and name the one the globe now shows. False means there is
+// nothing to draw.
+function useMosaicLayerOnGlobe(meta: PackMeta): boolean {
+  const mosaic = meta.layers[0];
+  if (mosaic === undefined) {
+    setStatus("Streamed elevation is flat-only, and this pack has no mosaic layer", "error");
+    return false;
+  }
+  state.layerId = mosaic.id;
+  els.layerSelect.value = mosaic.id;
+  renderLegend(mosaic.id);
+  globeLayerNote = `Streamed elevation is flat-only. Globe shows ${
+    mosaic.label === "" ? mosaic.id : mosaic.label
+  }.`;
+  setStatus(globeLayerNote);
+  return true;
 }
 
 function applyLayer(): void {
@@ -464,15 +513,11 @@ function applyLayer(): void {
     // below for the mosaic layers.
     if (state.mode === "flat") {
       renderStreamedRte(meta).catch((error: unknown) => {
-        setStatus(`RTE layer failed: ${errorMessage(error)}`);
+        setStatus(`RTE layer failed: ${errorMessage(error)}`, "error");
       });
       return;
     }
-    // Fall through to the globe path only if a mosaic image exists; otherwise
-    // the streamed layer is flat-only for now.
-    const image = state.images[state.layerId] ?? Object.values(state.images)[0];
-    if (image === undefined) {
-      setStatus("RTE layer is flat-only (no mosaic for globe)");
+    if (!useMosaicLayerOnGlobe(meta)) {
       return;
     }
   }
@@ -507,7 +552,7 @@ function applyLayer(): void {
         state.globeNeedsFrame = false;
         globe.frameRegion(meta.bbox);
       }
-      setStatus(readyStatus());
+      setStatus(globeLayerNote === "" ? readyStatus() : globeLayerNote);
     })
     .catch((error: unknown) => {
       // drop the failed import so the next Globe click retries the fetch
@@ -518,8 +563,9 @@ function applyLayer(): void {
       state.globeInstance?.dispose();
       state.globeInstance = null;
       state.mode = "flat";
+      globeLayerNote = "";
       setModeButtons("flat");
-      setStatus(errorMessage(error));
+      setStatus(errorMessage(error), "error");
       renderFlat(image, meta);
     });
 }
@@ -531,6 +577,7 @@ function setMode(mode: ViewerMode): void {
   const stageHadFocus =
     active === els.mapCanvas || (active instanceof Node && els.globeHost.contains(active));
   state.mode = mode;
+  globeLayerNote = "";
   setModeButtons(mode);
   applyLayer();
   if (!stageHadFocus) {
@@ -558,7 +605,7 @@ function flyGlobeTo(position: LonLatPoint): void {
       // Same teardown contract as applyLayer: never orphan a live view.
       state.globeInstance?.dispose();
       state.globeInstance = null;
-      setStatus(errorMessage(error));
+      setStatus(errorMessage(error), "error");
       setMode("flat");
     });
 }
@@ -631,6 +678,7 @@ function adoptPack(pack: LoadedPack): void {
   state.elevRaw = pack.elevRaw;
   state.elevMeta = pack.meta.elev_raw;
   state.globeNeedsFrame = true;
+  globeLayerNote = "";
   fillLayers(pack.meta);
   describePack(pack.meta);
   applyLayer();
@@ -678,7 +726,7 @@ async function boot(): Promise<void> {
     loadPack(pack)
       .then(adoptPack)
       .catch((error: unknown) => {
-        setStatus(`Cannot load ${pack}: ${errorMessage(error)}`);
+        setStatus(`Cannot load ${pack}: ${errorMessage(error)}`, "error");
         renderBrokenPackNotice(pack);
       }),
   ]);
@@ -706,6 +754,7 @@ els.btnFlat.addEventListener("click", () => setMode("flat"));
 els.btnGlobe.addEventListener("click", () => setMode("globe"));
 els.layerSelect.addEventListener("change", () => {
   state.layerId = els.layerSelect.value;
+  globeLayerNote = "";
   applyLayer();
 });
 els.showSettlements.addEventListener("change", () => applyLayer());
@@ -715,16 +764,18 @@ els.showGrid.addEventListener("change", () => {
   }
 });
 els.opacity.addEventListener("input", () => {
+  updateOpacityReadout();
   if (state.map2d !== null) {
     state.map2d.setLayerFlags({ opacity: Number(els.opacity.value) });
   }
 });
 els.packSelect.addEventListener("change", () => {
   setStatus("Loading pack…");
+  globeLayerNote = "";
   loadPack(els.packSelect.value)
     .then(adoptPack)
     .catch((error: unknown) => {
-      setStatus(errorMessage(error));
+      setStatus(errorMessage(error), "error");
       els.packInfo.textContent = errorMessage(error);
     });
 });
@@ -740,7 +791,7 @@ els.btnJumpCoords.addEventListener("click", () => {
   setCoordinateInvalid(els.jumpLat, lat === null);
   setCoordinateInvalid(els.jumpLon, lon === null);
   if (lat === null || lon === null) {
-    setStatus("Jump needs lat in [-90, 90] and lon in [-180, 180]");
+    setStatus("Jump needs lat in [-90, 90] and lon in [-180, 180]", "error");
     return;
   }
   goTo({ lon, lat });
@@ -802,8 +853,9 @@ els.jsonFile.addEventListener("change", () => {
         "Loaded viewer.json from disk. Serve the export folder over HTTP and pick it in Dataset for images.";
     })
     .catch((error: unknown) => {
-      setStatus(errorMessage(error));
+      setStatus(errorMessage(error), "error");
     });
 });
 
+updateOpacityReadout();
 await boot();

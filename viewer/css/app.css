@@ -115,6 +115,32 @@ body {
   color: var(--muted);
 }
 
+/* Label row that carries a live value readout next to the control. */
+.field-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  gap: 8px;
+}
+
+.field-head label {
+  color: var(--muted);
+}
+
+#opacityValue {
+  font-family: var(--mono);
+  font-size: 0.78rem;
+  color: var(--text);
+}
+
+/* Flat-map-only controls stay visible in globe mode but read as inactive
+   instead of silently ignoring input. */
+.check.disabled,
+.field.disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
 .field select,
 .field input[type="file"] {
   width: 100%;
@@ -282,6 +308,13 @@ body {
   font-size: 0.75rem;
   max-width: 50%;
   text-align: right;
+}
+
+/* Load and render failures share the HUD with routine status, so they need
+   to read differently at a glance. */
+#statusHud.error {
+  color: var(--danger);
+  border-color: var(--danger);
 }
 
 .hud-right {

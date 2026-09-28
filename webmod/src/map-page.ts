@@ -21,6 +21,11 @@ const PROBE_UV_PRECISION = 3;
 const COORD_PRECISION = 2;
 const BYTE_MAX = 255;
 const DASH = "-";
+// Same step as the standalone viewer's on-screen zoom buttons, so the two
+// surfaces step identically.
+const ZOOM_BUTTON_STEP = 1.25;
+const ZOOM_BUTTON_STEP_OUT = 1 / ZOOM_BUTTON_STEP;
+const OPACITY_PERCENT_SCALE = 100;
 
 type MapPageRefs = {
   map: { current: Map2D | null };
@@ -31,6 +36,10 @@ type MapPageRefs = {
   settlements: { current: HTMLInputElement | null };
   grid: { current: HTMLInputElement | null };
   opacity: { current: HTMLInputElement | null };
+  opacityValue: { current: HTMLOutputElement | null };
+  zoomIn: { current: HTMLButtonElement | null };
+  zoomOut: { current: HTMLButtonElement | null };
+  zoomFit: { current: HTMLButtonElement | null };
   legend: { current: HTMLDivElement | null };
   probe: { current: HTMLDivElement | null };
   tip: { current: HTMLDivElement | null };
@@ -48,6 +57,10 @@ function makeRefs(React: ReactApi): MapPageRefs {
     settlements: React.useRef<HTMLInputElement | null>(null),
     grid: React.useRef<HTMLInputElement | null>(null),
     opacity: React.useRef<HTMLInputElement | null>(null),
+    opacityValue: React.useRef<HTMLOutputElement | null>(null),
+    zoomIn: React.useRef<HTMLButtonElement | null>(null),
+    zoomOut: React.useRef<HTMLButtonElement | null>(null),
+    zoomFit: React.useRef<HTMLButtonElement | null>(null),
     legend: React.useRef<HTMLDivElement | null>(null),
     probe: React.useRef<HTMLDivElement | null>(null),
     tip: React.useRef<HTMLDivElement | null>(null),
@@ -247,10 +260,25 @@ function createOpacityListener(refs: MapPageRefs): () => void {
   return () => {
     const current = refs.map.current;
     const slider = refs.opacity.current;
+    if (slider !== null) {
+      setText(refs.opacityValue.current, `${Math.round(Number(slider.value) * OPACITY_PERCENT_SCALE)}%`);
+    }
     if (current !== null && slider !== null) {
       current.setLayerFlags({ opacity: Number(slider.value) });
     }
   };
+}
+
+// Zoom buttons are the only on-screen zoom affordance here: the dashboard
+// gives the canvas no scroll-wheel hint, and keyboard-only users of the
+// standalone viewer have the same keys.
+function zoomAtCenter(canvas: HTMLCanvasElement, map: Map2D, factor: number): void {
+  const parent = canvas.parentElement;
+  if (parent === null) {
+    return;
+  }
+  map.zoomAt(parent.clientWidth / 2, parent.clientHeight / 2, factor);
+  map.draw();
 }
 
 function createPackLoadListener(refs: MapPageRefs, startLoad: (path: string) => void): () => void {
@@ -263,6 +291,31 @@ function createPackLoadListener(refs: MapPageRefs, startLoad: (path: string) => 
     if (next !== "") {
       startLoad(next);
     }
+  };
+}
+
+// On-screen zoom controls over the stage. The dashboard canvas offers no
+// scroll-wheel hint, so without these the only zoom paths are the wheel and
+// the canvas keyboard shortcuts.
+function attachViewTools(refs: MapPageRefs, canvas: HTMLCanvasElement, map: Map2D): () => void {
+  const zoomIn = refs.zoomIn.current;
+  const zoomOut = refs.zoomOut.current;
+  const zoomFit = refs.zoomFit.current;
+  if (zoomIn === null || zoomOut === null || zoomFit === null) {
+    return () => undefined;
+  }
+  const onZoomIn = (): void => zoomAtCenter(canvas, map, ZOOM_BUTTON_STEP);
+  const onZoomOut = (): void => zoomAtCenter(canvas, map, ZOOM_BUTTON_STEP_OUT);
+  const onZoomFit = (): void => {
+    map.fit();
+  };
+  zoomIn.addEventListener("click", onZoomIn);
+  zoomOut.addEventListener("click", onZoomOut);
+  zoomFit.addEventListener("click", onZoomFit);
+  return () => {
+    zoomIn.removeEventListener("click", onZoomIn);
+    zoomOut.removeEventListener("click", onZoomOut);
+    zoomFit.removeEventListener("click", onZoomFit);
   };
 }
 
@@ -290,6 +343,7 @@ function attachControls(refs: MapPageRefs, startLoad: (path: string) => void): (
   map.onProbe = (point) => updateProbe(refs.probe.current, point, packStore.get());
   map.onHoverSettlement = (settlement, sx, sy) => updateTip(refs.tip.current, settlement, sx, sy);
 
+  const detachViewTools = attachViewTools(refs, canvas, map);
   const onLayerChange = createLayerListener(refs);
   const onSettlementsChange = createToggleListener(refs, "showSettlements");
   const onGridChange = createToggleListener(refs, "showGrid");
@@ -316,11 +370,12 @@ function attachControls(refs: MapPageRefs, startLoad: (path: string) => void): (
     opacity.removeEventListener("input", onOpacityChange);
     loadButton.removeEventListener("click", onLoadClick);
     packInput.removeEventListener("keydown", onPackKeyDown);
+    detachViewTools();
     map.dispose();
   };
 }
 
-function renderToolbar(h: ElementFactory, refs: MapPageRefs): unknown {
+function renderToolbar(h: ElementFactory, refs: MapPageRefs, loadError: string): unknown {
   return h(
     "div",
     { className: "re-toolbar" },
@@ -335,6 +390,9 @@ function renderToolbar(h: ElementFactory, refs: MapPageRefs): unknown {
       ),
       h("button", { ref: refs.loadButton, className: "re-btn", type: "button" }, "Load")
     ),
+    // The failure belongs beside the Load button that produced it; parked in
+    // the side column it sat below the fold of a scrolling panel.
+    loadError === "" ? null : h("div", { className: "re-error", role: "alert" }, loadError),
     h(
       "label",
       { className: "re-field" },
@@ -354,16 +412,17 @@ function renderToolbar(h: ElementFactory, refs: MapPageRefs): unknown {
       " Tile grid"
     ),
     h(
-      "label",
+      "div",
       { className: "re-field" },
-      h("span", { className: "re-label" }, "Opacity"),
-      h("input", { ref: refs.opacity, className: "re-range", type: "range", min: "0.2", max: "1", step: "0.05", defaultValue: "1" })
+      h("label", { className: "re-label", htmlFor: "re-opacity" }, "Opacity"),
+      h("input", { ref: refs.opacity, id: "re-opacity", className: "re-range", type: "range", min: "0.2", max: "1", step: "0.05", defaultValue: "1" }),
+      h("output", { ref: refs.opacityValue, className: "re-range-value", htmlFor: "re-opacity" }, "100%")
     ),
     h("span", { ref: refs.status, className: "re-status", role: "status" })
   );
 }
 
-function renderStage(h: ElementFactory, refs: MapPageRefs): unknown {
+function renderStage(h: ElementFactory, refs: MapPageRefs, stageMessage: string): unknown {
   return h(
     "div",
     { className: "re-stage" },
@@ -372,14 +431,27 @@ function renderStage(h: ElementFactory, refs: MapPageRefs): unknown {
       className: "re-canvas",
       tabIndex: 0,
       role: "application",
+      id: "re-map-canvas",
       "aria-label":
         "Interactive map. Focus it and use arrow keys to pan, plus or minus to zoom, Home to fit the view. Mouse users can drag to pan and scroll to zoom.",
     }),
-    h("div", { ref: refs.tip, className: "re-tip", hidden: true, role: "tooltip", "aria-live": "polite" })
+    h(
+      "div",
+      { className: "re-view-tools" },
+      h("button", { ref: refs.zoomIn, type: "button", className: "re-tool", "aria-label": "Zoom in" }, "+"),
+      h("button", { ref: refs.zoomOut, type: "button", className: "re-tool", "aria-label": "Zoom out" }, "−"),
+      h("button", { ref: refs.zoomFit, type: "button", className: "re-tool", "aria-label": "Fit view to stage" }, "Fit")
+    ),
+    h("div", { ref: refs.tip, className: "re-tip", hidden: true, role: "tooltip", "aria-live": "polite" }),
+    // Without this the stage is a black rectangle on first paint and after a
+    // failed load, which reads as a broken page rather than an empty one.
+    stageMessage === ""
+      ? null
+      : h("div", { className: "re-stage-message" }, stageMessage)
   );
 }
 
-function renderSide(h: ElementFactory, refs: MapPageRefs, loadError: string): unknown {
+function renderSide(h: ElementFactory, refs: MapPageRefs): unknown {
   return h(
     "aside",
     { className: "re-side" },
@@ -407,9 +479,34 @@ function renderSide(h: ElementFactory, refs: MapPageRefs, loadError: string): un
       { className: "re-panel" },
       h("h2", null, "Pack"),
       h("div", { ref: refs.packInfo, className: "re-pack-info" })
-    ),
-    loadError === "" ? null : h("div", { className: "re-error", role: "alert" }, loadError)
+    )
   );
+}
+
+// Nothing to draw until a pack resolves: say so over the empty stage rather
+// than leaving a black rectangle, and keep the message after a failed load so
+// the cause stays visible without hunting for the toolbar.
+function stageMessageFor(pack: LoadedPack | null, loadError: string): string {
+  if (pack !== null) {
+    return "";
+  }
+  return loadError === "" ? "Loading pack…" : "No map loaded.";
+}
+
+function publishPackToMap(pack: LoadedPack, refs: MapPageRefs): void {
+  const map = refs.map.current;
+  const layerSelect = refs.layerSelect.current;
+  if (map === null || layerSelect === null) {
+    return;
+  }
+  fillLayerOptions(layerSelect, pack);
+  const firstLayer = pack.layers[0];
+  const selected = firstLayer === undefined ? "" : firstLayer.id;
+  layerSelect.value = selected;
+  applyLayer(map, pack, selected);
+  map.setLayerFlags(readFlags(refs.settlements.current, refs.grid.current, refs.opacity.current));
+  renderLegend(refs.legend.current, selected);
+  renderPackInfo(refs.packInfo.current, pack);
 }
 
 export function MapPage(props: WebModComponentProps): unknown {
@@ -441,7 +538,7 @@ export function MapPage(props: WebModComponentProps): unknown {
           return;
         }
         setLoadError(errorMessage(error));
-        setStatusText(refs.status, "");
+        setStatusText(refs.status, "Load failed");
       });
   };
 
@@ -453,29 +550,16 @@ export function MapPage(props: WebModComponentProps): unknown {
   }, []);
 
   React.useEffect(() => {
-    if (pack === null) {
-      return;
+    if (pack !== null) {
+      publishPackToMap(pack, refs);
     }
-    const map = refs.map.current;
-    const layerSelect = refs.layerSelect.current;
-    if (map === null || layerSelect === null) {
-      return;
-    }
-    fillLayerOptions(layerSelect, pack);
-    const firstLayer = pack.layers[0];
-    const selected = firstLayer === undefined ? "" : firstLayer.id;
-    layerSelect.value = selected;
-    applyLayer(map, pack, selected);
-    map.setLayerFlags(readFlags(refs.settlements.current, refs.grid.current, refs.opacity.current));
-    renderLegend(refs.legend.current, selected);
-    renderPackInfo(refs.packInfo.current, pack);
   }, [pack]);
 
   return h(
     "div",
     { className: "re-map-page" },
-    renderToolbar(h, refs),
-    renderStage(h, refs),
-    renderSide(h, refs, loadError)
+    renderToolbar(h, refs, loadError),
+    renderStage(h, refs, stageMessageFor(pack, loadError)),
+    renderSide(h, refs)
   );
 }

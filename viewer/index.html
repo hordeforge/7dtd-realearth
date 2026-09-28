@@ -74,14 +74,17 @@
           <input type="checkbox" id="showSettlements" checked>
           <span>Settlements</span>
         </label>
-        <label class="check">
+        <label class="check" id="gridField">
           <input type="checkbox" id="showGrid">
           <span>Tile grid</span>
         </label>
-        <label class="field">
-          <span>Opacity</span>
+        <div class="field" id="opacityField">
+          <span class="field-head">
+            <label for="opacity">Opacity</label>
+            <output id="opacityValue" for="opacity">100%</output>
+          </span>
           <input type="range" id="opacity" min="0.2" max="1" step="0.05" value="1">
-        </label>
+        </div>
       </section>
 
       <section class="panel">

@@ -12,6 +12,16 @@ and the release gate requires both to match the tag (`v<version>`).
 
 ## [Unreleased]
 
+### Added
+
+- **Viewer opacity readout.** The Opacity slider now shows its value as a
+  percentage next to the control; previously the handle position was the only
+  feedback.
+- **Webmod map zoom controls.** The Map page gained on-screen zoom in, zoom
+  out, and Fit buttons over the stage, matching the standalone viewer.
+- **Webmod server stats Refresh button.** The Overview stats card can be
+  re-fetched without reloading the dashboard.
+
 ### Changed
 
 - **`reinject` now reports tile-load latency and log suppression.** Tile
@@ -28,6 +38,17 @@ and the release gate requires both to match the tag (`v<version>`).
 - **A corrupt session snapshot is no longer skipped silently.**
   `SessionStateStore` names the file and its size when it cannot parse one,
   instead of leaving the world to restart at the config spawn with no trace.
+- **Webmod narrow-viewport layout.** Below 860px the side panels stack under
+  the map stage instead of squeezing it into a 300px column.
+- **Webmod load errors** render next to the Load button that produced them,
+  and the status line reads "Load failed" instead of going blank.
+- **Viewer globe mode** disables Tile grid and Opacity, which have no effect on
+  the sphere, and says so on hover.
+- **Viewer globe mode** switches off the flat-only Streamed elevation layer
+  and names the mosaic layer it falls back to, instead of quietly showing a
+  different one.
+- **Viewer status HUD** renders load, pack, and globe failures in the danger
+  color so they read differently from routine status.
 
 ## [0.5.1] - 2026-09-21
 

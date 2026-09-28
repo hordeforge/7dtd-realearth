@@ -139,8 +139,20 @@ function notesCard(h: ElementFactory, pack: LoadedPack | null): unknown {
   return h("section", { className: "re-panel" }, h("h2", null, "Notes"), ...children);
 }
 
-function statsCard(h: ElementFactory, stats: Array<KeyValueEntry> | null, statsError: string): unknown {
-  const heading = h("h2", null, "Server stats");
+function statsCard(
+  h: ElementFactory,
+  stats: Array<KeyValueEntry> | null,
+  statsError: string,
+  onRefresh: () => void
+): unknown {
+  // The stock dashboard updates itself; a stats card that only ever shows
+  // the values from the first page load reads as frozen without a reload.
+  const heading = h(
+    "div",
+    { className: "re-panel-head" },
+    h("h2", null, "Server stats"),
+    h("button", { className: "re-btn re-btn-ghost", type: "button", onClick: onRefresh }, "Refresh")
+  );
   if (statsError !== "") {
     return h(
       "section",
@@ -178,6 +190,7 @@ export function OverviewPage(props: WebModComponentProps): unknown {
   const [pack, setPack] = React.useState<LoadedPack | null>(packStore.get());
   const [stats, setStats] = React.useState<Array<KeyValueEntry> | null>(null);
   const [statsError, setStatsError] = React.useState("");
+  const [statsRequest, setStatsRequest] = React.useState(0);
 
   React.useEffect(() => {
     // Subscribe before pulling: a load resolving between this render and the
@@ -190,6 +203,10 @@ export function OverviewPage(props: WebModComponentProps): unknown {
 
   React.useEffect(() => {
     let cancelled = false;
+    // Clear the previous result first so a refresh shows the pending state
+    // rather than stale numbers beside a fresh button press.
+    setStats(null);
+    setStatsError("");
     void fetchKeyValues(API_STATS_URL)
       .then((entries) => {
         if (!cancelled) {
@@ -204,7 +221,7 @@ export function OverviewPage(props: WebModComponentProps): unknown {
     return () => {
       cancelled = true;
     };
-  }, []);
+  }, [statsRequest]);
 
   return h(
     "div",
@@ -214,7 +231,7 @@ export function OverviewPage(props: WebModComponentProps): unknown {
       { className: "re-card-grid" },
       packCard(h, pack),
       layersCard(h, pack),
-      statsCard(h, stats, statsError),
+      statsCard(h, stats, statsError, () => setStatsRequest((n) => n + 1)),
       notesCard(h, pack)
     ),
     h("p", { className: "re-muted" }, `Data served from ${MOD_BASE_URL}data/ (make webmod-export).`)

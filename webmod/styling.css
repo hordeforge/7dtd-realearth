@@ -107,6 +107,12 @@
   width: 140px;
 }
 
+.re-range-value {
+  font-size: 12px;
+  color: var(--re-text-bright);
+  min-width: 34px;
+}
+
 .re-status {
   margin-left: auto;
   font-size: 12px;
@@ -146,6 +152,44 @@
   z-index: 10;
 }
 
+/* Mirrors the standalone viewer's #viewTools so both surfaces zoom the same
+ * way; the dashboard canvas has no scroll-zoom hint of its own. */
+.re-view-tools {
+  position: absolute;
+  right: 10px;
+  bottom: 10px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  z-index: 10;
+}
+
+.re-tool {
+  min-width: 40px;
+  height: 40px;
+  border-radius: 6px;
+  background: var(--re-overlay-bg);
+  border: 1px solid var(--re-border-strong);
+  color: var(--re-text-bright);
+  font-size: 15px;
+  line-height: 1;
+  cursor: pointer;
+}
+
+.re-tool:hover {
+  border-color: var(--re-text-bright);
+}
+
+.re-stage-message {
+  position: absolute;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  color: var(--re-text-muted);
+  font-size: 13px;
+  pointer-events: none;
+}
+
 .re-side {
   grid-column: 2;
   grid-row: 2;
@@ -169,6 +213,32 @@
   text-transform: uppercase;
   letter-spacing: 0.06em;
   color: var(--re-text-muted);
+}
+
+.re-panel-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  margin-bottom: 8px;
+}
+
+.re-panel-head h2 {
+  margin: 0;
+}
+
+.re-btn-ghost {
+  background: transparent;
+  border: 1px solid var(--re-border-strong);
+  color: var(--re-text-muted);
+  padding: 2px 8px;
+  font-size: 12px;
+}
+
+.re-btn-ghost:hover {
+  background: transparent;
+  border-color: var(--re-text-bright);
+  color: var(--re-text-bright);
 }
 
 .re-legend-row {
@@ -219,6 +289,9 @@
 }
 
 .re-error {
+  /* Sits in the wrapping toolbar, so it takes its own line once it needs the
+   * width instead of squeezing the fields beside it. */
+  flex: 1 1 240px;
   background: var(--re-danger-bg);
   border: 1px solid var(--re-danger-border);
   border-radius: 6px;
@@ -311,4 +384,30 @@
   display: flex;
   align-items: center;
   gap: 10px;
+}
+
+/* Narrow viewports: the fixed 300px side column left the map too small to
+ * read, so the panels move under the stage instead. */
+@media (max-width: 860px) {
+  .re-map-page {
+    grid-template-columns: minmax(0, 1fr);
+    grid-template-rows: auto minmax(320px, 1fr) auto;
+    height: auto;
+  }
+
+  .re-stage {
+    grid-column: 1;
+    grid-row: 2;
+    min-height: 320px;
+  }
+
+  .re-side {
+    grid-column: 1;
+    grid-row: 3;
+    overflow: visible;
+  }
+
+  .re-status {
+    margin-left: 0;
+  }
 }
