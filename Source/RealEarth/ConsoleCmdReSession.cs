@@ -26,7 +26,7 @@ namespace RealEarth
 
             if (ModApi.Session == null)
             {
-                Out("[RealEarth] resession: no session");
+                ConsoleOut.Out("[RealEarth] resession: no session");
                 return;
             }
 
@@ -39,11 +39,11 @@ namespace RealEarth
                 var snap = SessionStateStore.Capture(ModApi.Session, ModApi.Config);
                 if (ok)
                 {
-                    Out($"[RealEarth] resession saved → {WorldSavePath.SessionPath()} (+ Config fallback)");
-                    Out(snap.ToJson());
+                    ConsoleOut.Out($"[RealEarth] resession saved → {WorldSavePath.SessionPath()} (+ Config fallback)");
+                    ConsoleOut.Out(snap.ToJson());
                 }
                 else
-                    Out("[RealEarth] resession save failed");
+                    ConsoleOut.Out("[RealEarth] resession save failed");
                 return;
             }
 
@@ -56,28 +56,25 @@ namespace RealEarth
                         : SessionStateStore.TryLoad(ModApi.Session);
                     if (!ok)
                     {
-                        Out("[RealEarth] resession load: missing or parse/apply failed");
+                        ConsoleOut.Out("[RealEarth] resession load: missing or parse/apply failed");
                         return;
                     }
                     var snap = SessionStateStore.Capture(ModApi.Session, ModApi.Config);
-                    Out(
+                    ConsoleOut.Out(
                         $"[RealEarth] resession loaded absolute=({snap.AbsoluteX},{snap.AbsoluteZ}) " +
                         $"origin=({snap.OriginEarthX},{snap.OriginEarthZ}) mode={snap.MultiplayerOriginMode}");
                 }
                 catch (Exception ex)
                 {
-                    Out("[RealEarth] resession load failed: " + ex.GetType().Name + ": " + ex.Message);
+                    ConsoleOut.Out("[RealEarth] resession load failed: " + ex.GetType().Name + ": " + ex.Message);
                 }
                 return;
             }
 
             var cur = SessionStateStore.Capture(ModApi.Session, ModApi.Config);
-            Out("[RealEarth] " + cur.ToJson());
-            Out(
+            ConsoleOut.Out("[RealEarth] " + cur.ToJson());
+            ConsoleOut.Out(
                 $"  allowSlide={SessionOriginPolicy.AllowOriginSlide(cur.MultiplayerOriginMode, ModApi.Config?.LocalWindowSize ?? 1024, ModApi.Config?.WorldWidth ?? 0, ModApi.Config?.WorldHeight ?? 0, 1)}");
         }
-
-        static void Out(string s) =>
-            SingletonMonoBehaviour<SdtdConsole>.Instance?.Output(s);
     }
 }

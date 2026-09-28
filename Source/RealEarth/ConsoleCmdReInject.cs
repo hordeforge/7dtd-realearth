@@ -22,41 +22,38 @@ namespace RealEarth
             {
                 TileSamplePolicy.ResetCounters();
                 TileLoadStats.Reset();
-                Out("[RealEarth] reinject: sample and tile-load counters cleared.");
+                ConsoleOut.Out("[RealEarth] reinject: sample and tile-load counters cleared.");
                 return;
             }
 
             var cfg = ModApi.Config;
-            Out("[RealEarth] " + InjectPatchStats.FormatSummary());
-            Out($"  MapMode={cfg?.MapMode} FailClosedMissingTiles={cfg?.FailClosedMissingTiles} " +
+            ConsoleOut.Out("[RealEarth] " + InjectPatchStats.FormatSummary());
+            ConsoleOut.Out($"  MapMode={cfg?.MapMode} FailClosedMissingTiles={cfg?.FailClosedMissingTiles} " +
                 $"StockSafe={cfg?.EngineHeightStockSafe} SeaY={cfg?.SeaLevelGameY}");
-            Out(
+            ConsoleOut.Out(
                 $"  minimalInjectBinding={InjectPatchStats.HasMinimalInjectBinding} " +
                 $"productInjectBinding={InjectPatchStats.HasProductInjectBinding} " +
                 $"injectBlocked={ChunkTerrainInject.InjectBlocked}");
             // Lines the hot paths refused to print. Nonzero here means the log above
             // understates the failure rate, not that the failures stopped.
-            Out("  suppressedLogLines(" + HooksImpl.SuppressedLogSummary() + ")");
-            Out(
+            ConsoleOut.Out("  suppressedLogLines(" + HooksImpl.SuppressedLogSummary() + ")");
+            ConsoleOut.Out(
                 $"  dualFillMax={ChunkTerrainInject.EffectiveFullDualFillMaxSurface()} " +
                 $"sessionPeak={ChunkTerrainInject.SessionPeakHeight} " +
                 $"blocksOk={ChunkTerrainInject.SessionBlocksApplied}");
             int yDim = EngineHeight.EngineHeightMod.Probe?.ChunkBlockYDim ?? 256;
-            Out(
+            ConsoleOut.Out(
                 $"  expand={ExpandProductGuard.DescribeHeightMode(cfg?.EnableEngineHeightMod ?? true, cfg?.EngineHeightStockSafe ?? false, yDim)} " +
                 $"needsExpand={ExpandProductGuard.RequiresExpandForRealHeight(cfg?.EngineHeightStockSafe ?? false, cfg?.EngineHeightOneToOne ?? true, yDim)} " +
                 $"productHeightBlocked={EngineHeight.EngineHeightMod.ProductHeightBlocked}");
-            Out(
+            ConsoleOut.Out(
                 $"  densityBudget maxPerChunk={DensityBudget.DefaultMaxPrefabsPerChunk} " +
                 $"cdnBase={(string.IsNullOrEmpty(cfg?.TileCdnBaseUrl) ? "none" : "set")} " +
                 $"hotTiles={ModApi.Streamer?.HotTileCount ?? 0} foci={ModApi.Streamer?.FocusCount ?? 0}");
             if (EngineHeight.EngineHeightMod.Active)
-                Out($"  EngineHeightMod=Active allocY={EngineHeight.EngineHeightMod.AllocatableColumnMaxY}");
+                ConsoleOut.Out($"  EngineHeightMod=Active allocY={EngineHeight.EngineHeightMod.AllocatableColumnMaxY}");
             else
-                Out("  EngineHeightMod=inactive (stock YDim or disabled)");
+                ConsoleOut.Out("  EngineHeightMod=inactive (stock YDim or disabled)");
         }
-
-        static void Out(string s) =>
-            SingletonMonoBehaviour<SdtdConsole>.Instance?.Output(s);
     }
 }

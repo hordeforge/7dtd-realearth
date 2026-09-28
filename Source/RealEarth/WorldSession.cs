@@ -133,11 +133,8 @@ namespace RealEarth
         /// Place host window so absolute (earthX, earthZ) is at the center.
         /// This is the core of dynamic loading: active window follows absolute position.
         /// </summary>
-        public void CenterWindowOnAbsolute(int earthX, int earthZ)
-            => CenterWindowOnAbsolute(earthX, earthZ, updateAbsolute: true);
-
         /// <param name="updateAbsolute">When false, only origin slides; durable AbsoluteX/Z stay put (MP non-primary).</param>
-        public void CenterWindowOnAbsolute(int earthX, int earthZ, bool updateAbsolute)
+        public void CenterWindowOnAbsolute(int earthX, int earthZ, bool updateAbsolute = true)
         {
             earthX = _coords.WrapX(earthX);
             earthZ = _coords.ClampZ(earthZ);
@@ -173,11 +170,7 @@ namespace RealEarth
         /// maps into the .rte grid (512×512 H500/Everest test, etc.).
         /// </summary>
         int FoldZ(int z)
-        {
-            if (_foldHostIntoPack && !_cfg.EnableLongitudeWrap)
-                return SessionOriginPolicy.FoldCoord(z, _coords.WorldHeight);
-            return _coords.ClampZ(z);
-        }
+            => SessionOriginPolicy.PackZ(z, _foldHostIntoPack, _cfg.EnableLongitudeWrap, _coords);
 
         public void EarthToLocal(int earthX, int earthZ, out int localX, out int localZ)
         {

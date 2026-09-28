@@ -32,14 +32,13 @@ namespace RealEarth
             => ClampPrefabsInChunk(requested, maxPerKm2);
 
         /// <summary>
-        /// Distance from player to stamp site in blocks (XZ). Negative inputs clamp to 0.
+        /// Distance from player to stamp site in blocks (XZ).
         /// </summary>
         public static int DistanceBlocks(int playerX, int playerZ, int siteX, int siteZ)
         {
             long dx = (long)playerX - siteX;
             long dz = (long)playerZ - siteZ;
             double d = Math.Sqrt((double)(dx * dx + dz * dz));
-            if (d < 0) return 0;
             if (d > int.MaxValue) return int.MaxValue;
             return (int)d;
         }

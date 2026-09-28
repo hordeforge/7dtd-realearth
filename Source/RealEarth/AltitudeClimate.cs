@@ -23,6 +23,15 @@ namespace RealEarth
         /// <summary>Critical hypoxia (m ASL): without oxygen, survival minutes.</summary>
         public const int HypoxiaCriticalM = 8000;
 
+        /// <summary>O2 curve knee (m ASL): oxygen saturation reaches SatFloor there.</summary>
+        private const double SatKneeM = 12000.0;
+
+        /// <summary>O2 curve exponent shaping the fall between sea level and the knee.</summary>
+        private const double SatExp = 1.4;
+
+        /// <summary>Lowest oxygen saturation the curve returns.</summary>
+        private const float SatFloor = 0.35f;
+
         /// <summary>Cold band onset when ambient temp °C falls below this.</summary>
         public const float ColdOnsetC = 0f;
 
@@ -57,12 +66,10 @@ namespace RealEarth
         public static float OxygenSaturation(int elevMAsl)
         {
             if (elevMAsl <= 0) return 1f;
-            // Simple exponential-ish fit: sat = 1 - (elev/12000)^1.4, floored at 0.35.
-            double x = elevMAsl / 12000.0;
-            if (x < 0) x = 0;
-            double sat = 1.0 - Math.Pow(x, 1.4);
-            if (sat > 1.0) return 1f;
-            if (sat < 0.35) return 0.35f;
+            // Simple exponential-ish fit: sat = 1 - (elev/SatKneeM)^SatExp, floored at SatFloor.
+            double x = elevMAsl / SatKneeM;
+            double sat = 1.0 - Math.Pow(x, SatExp);
+            if (sat < SatFloor) return SatFloor;
             return (float)sat;
         }
 

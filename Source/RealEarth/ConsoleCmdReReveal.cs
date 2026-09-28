@@ -19,35 +19,15 @@ namespace RealEarth
         {
             MapReveal.Reset();
             int x = 0, z = 0;
-            bool have = TryLocal(out x, out z);
+            bool have = ConsoleOut.TryGetLocalPlayerBlock(out x, out _, out z);
             if (have)
                 MapReveal.TryRevealIfConfigured(x, z);
             else
                 MapReveal.TryRevealIfConfigured();
-            SingletonMonoBehaviour<SdtdConsole>.Instance?.Output(
+            ConsoleOut.Out(
                 "[RealEarth] rereveal: FOW refresh requested " +
                 $"(full={ModApi.Config?.DebugRevealFullMap} radiusChunks={ModApi.Config?.DebugMapRevealRadiusChunks}). " +
                 "Check log for MapReveal lines.");
-        }
-
-        static bool TryLocal(out int x, out int z)
-        {
-            x = z = 0;
-            try
-            {
-                var gm = GameManager.Instance;
-                var world = gm?.World;
-                var p = world?.GetPrimaryPlayer();
-                if (p == null) return false;
-                var pos = p.GetPosition();
-                x = (int)Math.Floor(pos.x);
-                z = (int)Math.Floor(pos.z);
-                return true;
-            }
-            catch
-            {
-                return false;
-            }
         }
     }
 }

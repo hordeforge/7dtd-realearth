@@ -86,8 +86,6 @@ namespace RealEarth
             _resolved = true;
             try
             {
-                _buffsProp = ReflectCache.Prop(entityType, "Buffs")
-                    ?? ReflectCache.PropPub(entityType, "Buffs");
                 for (Type? t = entityType; t != null && _buffsProp == null; t = t.BaseType)
                 {
                     _buffsProp = ReflectCache.Prop(t, "Buffs")

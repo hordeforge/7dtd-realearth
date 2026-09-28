@@ -27,6 +27,16 @@ namespace RealEarth
         }
 
         /// <summary>
+        /// Pack-space Z for a host Z: folded into the pack grid when a regional
+        /// pack spans a larger host world, clamped otherwise. One owner so the
+        /// streamer and the session mapping cannot disagree on out-of-pack Z.
+        /// </summary>
+        public static int PackZ(int z, bool foldHostIntoPack, bool longitudeWrap, EarthCoords coords)
+            => foldHostIntoPack && !longitudeWrap
+                ? FoldCoord(z, coords.WorldHeight)
+                : coords.ClampZ(z);
+
+        /// <summary>
         /// Shortest signed origin delta on a wrapping axis, using the exact fold
         /// from WorldSession.EarthToLocal. A slide across the antimeridian is a few
         /// hundred blocks forward, never minus-planet-width; OriginSlideRemap entity

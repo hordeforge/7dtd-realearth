@@ -282,7 +282,8 @@ function updateProbe(point: ProbePoint | null): void {
   els.pElev.textContent = elevationAt(point.u, point.v);
 }
 
-function showTip(settlement: Settlement | null, sx: number, sy: number): void {  if (settlement === null) {
+function showTip(settlement: Settlement | null, sx: number, sy: number): void {
+  if (settlement === null) {
     els.settlementTip.hidden = true;
     return;
   }
@@ -452,8 +453,6 @@ async function renderStreamedRte(meta: PackMeta): Promise<void> {
     tileSize: meta.tile_size,
     gridW,
     gridH,
-    seaLevelGameY: meta.sea_level_game_y,
-    metersPerBlock: meta.meters_per_block,
   };
   setStatus(`Streaming ${meta.tiles.length} .rte tile(s)…`);
   const urls = meta.tiles
@@ -481,7 +480,7 @@ async function renderStreamedRte(meta: PackMeta): Promise<void> {
   if (ctx === null) {
     throw new Error("2D context unavailable");
   }
-  await renderRteLayer(canvas, ctx, results, layerMeta);
+  renderRteLayer(canvas, ctx, results, layerMeta);
   // The streamed relief is drawn directly to the map canvas (flat-only);
   // map2d's pan/zoom overlay is intentionally not engaged for this layer.
   canvas.hidden = false;
@@ -776,7 +775,6 @@ async function boot(): Promise<void> {
   }
 }
 
-// events
 els.btnFlat.addEventListener("click", () => setMode("flat"));
 els.btnGlobe.addEventListener("click", () => setMode("globe"));
 els.layerSelect.addEventListener("change", () => {

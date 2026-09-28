@@ -250,17 +250,9 @@ namespace RealEarth
 
         /// <summary>
         /// Tile Z into pack height so large host worlds sample pack interior.
-        /// Mirrors WorldSession.FoldZ via the same SessionOriginPolicy predicate, so the
-        /// streamer and the session mapping can never disagree on out-of-pack Z.
         /// </summary>
         int FoldPackZ(int z)
-        {
-            if (_shouldFoldPack)
-            {
-                return SessionOriginPolicy.FoldCoord(z, _coords.WorldHeight);
-            }
-            return _coords.ClampZ(z);
-        }
+            => SessionOriginPolicy.PackZ(z, _shouldFoldPack, longitudeWrap: false, coords: _coords);
 
         public void EnsureRadius(int centerTx, int centerTz, int radius)
             => EnsureRadius(centerTx, centerTz, radius, allowSyncLoad: false);

@@ -129,10 +129,8 @@ class ViewerHandler(http.server.SimpleHTTPRequestHandler):
             return True
         return int(mtime) > since.timestamp()
 
-    # Returns whatever stdlib SimpleHTTPRequestHandler.send_head does: an open
-    # binary file to stream, or None once an error response has been sent.
-
     def send_head(self) -> io.BytesIO | BinaryIO | None:
+        """As the stdlib handler does: an open binary stream, or None after an error response."""
         accept = self.headers.get("Accept-Encoding", "")
         raw_path = self.translate_path(self.path)
         # Containment: translated path must remain inside the served directory.

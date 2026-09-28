@@ -22,7 +22,7 @@ namespace RealEarth
             if (sub == "reset")
             {
                 CityMapLabels.Reset();
-                Out("[RealEarth] recities: discoveries cleared.");
+                ConsoleOut.Out("[RealEarth] recities: discoveries cleared.");
                 return;
             }
 
@@ -35,7 +35,7 @@ namespace RealEarth
                     var p = gm?.World?.GetPrimaryPlayer();
                     if (p == null)
                     {
-                        Out("[RealEarth] recities here: no local player.");
+                        ConsoleOut.Out("[RealEarth] recities here: no local player.");
                         return;
                     }
                     var pos = p.GetPosition();
@@ -55,24 +55,21 @@ namespace RealEarth
                         if (ModApi.Config != null)
                             ModApi.Config.CityMapDiscoverRadiusScale = old;
                     }
-                    Out("[RealEarth] recities here: discovery pass with temporary large radius.");
+                    ConsoleOut.Out("[RealEarth] recities here: discovery pass with temporary large radius.");
                 }
                 catch (System.Exception ex)
                 {
-                    Out("[RealEarth] recities here failed: " + ex.GetType().Name + ": " + ex.Message);
+                    ConsoleOut.Out("[RealEarth] recities here failed: " + ex.GetType().Name + ": " + ex.Message);
                 }
                 return;
             }
 
             CityMapLabels.TryPlaceIfConfigured();
-            Out($"[RealEarth] recities: catalog={CityMapLabels.CatalogCount} " +
+            ConsoleOut.Out($"[RealEarth] recities: catalog={CityMapLabels.CatalogCount} " +
                 $"discovered={CityMapLabels.DiscoveredCount} " +
                 $"(approach city edge → name pins at center).");
-            Out($"  ShowCityNamesOnMap={ModApi.Config?.ShowCityNamesOnMap} " +
+            ConsoleOut.Out($"  ShowCityNamesOnMap={ModApi.Config?.ShowCityNamesOnMap} " +
                 $"scale={ModApi.Config?.CityMapDiscoverRadiusScale}");
         }
-
-        static void Out(string s) =>
-            SingletonMonoBehaviour<SdtdConsole>.Instance?.Output(s);
     }
 }

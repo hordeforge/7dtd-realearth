@@ -28,16 +28,16 @@ namespace RealEarth
                 // TryParse assigns x/z on both outcomes, so either path leaves them set.
                 bool explicitCoords = _params != null && _params.Count >= 2
                     && int.TryParse(_params[0], out x) && int.TryParse(_params[1], out z);
-                if (!explicitCoords && !TryGetLocalPlayerBlock(out x, out engineY, out z))
+                if (!explicitCoords && !ConsoleOut.TryGetLocalPlayerBlock(out x, out engineY, out z))
                 {
-                    Out("[RealEarth] relonlat: no local player (join a world first)");
+                    ConsoleOut.Out("[RealEarth] relonlat: no local player (join a world first)");
                     return;
                 }
 
                 var session = ModApi.Session;
                 if (session == null || !session.IsStreamed)
                 {
-                    Out("[RealEarth] relonlat: no streamed session (load a Streamed pack first)");
+                    ConsoleOut.Out("[RealEarth] relonlat: no streamed session (load a Streamed pack first)");
                     return;
                 }
 
@@ -49,40 +49,22 @@ namespace RealEarth
                     ? AltitudeClimate.ElevMFromGameY(engineY, sea)
                     : 0;
 
-                Out(
+                ConsoleOut.Out(
                     $"[RealEarth] local=({x},{z}) earth=({earthX},{earthZ}) " +
                     $"lon={lon:0.######} lat={lat:0.######}");
                 if (engineY >= 0)
                 {
-                    Out(
+                    ConsoleOut.Out(
                         $"[RealEarth] gameY={engineY} elev_m≈{elevM} " +
                         $"(sea={sea}; hypoxia band={AltitudeClimate.HypoxiaBand(elevM)})");
                 }
-                Out(
+                ConsoleOut.Out(
                     $"[RealEarth] origin=({session.OriginEarthX},{session.OriginEarthZ})");
             }
             catch (Exception ex)
             {
-                Out($"[RealEarth] relonlat error: {ex.GetType().Name}: {ex.Message}");
+                ConsoleOut.Out($"[RealEarth] relonlat error: {ex.GetType().Name}: {ex.Message}");
             }
         }
-
-        static void Out(string msg)
-        {
-            try
-            {
-                var cons = SingletonMonoBehaviour<SdtdConsole>.Instance;
-                if (cons != null)
-                {
-                    cons.Output(msg);
-                    return;
-                }
-            }
-            catch { /* fall through */ }
-            ModApi.Log(msg);
-        }
-
-        static bool TryGetLocalPlayerBlock(out int x, out int y, out int z) =>
-            LocalPlayerBlocks.TryGet(out x, out y, out z);
     }
 }

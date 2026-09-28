@@ -23,11 +23,7 @@ namespace RealEarth
         /// Returns true if play should refuse tall claims without expand.
         /// </summary>
         public static bool RequiresExpandForRealHeight(bool stockSafe, bool oneToOne, int chunkBlockYDim)
-        {
-            if (stockSafe) return false; // opt-in compress path
-            if (!oneToOne) return false;
-            return !IsExpanded(chunkBlockYDim);
-        }
+            => RequiresExpandForRealHeight(stockSafe, oneToOne, chunkBlockYDim, runtimePatchActive: false);
 
         /// <summary>Runtime-aware variant: the hot patch makes a stock engine expanded.</summary>
         public static bool RequiresExpandForRealHeight(
@@ -40,12 +36,7 @@ namespace RealEarth
 
         /// <summary>Human-readable mode string for logs / loadgen gates.</summary>
         public static string DescribeHeightMode(bool enableEngineHeight, bool stockSafe, int chunkBlockYDim)
-        {
-            if (!enableEngineHeight) return "off";
-            if (IsExpanded(chunkBlockYDim)) return "ydim-expanded";
-            if (stockSafe) return "stock-safe-compress";
-            return "needs-expand";
-        }
+            => DescribeHeightMode(enableEngineHeight, stockSafe, chunkBlockYDim, runtimePatchActive: false);
 
         /// <summary>Runtime-aware variant: hot patch counts as expanded.</summary>
         public static string DescribeHeightMode(

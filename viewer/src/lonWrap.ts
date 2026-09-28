@@ -1,5 +1,4 @@
 // Longitude wrap helpers for continuous Map2D pan across ±180.
-// Mirrored in webmod/src/lonWrap.ts — keep both in sync.
 
 export const LON_MIN = -180;
 export const LON_SPAN = 360;

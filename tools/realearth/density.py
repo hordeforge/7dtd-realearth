@@ -660,10 +660,8 @@ def write_prefabs_xml(path: Path, stamps: list[PrefabStamp]) -> None:
     lines = ['<?xml version="1.0" encoding="UTF-8"?>', "<prefabs>"]
 
     def attr(name: str) -> str:
-        # Stamp names are vanilla prefab ids today, but the writer is shared
-        # with any future settlement-derived naming; escape for the attribute
-        # context so '&', '<', '>' and quotes cannot break prefabs.xml
-        # (same as map_info.xml).
+        # Escape for the attribute context so '&', '<', '>' and quotes cannot
+        # break prefabs.xml (same as map_info.xml).
         return saxutils_escape(name, {'"': "&quot;"})
 
     # y from terrain; rotation 0-3 as RWG uses

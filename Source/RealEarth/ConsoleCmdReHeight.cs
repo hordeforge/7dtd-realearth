@@ -33,15 +33,14 @@ namespace RealEarth
                 // TryParse assigns x/z on both outcomes, so either path leaves them set.
                 bool explicitCoords = _params != null && _params.Count >= 2
                     && int.TryParse(_params[0], out x) && int.TryParse(_params[1], out z);
-                if (!explicitCoords && !TryGetLocalPlayerBlock(out x, out engineY, out z))
+                if (!explicitCoords && !ConsoleOut.TryGetLocalPlayerBlock(out x, out engineY, out z))
                 {
-                    SingletonMonoBehaviour<SdtdConsole>.Instance?.Output(
-                        "[RealEarth] reheight: no local player (join a world first)");
+                    ConsoleOut.Out("[RealEarth] reheight: no local player (join a world first)");
                     return;
                 }
 
                 if (engineY < 0)
-                    TryGetLocalPlayerBlock(out _, out engineY, out _);
+                    ConsoleOut.TryGetLocalPlayerBlock(out _, out engineY, out _);
 
                 float elevM = float.NaN;
                 int modY = -1;
@@ -72,60 +71,42 @@ namespace RealEarth
                             modY = HeightCompress.MetersToGameYOneToOne(
                                 em, sea, HeightCompress.EngineTargetMaxY);
                         }
-                        Out(
+                        ConsoleOut.Out(
                             $"[RealEarth] pos=({x},{engineY},{z}) mode={mode} streamed={streamed}");
-                        Out(
+                        ConsoleOut.Out(
                             "[RealEarth] NO COMPRESSION: gameY = seaLevelY + elev_m (1 m = 1 block)");
-                        Out(
+                        ConsoleOut.Out(
                             $"[RealEarth] elev_m={elevM:0.#} → heightMod gameY={modY}  " +
                             $"(ceiling={EngineHeight.EngineHeightMod.Policy?.MaxGameY ?? HeightCompress.EngineTargetMaxY})");
-                        Out(
+                        ConsoleOut.Out(
                             $"[RealEarth] engineY={engineY}  expanded={EngineHeight.EngineHeightMod.EngineExpanded} " +
                             $"allocMaxY={EngineHeight.EngineHeightMod.AllocatableColumnMaxY}");
-                        Out(
+                        ConsoleOut.Out(
                             $"[RealEarth] landcover={lc} earth=({ex},{ez}) " +
                             $"hotTiles={ModApi.Streamer.HotTileCount}");
                         if (!EngineHeight.EngineHeightMod.EngineExpanded && modY > 255)
-                            Out(
+                            ConsoleOut.Out(
                                 "[RealEarth] YDim not expanded: the runtime transpiler " +
                                 "(EngineHeightRuntimePatch=true) is off or failed; enable it and restart.");
                         return;
                     }
                 }
 
-                Out($"[RealEarth] pos=({x},{engineY},{z}) mode={mode} streamed={streamed}");
-                Out($"[RealEarth] engineY={engineY}  (HUD/map ≈ this, stock max ~250)");
+                ConsoleOut.Out($"[RealEarth] pos=({x},{engineY},{z}) mode={mode} streamed={streamed}");
+                ConsoleOut.Out($"[RealEarth] engineY={engineY}  (HUD/map ≈ this, stock max ~250)");
                 if (!float.IsNaN(elevM))
-                    Out($"[RealEarth] cached elev_m={elevM:0.#} heightMod gameY={modY}");
+                    ConsoleOut.Out($"[RealEarth] cached elev_m={elevM:0.#} heightMod gameY={modY}");
                 else
-                    Out("[RealEarth] no .rte sample here (Baked DTM only, or tiles not loaded).");
+                    ConsoleOut.Out("[RealEarth] no .rte sample here (Baked DTM only, or tiles not loaded).");
                 if (!streamed)
-                    Out(
+                    ConsoleOut.Out(
                         "[RealEarth] HeightTest Baked world intentionally tops ~250 game Y " +
                         "(= +250m on the map). Pack peak is still 8849 m for the height mod.");
             }
             catch (Exception ex)
             {
-                Out($"[RealEarth] reheight error: {ex.GetType().Name}: {ex.Message}");
+                ConsoleOut.Out($"[RealEarth] reheight error: {ex.GetType().Name}: {ex.Message}");
             }
         }
-
-        static void Out(string msg)
-        {
-            try
-            {
-                var cons = SingletonMonoBehaviour<SdtdConsole>.Instance;
-                if (cons != null)
-                {
-                    cons.Output(msg);
-                    return;
-                }
-            }
-            catch { /* fall through */ }
-            ModApi.Log(msg);
-        }
-
-        static bool TryGetLocalPlayerBlock(out int x, out int y, out int z) =>
-            LocalPlayerBlocks.TryGet(out x, out y, out z);
     }
 }
