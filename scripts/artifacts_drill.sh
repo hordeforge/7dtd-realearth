@@ -212,8 +212,12 @@ kept_save="$(find "$SANDBOX/userdata" -maxdepth 1 -type d -name 'Saves.pre-resto
 [[ -f "$kept_save/MyWorld/world.tdb" ]] ||
   fail "moved-aside save tree lost its contents"
 
-# Destroy it outright: a plain restore must put the saves back.
-rm -rf "$SAVES" "$kept_save" "$SANDBOX/userdata"
+# Destroy it outright: a plain restore must put the saves back. The extra
+# archive is a full backup, so the in-repo artifact dirs must go too: a plain
+# restore refuses to clobber them, and that refusal is the guard, not the bug.
+rm -rf "$SAVES" "$kept_save" "$SANDBOX/userdata" \
+  "$SANDBOX/worlds" "$SANDBOX/data/samples" "$SANDBOX/data/cache" \
+  "$SANDBOX/viewer/data"
 RE_ROOT="$SANDBOX" "$HERE/backup_artifacts.sh" restore "$extra_archive" >/dev/null ||
   fail "restore of the out-of-tree tree exited nonzero"
 [[ ! -e "$SANDBOX/realearth-extra" ]] ||

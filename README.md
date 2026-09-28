@@ -227,7 +227,7 @@ make test-fast # coordinate, height, and tile smoke tests
 make test-one T=tests/test_coords.py # single file (or -k expr, or file::node)
 make test-mp # multiplayer window/origin model tests
 make build # compile against the selected game installation
-make check # setup, fast tests, python + shell + TS + HTML lint gates, NPI and mod build
+make check # every step of the ci.yml tools job, plus the mod build (runs the full suite)
 ```
 
 If the mod does not load, first confirm that `ModInfo.xml` is directly under
@@ -249,6 +249,9 @@ Steam update or verification does not undo it; still re-run `make install`
 after updates and game-version changes to keep the built mod current.
 
 ## Contributing
+
+The runnable path (bootstrap, single-test loop, pre-push gate, regeneration
+commands) is in [`CONTRIBUTING.md`](CONTRIBUTING.md).
 
 Keep Python pipeline changes deterministic and cover coordinate, wrapping,
 height, and tile-format behavior with tests under `tools/tests/`. While

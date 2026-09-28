@@ -78,6 +78,7 @@ Never mark Done without live measure (GAP evidence checklist).
 | [`../README.md`](../README.md) | Quick start, Makefile, current feature status |
 | [`../DESIGN.md`](../DESIGN.md) | Architecture, phases, idea backlog §18 |
 | [`../AGENTS.md`](../AGENTS.md) | Repo rules for agents |
+| [`../CONTRIBUTING.md`](../CONTRIBUTING.md) | Contributor path: bootstrap, edit loop, pre-push gate |
 | [`../TODO.md`](../TODO.md) | Executable backlog |
 | [`../ATTRIBUTION.md`](../ATTRIBUTION.md) | Licenses |
 | [`../../MODDING_BEST_PRACTICES.md`](../../MODDING_BEST_PRACTICES.md) | Workspace 7D modding layers |

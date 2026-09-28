@@ -155,8 +155,13 @@ help:
 	@echo "    make lint-shell         ShellCheck over scripts/*.sh (CI gate)"
 	@echo "    make lint-yaml          yamllint over the GitHub workflows (CI gate)"
 	@echo ""
-	@echo "  CI parity (what .github/workflows/ci.yml runs beyond the targets above)"
-	@echo "    make lint-shell         Lint scripts/*.sh"
+	@echo "  CI parity (make check runs every step of .github/workflows/ci.yml tools job)"
+	@echo "    make lint-shell         shellcheck over scripts/*.sh"
+	@echo "    make lint-yaml          yamllint over the GitHub workflows"
+	@echo "    make artifacts-drill    backup/restore roundtrip on a sandbox tree"
+	@echo "    make test               full pytest suite (CI runs it, not test-fast)"
+	@echo "    make lint               ruff + black + mypy (CI: make -C tools lint)"
+	@echo "    make viewer-lint webmod-lint html-lint   tsc/oxlint/vnu gates"
 	@echo ""
 	@echo "  Viewer"
 	@echo "    make viewer             Export demo pack into viewer/data/demo"
@@ -173,7 +178,8 @@ help:
 	@echo ""
 	@echo "  Misc"
 	@echo "    make info               Paths + tool versions"
-	@echo "    make check              setup + test-fast + lint-python + build + viewer/webmod/html lint"
+	@echo "    make check              Full CI-parity gate: every step of ci.yml tools job, plus the mod build"
+	@echo "                           (NO_GAME_BUILD=1 drops the mod build; no game install needed)"
 	@echo "    make clean              Remove Python caches / build artifacts"
 	@echo ""
 	@echo "Overrides: GAME_DIR=... MAP_MODE=Baked|Streamed WORLD_SIZE=2048 BAKE_SIZE=4096 DOTNET_ROOT=..."
@@ -381,13 +387,19 @@ coverage:
 	cd $(TOOLS) && $(COV) run --append --source=realearth -m pytest $(FAST_TESTS) -q --tb=line
 	cd $(TOOLS) && $(COV) report -m
 
-# Mirrors ci.yml (tools job) as far as a game-less machine allows: build needs
-# the installed game assemblies, everything else here is what CI checks. demo +
-# viewer export the pack the viewer smoke loads, so a clean clone reaches
-# viewer-smoke instead of stopping at its missing-prerequisite error.
-check: setup test-fast lint-python lint-shell lint-yaml demo viewer \
-	build viewer-build viewer-lint viewer-smoke webmod-lint html-lint
-	@echo "OK check (setup + test-fast + lint-python + lint-shell + lint-yaml + demo + viewer + build + viewer-build + viewer-lint + viewer-smoke + webmod-lint + html-lint)"
+# Mirrors ci.yml (tools job) step for step, as far as a game-less machine
+# allows: build needs the installed game assemblies. demo + viewer export the
+# pack the viewer smoke loads, so a clean clone reaches viewer-smoke instead of
+# stopping at its missing-prerequisite error. It runs the full pytest suite,
+# not test-fast, because CI runs the full suite: a test file outside FAST_TESTS
+# would otherwise pass here and fail only after push. test-fast stays the edit
+# loop; this is the pre-push gate. NO_GAME_BUILD=1 drops the one step CI cannot
+# run, so a machine without the game install still gets the whole gate instead
+# of a build failure at the end of a long run.
+CHECK_BUILD   := $(if $(filter 1,$(NO_GAME_BUILD)),,build)
+check: setup lint-shell lint-yaml artifacts-drill test lint-python \
+	demo viewer $(CHECK_BUILD) viewer-build viewer-lint viewer-smoke webmod-lint html-lint
+	@echo "OK check: the ci.yml tools job, step for step$(if $(CHECK_BUILD), + the mod build,)"
 
 # ---------------------------------------------------------------------------
 # Viewer
