@@ -25,7 +25,7 @@ VANILLA_3_0_1 = {
 
 
 def default_game_dll() -> Path:
-    return client_game_dir() / "7DaysToDie_Data/Managed/Assembly-CSharp.dll"
+    return client_game_dir() / "7DaysToDie_Data" / "Managed" / "Assembly-CSharp.dll"
 
 
 def read_int32_constants(dll: Path) -> dict[str, int]:

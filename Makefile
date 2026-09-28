@@ -2,7 +2,9 @@
 # Run `make` or `make help` for targets.
 
 # Recipes use bash ([[ ]], echo -n); /bin/sh is dash on Debian/Ubuntu.
-SHELL := /bin/bash
+# Resolve bash through PATH: hosts that install it elsewhere (Homebrew, Nix,
+# Alpine's /usr/bin/bash) have no /bin/bash and make would fail to start.
+SHELL := $(shell command -v bash || echo /bin/bash)
 
 .DEFAULT_GOAL := help
 .PHONY: help help-all \

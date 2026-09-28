@@ -16,7 +16,9 @@ from pathlib import Path
 
 STEAM_APPID = "251570"
 
-DEFAULT_CLIENT_GAME_DIR = Path.home() / ".local/share/Steam/steamapps/common/7 Days To Die"
+DEFAULT_CLIENT_GAME_DIR = (
+    Path.home() / ".local" / "share" / "Steam" / "steamapps" / "common" / "7 Days To Die"
+)
 
 
 def client_game_dir() -> Path:
@@ -36,7 +38,7 @@ def client_game_dir() -> Path:
 def steam_roots() -> list[Path]:
     home = Path.home()
     candidates = [
-        home / ".local/share/Steam",
+        home / ".local" / "share" / "Steam",
         home / ".steam/steam",
         home / ".steam/root",
         Path(os.environ["STEAM_DIR"]) if os.environ.get("STEAM_DIR") else None,
@@ -72,7 +74,7 @@ def proton_userdata(appid: str = STEAM_APPID) -> Path | None:
 
 
 def native_linux_userdata() -> Path:
-    return Path.home() / ".local/share/7DaysToDie"
+    return Path.home() / ".local" / "share" / "7DaysToDie"
 
 
 def client_generated_worlds_targets(

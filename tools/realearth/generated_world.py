@@ -129,11 +129,19 @@ def detect_client_versions() -> tuple[str, str]:
 
     proton_log_dir = (
         Path("steamapps")
-        / f"compatdata/{STEAM_APPID}"
-        / "pfx/drive_c/users/steamuser/AppData/Roaming/7DaysToDie/logs"
+        / "compatdata"
+        / STEAM_APPID
+        / "pfx"
+        / "drive_c"
+        / "users"
+        / "steamuser"
+        / "AppData"
+        / "Roaming"
+        / "7DaysToDie"
+        / "logs"
     )
     log_roots = [root / proton_log_dir for root in steam_roots()]
-    log_roots.append(Path.home() / ".local/share/7DaysToDie")
+    log_roots.append(Path.home() / ".local" / "share" / "7DaysToDie")
     logs: list[Path] = []
     for root in log_roots:
         if root.is_dir():
@@ -282,16 +290,16 @@ def write_splats(path3: Path, path4: Path, size: int, lc: np.ndarray) -> None:
 def _find_ttw_template() -> Path | None:
     """Prefer a main.ttw from the current game install (Pregen), then any GeneratedWorlds."""
     home = Path.home()
+    steam_common = home / ".local" / "share" / "Steam" / "steamapps" / "common"
+    ttw_tail = ("Data", "Worlds", "Pregen06k01", "main.ttw")
     preferred = [
-        home / ".local/share/Steam/steamapps/common/7 Days To Die/Data/Worlds/Pregen06k01/main.ttw",
-        home
-        / ".local/share/Steam/steamapps/common/7 Days to Die Dedicated Server"
-        / "Data/Worlds/Pregen06k01/main.ttw",
+        steam_common.joinpath("7 Days To Die", *ttw_tail),
+        steam_common.joinpath("7 Days to Die Dedicated Server", *ttw_tail),
     ]
     for p in preferred:
         if p.exists():
             return p
-    sample = home / ".local/share/7DaysToDie/GeneratedWorlds"
+    sample = home / ".local" / "share" / "7DaysToDie" / "GeneratedWorlds"
     if sample.is_dir():
         for p in sample.glob("*/main.ttw"):
             return p

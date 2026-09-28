@@ -7,7 +7,9 @@
 # This rewrite is a fixed point instead: every existing copy of the key is
 # dropped (any case, any indentation, any section) and exactly one is written
 # under [General], so running it twice leaves the file byte-identical to
-# running it once. Other keys, sections and comments are preserved in order.
+# running it once. Other keys, sections and comments are preserved in order,
+# and the file's own line ending is kept, so rewriting the CRLF ini the
+# Windows game writes does not hand it back a half-LF file.
 #
 # Usage:
 #   scripts/useroptions_ini.sh FILE KEY=VALUE
@@ -15,7 +17,7 @@
 set -euo pipefail
 
 re_set_ini_general_value() {
-  local file="$1" pair key value scratch
+  local file="$1" pair key value scratch crlf
   pair="${2:?usage: re_set_ini_general_value FILE KEY=VALUE}"
   key="${pair%%=*}"
   value="${pair#*=}"
@@ -29,9 +31,21 @@ re_set_ini_general_value() {
   # removed on every exit path, so a crashed run leaves no residue.
   scratch="$file.re-set.$$"
   trap 'rm -f "$scratch"' RETURN
-  awk -v want="$key" -v line="$key=$value" '
+  # The game writes this ini itself and uses CRLF on its Windows build (the
+  # Proton client and the Windows dedicated), LF on the native Linux one. awk
+  # always emits LF, so a plain rewrite would leave the game's CRLF file half
+  # converted. Detect the file's own ending and write every line, kept and new,
+  # with it.
+  crlf=0
+  if [[ -s "$file" ]] && LC_ALL=C grep -q $'\r$' "$file"; then crlf=1; fi
+  awk -v want="$key" -v line="$key=$value" -v crlf="$crlf" '
+    BEGIN { ORS = crlf ? "\r\n" : "\n" }
     {
-      probe = $0
+      # Drop the record carriage return so kept lines do not gain a second one
+      # once ORS carries it.
+      rec = $0
+      sub(/\r$/, "", rec)
+      probe = rec
       gsub(/^[ \t]+/, "", probe)
       gsub(/[ \t]+$/, "", probe)
       # "DiscordDisabled = false" and "  discorddisabled=x" are the same key.
@@ -39,12 +53,12 @@ re_set_ini_general_value() {
       gsub(/[ \t]/, "", bare)
       if (index(tolower(bare), tolower(want) "=") == 1) next
       if (!inserted && tolower(bare) == "[general]") {
-        print
+        print rec
         print line
         inserted = 1
         next
       }
-      print
+      print rec
     }
     END {
       if (!inserted) {

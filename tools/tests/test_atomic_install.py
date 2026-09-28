@@ -93,6 +93,10 @@ def test_install_script_publishes_instead_of_deleting_the_live_folder() -> None:
     assert 'source "$ROOT/scripts/atomic_dir_swap.sh"' in src
     assert 'rm -rf "$dest"' not in src
     assert "trap atomic_swap_cleanup EXIT" in src
+    # The mod is published through the swap. The generated world is not: it goes
+    # through install_generated_world, which moves the live world into
+    # GeneratedWorlds_trash because the atomic swap drops the previous copy, and
+    # a world can carry hand-edited state no backup holds.
     assert 'source "$ROOT/scripts/generated-world.sh"' in src
     assert src.count("atomic_swap_publish") == 1
     assert 'install_generated_world "$WORLD_SRC"' in src
@@ -148,3 +152,4 @@ def test_generated_world_install_without_previous_world(tmp_path: Path) -> None:
 
     assert (gw / "RealEarth" / "dtm.raw").read_text(encoding="utf-8") == "new"
     assert not (tmp_path / "userdata" / "GeneratedWorlds_trash").exists()
+

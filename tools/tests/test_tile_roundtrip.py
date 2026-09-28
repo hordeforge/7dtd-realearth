@@ -1,5 +1,6 @@
 import struct
 import zlib
+from pathlib import Path
 
 import numpy as np
 
@@ -173,3 +174,17 @@ def test_decode_rejects_truncated_and_oversized_section_lengths():
         raise AssertionError("expected ValueError for truncated header")
     except ValueError:
         pass
+
+
+def test_csharp_decoder_reads_the_format_byte_order_explicitly():
+    """The .rte wire format is little-endian. The runtime decoder must not take
+    the byte order of whatever host it runs on (BinaryReader.ReadInt32 does)."""
+    src = (Path(__file__).resolve().parents[2] / "Source" / "RealEarth" / "RteTile.cs").read_text(
+        encoding="utf-8"
+    )
+    body = src[src.index("public static RteTile Decode") : src.index("public float ElevationAt")]
+
+    assert "br.ReadInt32()" not in body
+    assert "br.ReadUInt16()" not in body
+    assert body.count("ReadI32Le(") >= 5  # header fields plus the reserved word
+    assert "ReadU16Le(br)" in body

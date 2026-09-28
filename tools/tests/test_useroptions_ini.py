@@ -66,6 +66,27 @@ def test_other_keys_and_sections_survive(tmp_path) -> None:
     assert apply_key(path) == "[General]\nDiscordDisabled=true\nPlayerName=Server\n"
 
 
+def test_crlf_file_stays_crlf(tmp_path) -> None:
+    """The Windows game writes UserOptions.ini with CRLF; the rewrite must not
+    hand it back a file whose new lines are bare LF."""
+    path = tmp_path / "UserOptions.ini"
+    path.write_bytes(EXISTING.replace("\n", "\r\n").encode("utf-8"))
+
+    subprocess.run(["bash", str(SCRIPT), str(path), "DiscordDisabled=true"], check=True)
+    once = path.read_bytes()
+    subprocess.run(["bash", str(SCRIPT), str(path), "DiscordDisabled=true"], check=True)
+
+    assert b"\n" not in once.replace(b"\r\n", b"")
+    assert once.decode("utf-8").replace("\r\n", "\n") == (
+        "[General]\n"
+        "DiscordDisabled=true\n"
+        "PlayerName=Server\n"
+        "ResolutionWidth=1920\n"
+        "[Other]\n"
+    )
+    assert path.read_bytes() == once
+
+
 def test_scratch_file_is_not_left_behind(tmp_path) -> None:
     path = tmp_path / "UserOptions.ini"
     path.write_text(EXISTING, encoding="utf-8")

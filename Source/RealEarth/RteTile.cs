@@ -55,17 +55,17 @@ namespace RealEarth
                 throw new InvalidDataException("Not an RTE1 tile");
             }
 
-            int tx = br.ReadInt32();
-            int tz = br.ReadInt32();
-            ushort ver = br.ReadUInt16();
+            int tx = ReadI32Le(br);
+            int tz = ReadI32Le(br);
+            ushort ver = ReadU16Le(br);
             if (ver > FormatVersion)
                 // Fail closed on future formats: a v2 layout change must never be
                 // silently misdecoded as v1 (garbage columns read as valid terrain).
                 throw new InvalidDataException($"unsupported tile version: {ver}");
-            ushort flags = br.ReadUInt16();
-            int w = br.ReadInt32();
-            int h = br.ReadInt32();
-            br.ReadInt32(); // reserved
+            ushort flags = ReadU16Le(br);
+            int w = ReadI32Le(br);
+            int h = ReadI32Le(br);
+            ReadI32Le(br); // reserved
             if (w <= 0 || h <= 0 || (long)w * h > MaxTileSamples)
                 throw new InvalidDataException($"tile dims out of range: {w}x{h}");
             long samples = (long)w * h;
@@ -162,10 +162,29 @@ namespace RealEarth
         /// </summary>
         static int ReadSectionLength(BinaryReader br, int totalLength)
         {
-            int n = br.ReadInt32();
+            int n = ReadI32Le(br);
             if (n < 0 || br.BaseStream.Position + n > totalLength)
                 throw new InvalidDataException($"section length out of range: {n}");
             return n;
+        }
+
+        /// <summary>Read a 4-byte little-endian int. The wire format is little-endian
+        /// everywhere (see tile_format.py HEADER_STRUCT), so read it byte by byte
+        /// instead of taking the host byte order from BinaryReader.</summary>
+        static int ReadI32Le(BinaryReader br)
+        {
+            var b = br.ReadBytes(4);
+            if (b.Length < 4)
+                throw new InvalidDataException("truncated header");
+            return b[0] | (b[1] << 8) | (b[2] << 16) | (b[3] << 24);
+        }
+
+        static ushort ReadU16Le(BinaryReader br)
+        {
+            var b = br.ReadBytes(2);
+            if (b.Length < 2)
+                throw new InvalidDataException("truncated header");
+            return (ushort)(b[0] | (b[1] << 8));
         }
 
         static byte[] Inflate(byte[] zlibData, long maxOutputBytes)
