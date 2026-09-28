@@ -71,6 +71,16 @@ def test_package_mod_does_not_ship_repo_hub_docs():
     assert 'cp "$ROOT/docs/INDEX.md" "$OUT/Docs/"' not in src
 
 
+# install_proton.sh sources these at the top; the fake root has to carry the
+# whole closure or the run dies on a missing helper before it reaches the
+# guard under test.
+INSTALL_SCRIPT_DEPS = (
+    "install_proton.sh",
+    "atomic_dir_swap.sh",
+    "generated-world.sh",
+)
+
+
 def _fake_root(tmp_path: Path) -> Path:
     """A repo root the packaging script can read, without data/samples."""
     root = tmp_path / "root"
@@ -121,10 +131,8 @@ def test_install_fails_when_streamed_pack_is_missing(tmp_path):
     """Same rule on the install path, checked before install_mod removes the
     previous install, so `make install` cannot leave a mod with no data."""
     root = _fake_root(tmp_path)
-    # install_proton.sh sources both helpers at the top; without them it exits
-    # on the first source instead of reaching the pack guard under test.
-    for helper in ("install_proton.sh", "generated-world.sh", "atomic_dir_swap.sh"):
-        shutil.copy2(ROOT / "scripts" / helper, root / "scripts" / helper)
+    for name in INSTALL_SCRIPT_DEPS:
+        shutil.copy2(ROOT / "scripts" / name, root / "scripts" / name)
     game = tmp_path / "game"
     (game / "7DaysToDie_Data" / "Managed").mkdir(parents=True)
     (game / "Mods" / "0_TFP_Harmony").mkdir(parents=True)

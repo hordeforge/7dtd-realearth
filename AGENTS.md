@@ -44,7 +44,7 @@ make lint-yaml             # yamllint over the .github/ workflows
 make test-mp               # multiplayer origin/bubble unit tests
 make build                 # RealEarth.dll
 make install               # build + install mod (hot-patches YDim expand at boot)
-make package               # dist/RealEarth (+ WebMod webui)
+make package               # dist/RealEarth + deterministic RealEarth-v*.zip (+ WebMod webui)
 make demo                  # synthetic demo region pack
 make viewer && make viewer-build && make serve  # web map viewer (TS sources)
 make check

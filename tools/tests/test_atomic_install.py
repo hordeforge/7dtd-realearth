@@ -152,4 +152,3 @@ def test_generated_world_install_without_previous_world(tmp_path: Path) -> None:
 
     assert (gw / "RealEarth" / "dtm.raw").read_text(encoding="utf-8") == "new"
     assert not (tmp_path / "userdata" / "GeneratedWorlds_trash").exists()
-

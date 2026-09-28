@@ -8,7 +8,8 @@ Format follows Keep a Changelog. Versioning follows SemVer on a 0.x line:
 while 0.x, breaking changes may land in minor releases; they are always listed
 under Removed or Changed here. The shipped mod version lives in `ModInfo.xml`;
 the tools package mirrors it in `tools/realearth/__init__.py` (`__version__`),
-and the release gate requires both to match the tag (`v<version>`).
+and the release gate requires both to match the tag (`v<version>`) and a dated
+`## [x.y.z]` heading for the tagged version.
 
 ## [Unreleased]
 
@@ -21,9 +22,68 @@ and the release gate requires both to match the tag (`v<version>`).
   out, and Fit buttons over the stage, matching the standalone viewer.
 - **Webmod server stats Refresh button.** The Overview stats card can be
   re-fetched without reloading the dashboard.
+- **`make artifacts-status` reports backup freshness.** Age and sha256 of the
+  newest archive, and whether the archive directory shares the repo disk. It
+  exits nonzero when no archive exists, when the newest is older than
+  `RE_BACKUP_MAX_AGE_DAYS` (default 7), or when its checksum no longer
+  matches. Nothing schedules a backup, so this is the only evidence a backup
+  is still good; run it after any bake you want to keep.
+- **Installs publish atomically.** The install scripts build
+  `Mods/RealEarth` and `GeneratedWorlds/<name>` in a sibling staging directory
+  and rename it into place (`scripts/atomic_dir_swap.sh`). An install that
+  fails part-way leaves the previous install exactly as it was, loadable by
+  the game, instead of a half-written directory.
+- **Every environment variable the scripts read is in `.env.example`.** The
+  dedicated-server and load-test knobs (`RE_DEDICATED_USERDATA`, `RE_WORLD_NAME`,
+  `RE_SERVER_SOAK`, `RE_SCENARIO_PACK`, `RE_VIEWER_SMOKE_PORT`, …) and the
+  backup knobs (`RE_BACKUP_DIR`, `RE_SAVE_TRASH_DAYS`) were previously
+  discoverable only by reading the scripts. All are optional and all have
+  working defaults.
 
 ### Changed
 
+- **A region pack rebuild now owns its `tiles/` directory.** `build_region`
+  clears `tiles/` before writing the grid, so a rerun with a smaller grid (a
+  narrower bbox, a coarser resolution, a smaller `tile_size`) no longer
+  leaves stale tiles that the install scripts copy next to the new ones and
+  that `earth.manifest.json` never described. Do not keep hand-placed tiles
+  in the same directory a generated pack is written to; generate into one
+  directory and install from another.
+- **Installing a world no longer deletes the installed copy.**
+  `install_height_pack.sh`, `install_proton.sh` and the dedicated harnesses
+  rename `GeneratedWorlds/<name>` to
+  `GeneratedWorlds_trash/<UTC stamp>__<name>` before writing the new world
+  (`scripts/generated-world.sh`). A hand-edited installed world survives an
+  upgrade. Nothing prunes `GeneratedWorlds_trash`; delete entries yourself
+  once the new world is what you want, and watch the disk if you reinstall
+  often.
+- **A failed bake puts the previous world back.** `bake-world` and the
+  generated-world path delete the partial output and rename the
+  `<name>.pre-bake-<UTC stamp>` snapshot back into place before re-raising,
+  so a failed bake no longer leaves a half-written world that looks finished.
+  A restore that itself fails prints the path holding the last good world;
+  move it back by hand.
+- **The dedicated launcher no longer appends duplicate `UserOptions.ini`
+  keys.** `scripts/useroptions_ini.sh` rewrites a key under `[General]` as a
+  fixed point: every existing copy of the key is dropped (any case, any
+  indentation, any section) and exactly one is written, so running the
+  launcher twice leaves the file byte-identical to running it once. If you
+  have accumulated duplicate copies, the next run removes them. Other keys,
+  sections and comments are preserved in order.
+- **`make package` fails instead of shipping a mod folder that loads
+  nothing.** Building without `SEVENDTD_GAME_DIR` / `GAME_DIR` (no
+  `RealEarth.dll`), packaging a Streamed folder with no tile pack under
+  `Data/tiles`, and archiving a symlink are now errors instead of notes.
+  Run `make demo` before `make package`, or set the game dir.
+- **The viewer / webmod lint toolchain is installed from a committed
+  lockfile.** `scripts/js-toolchain.lock` records the resolved packages with
+  hashes, and `scripts/install-js-toolchain.sh` installs exactly that set
+  (`bun install --frozen-lockfile`) before any lint script runs; each lint
+  script no longer resolves its own pins at run time. A pin bumped in
+  `scripts/toolchain-versions.env` without re-locking now fails the lint
+  stage with the re-lock note instead of installing a different artifact, so
+  `TSC_VERSION=... bash scripts/lint-viewer.sh` only works for a version the
+  lock already contains.
 - **`reinject` now reports tile-load latency and log suppression.** Tile
   load counters carry avg / last / max milliseconds per source (disk, CDN),
   and a new `suppressedLogLines(...)` line shows how many failure lines the
