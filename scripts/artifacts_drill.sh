@@ -141,4 +141,75 @@ install_generated_world "$SANDBOX/worlds/DrillWorld" "$GW" RealEarth >/dev/null 
   fail "repeat install reused a trash name and nested the previous world"
 echo "drill: world install keeps the previous tree aside"
 
+# --- out-of-tree state: saves, installed worlds, install trash -------------
+# The only irreplaceable state on a dedicated server lives outside the repo,
+# and the artifact set is repo-relative. Prove the extra-path path end to end.
+SAVES="$SANDBOX/userdata/Saves"
+mkdir -p "$SAVES/MyWorld"
+head -c 4096 /dev/urandom >"$SAVES/MyWorld/world.tdb"
+printf 'level-data' >"$SAVES/MyWorld/player.tdb"
+(
+  cd "$SAVES"
+  find . -type f -print0 | sort -z | xargs -0 sha256sum
+) >"$SANDBOX/before-saves.sha256"
+
+if ! RE_ROOT="$SANDBOX" RE_TERRARIUM_CACHE='' \
+  RE_BACKUP_EXTRA_PATHS="saves=$SAVES" \
+  "$HERE/backup_artifacts.sh" backup >/dev/null; then
+  fail "backup with an extra path exited nonzero"
+fi
+extra_archive="$(find "$SANDBOX/backups" -name 'realearth-artifacts-*.tar.gz' -printf '%T@ %p\n' |
+  sort -rn | head -n1 | cut -d' ' -f2-)"
+tar -tzf "$extra_archive" | grep -q "^realearth-extra/saves/data/MyWorld/world.tdb$" ||
+  fail "archive does not contain the out-of-tree save tree"
+tar -xzOf "$extra_archive" realearth-extra/saves/.realearth-target |
+  grep -qx "$SAVES" || fail "extra tree does not record its absolute target"
+echo "drill: out-of-tree tree archived with its target path recorded"
+
+# A typo'd or stale path must fail the backup, not silently drop the saves.
+if RE_ROOT="$SANDBOX" RE_TERRARIUM_CACHE='' \
+  RE_BACKUP_EXTRA_PATHS="saves=$SAVES/gone" \
+  "$HERE/backup_artifacts.sh" backup >/dev/null 2>&1; then
+  fail "backup accepted a nonexistent extra path"
+fi
+echo "drill: nonexistent extra path fails the backup"
+
+# Restore must refuse to clobber a live save directory, then move it aside.
+if ! RE_ROOT="$SANDBOX" RE_FORCE_RESTORE=1 \
+  "$HERE/backup_artifacts.sh" restore "$extra_archive" >/dev/null 2>&1; then
+  fail "forced restore exited nonzero on the extra tree"
+fi
+[[ -f "$SAVES/MyWorld/world.tdb" ]] || fail "forced restore lost the live save tree"
+(cd "$SAVES" && sha256sum --quiet -c "$SANDBOX/before-saves.sha256") ||
+  fail "restored save tree differs from the backed-up original"
+kept_save="$(find "$SANDBOX/userdata" -maxdepth 1 -type d -name 'Saves.pre-restore-*' |
+  head -n1)"
+[[ -n "$kept_save" ]] ||
+  fail "forced restore deleted the previous save tree instead of moving it aside"
+[[ -f "$kept_save/MyWorld/world.tdb" ]] ||
+  fail "moved-aside save tree lost its contents"
+
+# Destroy it outright: a plain restore must put the saves back.
+rm -rf "$SAVES" "$kept_save" "$SANDBOX/userdata"
+RE_ROOT="$SANDBOX" "$HERE/backup_artifacts.sh" restore "$extra_archive" >/dev/null ||
+  fail "restore of the out-of-tree tree exited nonzero"
+[[ ! -e "$SANDBOX/realearth-extra" ]] ||
+  fail "restore left the staging prefix behind in the repo root"
+(cd "$SAVES" && sha256sum --quiet -c "$SANDBOX/before-saves.sha256") ||
+  fail "save tree restored from the archive differs from the original"
+echo "drill: out-of-tree tree round-trips through destroy and restore"
+
+# --- retention: a bounded archive set, pruned only after a verified backup --
+for _ in 1 2 3; do
+  RE_ROOT="$SANDBOX" RE_TERRARIUM_CACHE='' RE_BACKUP_KEEP=2 \
+    "$HERE/backup_artifacts.sh" backup >/dev/null ||
+    fail "retention backup exited nonzero"
+done
+kept_count="$(find "$SANDBOX/backups" -name 'realearth-artifacts-*.tar.gz' | wc -l)"
+[[ "$kept_count" -eq 2 ]] ||
+  fail "RE_BACKUP_KEEP=2 left $kept_count archives"
+RE_ROOT="$SANDBOX" RE_TERRARIUM_CACHE='' "$HERE/backup_artifacts.sh" status >/dev/null ||
+  fail "status failed after pruning"
+echo "drill: retention keeps the newest archives and leaves a fresh one"
+
 echo "DRILL OK: backup -> destroy -> restore roundtrip proven"
