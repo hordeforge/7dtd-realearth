@@ -7,12 +7,17 @@
 # is never clobbered without RE_FORCE_RESTORE=1, a forced restore moves the
 # old tree aside instead of deleting it, and a corrupt archive is refused.
 #
-# Runs entirely inside a mktemp sandbox (RE_ROOT override) and removes it
-# on exit; the repo and any real artifacts are never touched.
+# Runs entirely inside a sandbox (RE_ROOT override) and removes it on exit;
+# the repo and any real artifacts are never touched. The sandbox lives under
+# the repo's git-ignored .scratch/, not TMPDIR: /tmp is tmpfs on most Linux
+# hosts, so a drill that copies worlds there spends RAM. Set RE_SCRATCH to
+# point at a different disk-backed directory.
 set -euo pipefail
 
 HERE="$(cd "$(dirname "$0")" && pwd)"
-SANDBOX="$(mktemp -d "${TMPDIR:-/tmp}/realearth-drill.XXXXXX")"
+SCRATCH_BASE="${RE_SCRATCH:-$HERE/../.scratch}"
+mkdir -p "$SCRATCH_BASE"
+SANDBOX="$(mktemp -d "$SCRATCH_BASE/realearth-drill.XXXXXX")"
 trap 'rm -rf "$SANDBOX"' EXIT
 
 fail() { echo "DRILL FAILED: $*" >&2; exit 1; }

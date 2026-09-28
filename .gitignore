@@ -50,6 +50,12 @@ dist/
 *.user
 .vs/
 
+# Local env overrides. .env.example is the tracked template; the copy a
+# developer edits never belongs in history.
+.env
+.env.*
+!.env.example
+
 # OS
 .DS_Store
 Thumbs.db

@@ -356,7 +356,8 @@ test-fast:
 		tests/test_region.py tests/test_viewer_export.py \
 		tests/test_proton_paths.py tests/test_elevation_terrarium.py \
 		tests/test_multiplayer.py tests/test_host_fold.py tests/test_local_window.py \
-		tests/test_mp_runtime_structure.py tests/test_package_zip.py -q --tb=line
+		tests/test_mp_runtime_structure.py tests/test_package_zip.py \
+		tests/test_atomic_install.py -q --tb=line
 
 # Line coverage of the realearth package under the same fast pytest list
 # test-fast runs. Writes tools/.coverage; CI renders it into the README

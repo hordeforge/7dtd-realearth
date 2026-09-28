@@ -5,6 +5,8 @@ set -euo pipefail
 ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 # shellcheck source=scripts/generated-world.sh
 source "$ROOT/scripts/generated-world.sh"
+# shellcheck source=scripts/atomic_dir_swap.sh
+source "$ROOT/scripts/atomic_dir_swap.sh"
 GAME_DIR="${SEVENDTD_GAME_DIR:-$HOME/.local/share/Steam/steamapps/common/7 Days To Die}"
 DS_DIR="${SEVENDTD_SERVER_DIR:-$HOME/.local/share/Steam/steamapps/common/7 Days to Die Dedicated Server}"
 # Locate a .NET SDK: explicit env, then the usual local caches (mirrors Makefile).
@@ -71,29 +73,62 @@ if [[ ! -f "$DLL" ]]; then
   exit 1
 fi
 
+# Serialize installs per Mods directory. A second `make install` (or a second
+# shell, or a client and dedicated install that resolve to the same path) would
+# otherwise interleave rm -rf and cp on the same live mod folder. The lock file
+# lives beside the folder it guards, not in TMPDIR: install targets are on the
+# Steam tree, never on tmpfs.
+LOCKED_MODS=""
+acquire_install_lock() {
+  local mods="$1"
+  # A flock is held by the open file description, so re-locking the same path
+  # from this process would report a conflict against ourselves.
+  if [[ "$mods" == "$LOCKED_MODS" ]]; then
+    return 0
+  fi
+  mkdir -p "$mods"
+  local lock="$mods/.realearth-install.lock"
+  exec 9>"$lock"
+  if ! flock -n 9; then
+    echo "ERROR: another RealEarth install holds $lock; wait for it to finish" >&2
+    exit 1
+  fi
+  LOCKED_MODS="$mods"
+}
+
+# A failed install must not leave a half-filled staging dir beside the live
+# mod or world; the helper owns the path, the trap owns the removal.
+trap atomic_swap_cleanup EXIT
+
 install_mod() {
   local target="$1"
-  local dest="$target/Mods/RealEarth"
-  rm -rf "$dest"
-  mkdir -p "$dest/Config" "$dest/Data"
-  cp "$ROOT/ModInfo.xml" "$dest/"
-  cp "$DLL" "$dest/"
-  cp "$ROOT/Config/realearth.json" "$dest/Config/"
-  [[ -f "$ROOT/Config/nav_objects.xml" ]] && cp -f "$ROOT/Config/nav_objects.xml" "$dest/Config/"
-  [[ -f "$ROOT/Config/spawning.xml" ]] && cp -f "$ROOT/Config/spawning.xml" "$dest/Config/"
-  [[ -f "$ROOT/Config/buffs.xml" ]] && cp -f "$ROOT/Config/buffs.xml" "$dest/Config/"
+  local mods="$target/Mods"
+  local dest="$mods/RealEarth"
+  acquire_install_lock "$mods"
+  # Fill a staging dir and swap it in, so the live mod folder is never absent
+  # or half-populated (scripts/atomic_dir_swap.sh).
+  local stage
+  atomic_swap_begin "$dest"
+  stage="$RE_ATOMIC_STAGING"
+  mkdir -p "$stage/Config" "$stage/Data"
+  cp "$ROOT/ModInfo.xml" "$stage/"
+  cp "$DLL" "$stage/"
+  cp "$ROOT/Config/realearth.json" "$stage/Config/"
+  [[ -f "$ROOT/Config/nav_objects.xml" ]] && cp -f "$ROOT/Config/nav_objects.xml" "$stage/Config/"
+  [[ -f "$ROOT/Config/spawning.xml" ]] && cp -f "$ROOT/Config/spawning.xml" "$stage/Config/"
+  [[ -f "$ROOT/Config/buffs.xml" ]] && cp -f "$ROOT/Config/buffs.xml" "$stage/Config/"
   [[ -f "$ROOT/Config/realearth.advanced_height.json" ]] && \
-    cp -f "$ROOT/Config/realearth.advanced_height.json" "$dest/Config/"
+    cp -f "$ROOT/Config/realearth.advanced_height.json" "$stage/Config/"
 
   # MAP_MODE validated up front (see top of script); Streamed is the 1:1 inject default
   local map_mode="$MAP_MODE"
   if [[ -d "$ROOT/data/samples/demo_region" ]]; then
-    mkdir -p "$dest/Data/tiles"
-    if ! cp -a "$ROOT/data/samples/demo_region/." "$dest/Data/tiles/"; then
-      echo "WARN: demo tile copy failed into $dest/Data/tiles (Streamed will sample ocean until CDN configured)" >&2
+    mkdir -p "$stage/Data/tiles"
+    if ! cp -a "$ROOT/data/samples/demo_region/." "$stage/Data/tiles/"; then
+      echo "WARN: demo tile copy failed into $stage/Data/tiles (Streamed will sample ocean until CDN configured)" >&2
     fi
-    if [[ ! -f "$dest/Data/tiles/earth.manifest.json" ]]; then
-      echo "WARN: no earth.manifest.json under $dest/Data/tiles, pack incomplete? Run make demo." >&2
+    if [[ ! -f "$stage/Data/tiles/earth.manifest.json" ]]; then
+      echo "WARN: no earth.manifest.json under $stage/Data/tiles, pack incomplete? Run make demo." >&2
     fi
   fi
   # Streamed takes world size, bbox and antimeridian wrap from the pack that
@@ -106,7 +141,7 @@ install_mod() {
   # Height: RealEarth YDim expands at boot via the runtime Harmony transpiler
   # (EngineHeightRuntimePatch). StockSafe is a fallback only, never the
   # product path (docs/HEIGHT_LIMITS.md).
-  PYTHONPATH="$ROOT/tools" python3 -m realearth.mod_config write "$dest" "$ROOT" \
+  PYTHONPATH="$ROOT/tools" python3 -m realearth.mod_config write "$stage" "$ROOT" \
     --template "$ROOT/Config/realearth.json" \
     "${canvas[@]}" \
     "MapMode=$map_mode" \
@@ -123,6 +158,7 @@ install_mod() {
     "EngineHeightOneToOne?=true" \
     "EngineHeightPreferVanillaCeiling?=false" \
     "LocalWindowSize?=$LOCAL_WINDOW_SIZE"
+  atomic_swap_publish "$dest"
   echo "Installed mod → $dest (MapMode=${map_mode})"
 }
 
