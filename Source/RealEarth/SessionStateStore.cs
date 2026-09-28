@@ -115,8 +115,100 @@ namespace RealEarth
             }
         }
 
-        static string Escape(string s) =>
-            (s ?? "").Replace("\\", "\\\\").Replace("\"", "\\\"");
+        /// <summary>
+        /// JSON string body: quote, backslash, and every C0/C1 control char escaped.
+        /// Control chars matter because the reader below scans for a closing quote
+        /// that respects backslash escapes: a raw CR inside a value would end the
+        /// line the way an operator reads the file. Non-ASCII is written as UTF-8
+        /// rather than \uXXXX; the file is declared UTF-8 and read as such.
+        /// </summary>
+        static string Escape(string s)
+        {
+            s = s ?? "";
+            if (s.IndexOfAny(EscapeChars) < 0) return s;
+            var sb = new StringBuilder(s.Length + 8);
+            foreach (char c in s)
+            {
+                switch (c)
+                {
+                    case '"': sb.Append("\\\""); break;
+                    case '\\': sb.Append("\\\\"); break;
+                    case '\b': sb.Append("\\b"); break;
+                    case '\f': sb.Append("\\f"); break;
+                    case '\n': sb.Append("\\n"); break;
+                    case '\r': sb.Append("\\r"); break;
+                    case '\t': sb.Append("\\t"); break;
+                    default:
+                        if (c < ' ' || (c >= '\u007f' && c <= '\u009f'))
+                            sb.Append("\\u").Append(((int)c).ToString("x4", CultureInfo.InvariantCulture));
+                        else
+                            sb.Append(c);
+                        break;
+                }
+            }
+            return sb.ToString();
+        }
+
+        static readonly char[] EscapeChars = { '"', '\\', '\b', '\f', '\n', '\r', '\t', '\u007f' };
+
+        /// <summary>
+        /// Index of the closing quote of the string opened at `open`, skipping
+        /// backslash-escaped quotes, or -1 when unterminated. A plain
+        /// IndexOf('"') stops at the \" of a value like `Foo\"Bar`, so the reader
+        /// returned a truncated name that no longer matches the catalog key.
+        /// </summary>
+        static int FindStringEnd(string json, int open)
+        {
+            bool esc = false;
+            for (int i = open + 1; i < json.Length; i++)
+            {
+                char c = json[i];
+                if (esc) { esc = false; continue; }
+                if (c == '\\') { esc = true; continue; }
+                if (c == '"') return i;
+            }
+            return -1;
+        }
+
+        /// <summary>Inverse of Escape for the escapes it emits.</summary>
+        static string Unescape(string s)
+        {
+            if (s.IndexOf('\\') < 0) return s;
+            var sb = new StringBuilder(s.Length);
+            for (int i = 0; i < s.Length; i++)
+            {
+                char c = s[i];
+                if (c != '\\' || i + 1 >= s.Length) { sb.Append(c); continue; }
+                char n = s[++i];
+                switch (n)
+                {
+                    case '"': sb.Append('"'); break;
+                    case '\\': sb.Append('\\'); break;
+                    case '/': sb.Append('/'); break;
+                    case 'b': sb.Append('\b'); break;
+                    case 'f': sb.Append('\f'); break;
+                    case 'n': sb.Append('\n'); break;
+                    case 'r': sb.Append('\r'); break;
+                    case 't': sb.Append('\t'); break;
+                    case 'u':
+                        if (i + 4 < s.Length
+                            && ushort.TryParse(s.Substring(i + 1, 4), NumberStyles.HexNumber,
+                                CultureInfo.InvariantCulture, out ushort u))
+                        {
+                            sb.Append((char)u);
+                            i += 4;
+                        }
+                        else
+                        {
+                            sb.Append(c);
+                            i--;
+                        }
+                        break;
+                    default: sb.Append(c); break;
+                }
+            }
+            return sb.ToString();
+        }
 
         /// <summary>Index just past the colon of `"key":`, or -1 when absent.</summary>
         static int KeyColonIndex(string json, string key)
@@ -158,9 +250,9 @@ namespace RealEarth
             if (j < 0) return false;
             int q1 = json.IndexOf('"', j);
             if (q1 < 0) return false;
-            int q2 = json.IndexOf('"', q1 + 1);
+            int q2 = FindStringEnd(json, q1);
             if (q2 < 0) return false;
-            value = json.Substring(q1 + 1, q2 - q1 - 1);
+            value = Unescape(json.Substring(q1 + 1, q2 - q1 - 1));
             return true;
         }
 
@@ -181,9 +273,9 @@ namespace RealEarth
                 if (json[j] == ']') return true;
                 if (json[j] != '"') return false;
                 int q1 = j;
-                int q2 = json.IndexOf('"', q1 + 1);
+                int q2 = FindStringEnd(json, q1);
                 if (q2 < 0) return false;
-                string s = json.Substring(q1 + 1, q2 - q1 - 1);
+                string s = Unescape(json.Substring(q1 + 1, q2 - q1 - 1));
                 if (s.Length > 0)
                     values.Add(s);
                 j = q2 + 1;
@@ -324,7 +416,7 @@ namespace RealEarth
                         // restarts at the config spawn and the operator only finds out
                         // by noticing the origin moved. Name the file and its size.
                         ModApi.LogWarn(
-                            $"SessionStateStore skip unreadable snapshot {p} bytes={json.Length}");
+                            $"SessionStateStore skip unreadable snapshot {p} bytes={Encoding.UTF8.GetByteCount(json)}");
                         continue;
                     }
                     // The mod Config fallback is global across worlds; without this gate a

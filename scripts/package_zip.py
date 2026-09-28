@@ -63,6 +63,10 @@ def _tool_version(cmd: str) -> str:
             [cmd, "--version"],
             capture_output=True,
             text=True,
+            # Tool banners are UTF-8; the platform default codec would mangle a
+            # non-ASCII locale string and, on a C locale, raise on it.
+            encoding="utf-8",
+            errors="replace",
             timeout=20,
             check=False,
         )

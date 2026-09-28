@@ -1,5 +1,6 @@
 using System;
 using System.IO;
+using System.Text;
 
 namespace RealEarth
 {
@@ -38,7 +39,10 @@ namespace RealEarth
             try
             {
                 CreateTargetDir(path);
-                File.WriteAllText(tmp, contents);
+                // UTF-8 without BOM, stated rather than inherited: the reader
+                // (SessionStateStore.TryLoad) declares UTF-8, and the no-BOM form
+                // keeps the file parseable as JSON by any other tool.
+                File.WriteAllText(tmp, contents, new UTF8Encoding(false));
             }
             catch
             {
