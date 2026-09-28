@@ -187,6 +187,23 @@ namespace RealEarth
                 p.LocalValid = false;
         }
 
+        /// <summary>
+        /// Origin moved: every already-placed pin and every memoized place local is
+        /// now at the pre-move local cell. Unregister the pins, drop the memo, and let
+        /// the next tick re-place discovered names at the new coords. Called from
+        /// WorldSession.SetOrigin, so no origin write (slide, snapshot restore,
+        /// `resession load`) can leave a pin behind.
+        /// </summary>
+        public static void InvalidateOriginDerivedCache()
+        {
+            lock (_cityGate)
+            {
+                UnregisterAllNavOnly();
+                InvalidateLocalCache();
+                _tickThrottle = 0;
+            }
+        }
+
         /// <summary>Legacy entry: no player pos (only loads catalog / retries manager).</summary>
         public static void TryPlaceIfConfigured()
         {
@@ -308,9 +325,7 @@ namespace RealEarth
             lock (_cityGate)
             {
                 // Drop nav handles (positions invalid); rediscover set is kept.
-                UnregisterAllNavOnly();
-                InvalidateLocalCache();
-                _tickThrottle = 0;
+                InvalidateOriginDerivedCache();
                 // Next TickPlayer will re-place discovered at new local coords
             }
         }

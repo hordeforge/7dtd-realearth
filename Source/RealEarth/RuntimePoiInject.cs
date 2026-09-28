@@ -99,6 +99,22 @@ namespace RealEarth
                 p.LocalValid = false;
         }
 
+        /// <summary>
+        /// Origin moved: drop the place-local memo and the tick throttle. Called from
+        /// WorldSession.SetOrigin so every origin write (slide, snapshot restore,
+        /// `resession load`) re-stamps at the new local positions. Budgets and
+        /// _placed are untouched: a moved window must not re-stamp chunks that
+        /// already hold their POIs.
+        /// </summary>
+        public static void InvalidateOriginDerivedCache()
+        {
+            lock (_stampGate)
+            {
+                InvalidateLocalCache();
+                _tickThrottle = 0;
+            }
+        }
+
         /// <summary>Player tick: stamp nearby city cores under DensityBudget.</summary>
         public static void TickPlayer(int playerLocalX, int playerLocalZ)
         {

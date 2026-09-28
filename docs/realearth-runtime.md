@@ -288,7 +288,12 @@ SoloSlide recenters the host window. Everything that stored **local** XZ must re
 | Missing / uninspectable PPL | `HasLandClaims` **fail-closed** (freeze SoloSlide rather than corrupt claims) |
 | Float → block | `Math.Floor` on XZ (truncation toward zero breaks negatives) |
 | Tile hot cache | Invalidate after successful slide |
+| City pin / POI place locals | Memoized on `Place.LocalValid`; dropped by `SetOrigin` (every origin write: slide, snapshot restore, `resession load`) |
 | Runtime POI stamps | Keep placed set across slide (no duplicate stamp); clear budget keys by FloorDiv |
+
+`SetOrigin` is the only origin write path, so it owns the origin-derived invalidation: nav pins are unregistered, the place-local memo and tick throttles are dropped, and the placed-POI set is left alone. A caller that only remembered to invalidate on the slide path (not on `resession load`) left every pin and stamp at its pre-move local cell.
+
+The player-count TTL cache (`EstimatePlayerCount`, 500 ms) is process-static but world-scoped: `WorldReadyPostfix` drops it, so a new world is never judged by the previous world's roster (a solo count of 1 would otherwise allow an origin slide in MP).
 
 **Residual:** SoloSlide mesh/voxel desync after slide is closed offline by `ChunkTerrainInject.ReinjectLoadedChunksAround` (slide path rewrites loaded chunk columns under the new origin, bounded radius + nearest-first cap; unloaded chunks regenerate naturally). Live soak still pending.
 

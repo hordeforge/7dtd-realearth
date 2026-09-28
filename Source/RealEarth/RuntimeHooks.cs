@@ -896,6 +896,9 @@ namespace RealEarth
 
                 MapReveal.Reset();
                 MapReveal.TryRevealIfConfigured();
+                // Player count is process-cached but world-scoped: a new world's roster
+                // must not be read through the previous world's cached value.
+                WorldSession.ResetPlayerCountCache();
                 // Soft gap 32: TryLoad may have re-seeded discoveries; keep them across Reset.
                 var restoredCities = CityMapLabels.ExportDiscoveredNames();
                 CityMapLabels.Reset();

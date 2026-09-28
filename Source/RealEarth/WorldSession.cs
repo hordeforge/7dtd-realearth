@@ -97,7 +97,17 @@ namespace RealEarth
         {
             int ox = _cfg.EnableLongitudeWrap ? _coords.WrapX(earthX) : earthX;
             int oz = _coords.ClampZ(earthZ);
+            ReadOrigin(out int prevX, out int prevZ);
+            if (ox == prevX && oz == prevZ)
+                return;
             WriteOriginLocked(ox, oz);
+            // Host-local coords of every Earth lon/lat shift with the origin, so the
+            // memoized place locals (city pins, POI stamps) are stale from here on.
+            // Every origin write funnels through this method (origin slide, snapshot
+            // restore, `resession load`), so invalidate once at the write instead of
+            // relying on each caller to remember.
+            CityMapLabels.InvalidateOriginDerivedCache();
+            RuntimePoiInject.InvalidateOriginDerivedCache();
         }
 
         /// <summary>
@@ -403,6 +413,23 @@ namespace RealEarth
                 _playerCountCacheValid = true;
             }
             return n;
+        }
+
+        /// <summary>
+        /// Drop the cached player count. The cache is process-static but the count it
+        /// memoizes belongs to the current world, so a world change must not be judged
+        /// by the previous world's roster (a solo world ending as an MP world would
+        /// otherwise read "1 player" and slide the origin, which is the desync this
+        /// policy exists to prevent). Called from the world-ready hook.
+        /// </summary>
+        public static void ResetPlayerCountCache()
+        {
+            lock (_playerCountGate)
+            {
+                _playerCountCached = -1;
+                _playerCountCacheExpiry = 0;
+                _playerCountCacheValid = false;
+            }
         }
 
         static int EstimatePlayerCountUncached()
