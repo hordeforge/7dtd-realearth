@@ -49,6 +49,24 @@ and the release gate requires both to match the tag (`v<version>`).
   different one.
 - **Viewer status HUD** renders load, pack, and globe failures in the danger
   color so they read differently from routine status.
+- **The C# mod DLL is now deterministic on a local build, not only in CI.**
+  `DeterministicSourcePaths` was reached in CI only, through
+  `ContinuousIntegrationBuild`; a maintainer's own `make build` / `make package`
+  kept whatever the SDK would otherwise record. It is now set in
+  `RealEarth.csproj` for every build.
+
+### Fixed
+
+- **`make sbom` output is now reproducible.** `scripts/sbom.py` fills the SPDX
+  `creationInfo.created` field from `SOURCE_DATE_EPOCH` when it is exported,
+  the same convention `scripts/package_zip.sh` already follows. Without it two
+  builds of the same lockfile produced documents differing only in that
+  timestamp, so a rebuild could not be compared byte-for-byte.
+- **`vendor-three.sh` no longer sends you to a package manager this repo does
+  not use.** Its error told you to `npm install in viewer/`; the repo tracks no
+  `package.json`, and `viewer/node_modules` is a symlink the lint script
+  creates. It now names the command that actually populates that path and
+  sources `scripts/toolchain-versions.env` for the pinned three version.
 
 ## [0.5.1] - 2026-09-21
 

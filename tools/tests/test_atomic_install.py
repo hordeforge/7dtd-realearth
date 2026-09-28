@@ -97,6 +97,7 @@ def test_install_script_publishes_instead_of_deleting_the_live_folder() -> None:
     assert src.count("atomic_swap_publish") == 1
     assert 'install_generated_world "$WORLD_SRC"' in src
     world_helper = (ROOT / "scripts" / "generated-world.sh").read_text(encoding="utf-8")
+    assert "move_aside" in world_helper
     code = [line for line in world_helper.splitlines() if not line.lstrip().startswith("#")]
     assert not [
         line for line in code if "rm -rf" in line

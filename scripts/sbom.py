@@ -2,7 +2,8 @@
 """Generate an SPDX 2.3 JSON dependency inventory for RealEarth releases.
 
 Reads the lock/pin sources this repository builds against and writes one
-deterministic SPDX document (same inputs, same bytes modulo the timestamp):
+deterministic SPDX document (same inputs, same bytes when SOURCE_DATE_EPOCH
+is exported):
 
   tools/uv.lock                                        Python pipeline packages
   scripts/toolchain-versions.env                       JS build/lint toolchain pins
@@ -19,6 +20,7 @@ from __future__ import annotations
 
 import hashlib
 import json
+import os
 import re
 import sys
 import tomllib
@@ -29,6 +31,20 @@ from typing import Any
 REPO = Path(__file__).resolve().parents[1]
 NAMESPACE_BASE = "https://github.com/hordeforge/7dtd-realearth"
 ROOT_SPDX_ID = "SPDXRef-Package-realearth"
+
+
+def _created() -> str:
+    """SPDX creation timestamp, pinned by SOURCE_DATE_EPOCH when set.
+
+    Same convention as scripts/package_zip.sh: with the variable exported, two
+    builds of the same source produce byte-identical SBOMs, so the document can
+    be compared and rebuilt like any other release artifact. Without it the
+    wall clock is the only thing left that differs.
+    """
+    epoch = os.environ.get("SOURCE_DATE_EPOCH", "").strip()
+    if epoch.isdigit():
+        return datetime.fromtimestamp(int(epoch), UTC).strftime("%Y-%m-%dT%H:%M:%SZ")
+    return datetime.now(UTC).strftime("%Y-%m-%dT%H:%M:%SZ")
 
 
 def _purl_ref(locator: str) -> list[dict[str, str]]:
@@ -204,7 +220,7 @@ def build() -> dict[str, Any]:
         "name": "realearth-dependencies",
         "documentNamespace": namespace,
         "creationInfo": {
-            "created": datetime.now(UTC).strftime("%Y-%m-%dT%H:%M:%SZ"),
+            "created": _created(),
             "creators": ["Tool:realearth-scripts-sbom"],
             "licenseListVersion": "3.25",
         },

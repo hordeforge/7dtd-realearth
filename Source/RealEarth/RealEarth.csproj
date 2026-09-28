@@ -18,11 +18,13 @@
     <GenerateAssemblyInfo>true</GenerateAssemblyInfo>
     <AppendTargetFrameworkToOutputPath>false</AppendTargetFrameworkToOutputPath>
     <!-- Reproducible output: byte-identical DLL for identical inputs.
-         Deterministic pins compilation output; PathMap maps the absolute
-         project path to /_/ so checkouts from different directories (and the
-         PDB path recorded in the debug directory) do not leak into the DLL;
-         CI builds additionally normalize all source paths. -->
+         Deterministic pins compilation output; DeterministicSourcePaths keeps
+         the SDK from leaving any absolute source path in the PDB, locally as
+         well as in CI (CI only got it through ContinuousIntegrationBuild);
+         PathMap maps the absolute project path to /_/ so checkouts from
+         different directories do not leak into the DLL. -->
     <Deterministic>true</Deterministic>
+    <DeterministicSourcePaths>true</DeterministicSourcePaths>
     <PathMap>$(MSBuildThisFileDirectory)=/_/</PathMap>
     <!-- Stamp provenance only when asked (-p:InformationalVersion=1.0.0+<sha>):
          left automatic, SDK 8 silently bakes the ambient git HEAD into the DLL

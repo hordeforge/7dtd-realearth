@@ -4,6 +4,10 @@
 # works fully offline via the importmap and the committed files stay in sync
 # with the pinned version in toolchain-versions.env / js-toolchain.lock.
 #
+# The repo tracks no package.json: scripts/lint-viewer.sh installs the pinned
+# three into a shared cache and symlinks viewer/node_modules at it, which is
+# what this script reads.
+#
 # The committed files are third-party code shipped in every release, so their
 # sha256 (pinned in toolchain-versions.env) is verified on every run. A blob
 # that was hand-edited or fetched from somewhere other than the locked npm
@@ -54,7 +58,8 @@ for pair in "${FILES[@]}"; do
     fi
   else
     if [[ ! -f "$SRC/$src" ]]; then
-      echo "ERROR: missing $SRC/$src (run: bash scripts/install-js-toolchain.sh)" >&2
+      echo "ERROR: missing $SRC/$src (run 'bash scripts/lint-viewer.sh' first: it installs" >&2
+      echo "       the pinned three@$THREE_VERSION into the shared toolchain cache and links viewer/node_modules)" >&2
       exit 1
     fi
     mkdir -p "$DST/$(dirname "$rel")"

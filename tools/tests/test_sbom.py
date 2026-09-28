@@ -1,18 +1,21 @@
-"""Pin scripts/sbom.py: the dependency inventory shipped with every release.
+"""Pin scripts/sbom.py, the dependency inventory shipped with every release.
 
 The SBOM is how a consumer (or a vuln scanner) learns what third-party code is
 in a release, so these tests drive the shipped script end to end and assert the
 properties the inventory is supposed to have: the shipped three.js appears with
 the hash of the committed vendored files, every JS pin in
-scripts/toolchain-versions.env is inventoried, and every relationship points at
-a package the document actually declares.
+scripts/toolchain-versions.env is inventoried, every relationship points at
+a package the document actually declares, and the document rebuilds
+byte-for-byte under a pinned SOURCE_DATE_EPOCH.
 """
 
 import hashlib
 import json
+import os
 import re
 import subprocess
 import sys
+from datetime import UTC, datetime
 from pathlib import Path
 
 import pytest
@@ -22,8 +25,10 @@ SCRIPT = REPO_ROOT / "scripts" / "sbom.py"
 VENDORED_THREE = REPO_ROOT / "viewer" / "vendor" / "three"
 PINS = REPO_ROOT / "scripts" / "toolchain-versions.env"
 
+EPOCH = "1700000000"
 
-def run_sbom() -> dict:
+
+def sbom_doc() -> dict:
     out = subprocess.run(
         [sys.executable, str(SCRIPT), "-"],
         capture_output=True,
@@ -33,9 +38,20 @@ def run_sbom() -> dict:
     return json.loads(out.stdout)
 
 
+def sbom_bytes(out: Path, env_extra: dict[str, str]) -> bytes:
+    env = dict(os.environ)
+    env.pop("SOURCE_DATE_EPOCH", None)
+    env.update(env_extra)
+    env["PYTHONHASHSEED"] = "0"
+    subprocess.run(
+        [sys.executable, str(SCRIPT), str(out)], check=True, env=env, capture_output=True
+    )
+    return out.read_bytes()
+
+
 @pytest.fixture(scope="module")
 def doc() -> dict:
-    return run_sbom()
+    return sbom_doc()
 
 
 def test_ships_vendored_three_with_the_committed_file_hashes(doc: dict) -> None:
@@ -89,7 +105,7 @@ def test_document_namespace_tracks_the_package_set(doc: dict) -> None:
     # The namespace is the sha256 of the name@version list: a dependency change
     # has to move it, so two inventories with different contents cannot share
     # a namespace.
-    other = run_sbom()
+    other = sbom_doc()
     assert other["documentNamespace"] == doc["documentNamespace"]
     assert doc["documentNamespace"].startswith("https://github.com/hordeforge/")
 
@@ -120,3 +136,18 @@ def test_npm_versions_come_from_the_pins_file(doc: dict) -> None:
     declared = {p["name"]: p["versionInfo"] for p in doc["packages"] if "versionInfo" in p}
     for name, version in expected.items():
         assert declared.get(name) == version
+
+
+def test_sbom_bytes_are_stable_under_source_date_epoch(tmp_path) -> None:
+    """Same lockfile + same SOURCE_DATE_EPOCH: identical document bytes."""
+    first = sbom_bytes(tmp_path / "a.spdx.json", {"SOURCE_DATE_EPOCH": EPOCH})
+    second = sbom_bytes(tmp_path / "b.spdx.json", {"SOURCE_DATE_EPOCH": EPOCH})
+    assert first == second
+
+
+def test_created_comes_from_source_date_epoch(tmp_path) -> None:
+    """The pinned epoch, not the wall clock, fills creationInfo.created."""
+    out = tmp_path / "sbom.spdx.json"
+    sbom_bytes(out, {"SOURCE_DATE_EPOCH": EPOCH})
+    created = json.loads(out.read_text(encoding="utf-8"))["creationInfo"]["created"]
+    assert created == datetime.fromtimestamp(int(EPOCH), UTC).strftime("%Y-%m-%dT%H:%M:%SZ")
