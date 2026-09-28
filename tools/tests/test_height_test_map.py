@@ -1,5 +1,6 @@
 """Height-test map: real Everest DEM pack + 1:1 height path."""
 
+import json
 from pathlib import Path
 from unittest.mock import patch
 
@@ -28,7 +29,7 @@ def test_cone_fallback_peak_near_everest():
 def test_fetch_synthetic_source():
     elev, sources = fetch_everest_elevation(64, source="synthetic")
     assert elev.shape == (64, 64)
-    assert "synthetic" in sources[0].lower() or "synthetic" in sources[-1].lower()
+    assert sources and all("synthetic" in s.lower() for s in sources)
     assert float(elev.max()) > 8000
 
 
@@ -48,11 +49,18 @@ def test_build_pack_with_mocked_real_dem(tmp_path: Path):
     assert info["peak_game_y_one_to_one"] == TEST_SEA_LEVEL_GAME_Y + int(round(info["peak_elev_m"]))
     tile = read_tile(tile_path(tmp_path, 0, 0))
     assert float(tile.elevation_m.max()) >= 8800
-    man = (tmp_path / "earth.manifest.json").read_text(encoding="utf-8")
-    assert "86.8" in man or "Everest" in man or "terrarium" in man.lower() or "mock" in man
-    meta = (tmp_path / "height_test.json").read_text(encoding="utf-8")
-    assert "no_compression" in meta
-    assert str(EVEREST_BBOX["west"]) in meta or "86.8" in meta
+    man = json.loads((tmp_path / "earth.manifest.json").read_text(encoding="utf-8"))
+    assert man["sources"] == ["mock terrarium Everest"]
+    assert man["bbox"] == EVEREST_BBOX
+    assert man["meters_per_block"] == 1.0
+    assert man["sea_level_game_y"] == TEST_SEA_LEVEL_GAME_Y
+    assert man["tiles"] == [{"tx": 0, "tz": 0}]
+    meta = json.loads((tmp_path / "height_test.json").read_text(encoding="utf-8"))
+    assert meta["no_compression"] is True
+    assert meta["bbox"] == EVEREST_BBOX
+    assert meta["expected_everest_m"] == EVEREST_METERS_ASL
+    assert meta["peak_pixel_xz"] == [size // 2, size // 2]
+    assert meta["peak_elev_m"] == info["peak_elev_m"]
 
     y = compress_elevation(
         tile.elevation_m,
@@ -142,5 +150,6 @@ def test_build_trench_pack_uses_product_sea_anchor(tmp_path: Path):
     )
     assert int(y.min()) == 5000
     assert int(y.max()) < meta["sea_level_game_y"]  # whole pack below sea
-    man = (pack_dir / "earth.manifest.json").read_text(encoding="utf-8")
-    assert '"sea_level_game_y": 16000' in man or '"sea_level_game_y":16000' in man
+    man = json.loads((pack_dir / "earth.manifest.json").read_text(encoding="utf-8"))
+    assert man["sea_level_game_y"] == 16000
+    assert man["meters_per_block"] == 1.0

@@ -60,7 +60,8 @@ def test_chunk_inject_sets_blocks_not_only_density():
     src = INJECT.read_text(encoding="utf-8")
     assert "SetBlock" in src
     assert "FindSetBlock" in src
-    assert "terrDirt" in src or "terrainFiller" in src
+    assert 'TryNames("terrStone", "terrDirt", "terrainFiller", "terrGrass")' in src
+    assert 'TryNames("terrDirt", "terrGrass", "terrStone")' in src
 
 
 def test_chunk_inject_writes_biome_from_landcover():
@@ -155,4 +156,4 @@ def test_shipped_preferred_list_puts_rwg_first():
     # interface must not be preferred concrete
     assert "ITerrainGenerator" not in names
     # TypePatchPriority demotes interfaces
-    assert "if (t.IsInterface) return -50" in src.replace(" ", "") or "t.IsInterface" in src
+    assert "if (t.IsInterface) return -50;" in src

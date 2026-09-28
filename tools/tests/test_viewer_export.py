@@ -39,11 +39,15 @@ def test_export_viewer_copies_rte_tiles(tmp_path: Path):
     tiles = out / "tiles"
     assert tiles.is_dir(), "export must copy pack tiles for the streamed layer"
     # manifest lists tx/tz pairs; each must exist as tiles/<tz>/<tx>.rte
+    pack_man = json.loads((pack / "earth.manifest.json").read_text(encoding="utf-8"))
     man = json.loads((out / "viewer.json").read_text(encoding="utf-8"))
-    assert len(man.get("tiles") or []) >= 2
+    assert len(pack_man["tiles"]) >= 2
+    assert man["tiles"] == pack_man["tiles"]
     for entry in man["tiles"]:
         tile = tiles / str(entry["tz"]) / f'{entry["tx"]}.rte'
         assert tile.is_file(), f"missing {tile}"
+    # nothing beyond the manifest tiles is shipped
+    assert {p.name for p in tiles.rglob("*.rte")} == {f'{e["tx"]}.rte' for e in man["tiles"]}
 
 
 def _tiny_region(tmp_path: Path) -> Path:

@@ -105,8 +105,10 @@ def test_streamed_window_slide_and_wrap(tmp_path: Path):
     slid, nx, nz, ax, az = win.tick_player_local(lx, lz, allow_slide=True)
     roundtrip = win.earth_to_local(ax, az)
     assert roundtrip == (nx, nz)  # local<->absolute roundtrip stable
-    # The absolute position is consistent whether or not the origin slid.
-    assert (ax, az) == before or slid
+    # The absolute position is preserved whether or not the origin slid.
+    assert (ax, az) == before
+    if slid:
+        assert (nx, nz) != (lx, lz)
 
     # Antimeridian wrap: a big positive move folds to a small forward delta.
     delta = wrapped_delta(width + 1234, width)
@@ -144,11 +146,12 @@ def test_streamed_manifest_absolute_contract(tmp_path: Path):
     pack = _make_pack(tmp_path)
     man = read_manifest(pack / "earth.manifest.json")
     # Block coords inside the pack map to a tile index that exists.
+    assert man.tiles
     for entry in man.tiles:
         x0 = entry["tx"] * man.tile_size
         z0 = entry["tz"] * man.tile_size
-        assert x0 < man.world_width or man.world_width <= x0 < man.world_width + man.tile_size
-        assert z0 < man.world_height or man.world_height <= z0 < man.world_height + man.tile_size
+        assert 0 <= x0 < man.world_width, entry
+        assert 0 <= z0 < man.world_height, entry
     # manifest JSON is what the C# streamer reads
     raw = json.loads((pack / "earth.manifest.json").read_text(encoding="utf-8"))
     assert raw["tile_size"] == man.tile_size

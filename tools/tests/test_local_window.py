@@ -30,7 +30,11 @@ def test_antimeridian_wrap_in_window():
     # far east absolute near width-1
     win.center_on_absolute(g.width - 50, g.height // 2)
     ax2, _ = win.local_to_earth(win.size // 2, win.size // 2)
-    assert ax2 >= g.width - 200 or ax2 < 200  # near wrap
+    assert ax2 == g.width - 50
+    # a local x past the east edge folds back to the low end of the world
+    ax3, _ = win.local_to_earth(win.size - 8, win.size // 2)
+    assert ax3 == g.width - 50 + (win.size - 8 - win.size // 2) - g.width
+    assert win.earth_to_local(ax3, g.height // 2)[0] == win.size - 8
 
 
 def test_origin_slide_recenters_when_near_edge():

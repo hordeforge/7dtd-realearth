@@ -166,7 +166,6 @@ def test_p3_stamp_surface_y():
     assert "PrefabRootY" in src
     dens = (ROOT / "tools" / "realearth" / "density.py").read_text(encoding="utf-8")
     assert "stamp_prefab_root_y" in dens
-    assert "dtype=np.uint8" not in dens or "_game_y_as_int32" in dens
     # Real path: stamp_prefabs_from_density must not cast game_y to uint8
     assert "np.asarray(game_y, dtype=np.uint8)" not in dens
     assert "_game_y_as_int32" in dens
@@ -181,11 +180,11 @@ def test_p4_session_snapshot_roundtrip():
     assert "ToJson" in src and "TryParse" in src
     assert "TrySave" in src and "TryLoad" in src
     assert "discoveredCities" in src
-    assert "ExportDiscoveredNames" in src or "ExportDiscoveredNames" in _read("CityMapLabels.cs")
+    assert "CityMapLabels.ExportDiscoveredNames()" in src
     city = _read("CityMapLabels.cs")
     assert "RestoreDiscoveredNames" in city
     assert "SessionStateStore.TrySave" in city
-    assert "RestoreSnapshot" in src or "RestoreSnapshot" in _read("WorldSession.cs")
+    assert "session.RestoreSnapshot(" in src
     # exercise pure JSON shape expected by C# TryParse
     js = (
         '{"schema":"realearth.session.v1","originEarthX":10,"originEarthZ":20,'
@@ -245,12 +244,12 @@ def test_p6_density_budget():
     dens = (ROOT / "tools" / "realearth" / "density.py").read_text(encoding="utf-8")
     assert "clamp_prefabs_in_chunk" in dens
     # Must be called from stamp planner (not dead)
-    assert "clamp_prefabs_in_chunk(n + 1" in dens or "clamp_prefabs_in_chunk(" in dens
+    assert "clamp_prefabs_in_chunk(n + 1, max_prefabs_per_chunk)" in dens
     assert "try_add" in dens and "max_prefabs_per_chunk" in dens
     # C# product path caps map labels (hard max, not identity ClampPrefabsInArea(cfg,cfg))
     labels = _read("CityMapLabels.cs")
-    assert "hardMaxLabels" in labels or "CityMapMaxLabels" in labels
-    assert "Math.Min" in labels
+    assert "const int hardMaxLabels = 500" in labels
+    assert "Math.Min(Math.Max(1, cfg.CityMapMaxLabels), hardMaxLabels)" in labels
     # Runtime POI uses DensityBudget area default as real cap
     assert "DensityBudget.DefaultMaxPrefabsPerKm2" in _read("RuntimePoiInject.cs")
 
@@ -265,9 +264,10 @@ def test_p7_cdn_and_manifest():
     # Default EnsureHotAround remains async (height-query path).
     assert "allowSyncLoad: false" in ts
     # Gen path may sync-load CDN via TryLoadCdnSync; async fire-and-forget still present.
-    assert "TryLoadCdnSync" in ts or "LoadTileFireAndForget" in ts or "ConfigureAwait(false)" in ts
+    assert "TryLoadCdnSync(tx, tz, path, key, url)" in ts
+    assert "LoadTileFireAndForget" in ts
     assert "WaitForHotOrClaim" in ts
-    assert "_missUntilTick" in ts or "MarkMiss" in ts
+    assert "_missUntilTick" in ts
     # pure URL shape
     base = "https://cdn.example/earth"
     url = base.rstrip("/") + f"/tiles/{3}/{2}.rte"
@@ -290,7 +290,8 @@ def test_review_fixes_wired():
     assert "ClampToAllocatable" in eh
     assert "HEIGHT CAPPED" in eh
     store = _read("EngineHeight/AbsoluteHeightStore.cs")
-    assert "EvictIfNeeded" in store or "_maxColumns" in store
+    assert "void EvictIfNeeded()" in store
+    assert "while (_columns.Count > _maxColumns" in store
     hooks = _read("RuntimeHooks.cs")
     assert "EnforceInjectGate" in hooks
     assert "TryRetryApply" in hooks
@@ -325,7 +326,7 @@ def test_review_fixes_wired():
     assert 'return "wasteland"' in sampler
     fall = _read("FallSpawnRetune.cs")
     assert "SnapSpawnToSurface" in fall
-    assert "FallDamageModifierScale" in fall or "EnsureFallDamageScale" in fall
+    assert "FallDamageModifierScale" in fall and "EnsureFallDamageScale" in fall
     assert "TrySnapSpawnToSurface" in fall
     hooks = _read("RuntimeHooks.cs")
     assert "FallSpawnRetune.EnsureFallDamageScale" in hooks
@@ -349,7 +350,7 @@ def test_review_fixes_wired():
     assert "LoadTileFireAndForget" in ts
     assert ".tmp" in _read("AtomicPublish.cs")  # atomic CDN write (shared publish helper)
     poi = _read("RuntimePoiInject.cs")
-    assert "MaxPlaceFails" in poi or "_failCount" in poi
+    assert "const int MaxPlaceFails = 5" in poi
     assert "trader_jen" in poi
     assert "trader_bob" in poi
     assert "trader_rekt" in poi
@@ -387,7 +388,7 @@ def test_world_save_session_path():
     assert "PreferredSessionPath" in store
     assert "WorldSavePath.SessionPath" in store
     # Dual-write save
-    assert "paths.Add" in store or "PreferredSessionPath" in store
+    assert "paths.Add(path!)" in store and "paths.Add(PreferredSessionPath())" in store
 
 
 def test_runtime_poi_inject():
@@ -418,7 +419,7 @@ def test_sample_game_height_int_never_byte_path():
 def test_retry_apply_never_double_patch():
     """Retry must not stack Harmony postfixes (MethodBase set + no gen re-scan after index)."""
     hooks = _read("RuntimeHooks.cs")
-    assert "Never full re-Apply" in hooks or "would stack postfixes" in hooks
+    assert "Never full re-Apply" in hooks and "would stack postfixes" in hooks
     assert "if (_harmony == null || _harmonyMissing)" in hooks
     assert "HasProductInjectBinding" in hooks
     # Global already-patched set makes PatchPostfix idempotent

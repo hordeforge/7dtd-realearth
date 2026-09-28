@@ -1,5 +1,6 @@
 """Engine height constants audit: drives shipped engine_constants against live DLL."""
 
+import json
 from pathlib import Path
 
 import numpy as np
@@ -26,24 +27,24 @@ def test_engine_height_module_files_exist():
 
 
 def test_engine_mod_enabled_in_default_config():
-    cfg = (ROOT / "Config" / "realearth.json").read_text(encoding="utf-8")
-    assert "EnableEngineHeightMod" in cfg
-    assert '"EnableEngineHeightMod": true' in cfg or '"EnableEngineHeightMod":true' in cfg
-    assert '"SeaLevelGameY": 16000' in cfg or '"SeaLevelGameY":16000' in cfg
+    cfg = json.loads((ROOT / "Config" / "realearth.json").read_text(encoding="utf-8"))
+    assert cfg["EnableEngineHeightMod"] is True
+    assert cfg["SeaLevelGameY"] == 16000
 
 
 def test_audit_against_live_assembly_or_defaults():
     report = audit_engine_height()
     assert "constants" in report
     consts = report["constants"]
-    # Stock 7DTD column height
+    # Stock 7DTD column height; a live expand is a power of two above stock.
     ydim = consts.get("ChunkBlockYDim", VANILLA_3_0_1["ChunkBlockYDim"])
-    assert ydim == 256 or ydim > 256
-    if ydim == 256:
+    assert ydim >= VANILLA_3_0_1["ChunkBlockYDim"]
+    assert ydim & (ydim - 1) == 0, f"ChunkBlockYDim must be a power of two, got {ydim}"
+    if ydim == VANILLA_3_0_1["ChunkBlockYDim"]:
         assert report["needs_engine_mod_for_taller"] is True
     # Live install should match known 3.0.1 if present
     dll = default_game_dll()
-    if dll.is_file() and ydim == 256:
+    if dll.is_file() and ydim == VANILLA_3_0_1["ChunkBlockYDim"]:
         assert consts.get("ChunkBlockYPow", 8) == 8
         assert consts.get("cMaxHeight", 255) == 255
         layers = consts.get("ChunkBlockLayers")

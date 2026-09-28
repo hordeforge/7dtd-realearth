@@ -101,7 +101,7 @@ def test_fail_closed_byte_is_not_255_land():
     b = one_to_one_game_y(-float(depth), max_y=255)
     # sea 16000 clamps the column to 255, so a missing tile is NOT 255 land:
     # the stock ceiling holds 255 regardless, and below-floor clamps to 1.
-    assert b == 255 or b == 1
+    assert b == 255
     assert b != 92
 
 
@@ -123,7 +123,7 @@ def test_product_engine_height_mod_uses_tile_sample_policy():
     assert "TileSamplePolicy.ResolveElev" in src
     assert "HeightInjectMath" in src
     # Must not only hardcode sea-8 without policy on the miss path
-    assert "Math.Max(1, sea - 8)" not in src or "TileSamplePolicy" in src
+    assert "Math.Max(1, sea - 8)" not in src
 
 
 def test_chunk_terrain_sampler_policy_on_non_engine_path():
