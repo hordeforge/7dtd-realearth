@@ -15,7 +15,7 @@
 # artifact fails here.
 #
 # Usage: bash scripts/vendor-three.sh [--check]
-#   (no args)  copy three.module.js + OrbitControls.js into viewer/vendor/three
+#   (no args)  copy three.module.js + OrbitControls.js + LICENSE into viewer/vendor/three
 #   --check    exit 1 when the vendored files differ from node_modules (CI gate)
 set -euo pipefail
 ROOT="$(cd "$(dirname "$0")/.." && pwd)"
@@ -40,10 +40,12 @@ esac
 FILES=(
   "build/three.module.js:three.module.js"
   "examples/jsm/controls/OrbitControls.js:addons/controls/OrbitControls.js"
+  "LICENSE:LICENSE"
 )
 declare -A SHA256=(
   ["three.module.js"]="$THREE_MODULE_SHA256"
   ["addons/controls/OrbitControls.js"]="$THREE_ORBIT_CONTROLS_SHA256"
+  ["LICENSE"]="$THREE_LICENSE_SHA256"
 )
 for pair in "${FILES[@]}"; do
   src="${pair%%:*}"

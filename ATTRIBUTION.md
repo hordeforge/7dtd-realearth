@@ -42,16 +42,20 @@ components. Machine-readable inventory: `dist/realearth-deps.spdx.json`
 | Component | Where it ships | License | Upstream |
 |---|---|---|---|
 | Mono.Cecil | `Tools/Mono.Cecil.dll` (YDim expand helper) | MIT | github.com/jbevain/cecil |
-| three.js r0.170.0 | Bundled: `viewer/vendor/three/` (three.module.js + OrbitControls), resolved by the `viewer/index.html` importmap for the optional web map viewer. File sha256 pinned as `THREE_*_SHA256` in `scripts/toolchain-versions.env` and re-checked by `scripts/vendor-three.sh` | MIT | threejs.org |
+| three.js r0.170.0 | Bundled: `viewer/vendor/three/` (three.module.js + OrbitControls + the upstream MIT `LICENSE`, which OrbitControls.js does not carry in a header), resolved by the `viewer/index.html` importmap for the optional web map viewer. File sha256 pinned as `THREE_*_SHA256` in `scripts/toolchain-versions.env` and re-checked by `scripts/vendor-three.sh` | MIT | threejs.org |
 
 The mod DLL itself links only game-shipped assemblies (Assembly-CSharp,
 UnityEngine, 0-Harmony); those remain governed by The Fun Pimps' terms above.
 Python pipeline dependencies (offline tooling, not shipped in the mod zip) are
 locked with hashes in `tools/uv.lock` and inventoried in the same SBOM. The JS
-build/lint toolchain (oxlint, tsc, esbuild, vnu) is version-pinned in
+build/lint toolchain (tsc, esbuild, vnu, three, @types/three, the oxlint
+plugins and the tsgolint backend) is version-pinned in
 `scripts/toolchain-versions.env` and installed from `scripts/js-toolchain.lock`,
-which carries the sha512 of every resolved artifact; the vendored anti-slop
-lint plugin is pinned by commit and sha256 in the same file.
+which carries the sha512 of every resolved artifact, and the build/lint scripts
+run those binaries from that install. Two pieces sit outside the lock by
+design: the oxlint core binary, which `bunx` fetches at the pinned
+`OXLINT_VERSION`, and the vendored anti-slop lint plugin, pinned by commit and
+sha256 in the same env file.
 
 ## Game
 

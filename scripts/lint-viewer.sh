@@ -8,10 +8,12 @@
 #      options.typeAware, so oxlint also runs the typescript/* type-aware
 #      rules through the oxlint-tsgolint binary.
 #
-# tsc/oxlint/@types/three run through bunx. The pins live in
-# scripts/toolchain-versions.env, the single source of truth shared by every
-# build/lint script; the resolved artifacts are recorded (with hashes) in
-# scripts/js-toolchain.lock and installed by scripts/install-js-toolchain.sh.
+# The pins live in scripts/toolchain-versions.env, the single source of truth
+# shared by every build/lint script; the resolved artifacts are recorded (with
+# hashes) in scripts/js-toolchain.lock and installed by
+# scripts/install-js-toolchain.sh, which tsc runs from so the type gate uses
+# the hash-verified artifact. oxlint itself is not in the lock and comes through
+# bunx at the pinned version.
 # Override locally: TSC_VERSION=5.9.3 bash scripts/lint-viewer.sh
 #
 # Requires: bun (bunx).
@@ -59,11 +61,12 @@ grep -q "\"three\": \"$THREE_VERSION\"" "$root/viewer/package.json" ||
     exit 1
   }
 
-# 2. Type check (tsc --strict per viewer/tsconfig.json). Module resolution
-#    walks up from viewer/src, so a symlink from viewer/node_modules to the
-#    cache's node_modules exposes @types/three without vendoring anything.
+# 2. Type check (tsc --strict per viewer/tsconfig.json) with the lock-verified
+#    tsc. Module resolution walks up from viewer/src, so a symlink from
+#    viewer/node_modules to the cache's node_modules exposes @types/three
+#    without vendoring anything.
 ln -sfn "$cache_dir/node_modules" "$root/viewer/node_modules"
-bunx -p "typescript@$TSC_VERSION" tsc -p "$root/viewer/tsconfig.json" --noEmit
+"$cache_dir/node_modules/.bin/tsc" -p "$root/viewer/tsconfig.json" --noEmit
 
 cp "$root/.oxlintrc.jsonc" "$cache_dir/oxlintrc.jsonc"
 cd "$cache_dir"

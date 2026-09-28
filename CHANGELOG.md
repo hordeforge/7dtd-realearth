@@ -63,6 +63,15 @@ and the release gate requires both to match the tag (`v<version>`) and a dated
 
 ### Changed
 
+- **The TypeScript type gate runs the lock-verified tsc.** `lint-viewer.sh`
+  and `lint-webmod.sh` fetched `typescript@<pin>` through `bunx` at lint time,
+  outside the sha512-verified `scripts/js-toolchain.lock`; both now run
+  `tsc` from the toolchain install, the same way esbuild and vnu already do.
+  Re-run `make viewer-lint` / `make webmod-lint` unchanged.
+- **The vendored three.js ships its MIT license.** `viewer/vendor/three/`
+  gains `LICENSE` (copied from the pinned package, sha256-pinned as
+  `THREE_LICENSE_SHA256` and re-checked by `scripts/vendor-three.sh`),
+  because `OrbitControls.js` carries no license header of its own.
 - **A missing `Config/realearth.json` now says so at startup.** The mod still
   writes a defaults file for a fresh install, but init logs
   `config: no realearth.json at <path>` (and names a failed write) so a
