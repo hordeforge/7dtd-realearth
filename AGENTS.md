@@ -1,6 +1,6 @@
 # AGENTS.md - 7dtd-realearth (RealEarth)
 
-**1:1-scale real-world Earth** project for **7 Days to Die V3.1.0** (Henpocalypse):
+**1:1-scale real-world Earth** project for **7 Days to Die V3.2.0** (Henpocalypse):
 elevation, landcover heuristics, density/cities, tile streaming, longitude wrap,
 globe-style map, and optional **YDim expand**.
 
@@ -25,7 +25,7 @@ Workspace root guide: [`hordeforge/.github` MODDING_BEST_PRACTICES.md](https://g
 2. **Keep expand logic in RealEarth**, never in EfficientServer or APM.
 3. **Data sources:** Copernicus / Terrarium / OSM-class sources only. Google Earth bulk data is not allowed (`docs/REALISM_AND_GOOGLE_EARTH.md`).
 4. **Product height is real meters (1 m = 1 block).** YDim expand is required. Do not treat global compress (`EngineHeightStockSafe`) as the product path. See `docs/HEIGHT_LIMITS.md`.
-5. **Retarget Managed refs after game updates** (client + dedicated). V3.1.0 publicizer rules: overrides of vanilla methods may need to be public.
+5. **Retarget Managed refs after game updates** (client + dedicated). Publicizer rules follow the pinned release in `docs/GAME_VERSION.md`: overrides of vanilla methods may need to be public.
 6. **Python tooling: `uv` only** under `tools/`. Never pip / break-system-packages. Large scratch goes under project dirs or disk-backed cache, not tmpfs `/tmp`.
 7. **Install can write into Steam game directories.** Stop the game/server, keep backups, and confirm `GAME_DIR` / `SEVENDTD_GAME_DIR` before `make install*` or expand.
 8. **No AI attribution** in commits/docs/comments. **No em dashes** in shipped text.
@@ -87,7 +87,7 @@ every doc path in answers; point agents at INDEX + the owning file. Engine RE hu
 Source/RealEarth/   C# mod (net48 Harmony + streamer)
 Config/             XML / modlet config
 tools/              Python realearth pipeline (uv project)
-scripts/            install, expand, dedicated helpers
+scripts/            install, build, lint, dedicated helpers (no expand script: expand is the runtime transpiler)
 docs/               product docs (RealEarth-owned narratives)
 viewer/             web map (flat + globe)
 webmod/             stock dashboard webui source (ts); built bundle under webmod/build/
@@ -103,8 +103,6 @@ DESIGN.md           architecture and phased delivery
 | `../7dtd-loadgen` | Join bots / dedicated soak against RealEarth or stock worlds |
 | `../7dtd-server-apm` | Measure streamer/height cost under load |
 | `../7dtd-server-optimizer` | Unrelated dedicated optim product |
-
-Do not silently couple RealEarth patches into EfficientServer or APM.
 
 ## Stock-game research -> 7dtd-engine-research
 
