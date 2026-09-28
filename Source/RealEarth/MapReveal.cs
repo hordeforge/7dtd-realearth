@@ -130,16 +130,19 @@ namespace RealEarth
             if (Volatile.Read(ref _radiusCooldown) > 0)
             {
                 Interlocked.Decrement(ref _radiusCooldown);
-                return true;
+                return false; // throttled: nothing was revealed
             }
 
             int cx = EngineReflection.FloorDiv(localBlockX, 16);
             int cz = EngineReflection.FloorDiv(localBlockZ, 16);
-            // Re-fill when player moved ≥ 8 chunks or every ~2s of ticks after cooldown
-            if (Math.Abs(cx - _lastCx) < 8 && Math.Abs(cz - _lastCz) < 8 && _lastCx != int.MinValue)
+            // Sentinel last: cx - int.MinValue overflows to a negative delta that
+            // passes the < 8 test and would pin the radius to the origin forever.
+            if (_lastCx != int.MinValue
+                && Math.Abs((long)cx - _lastCx) < 8
+                && Math.Abs((long)cz - _lastCz) < 8)
             {
                 Volatile.Write(ref _radiusCooldown, 30);
-                return true;
+                return false; // within the re-fill threshold: nothing was revealed
             }
 
             if (!TryGetFowAdd(out object? fow, out MethodInfo? add)
@@ -170,25 +173,27 @@ namespace RealEarth
             string tag)
         {
             int mapSize = ReadMapChunkSize();
-            int pixels = mapSize * mapSize;
+            long pixels = (long)mapSize * mapSize;
             if (pixels <= 0 || pixels > 65536)
             {
                 mapSize = 16;
                 pixels = 256;
             }
 
-            int total = (maxCx - minCx + 1) * (maxCz - minCz + 1);
+            // Spans come from real engine chunk bounds; int multiplication wraps
+            // past ~46341 chunks per axis and would slip through the cap below.
+            long total = (long)(maxCx - minCx + 1) * (maxCz - minCz + 1);
             const int maxChunks = 200_000;
             if (total > maxChunks)
             {
-                int midX = (minCx + maxCx) / 2;
-                int midZ = (minCz + maxCz) / 2;
+                int midX = (int)(((long)minCx + maxCx) / 2);
+                int midZ = (int)(((long)minCz + maxCz) / 2);
                 int r = (int)(Math.Sqrt(maxChunks) / 2);
                 minCx = midX - r;
                 maxCx = midX + r;
                 minCz = midZ - r;
                 maxCz = midZ + r;
-                total = (maxCx - minCx + 1) * (maxCz - minCz + 1);
+                total = (long)(maxCx - minCx + 1) * (maxCz - minCz + 1);
                 ModApi.Log($"MapReveal[{tag}]: clamped to {total} chunks around center.");
             }
 
@@ -527,9 +532,12 @@ namespace RealEarth
                             continue;
                         foreach (var ty in EngineReflection.SafeGetTypes(asm))
                         {
-                            f = ty.GetField("MapChunkSize", BindingFlags.Static | BindingFlags.Public | BindingFlags.NonPublic);
-                            if (f != null && f.FieldType == typeof(int))
+                            var candidate = ty.GetField("MapChunkSize", BindingFlags.Static | BindingFlags.Public | BindingFlags.NonPublic);
+                            if (candidate != null && candidate.FieldType == typeof(int))
+                            {
+                                f = candidate;
                                 break;
+                            }
                         }
                     }
                 }

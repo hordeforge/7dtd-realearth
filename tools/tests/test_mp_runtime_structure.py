@@ -233,6 +233,43 @@ def test_patch_stats_counters_are_atomic():
     assert "private set; }" not in src
 
 
+def test_poi_chunk_key_is_built_in_one_place():
+    """Both stamp paths cap per chunk, so they must share one chunk key and one
+    chunk size. A literal 16 in either path silently splits the budget whenever
+    VanillaChunkSize stops matching the assumption."""
+    src = _read("RuntimePoiInject.cs")
+    key = re.search(r"static string ChunkKey\(int chunkX, int chunkZ\)", src)
+    assert key, "ChunkKey helper not found"
+    assert (
+        src.count("ChunkKey(") == 3
+    ), "every chunk key must go through ChunkKey (helper + 2 call sites)"
+    for body_name in ("TickPlayer", "OnChunkGenerated"):
+        m = re.search(rf"{body_name}\([^)]*\)\s*\{{(?P<body>.*?)\n        \}}", src, re.S)
+        assert m, f"{body_name} not found"
+        body = m.group("body")
+        assert "ChunkKey(" in body
+        assert not re.search(r"[*/]\s*16\b", body), f"{body_name} hardcodes chunk size 16"
+
+
+def test_map_and_label_math_does_not_overflow():
+    """Earth-scale local coords make block deltas exceed 2^31, where an int or long
+    square wraps into a small (or negative) value and reads as "inside the radius"."""
+    labels = _read("CityMapLabels.cs")
+    m = re.search(
+        r"double dx = \(double\)playerLocalX - cx;(?P<body>.*?)EnsureMarker", labels, re.S
+    )
+    assert m, "city discovery distance block not found"
+    assert "double distSq = dx * dx + dz * dz;" in m.group("body")
+
+    reveal = _read("MapReveal.cs")
+    assert "long total = (long)(maxCx - minCx + 1) * (maxCz - minCz + 1);" in reveal
+    assert "long pixels = (long)mapSize * mapSize;" in reveal
+
+    # NaN survives both clamp comparisons and lands on int.MinValue in the cast.
+    compress = _read("HeightCompress.cs")
+    assert "if (double.IsNaN(y)) y = seaLevelY;" in compress
+
+
 def test_recities_here_restores_discover_scale():
     """`recities here` scales the shared config field up temporarily; an
     unrestored value would pin every later discovery at 50x radius."""

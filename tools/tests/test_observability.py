@@ -108,9 +108,9 @@ def test_every_log_budget_counts_what_it_refuses_to_print():
             f"{rel} still caps its log lines with a bare counter: "
             "use LogBudget so refused lines stay countable"
         )
-        assert "Interlocked.Decrement(ref _logBudget)" not in src, (
-            f"{rel} drops refused log lines without counting them; use LogBudget"
-        )
+        assert (
+            "Interlocked.Decrement(ref _logBudget)" not in src
+        ), f"{rel} drops refused log lines without counting them; use LogBudget"
     hooks = _read("RuntimeHooks.cs")
     for budget in (
         "ChunkTerrainInject.SuppressedInjectLogLines",
@@ -120,17 +120,34 @@ def test_every_log_budget_counts_what_it_refuses_to_print():
         assert budget in hooks, f"reinject must report {budget}"
 
 
+def _block_after(src: str, start: int) -> str:
+    """Body of the brace block opening at `start` (the index of its '{')."""
+    depth = 0
+    for i in range(start, len(src)):
+        if src[i] == "{":
+            depth += 1
+        elif src[i] == "}":
+            depth -= 1
+            if depth == 0:
+                return src[start + 1 : i]
+    raise AssertionError("unbalanced braces")
+
+
 def test_config_write_failure_is_not_silent():
     """A config that cannot be written leaves the session on stock defaults."""
     src = _read("RealEarthConfig.cs")
     assert "could not write defaults" in src
-    assert re.search(
-        r"catch\s*\(\s*Exception \w+\s*\)[^{]*\{\s*(?://[^\n]*\n\s*)*ModApi\.LogWarn\(",
-        src,
+    write = src.index("cfg.Save(path);")
+    catch = re.compile(r"catch\s*\(\s*Exception \w+\s*\)[^{]*\{").search(src, write)
+    assert catch, "no catch around the default-config write"
+    # The log may come after bookkeeping (the WriteFailed flag), so read the whole
+    # block instead of demanding the log as its first statement.
+    assert "ModApi.LogWarn(" in _block_after(
+        src, catch.end() - 1
     ), "a failed default-config write must reach the log, not be ignored"
 
 
-
+def test_tick_path_logs_stay_one_line():
     """A per-tick failure must stay one short line: no stack frames at volume."""
     src = _read("RuntimeHooks.cs")
     for m in re.finditer(r"Log(?:Error|Warn)\((.*?)\);", src, re.S):

@@ -101,6 +101,9 @@ namespace RealEarth
                 }
             }
 
+            // NaN compares false against both clamps, so it would reach the cast and
+            // become int.MinValue; a bad sample reads as sea level instead.
+            if (double.IsNaN(y)) y = seaLevelY;
             if (y < minY) y = minY;
             if (y > maxY) y = maxY;
             return (int)Math.Round(y);

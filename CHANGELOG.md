@@ -215,6 +215,29 @@ and the release gate requires both to match the tag (`v<version>`) and a dated
   shipped none and the sdist carried a member literally named `../LICENSE`.
   `tools/LICENSE` is a byte-identical copy of the repo-root license (pinned
   by `tests/test_packaging.py`).
+- **City discovery and map reveal no longer wrap on far-apart coordinates.**
+  Local XZ can sit at Earth scale after an origin slide, which pushed the block
+  deltas past 2^31: the squared distance in `CityMapLabels` overflowed `long`
+  and a city on the far side of the world satisfied the discovery radius, and
+  the chunk-span products in `MapReveal.AddRect` overflowed `int`, letting an
+  unrevealed rectangle past the 200k chunk cap. Both are computed in `long` or
+  `double` now.
+- **`MapReveal.RevealRadiusAroundPlayer` reports a throttled pass as a reveal.**
+  It returned `true` from both skip branches; callers that ever read the value
+  would have counted chunks that were never added. The sentinel check also ran
+  last, where `cx - int.MinValue` overflows into a negative delta that passes
+  the movement test.
+- **A NaN elevation no longer becomes `int.MinValue`.** Both clamps in
+  `HeightCompress.MetersToGameY` are false for NaN, so the cast produced the
+  smallest int; a bad tile sample now reads as sea level.
+- **Runtime POI stamps no longer hardcode the chunk size.** Both stamp paths
+  built the per-chunk budget key from a literal `16`; they share one
+  `ChunkKey` helper over `ChunkTerrainSampler.VanillaChunkSize` now, and the
+  stamp log budget resets to the slot count it is constructed with.
+- **`DensityBudget.DistanceBlocks` no longer overflows on distant sites.**
+  The squared delta overflowed `long` past a 2^31 block gap, which can be the
+  ordinary case for a place on a slid window.
+
 - **`make sbom` output is now reproducible.** `scripts/sbom.py` fills the SPDX
   `creationInfo.created` field from `SOURCE_DATE_EPOCH` when it is exported,
   the same convention `scripts/package_zip.sh` already follows. Without it two

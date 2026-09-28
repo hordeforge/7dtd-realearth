@@ -39,6 +39,20 @@ namespace RealEarth
 
         const int MaxPlaceFails = 5;
 
+        /// <summary>Log slots for the whole stamp path (shared by every pass).</summary>
+        const int StampLogSlots = 12;
+
+        /// <summary>Per-chunk stamp budget key: both stamp paths must agree on it.</summary>
+        static string ChunkKey(int chunkX, int chunkZ)
+            => chunkX.ToString(CultureInfo.InvariantCulture) + ":" +
+               chunkZ.ToString(CultureInfo.InvariantCulture);
+
+        /// <summary>Session-wide stamp cap from config, clamped to the density default.</summary>
+        static int MaxAreaStamps(RealEarthConfig cfg)
+            => DensityBudget.ClampPrefabsInArea(
+                Math.Max(1, cfg.RuntimePoiMaxPerArea),
+                DensityBudget.DefaultMaxPrefabsPerKm2);
+
         /// <summary>
         /// Gates all mutable stamp state below. TickPlayer runs on the main thread while
         /// OnChunkGenerated runs on the chunk-generation thread; unsynchronized
@@ -63,7 +77,7 @@ namespace RealEarth
         /// is counted, and `reinject` reports that count, so a missing "no prefab
         /// manager" line cannot read as a city pass that never had a problem.
         /// </summary>
-        static readonly LogBudget _logBudget = new LogBudget(12);
+        static readonly LogBudget _logBudget = new LogBudget(StampLogSlots);
         static int _sessionStamps;
         static List<CityMapLabels.Place>? _placesCache;
         static readonly Dictionary<string, int> _chunkCounts = new Dictionary<string, int>(StringComparer.Ordinal);
@@ -103,7 +117,7 @@ namespace RealEarth
                 _placesCache = null;
                 _tickThrottle = 0;
                 _sessionStamps = 0;
-                _logBudget.Reset(24);
+                _logBudget.Reset(StampLogSlots);
             }
         }
 
@@ -168,9 +182,7 @@ namespace RealEarth
                         _placesCache = CityMapLabels.LoadPlaces();
                     if (_placesCache == null || _placesCache.Count == 0) return;
 
-                    int maxArea = DensityBudget.ClampPrefabsInArea(
-                        Math.Max(1, cfg.RuntimePoiMaxPerArea),
-                        DensityBudget.DefaultMaxPrefabsPerKm2);
+                    int maxArea = MaxAreaStamps(cfg);
                     if (_sessionStamps >= maxArea)
                         return;
 
@@ -197,8 +209,8 @@ namespace RealEarth
                         if (distSq > reach * reach)
                             continue;
 
-                        string chunkKey = EngineReflection.FloorDiv(cx, 16).ToString(CultureInfo.InvariantCulture) + ":" +
-                                          EngineReflection.FloorDiv(cz, 16).ToString(CultureInfo.InvariantCulture);
+                        string chunkKey = ChunkKey(EngineReflection.FloorDiv(cx, ChunkTerrainSampler.VanillaChunkSize),
+                                                  EngineReflection.FloorDiv(cz, ChunkTerrainSampler.VanillaChunkSize));
                         StampWithBudget(session, p, cx, cz, chunkKey, playerLocalX, playerLocalZ);
                     }
                 }
@@ -230,17 +242,14 @@ namespace RealEarth
                         _placesCache = CityMapLabels.LoadPlaces();
                     if (_placesCache == null || _placesCache.Count == 0) return;
 
-                    int maxArea = DensityBudget.ClampPrefabsInArea(
-                        Math.Max(1, cfg.RuntimePoiMaxPerArea),
-                        DensityBudget.DefaultMaxPrefabsPerKm2);
+                    int maxArea = MaxAreaStamps(cfg);
                     if (_sessionStamps >= maxArea) return;
 
-                    int minX = chunkX * 16;
-                    int minZ = chunkZ * 16;
-                    int maxX = minX + 16;
-                    int maxZ = minZ + 16;
-                    string chunkKey = chunkX.ToString(CultureInfo.InvariantCulture) + ":" +
-                                      chunkZ.ToString(CultureInfo.InvariantCulture);
+                    int minX = chunkX * ChunkTerrainSampler.VanillaChunkSize;
+                    int minZ = chunkZ * ChunkTerrainSampler.VanillaChunkSize;
+                    int maxX = minX + ChunkTerrainSampler.VanillaChunkSize;
+                    int maxZ = minZ + ChunkTerrainSampler.VanillaChunkSize;
+                    string chunkKey = ChunkKey(chunkX, chunkZ);
 
                     foreach (var p in _placesCache)
                     {

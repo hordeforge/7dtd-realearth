@@ -36,9 +36,11 @@ namespace RealEarth
         /// </summary>
         public static int DistanceBlocks(int playerX, int playerZ, int siteX, int siteZ)
         {
-            long dx = (long)playerX - siteX;
-            long dz = (long)playerZ - siteZ;
-            double d = Math.Sqrt((double)(dx * dx + dz * dz));
+            // Squaring in long overflows once a delta passes 2^31 (a slid origin can
+            // put local coords that far apart); the squares are done in double.
+            double dx = (double)playerX - siteX;
+            double dz = (double)playerZ - siteZ;
+            double d = Math.Sqrt(dx * dx + dz * dz);
             if (d > int.MaxValue) return int.MaxValue;
             return (int)d;
         }
