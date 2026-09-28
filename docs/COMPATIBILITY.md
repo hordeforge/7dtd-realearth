@@ -64,7 +64,7 @@ Startup verdict logged on 3.2.0: `injectOk=True productOk=True` with
 
 | Mode | Offline | Live |
 |---|---|---|
-| Baked (`MapMode=Baked`) | CI (`test-fast`, bake checks) | Partial (baked world loads; inject evidence via Streamed runs) |
+| Baked (`MapMode=Baked`) | CI (full `make test` suite, bake checks) | Partial (baked world loads; inject evidence via Streamed runs) |
 | Streamed (`MapMode=Streamed`) | CI | **Live** (3.2.0 dedicated: `RealEarth init OK`, spawn sample `gameY=500`, world load + soak clean) |
 | Streamed below-sea (trench) | `test_build_trench_pack_uses_product_sea_anchor` | **Live** (2026-08-29: trench pack at sea 16000, spawn sample `gameY=5000` = -11000 m floor, clean soak) |
 | SharedFixed multi-bot | `test_mp_runtime_structure.py` | **Live** (2026-08-29: H500, 6 bots concurrent, SharedFixed active, 4 players, prefab stamps on real surface Y; stock join-churn race needs a gentle ramp or the EfficientServer snapshot patch) |

@@ -95,6 +95,20 @@ MYPY          := cd $(TOOLS) && $(UV) run --locked --extra dev mypy realearth ..
 # GitHub YAML the yamllint gate covers. Keep in step with what CI lints.
 YAML          := .github/dependabot.yml .github/workflows/ci.yml .github/workflows/release.yml
 
+# Test file lists, named once. FAST_TESTS is the CI gate and the coverage
+# source: a file added to one but not the other would be tested but not
+# measured, or measured but never run.
+MP_TESTS      := tests/test_multiplayer.py tests/test_host_fold.py tests/test_local_window.py \
+	tests/test_mp_runtime_structure.py
+FAST_TESTS    := tests/test_coords.py tests/test_tile_roundtrip.py \
+	tests/test_height_mod_case.py tests/test_height_10k.py \
+	tests/test_region.py tests/test_viewer_export.py \
+	tests/test_proton_paths.py tests/test_elevation_terrarium.py \
+	$(MP_TESTS) tests/test_package_zip.py tests/test_atomic_install.py
+HEIGHT_TESTS  := tests/test_height_mod_case.py tests/test_height_10k.py \
+	tests/test_height_test_map.py tests/test_engine_constants.py \
+	tests/test_engine_expand_rules.py $(MP_TESTS)
+
 # ---------------------------------------------------------------------------
 # Help
 # ---------------------------------------------------------------------------
@@ -269,8 +283,7 @@ dedicated-height-test:
 
 # Unit multiplayer model + C# structure (LiteNet load bots live in sibling 7dtd-loadgen)
 test-mp:
-	@$(PYTEST) tests/test_multiplayer.py tests/test_host_fold.py tests/test_local_window.py \
-		tests/test_mp_runtime_structure.py -q --tb=short
+	@$(PYTEST) $(MP_TESTS) -q --tb=short
 
 # ---------------------------------------------------------------------------
 # Data
@@ -347,21 +360,11 @@ lint-yaml:
 	@echo "OK yamllint ($(YAML))"
 
 test-height:
-	@$(PYTEST) tests/test_height_mod_case.py tests/test_height_10k.py \
-		tests/test_height_test_map.py tests/test_engine_constants.py \
-		tests/test_engine_expand_rules.py tests/test_host_fold.py \
-		tests/test_local_window.py tests/test_multiplayer.py \
-		tests/test_mp_runtime_structure.py -q --tb=short
+	@$(PYTEST) $(HEIGHT_TESTS) -q --tb=short
 	@$(REEARTH) height-mod-test
 
 test-fast:
-	@$(PYTEST) tests/test_coords.py tests/test_tile_roundtrip.py \
-		tests/test_height_mod_case.py tests/test_height_10k.py \
-		tests/test_region.py tests/test_viewer_export.py \
-		tests/test_proton_paths.py tests/test_elevation_terrarium.py \
-		tests/test_multiplayer.py tests/test_host_fold.py tests/test_local_window.py \
-		tests/test_mp_runtime_structure.py tests/test_package_zip.py \
-		tests/test_atomic_install.py -q --tb=line
+	@$(PYTEST) $(FAST_TESTS) -q --tb=line
 
 # Line coverage of the realearth package under the same fast pytest list
 # test-fast runs. Writes tools/.coverage; CI renders it into the README
@@ -370,12 +373,7 @@ COV := $(UV) run --locked --extra dev python -m coverage
 
 coverage:
 	rm -f $(TOOLS)/.coverage $(TOOLS)/.coverage.*
-	cd $(TOOLS) && $(COV) run --append --source=realearth -m pytest tests/test_coords.py tests/test_tile_roundtrip.py \
-		tests/test_height_mod_case.py tests/test_height_10k.py \
-		tests/test_region.py tests/test_viewer_export.py \
-		tests/test_proton_paths.py tests/test_elevation_terrarium.py \
-		tests/test_multiplayer.py tests/test_host_fold.py \
-		tests/test_local_window.py tests/test_mp_runtime_structure.py -q --tb=line
+	cd $(TOOLS) && $(COV) run --append --source=realearth -m pytest $(FAST_TESTS) -q --tb=line
 	cd $(TOOLS) && $(COV) report -m
 
 # Mirrors ci.yml (tools job) as far as a game-less machine allows: build needs

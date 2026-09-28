@@ -46,6 +46,12 @@ and the release gate requires both to match the tag (`v<version>`) and a dated
 
 ### Changed
 
+- **CI runs the whole Python suite, not a hand-picked subset.** The `tools`
+  job ran 13 of the 49 test files, so a test file no job invoked could sit
+  unmaintained: the UTF-8 pack-read assertion still pointed at `ModApi.cs`
+  after the manifest parse moved to `PackManifest.cs` and had been red since.
+  The job now runs `make test` (429 tests, about 3.5 minutes, inside its
+  30-minute timeout). `make test-fast` stays the local edit loop.
 - **`earth.manifest.json` reading moved out of the mod entry point.** The
   manifest parse and config overlay now live in `Source/RealEarth/PackManifest.cs`
   (`PackManifest.TryApplyPackManifest`); `ModApi.InitMod` only calls it. Same

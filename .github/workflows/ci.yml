@@ -42,10 +42,10 @@ jobs:
           key: oxlint-standards-${{ runner.os }}-${{ hashFiles('scripts/toolchain-versions.env', 'scripts/js-toolchain.lock', 'scripts/install-js-toolchain.sh', 'scripts/lint-viewer.sh', 'scripts/lint-webmod.sh', 'scripts/lint-html.sh') }}
           restore-keys: |
             oxlint-standards-${{ runner.os }}-
-      # C# analysis gate. The RealEarth mod DLL itself needs the proprietary
+      # No C# build or analysis step: the RealEarth mod DLL needs the proprietary
       # game DLLs (Assembly-CSharp / UnityEngine.CoreModule) as references and
-      # can only be built on a machine with the game installed (see
-      # AGENTS.md "Build / install"); stubs would manufacture false confidence.
+      # can only be built on a machine with the game installed (see AGENTS.md
+      # "Build / install"); stubs would manufacture false confidence.
       - run: shellcheck scripts/*.sh
       # The GitHub YAML lints itself: a workflow is code too, and a broken
       # step name or tab indent otherwise surfaces as a runtime surprise.
@@ -53,7 +53,12 @@ jobs:
       # Restore is only a backup if it has been proven: roundtrip drill on
       # synthetic state (sandboxed, no game install needed).
       - run: make artifacts-drill
-      - run: make test-fast
+      # The whole Python suite, not a hand-picked subset: a test file no CI
+      # job runs is a test file nobody maintains, and the pack-read assertion
+      # that pointed at ModApi.cs had drifted red since the manifest parse
+      # moved to PackManifest.cs. The suite runs in about 3.5 minutes, well
+      # inside the job timeout. test-fast stays the local edit loop.
+      - run: make test
       - run: make -C tools lint
       # The lint scripts install oxlint, tsc and vnu into a shared cache at
       # pinned versions; the runner preinstalls node and java, but not bun.
