@@ -68,7 +68,7 @@ const OCEAN_COLOR = "#0a2744";
 const GRATICULE_LINE_STYLE = "rgba(255,255,255,0.04)";
 const MERIDIAN_GRID_LINES = 36;
 const PARALLEL_GRID_LINES = 18;
-const HIGHLIGHT_LINE_STYLE = "rgba(240,165,0,0.8)";
+const HIGHLIGHT_LINE_STYLE = "rgba(255,216,160,0.8)";
 const HIGHLIGHT_LINE_WIDTH = 2;
 // Region spans at least this wide already cover the globe; paste them as-is.
 const FULL_EARTH_SPAN_DEGREES = 350;

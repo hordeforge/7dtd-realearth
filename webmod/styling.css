@@ -1,31 +1,30 @@
 /* RealEarth webmod styles. Loaded by the stock dashboard as the web mod's
  * styling.css (WebMod.ctor CssPath). All classes are prefixed `re-` to avoid
- * colliding with the dashboard's own styles. Dark theme matching the
- * dashboard's panel look.
+ * colliding with the dashboard's own styles.
  *
- * Palette lives in one place: custom properties scoped to the two page roots
- * (not :root, so the host dashboard's variables are never touched). */
+ * Palette lives in one place: custom properties scoped to the three page
+ * roots (not :root, so the host dashboard's variables are never touched). The
+ * values are the HordeForge terminal palette, the same one the standalone
+ * viewer uses (viewer/css/app.css), so both surfaces read as one product. */
 
 .re-map-page,
-.re-overview {
-  --re-panel-bg: rgba(10, 14, 20, 0.85);
-  --re-overlay-bg: rgba(10, 14, 20, 0.92);
-  --re-stage-bg: #070a10;
-  --re-input-bg: #0d1117;
-  --re-border: rgba(255, 255, 255, 0.08);
-  --re-border-strong: rgba(255, 255, 255, 0.18);
-  --re-divider: rgba(255, 255, 255, 0.05);
-  --re-text: #c8d2e0;
-  --re-text-bright: #e7eefc;
-  --re-text-muted: #8fa0b5;
-  /* The same accent the standalone viewer uses (viewer/css/app.css), so the
-   * dashboard and the map viewer read as one product. Teal is the action
-   * color, which is why it never shares a hue with the error red below. */
-  --re-accent: #3dd6c6;
-  --re-accent-hover: #2fbfb0;
-  --re-accent-text: #041212;
-  --re-btn-bg: var(--re-accent);
-  --re-btn-bg-hover: var(--re-accent-hover);
+.re-overview,
+.re-settings {
+  --re-panel-bg: #1a2129;
+  --re-overlay-bg: rgba(16, 20, 24, 0.92);
+  --re-stage-bg: #101418;
+  --re-input-bg: #101418;
+  --re-border: #2a333d;
+  /* Form field and tool outlines: 4.6:1 on the panel (WCAG 1.4.11). */
+  --re-border-strong: #7f8b94;
+  --re-divider: #2a333d;
+  --re-text: #d8e2dc;
+  --re-text-muted: #7f8b94;
+  /* The single signal color: the primary action, focus, checked controls.
+   * It never shares a hue with the error red below. */
+  --re-accent: #5fd894;
+  /* Dark text on the green accent, 10.3:1. Never white on the accent. */
+  --re-accent-text: #101418;
   /* The standalone viewer's radius scale and two type steps
    * (viewer/css/app.css), in px to sit on the dashboard's own base size. */
   --re-radius-panel: 6px;
@@ -33,9 +32,30 @@
   --re-radius-swatch: 3px;
   --re-fs-body: 13px;
   --re-fs-micro: 12px;
-  --re-danger-border: rgba(192, 57, 43, 0.6);
-  --re-danger-bg: rgba(192, 57, 43, 0.18);
-  --re-danger-text: #ffb4a8;
+  --re-danger: #ff7364;
+  --re-danger-bg: rgba(255, 115, 100, 0.12);
+  --re-warning: #ffd8a0;
+  /* System stacks only (brand rule: no webfonts). */
+  --re-font: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+  --re-mono: ui-monospace, SFMono-Regular, Menlo, Consolas, "Liberation Mono", monospace;
+  /* Smallest pointer target for any control (WCAG 2.5.8). */
+  --re-target-min: 24px;
+
+  font-family: var(--re-font);
+  color: var(--re-text);
+}
+
+/* One visible focus ring for every keyboard-reachable control. */
+.re-map-page :focus-visible,
+.re-overview :focus-visible,
+.re-settings :focus-visible {
+  outline: 2px solid var(--re-accent);
+  outline-offset: 2px;
+}
+
+.re-map-page input[type="checkbox"],
+.re-map-page input[type="range"] {
+  accent-color: var(--re-accent);
 }
 
 .re-map-page {
@@ -85,32 +105,36 @@
   background: var(--re-input-bg);
   border: 1px solid var(--re-border-strong);
   border-radius: var(--re-radius-control);
-  color: var(--re-text-bright);
+  color: var(--re-text);
+  min-height: var(--re-target-min);
   padding: 4px 8px;
+  font: inherit;
   font-size: var(--re-fs-body);
   min-width: 160px;
 }
 
 .re-btn {
-  background: var(--re-btn-bg);
-  border: none;
+  background: var(--re-accent);
+  border: 1px solid var(--re-accent);
   border-radius: var(--re-radius-control);
-  /* Dark text on the teal accent, not white: 10.6:1 against #3dd6c6 and 8.3:1
-   * against the hover shade, where white would sit under 2:1. */
   color: var(--re-accent-text);
-  padding: 5px 12px;
+  min-height: var(--re-target-min);
+  padding: 4px 12px;
+  font: inherit;
   font-size: var(--re-fs-body);
+  font-weight: 600;
   cursor: pointer;
 }
 
 .re-btn:hover {
-  background: var(--re-btn-bg-hover);
+  filter: brightness(1.1);
 }
 
 .re-check {
   display: flex;
   align-items: center;
   gap: 6px;
+  min-height: var(--re-target-min);
   font-size: var(--re-fs-body);
   color: var(--re-text);
   cursor: pointer;
@@ -121,13 +145,15 @@
 }
 
 .re-range-value {
+  font-family: var(--re-mono);
   font-size: var(--re-fs-micro);
-  color: var(--re-text-bright);
+  color: var(--re-text);
   min-width: 34px;
 }
 
 .re-status {
   margin-left: auto;
+  font-family: var(--re-mono);
   font-size: var(--re-fs-micro);
   color: var(--re-text-muted);
 }
@@ -158,7 +184,7 @@
   background: var(--re-overlay-bg);
   border: 1px solid var(--re-border-strong);
   border-radius: var(--re-radius-control);
-  color: var(--re-text-bright);
+  color: var(--re-text);
   font-size: var(--re-fs-micro);
   padding: 4px 8px;
   max-width: 260px;
@@ -183,7 +209,7 @@
   border-radius: var(--re-radius-panel);
   background: var(--re-overlay-bg);
   border: 1px solid var(--re-border-strong);
-  color: var(--re-text-bright);
+  color: var(--re-text);
   font-size: 15px;
   line-height: 1;
   cursor: pointer;
@@ -227,7 +253,7 @@
   margin: 0 0 8px;
   font-size: var(--re-fs-body);
   font-weight: 600;
-  color: var(--re-text-bright);
+  color: var(--re-text);
 }
 
 .re-panel-head {
@@ -251,9 +277,10 @@
 }
 
 .re-btn-ghost:hover {
+  filter: none;
   background: transparent;
-  border-color: var(--re-text-bright);
-  color: var(--re-text-bright);
+  border-color: var(--re-accent);
+  color: var(--re-text);
 }
 
 .re-legend-row {
@@ -292,7 +319,8 @@
 
 .re-probe dd {
   margin: 0;
-  color: var(--re-text-bright);
+  color: var(--re-text);
+  font-family: var(--re-mono);
   font-variant-numeric: tabular-nums;
 }
 
@@ -308,9 +336,9 @@
    * width instead of squeezing the fields beside it. */
   flex: 1 1 240px;
   background: var(--re-danger-bg);
-  border: 1px solid var(--re-danger-border);
+  border: 1px solid var(--re-danger);
   border-radius: var(--re-radius-panel);
-  color: var(--re-danger-text);
+  color: var(--re-danger);
   padding: 8px 12px;
   font-size: var(--re-fs-body);
 }
@@ -346,7 +374,7 @@
 
 .re-info-row dd {
   margin: 0;
-  color: var(--re-text-bright);
+  color: var(--re-text);
   text-align: right;
   word-break: break-word;
 }
@@ -366,7 +394,7 @@
 }
 
 .re-layer-id {
-  color: var(--re-text-bright);
+  color: var(--re-text);
 }
 
 .re-note {
@@ -377,7 +405,7 @@
 
 .re-warning {
   font-size: var(--re-fs-body);
-  color: var(--re-danger-text);
+  color: var(--re-warning);
   margin: 0 0 8px;
 }
 

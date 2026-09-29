@@ -166,8 +166,8 @@ rather than a hard byte ceiling. Measured on the default build:
 
 | Asset | Raw | gzip | When |
 |---|---|---|---|
-| `index.html` | 5.1 KB | 1.7 KB | first response |
-| `css/app.css` | 5.9 KB | 1.7 KB | first response |
+| `index.html` | 6.3 KB | 2.2 KB | first response |
+| `css/app.css` | 10.2 KB | 3.3 KB | first response |
 | `js/*.js` (7 modules, static graph) | see `make viewer-build` | | first response |
 | `vendor/three/three.module.js` | 1.3 MB | 267 KB | only on the Globe button |
 

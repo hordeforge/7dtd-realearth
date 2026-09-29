@@ -1,24 +1,33 @@
-/* One token block for both RealEarth surfaces. The dashboard webmod
- * (webmod/styling.css) repeats the palette and the same radius and type
- * scales under the re- prefix, so a change here has to land there too. */
+/* One token block for both RealEarth surfaces. The values are the HordeForge
+ * terminal palette (hordeforge/.github brand/tokens.css, --term-*): these are
+ * map and 3D tools, so they stay on the brand's one dark surface. The
+ * dashboard webmod (webmod/styling.css) repeats the palette and the same
+ * radius and type scales under the re- prefix, so a change here has to land
+ * there too. */
 :root {
-  --bg: #0b0e14;
-  --panel: #121722;
-  --panel-2: #1a2230;
-  --border: #2a3548;
-  --text: #e7eefc;
-  --muted: #8b9bb8;
-  --accent: #3dd6c6;
-  --accent-2: #f0a500;
-  --danger: #ff6b6b;
-  /* Dark text on the teal accent, 10.6:1. Never white on the accent. */
-  --on-accent: #041212;
-  --accent-soft: rgba(61, 214, 198, 0.15);
-  --hairline: rgba(255, 255, 255, 0.15);
+  --bg: #101418;
+  --panel: #1a2129;
+  /* Inset controls (inputs, buttons) sit on the page ground, one step below
+   * the raised panel. */
+  --panel-2: #101418;
+  --border: #2a333d;
+  /* Form field outlines: 4.6:1 on the panel, so a field's edge is visible
+   * without its placeholder (WCAG 1.4.11). */
+  --border-field: #7f8b94;
+  --text: #d8e2dc;
+  --muted: #7f8b94;
+  /* The single signal color: active controls, focus, live position. */
+  --accent: #5fd894;
+  /* Key amber: settlements and their tooltip. */
+  --accent-2: #ffd8a0;
+  --danger: #ff7364;
+  --accent-soft: rgba(95, 216, 148, 0.14);
+  --hairline: rgba(216, 226, 220, 0.2);
   /* Floating chrome (HUD, tooltips, zoom buttons) shares one translucent
    * plate, so an overlay reads as the same material wherever it appears. */
-  --overlay: rgba(10, 14, 22, 0.92);
-  --stage-bg: #070a10;
+  --overlay: rgba(16, 20, 24, 0.92);
+  --overlay-shadow: 0 8px 24px rgba(0, 0, 0, 0.4);
+  --stage-bg: #101418;
   /* Radii stay small: this is an instrument panel, not a card deck. Panels
    * and controls step down, and nothing uses a value between them. */
   --radius-panel: 6px;
@@ -30,8 +39,12 @@
   --fs-label: 0.8125rem;
   --fs-body: 0.875rem;
   --fs-title: 1.125rem;
-  --font: "Segoe UI", system-ui, -apple-system, sans-serif;
-  --mono: ui-monospace, "Cascadia Code", "SF Mono", Menlo, monospace;
+  /* System stacks only (brand rule: no webfonts, pages load offline). */
+  --font: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+  --mono: ui-monospace, SFMono-Regular, Menlo, Consolas, "Liberation Mono", monospace;
+  --focus-ring: 2px solid var(--accent);
+  /* Smallest pointer target for any control (WCAG 2.5.8). */
+  --target-min: 24px;
 }
 
 * {
@@ -49,6 +62,13 @@
   overflow: hidden;
   clip-path: inset(50%);
   white-space: nowrap;
+}
+
+/* One visible focus ring for every keyboard-reachable control, including
+ * the map canvas and globe host. */
+:focus-visible {
+  outline: var(--focus-ring);
+  outline-offset: 2px;
 }
 
 html,
@@ -84,16 +104,12 @@ body {
   margin-bottom: 4px;
 }
 
+/* The Pangea product tile (favicon.svg), used as is. */
 .logo {
-  width: 44px;
-  height: 44px;
-  border-radius: var(--radius-panel);
-  display: grid;
-  place-items: center;
-  font-weight: 800;
-  letter-spacing: 0.04em;
-  background: var(--accent);
-  color: var(--on-accent);
+  display: block;
+  width: 40px;
+  height: 40px;
+  flex-shrink: 0;
 }
 
 .brand h1 {
@@ -159,6 +175,8 @@ body {
 
 .field input[type="range"] {
   width: 100%;
+  min-height: var(--target-min);
+  margin: 0;
   accent-color: var(--accent);
 }
 
@@ -175,18 +193,42 @@ body {
   width: 100%;
   background: var(--panel-2);
   color: var(--text);
-  border: 1px solid var(--border);
+  border: 1px solid var(--border-field);
   border-radius: var(--radius-control);
   padding: 8px 10px;
+  font: inherit;
+  font-size: var(--fs-body);
+}
+
+/* The native file button is a light OS widget; restyle it as a .btn. */
+.field input[type="file"]::file-selector-button {
+  margin-right: 10px;
+  padding: 4px 10px;
+  background: var(--panel);
+  color: var(--text);
+  border: 1px solid var(--border-field);
+  border-radius: var(--radius-control);
+  font: inherit;
+  font-weight: 600;
+  cursor: pointer;
 }
 
 .check {
   display: flex;
   align-items: center;
   gap: 8px;
-  margin: 8px 0;
+  min-height: var(--target-min);
+  margin: 4px 0;
   font-size: var(--fs-body);
   color: var(--text);
+  cursor: pointer;
+}
+
+.check input {
+  width: 16px;
+  height: 16px;
+  margin: 0;
+  accent-color: var(--accent);
 }
 
 .btn-row {
@@ -207,8 +249,14 @@ body {
   font-size: var(--fs-body);
 }
 
-.btn:hover {
+.btn:hover:not(:disabled) {
   border-color: var(--accent);
+}
+
+/* Disabled reads as inert; the .hint text below the row says why. */
+.btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
 }
 
 .btn.active {
@@ -317,6 +365,7 @@ body {
   right: 16px;
   display: flex;
   justify-content: space-between;
+  align-items: flex-start;
   gap: 12px;
   pointer-events: none;
 }
@@ -331,16 +380,18 @@ body {
 }
 
 #titleHud {
+  min-width: 0;
   font-weight: 700;
-  color: var(--accent);
+  color: var(--text);
+  overflow-wrap: anywhere;
 }
 
 #statusHud {
   color: var(--muted);
   font-family: var(--mono);
   font-size: var(--fs-micro);
-  max-width: 50%;
   text-align: right;
+  overflow-wrap: anywhere;
 }
 
 /* Load and render failures share the HUD with routine status, so they need
@@ -350,16 +401,20 @@ body {
   border-color: var(--danger);
 }
 
+/* The width cap sits here, not on #statusHud: a percentage of a
+ * shrink-to-fit parent collapsed the status to one word per line. */
 .hud-right {
   display: flex;
   flex-direction: column;
   align-items: flex-end;
   gap: 8px;
+  flex: 0 1 auto;
+  max-width: 55%;
 }
 
 #playerHud {
   background: var(--overlay);
-  border: 1px solid var(--danger);
+  border: 1px solid var(--accent);
   border-radius: var(--radius-chip);
   padding: 8px 12px;
   font-family: var(--mono);
@@ -389,7 +444,7 @@ body {
   cursor: pointer;
 }
 
-#viewTools button:hover {
+#viewTools button:hover:not(:disabled) {
   border-color: var(--accent);
 }
 
@@ -403,7 +458,7 @@ body {
   min-width: 0;
   background: var(--panel-2);
   color: var(--text);
-  border: 1px solid var(--border);
+  border: 1px solid var(--border-field);
   border-radius: var(--radius-control);
   padding: 8px;
   font-family: var(--mono);
@@ -425,7 +480,7 @@ body {
   padding: 8px 10px;
   font-size: var(--fs-micro);
   transform: translate(12px, 12px);
-  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.4);
+  box-shadow: var(--overlay-shadow);
 }
 
 #settlementTip strong {

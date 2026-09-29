@@ -34,15 +34,17 @@ const SETTLEMENT_DOT_RADIUS_PX = 5;
 const SETTLEMENT_OUTLINE_WIDTH_PX = 1.5;
 const SETTLEMENT_LABEL_FONT_PX = 12;
 const SETTLEMENT_LABEL_OFFSET_PX = 3;
-const PLAYER_COLOR = "#ff4466";
-const PLAYER_RING_COLOR = "#ffffff";
+// Canvas colors come from the HordeForge terminal palette (viewer/css/app.css
+// tokens): the live player is the signal green, settlements key amber.
+const PLAYER_COLOR = "#5fd894";
+const PLAYER_RING_COLOR = "#101418";
 const PLAYER_DOT_RADIUS_PX = 5;
 const PLAYER_RING_WIDTH_PX = 2;
-const BACKGROUND_COLOR = "#070a10";
-const SETTLEMENT_COLOR = "#f0a500";
-const SETTLEMENT_OUTLINE_COLOR = "#041012";
-const LABEL_COLOR = "#e7eefc";
-const GRID_LINE_STYLE = "rgba(255,255,255,0.18)";
+const BACKGROUND_COLOR = "#101418";
+const SETTLEMENT_COLOR = "#ffd8a0";
+const SETTLEMENT_OUTLINE_COLOR = "#101418";
+const LABEL_COLOR = "#d8e2dc";
+const GRID_LINE_STYLE = "rgba(216,226,220,0.18)";
 const FULL_CIRCLE_RADIANS = Math.PI * 2;
 
 export type Map2DMeta = {

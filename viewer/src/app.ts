@@ -46,6 +46,8 @@ const GL_SPIN_HINT = "Spinning applies to the globe only.";
 const NO_PLAYER_HINT =
   "Jump to player needs a live position: serve data/player.json, or type coordinates below.";
 const OPACITY_PERCENT_SCALE = 100;
+// Probe readout with no cursor over the map or no raw elevation to sample.
+const NO_READOUT = "n/a";
 // Set when the globe falls back from the flat-only streamed layer, so the
 // "Loaded" status does not immediately overwrite the explanation.
 let globeLayerNote = "";
@@ -53,8 +55,8 @@ let globeLayerNote = "";
 type LegendRow = readonly [color: string, label: string];
 
 const HYBRID_LEGEND: ReadonlyArray<LegendRow> = [
-  ["#3dd6c6", "Terrain + cover blend"],
-  ["#f0a500", "Settlement markers"],
+  ["#5fd894", "Terrain + cover blend"],
+  ["#ffd8a0", "Settlement markers"],
 ];
 
 const LEGENDS: Record<string, ReadonlyArray<LegendRow>> = {
@@ -178,8 +180,10 @@ const state: ViewerState = {
   globeNeedsFrame: true,
 };
 
+// An error carries the word, not only the red border (state is never color
+// alone).
 function setStatus(message: string, tone: StatusTone = "info"): void {
-  els.statusHud.textContent = message;
+  els.statusHud.textContent = tone === "error" ? `Error: ${message}` : message;
   els.statusHud.classList.toggle("error", tone === "error");
 }
 
@@ -298,8 +302,8 @@ function elevationAt(u: number, v: number): string {
   const elevMeta = state.elevMeta;
   if (elevRaw === null || elevMeta === null) {
     // The raw elevation PNG is fetched on the first probe; until it lands the
-    // readout says so instead of showing a plain dash.
-    return state.elevRawPending ? "…" : "—";
+    // readout says so instead of showing n/a.
+    return state.elevRawPending ? "…" : NO_READOUT;
   }
   const x = Math.min(elevRaw.width - 1, Math.max(0, Math.floor(u * elevRaw.width)));
   const y = Math.min(elevRaw.height - 1, Math.max(0, Math.floor(v * elevRaw.height)));
@@ -313,7 +317,7 @@ function elevationAt(u: number, v: number): string {
 // The raw elevation export is a full-resolution PNG plus a same-size canvas
 // decode, and only this probe reads it, so it is requested on the first
 // cursor move instead of during pack load. Re-entrant calls share the one
-// in-flight load; a failure leaves elevRaw null and the probe shows "—".
+// in-flight load; a failure leaves elevRaw null and the probe shows n/a.
 function requestElevRaw(): void {
   const loader = state.elevRawLoader;
   if (loader === null || state.elevRaw !== null || state.elevRawPending) {
@@ -333,10 +337,10 @@ function requestElevRaw(): void {
 function updateProbe(point: ProbePoint | null): void {
   state.probePoint = point;
   if (point === null) {
-    els.pLon.textContent = "—";
-    els.pLat.textContent = "—";
-    els.pElev.textContent = "—";
-    els.pUv.textContent = "—";
+    els.pLon.textContent = NO_READOUT;
+    els.pLat.textContent = NO_READOUT;
+    els.pElev.textContent = NO_READOUT;
+    els.pUv.textContent = NO_READOUT;
     return;
   }
   els.pLon.textContent = `${point.lon.toFixed(PROBE_LON_LAT_DECIMALS)}°`;

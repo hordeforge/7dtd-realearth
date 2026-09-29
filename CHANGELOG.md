@@ -63,6 +63,15 @@ and the release gate requires both to match the tag (`v<version>`) and a dated
 
 ### Changed
 
+- **The viewer and the dashboard webmod use the HordeForge terminal palette.**
+  Background `#101418`, panels `#1a2129`, one green signal color (`#5fd894`)
+  for active controls, focus and the live player marker, key amber
+  (`#ffd8a0`) for settlements, red (`#ff7364`) for errors, and the system font
+  stacks. The favicon and sidebar mark are the Pangea tile. Every control
+  shows a focus ring, checkboxes and small buttons reach a 24 px target, the
+  file picker matches the other fields, and an error status starts with
+  "Error:" instead of relying on red alone. Probe readouts show `n/a` until
+  the cursor is over the map.
 - **The TypeScript type gate runs the lock-verified tsc.** `lint-viewer.sh`
   and `lint-webmod.sh` fetched `typescript@<pin>` through `bunx` at lint time,
   outside the sha512-verified `scripts/js-toolchain.lock`; both now run
@@ -211,6 +220,12 @@ and the release gate requires both to match the tag (`v<version>`) and a dated
 
 ### Fixed
 
+- **The standalone viewer loads its pack again.** `loadPack` dropped the
+  slash between the pack path and `viewer.json`, so the viewer requested
+  `data/demoviewer.json` and showed a 404 instead of the map.
+- **The webmod Settings page is styled.** Its root sat outside the scope of
+  the `--re-*` variables, so the default-pack field and Save button rendered
+  without borders or background.
 - **`make install` now ships the same mod file set as the release zip.**
   `scripts/install_proton.sh` was missing `Config/gamestages.xml`, the
   `Config/XUi_InGame` lon/lat HUD windows, the `Config/realearth.mp.json`
