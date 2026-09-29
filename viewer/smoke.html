@@ -194,6 +194,13 @@
           assert(pack.settlements.length > 0, "pack has no settlements");
         });
 
+        // The standalone viewer passes the pack path as the only argument.
+        await check("pack: loads from a single base argument", async () => {
+          const pack = await loadPack(base);
+          assert(pack.layers.length > 0, "pack has no layers");
+          assert(pack.settlements.length > 0, "pack has no settlements");
+        });
+
         await check("pack: rejects a pack with no layers", () => {
           rejects(
             () =>

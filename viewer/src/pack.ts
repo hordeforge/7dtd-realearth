@@ -228,7 +228,7 @@ async function loadLayerImages(
   layers: ReadonlyArray<LayerInfo>
 ): Promise<{ images: Record<string, HTMLImageElement>; layers: Array<LoadedLayer> }> {
   const loaded = await Promise.all(
-    layers.map(async (layer) => ({ id: layer.id, image: await loadImage(`${base}/${layer.file}`) }))
+    layers.map(async (layer) => ({ id: layer.id, image: await loadImage(`${base}${layer.file}`) }))
   );
   const images: Record<string, HTMLImageElement> = {};
   const ordered: Array<LoadedLayer> = [];
@@ -281,7 +281,7 @@ function elevRawLoader(
     if (elevMeta === null) {
       return Promise.resolve(null);
     }
-    pending ??= decodeElevRaw(`${base}/${elevMeta.file}`, warnings);
+    pending ??= decodeElevRaw(`${base}${elevMeta.file}`, warnings);
     return pending;
   };
 }
@@ -293,7 +293,8 @@ export async function loadPack(baseUrl: string, path?: string): Promise<LoadedPa
   if (!isSafePackPath(safe)) {
     throw new Error(`Refusing unsafe pack path: ${safe}`);
   }
-  const base = path === undefined ? baseUrl.replace(/\/$/u, "") : `${baseUrl}${path}/`;
+  // base always ends in one slash; every artifact name is appended to it.
+  const base = path === undefined ? `${baseUrl.replace(/\/+$/u, "")}/` : `${baseUrl}${path}/`;
   // packMetaFrom validates the schema (layers present, sane bbox, positive
   // sample dims and meters_per_block); a broken viewer.json throws here.
   const meta = packMetaFrom(await fetchJson(`${base}viewer.json`));
