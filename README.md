@@ -1,6 +1,8 @@
 # 🌍 Pangea (RealEarth 1:1 Engine)
 
-> **Part of [HordeForge](https://github.com/hordeforge)**: High-Performance Systems Engineering for 7 Days to Die.
+<img src="viewer/favicon.svg" width="64" height="64" alt="Pangea product tile">
+
+> Part of [HordeForge](https://github.com/hordeforge), a set of server, test and modding tools for 7 Days to Die.
 
 ![CI](https://github.com/hordeforge/7dtd-realearth/actions/workflows/ci.yml/badge.svg)
 ![coverage](https://raw.githubusercontent.com/hordeforge/7dtd-realearth/badges/coverage.svg)
