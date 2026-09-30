@@ -66,7 +66,7 @@ jobs:
         with:
           # Pin the bun runtime (bunx resolves esbuild/tsc/oxlint through it);
           # unpinned, every CI run picks up whatever bun released that day.
-          bun-version: "1.4.0"
+          bun-version: "1.4.2"
       - run: bash scripts/lint-viewer.sh
       - run: bash scripts/lint-webmod.sh
       - run: bash scripts/lint-html.sh

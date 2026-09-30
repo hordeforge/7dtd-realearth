@@ -9,7 +9,7 @@ runs from the repo root and is what CI does.
 |---|---|---|
 | [uv](https://github.com/astral-sh/uv) | every Python command (`make setup`, `make test`, `make lint`) | `>=0.12` (`tools/pyproject.toml [tool.uv]`) |
 | .NET SDK 8 | `make build` and the C# mod only | `8.0.400` (`global.json`) |
-| bun 1.4.0 | viewer and webmod build/lint | `1.4.0` (CI); the lint scripts install tsc, oxlint and vnu at the pins in `scripts/toolchain-versions.env` |
+| bun 1.4.2 | viewer and webmod build/lint | `1.4.2` (CI); the lint scripts install tsc, oxlint and vnu at the pins in `scripts/toolchain-versions.env` |
 | shellcheck, yamllint | `make lint-shell`, `make lint-yaml` | any recent release |
 
 Python is not installed system-wide: uv manages the interpreter and the

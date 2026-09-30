@@ -27,7 +27,7 @@ if [[ $# -lt 1 ]]; then
 fi
 cache_dir="$1"
 if ! command -v bun >/dev/null 2>&1; then
-  echo "ERROR: bun is required to install the JS toolchain (https://bun.sh; CI pins 1.4.0)" >&2
+  echo "ERROR: bun is required to install the JS toolchain (https://bun.sh; CI pins 1.4.2)" >&2
   exit 1
 fi
 mkdir -p "$cache_dir"
