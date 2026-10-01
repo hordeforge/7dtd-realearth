@@ -260,6 +260,14 @@ def test_map_and_label_math_does_not_overflow():
     )
     assert m, "city discovery distance block not found"
     assert "double distSq = dx * dx + dz * dz;" in m.group("body")
+    poi = _read("RuntimePoiInject.cs")
+    assert "double dx = (double)playerLocalX - cx;" in poi
+    assert "double dz = (double)playerLocalZ - cz;" in poi
+    assert "double distSq = dx * dx + dz * dz;" in poi
+    assert "double dx = (double)cx - localX;" in poi
+    assert "double dz = (double)cz - localZ;" in poi
+    assert "int cx = (int)(((long)minX + maxX) / 2);" in poi
+    assert "int cz = (int)(((long)minZ + maxZ) / 2);" in poi
 
     reveal = _read("MapReveal.cs")
     assert "long total = (long)(maxCx - minCx + 1) * (maxCz - minCz + 1);" in reveal

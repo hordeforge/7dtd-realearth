@@ -220,6 +220,9 @@ and the release gate requires both to match the tag (`v<version>`) and a dated
 
 ### Fixed
 
+- City discovery and POI activation measure distances without overflowing at extreme world coordinates. Sleeper repinning also widens the box-center arithmetic before averaging.
+
+
 - **The standalone viewer loads its pack again.** `loadPack` dropped the
   slash between the pack path and `viewer.json`, so the viewer requested
   `data/demoviewer.json` and showed a 404 instead of the map.

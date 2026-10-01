@@ -217,9 +217,9 @@ namespace RealEarth
                             continue;
 
                         PlaceLocal(session, p, out int cx, out int cz);
-                        long dx = (long)playerLocalX - cx;
-                        long dz = (long)playerLocalZ - cz;
-                        long distSq = dx * dx + dz * dz;
+                        double dx = (double)playerLocalX - cx;
+                        double dz = (double)playerLocalZ - cz;
+                        double distSq = dx * dx + dz * dz;
                         // Original gate: dist <= edge * 1.5 (squared to skip the sqrt).
                         double edge = CityMapLabels.ScaledEdgeRadiusBlocks(
                             CityMapLabels.ResolveEdgeRadiusBlocks(p), discoverScale);
@@ -405,10 +405,10 @@ namespace RealEarth
 
                     if (!TryGetSleeperBox(vol, out int minX, out int minY, out int minZ, out int maxX, out int maxY, out int maxZ))
                         continue;
-                    int cx = (minX + maxX) / 2;
-                    int cz = (minZ + maxZ) / 2;
-                    long dx = (long)cx - localX;
-                    long dz = (long)cz - localZ;
+                    int cx = (int)(((long)minX + maxX) / 2);
+                    int cz = (int)(((long)minZ + maxZ) / 2);
+                    double dx = (double)cx - localX;
+                    double dz = (double)cz - localZ;
                     if (dx * dx + dz * dz > (long)radius * radius) continue;
 
                     int dy = sleeperY - minY;

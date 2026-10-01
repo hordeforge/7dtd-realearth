@@ -234,10 +234,12 @@ def test_bake_replays_byte_for_byte_from_one_seed(tmp_path: Path) -> None:
         max_dim=128,
         also_export_7dtd=False,
     )
+    ttw = tmp_path / "main.ttw"
+    ttw.write_bytes(b"ttw\x00" + b"\x00" * 100)
     bakes = {}
     for label, seed in (("a", 3), ("b", 3), ("c", 4)):
         out = tmp_path / label
-        bake_generated_world(pack, out, size=2048, name="SeedWorld", seed=seed)
+        bake_generated_world(pack, out, size=2048, name="SeedWorld", seed=seed, ttw_template=ttw)
         bakes[label] = (out / "prefabs.xml").read_bytes(), (out / "splat3.png").read_bytes()
 
     assert bakes["a"] == bakes["b"], "same seed must replay the same world"

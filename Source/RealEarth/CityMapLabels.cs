@@ -329,9 +329,9 @@ namespace RealEarth
                     continue;
 
                 LonLatToLocalCached(session, p, out int cx, out int cz);
-                long dx = (long)playerLocalX - cx;
-                long dz = (long)playerLocalZ - cz;
-                long distSq = dx * dx + dz * dz;
+                double dx = (double)playerLocalX - cx;
+                double dz = (double)playerLocalZ - cz;
+                double distSq = dx * dx + dz * dz;
                 double edge = ScaledEdgeRadiusBlocks(p.EdgeRadiusBlocks, scale);
 
                 // Reaching the edge is enough to discover; pin at center.

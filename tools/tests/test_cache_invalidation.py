@@ -66,12 +66,13 @@ def test_poi_origin_invalidation_keeps_placed_set():
     body = _body_between(
         src,
         "public static void InvalidateOriginDerivedCache()",
-        "Player tick: stamp nearby city cores",
+        "public static void InvalidatePlacesCatalog()",
     )
     assert "lock (_stampGate)" in body
     assert "InvalidateLocalCache()" in body
-    assert "_placed" not in body, "origin move must not re-arm already placed POIs"
-    assert "_chunkCounts" not in body, "chunk budget is the slide path's to reset"
+    code = re.sub(r"//[^\n]*", "", body)
+    assert "_placed" not in code, "origin move must not re-arm already placed POIs"
+    assert "_chunkCounts" not in code, "chunk budget is the slide path's to reset"
 
 
 def test_player_count_cache_is_dropped_when_the_world_changes():
