@@ -220,6 +220,13 @@ and the release gate requires both to match the tag (`v<version>`) and a dated
 
 ### Fixed
 
+- Discover and patch the closed generic water-storage instances, whose open
+  generic definitions were skipped while the expanded block accessors ran.
+
+- Runtime height expansion patches storage constructors and descending layer
+  initializers together, preserving the 64-bit shift masks. Expanded terrain
+  no longer uses stock-sized block and lighting arrays.
+
 - City discovery and POI activation measure distances without overflowing at extreme world coordinates. Sleeper repinning also widens the box-center arithmetic before averaging.
 
 
