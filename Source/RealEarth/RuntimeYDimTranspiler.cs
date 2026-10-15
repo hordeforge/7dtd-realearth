@@ -153,6 +153,17 @@ namespace RealEarth
                     if (isLayerStorage)
                         replace = TargetLayers;
                 }
+                else if (v == 63 && typeName == "ChunkBlockChannel"
+                    && (methodName == "fillSameValue" || methodName == "CheckSameValue"
+                        || methodName == "IsDefault"))
+                {
+                    var next = i + 1 < list.Count ? list[i + 1] : null;
+                    if (next != null && (next.opcode == OpCodes.Stloc
+                            || next.opcode == OpCodes.Stloc_S || next.opcode == OpCodes.Stloc_0
+                            || next.opcode == OpCodes.Stloc_1 || next.opcode == OpCodes.Stloc_2
+                            || next.opcode == OpCodes.Stloc_3))
+                        replace = TargetLayers - 1;
+                }
                 else if (v == 65536 && isWaterDataHandle)
                 {
                     replace = TargetVolumeBits;
@@ -221,6 +232,24 @@ namespace RealEarth
         /// </summary>
         static readonly LogBudget _logBudget = new LogBudget(12);
 
+        internal static IEnumerable<Type> PatchTypes(Assembly assembly)
+        {
+            var types = assembly.GetTypes();
+            var targets = new HashSet<Type>(types);
+            foreach (var owner in types)
+            {
+                foreach (var field in owner.GetFields(BindingFlags.Instance | BindingFlags.Static
+                    | BindingFlags.Public | BindingFlags.NonPublic))
+                {
+                    var type = field.FieldType;
+                    if (type.IsConstructedGenericType && !type.ContainsGenericParameters
+                        && IsLayerStorageName(type.Name))
+                        targets.Add(type);
+                }
+            }
+            return targets;
+        }
+
         /// <summary>Log slots the rewrite path refused to print; `reinject` prints it.</summary>
         public static long SuppressedLogLines => _logBudget.Suppressed;
 
@@ -259,7 +288,7 @@ namespace RealEarth
 
                 int attached = 0;
                 var seen = new HashSet<string>();
-                foreach (var type in asm.GetTypes())
+                foreach (var type in PatchTypes(asm))
                 {
                     if (type == null || type.IsInterface || (type.IsAbstract && !type.IsSealed))
                         continue;
@@ -267,14 +296,16 @@ namespace RealEarth
                     bool isLayer = IsLayerStorageName(tname);
                     if (!isLayer && !IsTypeWithYBoundMethods(tname))
                         continue;
-                    // Y-bound accessors / loops. Constructors are deliberately not patched; the
-                    // reason is at the end of this method.
-                    foreach (var method in type.GetMethods(
-                        BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Static))
+                    var methods = new List<MethodBase>(type.GetMethods(
+                        BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Static));
+                    if (isLayer || tname == "WaterDataHandle")
+                        methods.AddRange(type.GetConstructors(
+                            BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic));
+                    foreach (var method in methods)
                     {
                         if (method == null || method.IsAbstract || method.ContainsGenericParameters)
                             continue;
-                        if (!isLayer && !IsYBoundMethodName(method.Name))
+                        if (!isLayer && !method.IsConstructor && !IsYBoundMethodName(method.Name))
                             continue;
                         string key = type.FullName + "." + method.Name + "#" + method.MetadataToken;
                         if (!seen.Add(key))
@@ -286,14 +317,13 @@ namespace RealEarth
                         }
                         catch
                         {
+                            // Expanded accessors require expanded storage. A failed allocation
+                            // patch must leave the product gate closed.
+                            if (method.IsConstructor)
+                                throw;
                             // skip methods that cannot be patched
                         }
                     }
-                    // Intentionally do NOT patch constructors here.
-                    // Layer-array ctors still allocate stock len=64 under a method-only
-                    // hot-patch (GetBlockNoDamage fails for y>=256). Patching .ctor
-                    // alone crashes GenerateChunks in ChunkBlockChannel.fillSameValue
-                    // (IndexOutOfRange). The runtime transpiler is the product path.
                 }
                 PatchCount = attached;
                 IsActive = attached > 0;

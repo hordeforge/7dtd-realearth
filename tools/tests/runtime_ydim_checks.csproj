@@ -1,0 +1,14 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <OutputType>Exe</OutputType>
+    <TargetFramework>net8.0</TargetFramework>
+    <Nullable>enable</Nullable>
+    <EnableDefaultCompileItems>false</EnableDefaultCompileItems>
+  </PropertyGroup>
+  <ItemGroup>
+    <Compile Include="runtime_ydim_checks.cs" />
+    <Compile Include="../../Source/RealEarth/RuntimeYDimTranspiler.cs" />
+    <Compile Include="../../Source/RealEarth/LogBudget.cs" />
+    <Reference Include="0Harmony" HintPath="$(GameDir)/Mods/0_TFP_Harmony/0Harmony.dll" />
+  </ItemGroup>
+</Project>

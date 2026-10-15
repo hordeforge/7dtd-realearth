@@ -19,12 +19,22 @@ Not an XML-only modlet. Product stack:
 | Layer | Mechanism | Role |
 |---|---|---|
 | Offline packs | Python pipeline, `.rte` tiles, manifests | DEM, landcover, population density |
-| Binary expand | Cecil patcher on `Assembly-CSharp` | YDim / layers / Y-bound IL (tall columns) |
+| Runtime expand | Harmony transpilers in `RuntimeYDimTranspiler` | YDim, storage allocation, and vertical loops (tall columns) |
 | IModApi | `ModApi.InitMod` | Config, streamer, session, console |
 | Harmony (stock `0_TFP_Harmony`) | Reflection-discovered Prefix/Postfix | Height queries, GenerateTerrain inject, player tick, world ready |
 | Session | `WorldSession` + snapshot JSON | Absolute Earth origin, slide policy |
 
-**Rule of thumb (product):** XML for data tables · IModApi for session/commands · Harmony for height/gen/tick · binary expand for YDim · packs for DEM. Never a second Harmony. Never private per-client origins.
+Storage constructors and layer loops use the same expanded layer count. The
+patch set includes closed generic storage types referenced by game fields,
+including `WaterDataHandle.voxelData` (`UnsafeChunkData<int>`); an open generic
+definition cannot be patched. Its 256-element XZ plane stride stays unchanged.
+The descending `ChunkBlockChannel` initializers use its final layer index; their
+64-bit shift masks stay at 63. A failed constructor patch leaves the height
+product gate closed. The native IL regression check runs with `make test` when
+`SEVENDTD_GAME_DIR` points to an install containing Harmony and the pinned SDK
+is available.
+
+**Rule of thumb (product):** XML for data tables · IModApi for session/commands · Harmony for height/gen/tick and YDim expand · packs for DEM. Never a second Harmony. Never private per-client origins.
 
 ---
 
