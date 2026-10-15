@@ -13,6 +13,8 @@ and the release gate requires both to match the tag (`v<version>`) and a dated
 
 ## [Unreleased]
 
+## [0.5.2] - 2026-10-15
+
 ### Added
 
 - **`build-region` and `bake-world` take `--seed`.** The RNG seed that drives
