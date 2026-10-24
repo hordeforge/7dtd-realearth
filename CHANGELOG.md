@@ -13,6 +13,8 @@ and the release gate requires both to match the tag (`v<version>`) and a dated
 
 ## [Unreleased]
 
+## [0.6.0] - 2026-10-25
+
 ### Changed
 
 - **Retargeted to 7 Days to Die V3.3.0 (b18).** `BuildGuard` now accepts the

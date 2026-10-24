@@ -5,7 +5,7 @@
 **Hub:** [`INDEX.md`](INDEX.md). Robustness failure catalog: [`realearth-review.md`](realearth-review.md).
 
 Last reviewed: 2026-10-24 · target game build V3.3.0 (b18) ([`GAME_VERSION.md`](GAME_VERSION.md)),
-mod version 0.5.2 (`ModInfo.xml:7`).
+mod version 0.6.0 (`ModInfo.xml:7`).
 Maintain by re-verifying every file reference below after surface changes; delete rows that no longer match code.
 
 **Retarget pass (2026-10-24).** Game pin moved to V3.3.0 b18. `BuildGuard` line refs

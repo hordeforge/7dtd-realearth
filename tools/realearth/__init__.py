@@ -18,7 +18,7 @@ from typing import Any
 
 # Must match ModInfo.xml <Version> (the shipped mod version, CHANGELOG 0.x line);
 # hatchling resolves the wheel/sdist version from here at build time.
-__version__ = "0.5.2"
+__version__ = "0.6.0"
 
 # JSON-shaped payloads (manifests, mod config, CLI summaries) that cross module
 # and file boundaries. Values stay heterogeneous by definition of the format.
