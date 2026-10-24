@@ -46,6 +46,31 @@ def test_override_set_and_setdefault(tmp_path: Path):
     assert cfg["LocalWindowSize"] == 1024
 
 
+def test_override_order_is_independent_of_flag_position(tmp_path: Path):
+    """The scripts pass KEY=VALUE after the flags. Older argparse (CI's 3.12.3)
+    only matched the nargs="*" positional from the tokens before the first
+    option and exited 2, so the documented order has to parse either way."""
+    cfg = write_config(
+        tmp_path,
+        [
+            "MapMode=Baked",
+            "--fresh",
+            "StreamRadiusTiles=4",
+            "StreamRadiusTiles?=3",
+        ],
+    )
+    assert cfg["MapMode"] == "Baked"
+    # Interleaved order still decides ?=: the explicit set wins.
+    assert cfg["StreamRadiusTiles"] == 4
+
+
+def test_misspelled_flag_is_a_usage_error(tmp_path: Path):
+    """Leftover KEY=VALUE tokens are overrides, but a flag typo stays exit 2."""
+    with pytest.raises(SystemExit) as exc:
+        mod_config.main(["write", str(tmp_path), str(ROOT), "--frosh", "MapMode=Baked"])
+    assert exc.value.code == 2
+
+
 def test_known_keys_cover_every_shipped_template():
     """The C# contract is the only key list, so templates must not outrun it."""
     known = mod_config.known_config_keys(ROOT)

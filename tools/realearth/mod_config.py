@@ -276,7 +276,18 @@ def main(argv: list[str] | None = None) -> int:
         action="store_true",
         help="apply spawn point and engine ceiling from DEST/Data/tiles/height_test.json",
     )
-    args = parser.parse_args(argv)
+    # KEY=VALUE tokens are positional and the scripts pass them after the flags
+    # (write DEST ROOT --template T KEY=VALUE ...). CPython 3.12.3 and older only
+    # match a nargs="*" positional against the tokens that precede the first
+    # option, so those pairs came back as unrecognized arguments and the writer
+    # exited 2 before touching the config. Collect the leftovers instead: the
+    # documented contract is order-independent. A leftover that starts with "-"
+    # is still a usage error, so a misspelled flag keeps the exit-2 contract.
+    args, extra = parser.parse_known_args(argv)
+    unknown_flags = [token for token in extra if token.startswith("-")]
+    if unknown_flags:
+        parser.error(f"unrecognized arguments: {' '.join(unknown_flags)}")
+    args.overrides.extend(extra)
 
     # The install scripts call this as a subprocess and only see the exit code
     # plus stderr, so a ValueError from a bad manifest or fixture must arrive as

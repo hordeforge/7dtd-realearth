@@ -49,6 +49,14 @@ and the release gate requires both to match the tag (`v<version>`) and a dated
   `/xui/window_group[@name='toolbelt']`. A live client is still needed to
   confirm it renders.
 
+- **Packaging and installs failed on the config writer's Python version.**
+  The install scripts pass the config settings positionally after the flags
+  (`write DEST ROOT --template ... KEY=VALUE`), which older argparse releases
+  (CI's 3.12.3, and 3.11) rejected as unrecognized arguments, exiting 2 before
+  any config was written; `make package` and every install script stopped
+  there. The writer now takes the positional settings from wherever they appear
+  and still exits 2 for a misspelled flag.
+
 ## [0.5.2] - 2026-10-15
 
 ### Added
