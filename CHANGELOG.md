@@ -13,6 +13,42 @@ and the release gate requires both to match the tag (`v<version>`) and a dated
 
 ## [Unreleased]
 
+### Changed
+
+- **Retargeted to 7 Days to Die V3.3.0 (b18).** `BuildGuard` now accepts the
+  b18 client and dedicated `Assembly-CSharp.dll` hashes, the V3.2.0 b10
+  dedicated assembly, and keeps the three V3.2.0 b9 rows as reviewed history.
+  `scripts/refresh_build_guard.py` upserts the local installs instead of
+  replacing the whole list, so an older reviewed build is not dropped by a
+  refresh. On b18 the `.ttp` header is 62 (was 59), entity records 38 (was 37),
+  tile-entity storage 20 (was 18), `Bag` 2 (was 1), `Equipment` 6 (was 4) and
+  `Quest.FileVersion` 9 (was 8); `main.ttw` stays 23, the chunk preamble stays
+  47 and the region container is unchanged. b18 reads a b10 world; b10 cannot
+  read a b18 world, so do not move a save back to a 3.2.0 install.
+- **Baked worlds refuse a `main.ttw` version downgrade.** The bake copies a
+  `main.ttw` template and stamps the running client's version; it now reads the
+  template's version first and raises instead of writing an older label over a
+  newer template.
+- **Prefab placement documented against b18.** Stock moved prefab cell storage
+  into `Prefab.CellPool` native blocks. RealEarth's POI path only uses
+  `PrefabCache.GetPrefab` and `PrefabInstance`/`CopyIntoWorld`, whose
+  signatures are unchanged, so nothing in the mod reads a cell; the path is
+  pinned by a test that rejects cell access.
+- **Harmony targets re-checked against the b18 assemblies.** All reflection
+  targets still exist with the same signatures. Two postfix bodies grew
+  (`EntityPlayerLocal.OnEntityUnload`, `GameManager.StartGame`), which does not
+  affect a postfix bind. The b18 live re-soak is still open; the mod's last
+  live bind was on 3.2.0 (b9).
+
+### Fixed
+
+- **Lon/lat HUD XUi patch used a path that no longer exists.** The append
+  targeted `/xui/ruleset/window_group[@name='toolbelt']`, but the shipped
+  `XUi_InGame/xui.xml` has no `ruleset` wrapper (neither b10 nor b18), so the
+  window was never registered. The patch now targets
+  `/xui/window_group[@name='toolbelt']`. A live client is still needed to
+  confirm it renders.
+
 ## [0.5.2] - 2026-10-15
 
 ### Added

@@ -315,6 +315,10 @@ def test_review_fixes_wired():
     assert "{cvar(_re_lon)" in xui_windows
     assert "{cvar(_re_lat)" in xui_windows
     assert "windowRealEarthLonLat" in xui_root
+    # Shipped XUi root has no ruleset wrapper (b10 and b18 both open with <xui>);
+    # a pre-3.0 /xui/ruleset path silently drops the append.
+    assert "xpath=\"/xui/window_group[@name='toolbelt']\"" in xui_root
+    assert 'xpath="/xui/ruleset' not in xui_root
 
     sampler = _read("ChunkTerrainSampler.cs")
     assert "LandcoverToBiomeId" in sampler
@@ -358,13 +362,18 @@ def test_review_fixes_wired():
     assert "PickPrefab" in poi
     assert "PreferTraderStamp" in _read("RealEarthConfig.cs")
     assert "return placed" in poi
-    # Stock placement path: PrefabInstance.CopyIntoWorld (verified against V3.2.0
-    # IL); the old World.*Prefab*Spawn scan alone never matched on 3.x. Prefabs
-    # resolve from World.m_PrefabCache (PrefabManager was removed on 3.2.0).
+    # Stock placement path: PrefabInstance.CopyIntoWorld (signature unchanged on
+    # b18: ctor 6 args, CopyIntoWorld(World,bool,bool,FastTags)); the old
+    # World.*Prefab*Spawn scan alone never matched on 3.x. Prefabs resolve from
+    # World.m_PrefabCache (PrefabManager was removed on 3.2.0). b18 moved prefab
+    # cells into Prefab.CellPool native blocks; this path touches no cell, so it
+    # must not reach into Cells/Cell to stay independent of that layout.
     assert "TryPlaceViaPrefabInstance" in poi
     assert "CopyIntoWorld" in poi
     assert "m_PrefabCache" in poi
     assert "PrefabCache" in poi
+    assert ".Cells" not in poi
+    assert "CellFromOffset" not in poi
     cfg = json.loads((ROOT / "Config" / "realearth.json").read_text(encoding="utf-8"))
     assert cfg.get("DebugRevealFullMap") is False
     assert int(cfg.get("DebugMapRevealRadiusChunks") or 0) == 0
@@ -700,9 +709,14 @@ def test_build_guard_fail_closed_unknown_build():
     modapi = _read("ModApi.cs")
     assert "BuildGuard.Init" in modapi
     assert "EnforceInjectGate" in modapi
-    # reviewed hashes present (V3.2.0 stock + expanded live installs)
+    # reviewed hashes present: current pin (b18) plus reviewed history (b10, b9)
+    assert "V3.3.0 (b18) live dedi" in src
+    assert "V3.3.0 (b18) live client" in src
+    assert "V3.2.0 (b10) live dedi" in src
     assert "V3.2.0 (b9) stock" in src
     assert "V3.2.0 (b9) live" in src
+    # the b18 dedicated hash from the release identity table
+    assert "e16ff9d539b8fbf64904c0bc090d502286a62464742a9396f0455936ad0beb87" in src
     # config default: refuse unknown builds
     cfg = json.loads((ROOT / "Config" / "realearth.json").read_text(encoding="utf-8"))
     assert cfg.get("EngineHeightAllowUnknownBuild") is False

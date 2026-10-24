@@ -1,4 +1,4 @@
-# RealEarth critical engine surfaces (V3.2.0 b9)
+# RealEarth critical engine surfaces (V3.3.0 b18)
 
 **Owns:** managed engine surfaces the Streamed product depends on (product-facing RE).  
 **Not:** product Done/Partial tables ([MODIFICATIONS](MODIFICATIONS.md)), Streamed architecture lessons ([realearth-runtime](realearth-runtime.md)), pure generic loop RE ([research INDEX](../../7dtd-engine-research/docs/INDEX.md)).  
@@ -7,11 +7,11 @@
 **Generic engine hub:** [`../../7dtd-engine-research/docs/INDEX.md`](../../7dtd-engine-research/docs/INDEX.md) (loop, terrain-height, save-region without product policy).  
 **Height overview:** [`../../7dtd-engine-research/docs/world/terrain-height.md`](../../7dtd-engine-research/docs/world/terrain-height.md).  
 **Save deep-dive:** [`../../7dtd-engine-research/docs/world/save-region.md`](../../7dtd-engine-research/docs/world/save-region.md).  
-**Dump:** [`../../7dtd-engine-research/il/realearth-surfaces-v3.2.0/`](../../7dtd-engine-research/il/realearth-surfaces-v3.2.0/).  
+**Dump:** [`../../7dtd-engine-research/il/realearth-surfaces-v3.3.0/`](../../7dtd-engine-research/il/realearth-surfaces-v3.3.0/).  
 **Product hub:** [`INDEX.md`](INDEX.md).  
 **Status:** [`MODIFICATIONS.md`](MODIFICATIONS.md) only.
 
-**Pin note (2026-08-28):** live dedi stock `ChunkBlockYDim=256`; the product expand hot-patches it to 32768 at boot, and Steam Verify does not undo that (no DLL is written).
+**Pin note (2026-10-24):** live dedi stock `ChunkBlockYDim=256`; the product expand hot-patches it to 32768 at boot, and Steam Verify does not undo that (no DLL is written). The IL values below were spot-checked against the V3.3.0 b18 dumps (`Chunk.GetBlock` 100, `ChunkBlockLayer.GetAt` 16, `World.GetHeightAt` 22, `World.GetTerrainHeight` 19, `GameManager.GetPersistentPlayerList` 3, `Prefab.CopyIntoLocal` 680, Origin `67600`); save versions that moved are called out in §5.3.
 
 ## 0. What this document closes
 
@@ -384,9 +384,19 @@ Sector-based sibling uses **% 32** per dimension (different packing).
 
 ### 5.3 Chunk save version
 
-- `Chunk.CurrentSaveVersion = 47`  
-- `Chunk.SupportedSaveVersion = 32`  
+- `Chunk.CurrentSaveVersion = 47` (unchanged on b18)
+- `Chunk.SupportedSaveVersion = 32` (unchanged)
 - read rejects `_version < 32` with exception string `Chunk version N not supported!`
+
+**Record versions moved even though the chunk version did not** (b10 -> b18):
+`EntityCreationData` 37 -> 38 (bag becomes a length-prefixed blob),
+`TEFeatureStorage` 18 -> 20 (`ItemStackGrid` replaces the scalar fields),
+`Bag` 1 -> 2, `Equipment` 4 -> 6, `Quest.FileVersion` 8 -> 9, `.ttp` header
+59 -> 62. `main.ttw` stays 23 and the `.7rg` container is byte-identical.
+Compatibility is one-way: b18 reads a b10 world, b10 cannot read a b18 world.
+Owned by [`save-region.md`](../../7dtd-engine-research/docs/world/save-region.md) §0;
+RealEarth writes no record in this list, so its only downgrade guard is the
+`main.ttw` version stamp (`tools/realearth/generated_world.py`).
 
 **CLOSED:** layer count source is **hardcoded 64** in write/read (§5.0), not array length and not a field load of `ChunkBlockLayers`.
 
@@ -396,7 +406,7 @@ Present on `World.worldState`. Managed save path **closed** in [`save-region.md`
 
 | Method | IL | Evidence |
 |---|---:|---|
-| `WorldState.SaveLoad(Stream,…)` | **884** | `loop-complete` + `dedi-complete` dumps; ~59× `ReadWrite`, field set listed |
+| `WorldState.SaveLoad(Stream,…)` | **926** | b18 and b10 dumps; ~59× `ReadWrite`, field set listed (was 884 in the V3.0.x dump) |
 | `WorldState.SetFrom(World, providerId)` | 164 | sleeper/trigger/wall volumes, AIDirector.Save, spawner stream |
 | `World.SaveWorldState` | 16 | SetFrom → Save to GameIO dir |
 
@@ -409,11 +419,13 @@ No longer an open managed gap.
 | Type | Role |
 |---|---|
 | `WorldGenerationEngineFinal.PrefabManager` | RWG-time prefab selection (districts, wilderness) |
-| `Prefab` | Instance data + **`CopyIntoLocal(ChunkCluster, Vector3i, …)` IL=680** (dumped `realearth-surfaces`) |
-| `PrefabInstance` | Placed instance bookkeeping |
+| `Prefab` | Instance data + **`CopyIntoLocal(ChunkCluster, Vector3i, …)` IL=680** (dumped `realearth-surfaces`; unchanged on b18) |
+| `Prefab.Cells<T>` / `Prefab.CellPool` | **b18:** cell storage moved off a managed `T[]` into native `NativeArray<byte>` blocks (2048 B, one packed int holding block index and byte offset); accessors take the pool. The product path never touches a cell, so only the prefab-level API matters |
+| `PrefabInstance` | Placed instance bookkeeping; ctor IL=67 and `CopyIntoWorld` IL=85 unchanged on b18 |
 | `DynamicPrefabDecorator` | Runtime decoration |
 
-Managed surface is inventoried (method IL + call files under dump set). Product POI stamps should call into the same **CopyIntoLocal / cluster SetBlock** family. Signature variance after TFP patches is a **post-patch IL drift** residual ([`residuals.md`](../../7dtd-engine-research/docs/meta/residuals.md)), not an unmapped type.
+Managed surface is inventoried (method IL + call files under dump set). Product POI stamps should call into the same **CopyIntoLocal / cluster SetBlock** family. Signature variance after TFP patches is a **post-patch IL drift** residual ([`residuals.md`](../../7dtd-engine-research/docs/meta/residuals.md)), not an unmapped type. Cell-pool details:
+[`dedicated-leftovers.md`](../../7dtd-engine-research/docs/meta/dedicated-leftovers.md) §23.
 
 ---
 
@@ -540,7 +552,7 @@ DS="${SEVENDTD_SERVER_DIR:-$HOME/.local/share/Steam/steamapps/common/7 Days to D
 ASM="$DS/7DaysToDieServer_Data/Managed/Assembly-CSharp.dll"
 cd 7dtd-server-container-optimizer/tools
 mcs -r:Mono.Cecil.dll -out:DumpRealEarthSurfaces.exe DumpRealEarthSurfaces.cs
-mono DumpRealEarthSurfaces.exe "$ASM" ../../7dtd-engine-research/il/realearth-surfaces-v3.2.0
+mono DumpRealEarthSurfaces.exe "$ASM" ../../7dtd-engine-research/il/realearth-surfaces-v3.3.0
 # also: DumpTerrain.exe for WorldConstants-focused set
 ```
 
@@ -549,6 +561,9 @@ After a game update (and a fresh `make install`, which hot-patches the expand at
 ---
 
 ## Changelog
+- **2026-10-24:** Retarget to V3.3.0 b18. Spot-checked core IL values (unchanged);
+  added the per-record save version bumps and the one-way compatibility note
+  (§5.3); `WorldState.SaveLoad` 884 -> 926; added `Prefab.CellPool` to §6.
 - **2026-08-10:** Body IL citations re-verified against the V3.1.0 dump:
   `ChunkBlockChannel.Get` IL=44, `World.GetHeightAt` IL=22,
   `GetTerrainHeight` IL=19, `GetPersistentPlayerList` IL=3,

@@ -8,7 +8,7 @@
 **Generic height/loop RE:** [`../../7dtd-engine-research/docs/world/terrain-height.md`](../../7dtd-engine-research/docs/world/terrain-height.md), [`../../7dtd-engine-research/docs/loop/loop.md`](../../7dtd-engine-research/docs/loop/loop.md).  
 **Hubs:** product [`INDEX.md`](INDEX.md) · engine [`../../7dtd-engine-research/docs/INDEX.md`](../../7dtd-engine-research/docs/INDEX.md).
 
-Target game: **7DTD V3.2.0 (b9)**.
+Target game: **7DTD V3.3.0 (b18)**.
 
 ---
 

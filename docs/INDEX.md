@@ -4,7 +4,7 @@
 **Not:** generic engine RE ([research INDEX](../../7dtd-engine-research/docs/INDEX.md)).  
 **Start here.** One hub so other docs do not re-list everything.
 
-**Game:** 7DTD V3.2.0 · **Product:** 1:1 Earth geography + population density
+**Game:** 7DTD V3.3.0 · **Product:** 1:1 Earth geography + population density
 
 ```mermaid
 flowchart TB

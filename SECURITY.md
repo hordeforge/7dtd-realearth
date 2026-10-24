@@ -1,6 +1,6 @@
 # Security policy
 
-Project scope: RealEarth, a 7 Days to Die V3.2.0 (b9) mod plus its offline data pipeline.
+Project scope: RealEarth, a 7 Days to Die V3.3.0 (b18) mod plus its offline data pipeline.
 It holds no user PII, credentials, or signing keys.
 
 ## Reporting

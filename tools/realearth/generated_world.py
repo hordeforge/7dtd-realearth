@@ -116,14 +116,30 @@ def write_checksums(world_dir: Path, names: list[str]) -> None:
 
 
 # Fallback when client logs are missing (must match installed Steam major).
-_DEFAULT_MAP_INFO_VERSION = "V.3.0.1"
+_DEFAULT_MAP_INFO_VERSION = "V.3.3.0"
 _HASH_BLOCK_BYTES = 1 << 20
-_DEFAULT_TTW_VERSION = "V 3.0.1 (b4)"
+_DEFAULT_TTW_VERSION = "V 3.3.0 (b18)"
 
 _CLIENT_VERSION_RE = re.compile(
     r"Version:\s*(V\s+[\d.]+(?:\s*\(b\d+\))?)\s+Compatibility Version:\s*(V\s+[\d.]+)",
     re.IGNORECASE,
 )
+# "V 3.3.0 (b18)" / "V3.3.0" / "V.3.3.0". The build number is optional.
+_TTW_VERSION_RE = re.compile(r"V[.\s]*(\d+)\.(\d+)\.(\d+)(?:\s*\(b(\d+)\))?", re.IGNORECASE)
+
+
+def _ttw_version_key(raw: bytes | str) -> tuple[int, int, int, int] | None:
+    """Comparable (major, minor, patch, build) for a main.ttw version string, or None.
+
+    main.ttw stores the display form (``V 3.3.0 (b18)``) as a length-prefixed
+    string; the WorldState body layout is unchanged across b10/b18, but the
+    version string is the only marker that says which build wrote the file.
+    """
+    text = raw.decode("ascii", "replace") if isinstance(raw, bytes) else raw
+    m = _TTW_VERSION_RE.search(text)
+    if not m:
+        return None
+    return int(m.group(1)), int(m.group(2)), int(m.group(3)), int(m.group(4) or 0)
 
 
 def detect_client_versions() -> tuple[str, str]:
@@ -182,12 +198,37 @@ def detect_client_versions() -> tuple[str, str]:
     return _DEFAULT_MAP_INFO_VERSION, _DEFAULT_TTW_VERSION
 
 
+def read_ttw_version(data: bytes | bytearray) -> str | None:
+    """Version string embedded in a main.ttw header, or None when not present."""
+    if len(data) < 10 or data[:4] != b"ttw\0":
+        return None
+    length = data[8]
+    if length == 0 or len(data) < 9 + length:
+        return None
+    return bytes(data[9 : 9 + length]).decode("ascii", "replace")
+
+
 def write_ttw_with_version(path: Path, template: Path, version: str) -> None:
-    """Copy template main.ttw and rewrite embedded game version string."""
+    """Copy template main.ttw and rewrite embedded game version string.
+
+    Refuses a downgrade stamp: a main.ttw written by a newer build carries that
+    build's version string, and labeling it with an older version would claim a
+    file the older build cannot have produced. WorldState itself is version 23
+    in both b10 and b18, but entity/tile-entity/`.ttp` records are one-way
+    (b18 reads b10, b10 cannot read b18), so a downgrade is never attempted,
+    only refused.
+    """
     data = bytearray(template.read_bytes())
     if len(data) < 10 or data[:4] != b"ttw\0":
         path.write_bytes(template.read_bytes())
         return
+    template_key = _ttw_version_key(read_ttw_version(data) or "")
+    requested_key = _ttw_version_key(version)
+    if template_key is not None and requested_key is not None and requested_key < template_key:
+        raise ValueError(
+            f"refusing to stamp main.ttw {version!r} over a newer template "
+            f"({read_ttw_version(data)!r}); a b18 world is unreadable by an older build"
+        )
     ver_bytes = version.encode("ascii")
     if len(ver_bytes) > 255:
         ver_bytes = ver_bytes[:255]

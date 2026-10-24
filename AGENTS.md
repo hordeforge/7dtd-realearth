@@ -1,6 +1,6 @@
 # AGENTS.md - 7dtd-realearth (RealEarth)
 
-**1:1-scale real-world Earth** project for **7 Days to Die V3.2.0** (Henpocalypse):
+**1:1-scale real-world Earth** project for **7 Days to Die V3.3.0** (b18):
 elevation, landcover heuristics, density/cities, tile streaming, longitude wrap,
 globe-style map, and optional **YDim expand**.
 

@@ -3,7 +3,7 @@
 **Owns:** what is still missing to implement, and **which 7D API** (XPath, IModApi, Harmony, XUi, WebMod, binary expand, bake, pipeline).  
 **Not:** compact status dashboard ([MODIFICATIONS](MODIFICATIONS.md)); stock limit map ([ENGINE_LIMITATIONS](ENGINE_LIMITATIONS.md)). Hub: [INDEX](INDEX.md).
 
-Prefer the **shallowest** API (workspace [MODDING_BEST_PRACTICES](../../MODDING_BEST_PRACTICES.md)). Harmony targets: rediscover after each TFP patch; the live V3.2.0 (b9) binding is recorded in the "Harmony currently" section below. ([terrain-height](../../7dtd-engine-research/docs/world/terrain-height.md)).
+Prefer the **shallowest** API (workspace [MODDING_BEST_PRACTICES](../../MODDING_BEST_PRACTICES.md)). Harmony targets: rediscover after each TFP patch; the last live binding (V3.2.0 b9) is recorded in the "Harmony currently" section below, and every target was re-checked against the V3.3.0 b18 assemblies. ([terrain-height](../../7dtd-engine-research/docs/world/terrain-height.md)).
 
 **Rule of thumb:** XML for data tables · IModApi for session/commands · Harmony for height/gen/tick · binary expand for YDim · packs for DEM. Never a second Harmony; never private per-client origins.
 
@@ -251,7 +251,7 @@ Prefer the **shallowest** API (workspace [MODDING_BEST_PRACTICES](../../MODDING_
 
 **Status board:** [MODIFICATIONS](MODIFICATIONS.md) (do not duplicate Done/Partial tables here).
 
-**Harmony currently (live, 3.2.0 b9):** player tick (2), world ready (1), height queries (7, failed=0), GenerateTerrain postfix (4), chunk index (2). Per-chunk `Height inject` verified live to `maxH=8778 sessionPeak=8778` (Everest) and below-sea `gameY=5000` (trench). Remaining Partial: biome paint at runtime, prefab/sleeper Y, origin slide wrap, player-delta save.  
+**Harmony currently (last live, 3.2.0 b9; every target re-checked on the V3.3.0 b18 assemblies, b18 live bind open):** player tick (2), world ready (1), height queries (7, failed=0), GenerateTerrain postfix (4), chunk index (2). Per-chunk `Height inject` verified live to `maxH=8778 sessionPeak=8778` (Everest) and below-sea `gameY=5000` (trench). Remaining Partial: biome paint at runtime, prefab/sleeper Y, origin slide wrap, player-delta save.  
 **XML:** useful `nav_objects`; biomes/rwgmixer stubs.  
 **Systems:** session, streamer, city labels, FOW debug, inject scaffold. City discovery: session-only (save/MP later).
 
@@ -308,7 +308,7 @@ Legend for **Primary layer**: A binary · B Harmony · C XML · D world data · 
 
 ## 3. Harmony surface map (what to add)
 
-Targets are **names from the V3.2.0 (b9) research dumps**; always rediscover after TFP patches. Prefer **postfix** (safe) then **prefix skip** only when stock must not run.
+Targets are **names from the V3.2.0 b9 research dumps, re-checked against the V3.3.0 b18 dumps**; always rediscover after TFP patches. Prefer **postfix** (safe) then **prefix skip** only when stock must not run.
 
 ### 3.1 Terrain authority (P0-P1): expand RealEarth.RuntimeHooks
 

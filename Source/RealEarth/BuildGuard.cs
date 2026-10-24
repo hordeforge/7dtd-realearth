@@ -11,6 +11,13 @@ namespace RealEarth
     /// build blocks height inject unless the operator explicitly opts in
     /// (EngineHeightAllowUnknownBuild). This catches a game update that changed
     /// the assembly before the mod's hooks are re-verified against the new build.
+    ///
+    /// The list means "hooks were verified against this exact assembly", not
+    /// "this is the current build". Rows therefore stay after a retarget: the
+    /// b9 and b10 rows below are reviewed history, and the b18 rows are the
+    /// current pin (docs/GAME_VERSION.md). The b18 client binding was checked
+    /// against the installed client assembly (every reflection hook target
+    /// present, monodis, 2026-10-24); no b18 client boot has run yet.
     /// </summary>
     public static class BuildGuard
     {
@@ -18,6 +25,9 @@ namespace RealEarth
         static readonly Dictionary<string, string> ReviewedBuilds =
             new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase)
             {
+                {"fceec27300ffd3a1f97b097e43b60f3b07597f441e7ecbc6e1b59eebb234c705", "V3.3.0 (b18) live client"},
+                {"e16ff9d539b8fbf64904c0bc090d502286a62464742a9396f0455936ad0beb87", "V3.3.0 (b18) live dedi"},
+                {"3737eedc9f143d428a69030317428c45d342be4f11006a46d72bcd7b1d0fc64d", "V3.2.0 (b10) live dedi"},
                 {"70c669bec3cb11d1d8fabd2cc4f871d1eca21e27d3a185afe3efa71e571cabd6", "V3.2.0 (b9) stock (dedi bak)"},
                 {"feff12e779d5939a2b06a637f12e820ddc28c60da5aa3630733cc7ce5252badb", "V3.2.0 (b9) live client"},
                 {"a01a95393b24b75adf1e4b3ee1391ba19fa61e6bad79271fa95d8df721720837", "V3.2.0 (b9) live dedi"},

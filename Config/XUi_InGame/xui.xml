@@ -1,9 +1,16 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <!--
   RealEarth: register lon/lat HUD window in the toolbelt group (gap 31).
+
+  The group lives directly under the xui root in the shipped
+  Data/Config/XUi_InGame/xui.xml (`<xui>` then `<window_group name="toolbelt">`);
+  the pre-3.0 `/xui/ruleset/...` path no longer matches and the append would be
+  dropped. The b18 toolbelt window itself (windowToolbelt, ToolbeltWindow
+  controller, paged bars) is untouched: this append only adds a sibling window
+  to the group. Live-client confirmation is still open (no b18 client boot yet).
 -->
 <configs>
-	<append xpath="/xui/ruleset/window_group[@name='toolbelt']">
+	<append xpath="/xui/window_group[@name='toolbelt']">
 		<window name="windowRealEarthLonLat"/>
 	</append>
 </configs>

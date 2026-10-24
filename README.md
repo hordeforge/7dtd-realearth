@@ -11,7 +11,7 @@
 ![languages](https://img.shields.io/github/languages/count/hordeforge/7dtd-realearth)
 ![top language](https://img.shields.io/github/languages/top/hordeforge/7dtd-realearth)
 
-A **1:1 scale real-world Earth** project for **7 Days to Die V3.2.0** (Henpocalypse): real elevation, landcover heuristics, city/population density, tile streaming, longitude wrap (circle the planet), and a globe-style world map.
+A **1:1 scale real-world Earth** project for **7 Days to Die V3.3.0 (b18)**: real elevation, landcover heuristics, city/population density, tile streaming, longitude wrap (circle the planet), and a globe-style world map.
 
 This is **not** a single giant heightmap. Earth at 1 block = 1 m is ~40,075 km wide. Vanilla maps top out around 8–16 km. RealEarth uses **offline tile packs** + a **Harmony runtime** that streams only what is near the player.
 
@@ -28,9 +28,9 @@ Debug FOW / city names: see [MODLET](docs/MODLET.md) config keys (details in [CI
 | Demo region builder (synthetic or Open-Meteo DEM) | Done |
 | Settlement/population stamping plan | Done |
 | **Web map viewer** (flat + globe) | Done |
-| **One continuous in-game map** (Baked bake-world + Streamed session) | Done (both live on 3.2.0 b9) |
+| **One continuous in-game map** (Baked bake-world + Streamed session) | Done (both live on 3.2.0 b9; b18 re-soak open) |
 | C# WorldSession + streamer + runtime Harmony discovery | Done |
-| Per-build terrain density inject | Done (live dedicated on 3.2.0 b9; re-run `make install` after each game update) |
+| Per-build terrain density inject | Done (live dedicated on 3.2.0 b9; b18 targets re-checked by IL, re-soak open; re-run `make install` after each game update) |
 | Full-planet tile farm | Pipeline-ready; data download is on you |
 
 **In-game as one large map:** see [docs/SINGLE_WORLD.md](docs/SINGLE_WORLD.md).
@@ -149,7 +149,7 @@ Do **not** delete `Mods/0_TFP_Harmony/` (vanilla; required for C# mods).
 - `LocalWindowSize` – sliding host canvas (default **1024**; not fully meshed - view distance is smaller)
 - `MultiplayerOriginMode` – `SoloSlide` (window follows you) / `SharedFixed` (MP freeze)
 
-**Important:** Harmony method names change on every major 7DTD update. The concrete `[HarmonyPatch]` targets in this tree are bound and verified on V3.2.0 (b9) (see [COMPATIBILITY](docs/COMPATIBILITY.md)), and `BuildGuard` refuses an unknown `Assembly-CSharp.dll` rather than injecting blind. After a game update, re-run `make install` and confirm `injectOk=True productOk=True` in the log.
+**Important:** Harmony method names change on every major 7DTD update. The concrete `[HarmonyPatch]` targets in this tree were bound and verified live on V3.2.0 (b9) and re-checked against the V3.3.0 b18 assemblies (see [COMPATIBILITY](docs/COMPATIBILITY.md)); the b18 live re-soak is still open. `BuildGuard` refuses an unknown `Assembly-CSharp.dll` rather than injecting blind. After a game update, re-run `make install` and confirm `injectOk=True productOk=True` in the log.
 
 ## CLI reference
 

@@ -2,7 +2,7 @@
 
 **Owns:** stock engine blockers for **1:1 Earth** (severity + RealEarth attack path).  
 **Not:** generic dedicated ceilings that apply to any server ([research engine-limitations](../../7dtd-engine-research/docs/meta/engine-limitations.md)), product surface status ([MODIFICATIONS](MODIFICATIONS.md)), vertical product policy ([HEIGHT_LIMITS](HEIGHT_LIMITS.md)), Streamed lessons ([realearth-runtime](realearth-runtime.md)).  
-**Game:** 7 Days to Die V3.2.0 (b9) (Unity Mono, stock dedicated/client).  
+**Game:** 7 Days to Die V3.3.0 (b18) (Unity Mono, stock dedicated/client).  
 **Product goal:** 1:1 real Earth geography + population density (see [`../DESIGN.md`](../DESIGN.md)). **Hub:** [INDEX](INDEX.md).
 
 This is a **limitation map**, not a build plan. Each row: what the stock engine assumes, why it blocks 1:1 Earth, how hard it is, and how RealEarth attacks it.

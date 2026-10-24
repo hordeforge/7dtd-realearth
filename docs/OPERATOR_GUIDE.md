@@ -8,7 +8,7 @@ posture ([BACKUP_RESTORE.md](BACKUP_RESTORE.md)), Proton paths
 ([MODIFICATIONS.md](MODIFICATIONS.md)). Hub: [INDEX.md](INDEX.md).
 
 Read this top to bottom once, then keep it as the troubleshooting checklist.
-Assumes a stock 7 Days to Die V3.2.0 (b9) install and the sibling
+Assumes a stock 7 Days to Die V3.3.0 (b18) install and the sibling
 `7dtd-loadgen` project only if you want bot soak evidence.
 
 ---
@@ -129,9 +129,14 @@ heights that stock cannot represent (see §8).
 
 ## 8. Save compatibility
 
-- **Game save format is stock:** `CurrentSaveVersion` 23 is unchanged by
-  RealEarth (verified against the V3.2.0 IL diff); the mod does not alter the
-  `.7rg`/region save format.
+- **Game save format is stock:** `CurrentSaveVersion` 23 and the `.7rg`
+  container are unchanged by RealEarth and unchanged in V3.3.0 b18 (verified
+  against the b18 IL diff). The per-record versions did move: entity
+  `EntityCreationData` 38, tile-entity storage 20, `Bag` 2, `Equipment` 6,
+  `.ttp` 62. b18 reads a b10 world; a b18 world is unreadable by b10, so a
+  downgrade must be refused rather than attempted (RealEarth's bake refuses a
+  `main.ttw` version downgrade; the game itself has no downgrade path). See
+  [`save-region.md`](../../7dtd-engine-research/docs/world/save-region.md).
 - **Session snapshot:** `Mods/RealEarth/Config/realearth.session.json` records
   the absolute Earth origin (`absoluteX/absoluteZ`, scope). It is written on
   save and restored on load; deleting it resets the origin to the spawn bbox.

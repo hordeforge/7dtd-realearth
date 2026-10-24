@@ -166,7 +166,7 @@ Production FOW (soft): `MapExploreRevealRadiusChunks` (default 8) via `MapReveal
 |---|---|
 | [PROTON_INSTALL](PROTON_INSTALL.md) | Proton GeneratedWorlds paths |
 | [HEIGHT_LIMITS](HEIGHT_LIMITS.md) | Expand required |
-| [GAME_VERSION](GAME_VERSION.md) | V3.2.0 pin |
+| [GAME_VERSION](GAME_VERSION.md) | V3.3.0 pin |
 | [SINGLE_WORLD](SINGLE_WORLD.md) | Baked vs Streamed |
 | [MODIFICATIONS](MODIFICATIONS.md) | Status |
 

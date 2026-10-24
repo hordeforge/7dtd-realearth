@@ -14,15 +14,18 @@ discipline: "Do not mark live inject/MP Done without dedicated evidence").
 
 | Build | Verified | Where | Notes |
 |---|---|---|---|
-| **V3.1.0 (b14)** Henpocalypse | Offline only | CI + docs | Previous pin; superseded by the Steam 2026-08-28 update |
-| **V3.2.0 (b9)** | **Live (dedicated)** | This machine | Dedicated log: `Version: V 3.2.0 (b9)`; retargeted 2026-08-28 |
+| **V3.1.0 (b14)** Henpocalypse | Offline only | CI + docs | Previous pin; superseded |
+| **V3.2.0 (b9)** | **Live (dedicated)** | This machine | Dedicated log: `Version: V 3.2.0 (b9)`; retargeted 2026-08-28. Last live soak; kept as history |
+| **V3.3.0 (b18)** | **IL + assembly check only** | This machine | Current pin. Dedicated log `Version: V 3.3.0 (b18)`; hook targets re-checked against both b18 assemblies; **no mod boot on b18 yet** |
 
-Client (Proton) boot on 3.2.0 still needs a logged-in Steam session to launch;
+Client (Proton) boot on 3.3.0 still needs a logged-in Steam session to launch;
 the verify steps are the same as [GAME_VERSION.md](GAME_VERSION.md) (boot → New
 Game → `[RealEarth] RealEarth init OK` in `output_log_*.txt`). The dedicated
-and client share the same `Assembly-CSharp` constants structure (the mod is
-compiled against the client install's Managed dir), so hook binding is not
-expected to differ; this is stated as untested until a client boot is run.
+and client share the same `Assembly-CSharp` structure (the mod is compiled
+against the client install's Managed dir); every reflection target present on
+the dedicated assembly is also present on the client assembly (2026-10-24
+`monodis` check), but no b18 client boot has run. This is stated as untested
+until that boot happens.
 
 ## Installs
 
@@ -36,11 +39,13 @@ The YDim expand is hot-patched at boot by the runtime transpiler
 (`EngineHeightRuntimePatch=true`); no DLL is edited, so there is no marker,
 backup or restore step.
 
-## Harmony targets (V3.2.0 b9, live dedicated)
+## Harmony targets
 
-Bound with fail-soft reflection (missing target logs, does not kill the mod):
+Target names checked against the V3.3.0 b18 dedicated assembly (IL) and both
+b18 assemblies (reflection surface, `monodis`, 2026-10-24). Live counts below
+are from the last live soak, on V3.2.0 b9; the b18 re-soak is open.
 
-| Group | Targets | Live count |
+| Group | Targets | Last live count (b9) |
 |---|---|---|
 | Height queries | `TerrainGeneratorWithBiomeResource.GetTerrainHeightAt`, `TerrainFromRaw.GetTerrainHeightAt`/`GetTerrainHeightByteAt`, `TerrainFromDTM.GetTerrainHeightAt`/`GetTerrainHeightByteAt`, `World.GetHeightAt`, `World.GetTerrainHeight` | 7 patched, 0 failed |
 | Terrain gen | `TerrainGeneratorWithBiomeResource.GenerateTerrain` (x2), `ChunkProviderGenerateWorld.generateTerrain` (x2) | 4 |
@@ -48,8 +53,14 @@ Bound with fail-soft reflection (missing target logs, does not kill the mod):
 | Player tick | `EntityPlayer.Update`, `EntityPlayerLocal.Update`, `EntityPlayer.OnEntityUnload`, `EntityAlive.OnEntityUnload` | 2 + 2 unload |
 | World ready / save | `GameManager.StartGame`, `GameManager.SaveWorld`, `World.SaveWorldState` | 3 |
 
-Startup verdict logged on 3.2.0: `injectOk=True productOk=True` with
-`heightMode=ydim-expanded expanded=True`.
+All of these methods still exist in b18 with unchanged signatures.
+`EntityPlayerLocal.OnEntityUnload` (66 -> 69 IL) and `GameManager.StartGame`
+(21 -> 24 IL) changed body; both are postfix hooks, so binding is unaffected.
+The prefab placement path (`PrefabCache.GetPrefab` IL=47,
+`PrefabInstance::.ctor` IL=67, `CopyIntoWorld` IL=85) is unchanged.
+
+Startup verdict logged on 3.2.0 (b9): `injectOk=True productOk=True` with
+`heightMode=ydim-expanded expanded=True`. Not yet re-logged on b18.
 
 ## Engine height expand (runtime YDim transpiler)
 
@@ -62,6 +73,9 @@ Startup verdict logged on 3.2.0: `injectOk=True productOk=True` with
 
 ## Operating modes
 
+The Live column is the last live evidence, recorded on V3.2.0 (b9). No mode
+has been re-run on V3.3.0 b18 yet.
+
 | Mode | Offline | Live |
 |---|---|---|
 | Baked (`MapMode=Baked`) | CI (full `make test` suite, bake checks) | Partial (baked world loads; inject evidence via Streamed runs) |
@@ -72,30 +86,37 @@ Startup verdict logged on 3.2.0: `injectOk=True productOk=True` with
 | SharedFixed | `test_mp_runtime_structure.py` | **Live** (3.2.0 dedicated: `mpOrigin=SharedFixed` active; multi-player distance proof open) |
 | Longitude wrap | `test_host_fold.py` | Not live (needs full-planet pack) |
 
-## Research cross-check (V3.2.0 b9)
+## Research cross-check (V3.3.0 b18)
 
 Cross-referenced against the engine-research exact-diff changelog
-([`changelog-3.2.0.md`](../../7dtd-engine-research/docs/releases/changelog-3.2.0.md),
-IL-verified 2026-08-28):
+([`changelog-3.3.0.md`](../../7dtd-engine-research/docs/releases/changelog-3.3.0.md),
+IL-verified 2026-10-24). Save records and inventory owners:
+[`save-region.md`](../../7dtd-engine-research/docs/world/save-region.md),
+[`items.md`](../../7dtd-engine-research/docs/gameplay/items.md).
 
-- **Unchanged (verified by IL diff, consistent with our live results):**
-  world/chunk constants (dims, layers, heightmaps), which matches our expand
-  rewriting the same 9 constants + 76 IL sites as on 3.1.0; save format
-  (`CurrentSaveVersion` 23, `WorldState.SaveLoad` IL 926); session snapshot
-  hooks unaffected; core loop (`gmUpdate` 631 IL, 20 TPS); console command
-  registry byte-identical; `re*` commands unaffected; LiteNetLib pins and
-  default port 26900 unchanged.
-- **Changed, no RealEarth touchpoints (grep-verified):** wire `NetPackageDamageEntity`
-  (packed flags + KillXPScale, breaking), POI metadata packages
-  (`NetPackagePOIAround` removed → Request/Response), `NetPackageConfirmSpawnEntity`
-  + `EntityCreationData` tail, `ItemValue` flags, `EntityBuffs` kill-XP call
-  sites, deco suppression (`DesignatedAreaStore` / `DynamicPrefabDecorator`).
-  RealEarth's C# references none of these. LiteNetLib bot clients
-  (sibling `7dtd-loadgen`) are the consumers that must track the damage/entity
-  wire changes.
-- **Note:** third-party mods compiled against 3.1.0 can break on 3.2.0
-  (observed: `EntityBuffs.SetCustomVar` missing in an installed bot mod);
-  that is a mod rebuild issue, not a RealEarth one.
+- **Unchanged (verified by IL diff):** world/chunk constants (dims, layers,
+  heightmaps), which matches our expand rewriting the same 9 constants and IL
+  sites; `WorldState.CurrentSaveVersion` 23, `WorldState.SaveLoad` IL 926 and
+  the whole `main.ttw` / `.7rg` container; the chunk preamble 47; `gmUpdate`
+  631 -> 638 IL with the 20 TPS budget unchanged; the height, generate and
+  chunk-index hook targets above.
+- **Changed, save-side (affects shipped worlds, not our parser):**
+  `EntityCreationData` 37 -> 38, `TEFeatureStorage` 18 -> 20, `Bag` 1 -> 2,
+  `Equipment` 4 -> 6, `Quest.FileVersion` 8 -> 9, `.ttp` 59 -> 62. b18 reads a
+  b10 save (live check: a b10 `main.ttw` booted on b18 with only the
+  different-version warning); b10 cannot read a b18 save. RealEarth writes no
+  entity/tile-entity/`.ttp` record, so the only downgrade guard needed is the
+  `main.ttw` version stamp, which refuses an older label
+  (`tools/realearth/generated_world.py`).
+- **Changed, no RealEarth touchpoints:** inventory/equipment rework (`Hand`,
+  `ItemStackGrid`), `NetPackagePlayerInventory` blobs, six
+  `NetPackageInventory*`/`Transaction*` types removed, signs subsystem,
+  `AssetManagement` handle layer, `Services.Analytics` send sites, console
+  registry 188 -> 190 (`give`, `listitems`), prefab cell storage in
+  `Prefab.CellPool`. RealEarth's C# references none of the removed members; the
+  prefab path uses only prefab-level APIs, which are unchanged.
+- **Note:** third-party mods compiled against 3.2.0 can break on 3.3.0; that is
+  a mod rebuild issue, not a RealEarth one.
 
 ## Known limits and third-party notes
 
@@ -103,9 +124,9 @@ IL-verified 2026-08-28):
 - Per-chunk `Height inject` lines require a connected player to generate
   chunks (dedicated with 0 players generates 0 chunks). Covered by loadgen
   scenarios in sibling [`7dtd-loadgen`](../../7dtd-loadgen/docs/REALEARTH.md).
-- Third-party mods compiled against 3.1.0 can break on 3.2.0 (observed:
-  `EntityBuffs.SetCustomVar` missing in an installed bot mod); this is not a
-  RealEarth issue.
+- Third-party mods compiled against an older build can break on 3.3.0 (observed
+  on 3.2.0: `EntityBuffs.SetCustomVar` missing in an installed bot mod); this
+  is not a RealEarth issue.
 - `-nographics` Linux dedicated boot crash seen during the 2026-08-28 Steam
   update was a mid-update file mismatch (stock and expanded crashed
   identically; both installs boot cleanly after the update completed).

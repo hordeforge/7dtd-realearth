@@ -10,10 +10,14 @@ import numpy as np
 import pytest
 
 from realearth.generated_world import (
+    _DEFAULT_MAP_INFO_VERSION,
+    _DEFAULT_TTW_VERSION,
     bake_generated_world,
     detect_client_versions,
     game_y_to_dtm_u16,
+    read_ttw_version,
     write_map_info,
+    write_ttw_with_version,
 )
 from realearth.proton_paths import STEAM_APPID
 from realearth.region import build_region
@@ -244,3 +248,44 @@ def test_bake_replays_byte_for_byte_from_one_seed(tmp_path: Path) -> None:
 
     assert bakes["a"] == bakes["b"], "same seed must replay the same world"
     assert bakes["a"] != bakes["c"], "seed must select prefab placement and splats"
+
+
+def test_ttw_defaults_pin_the_current_build() -> None:
+    """No client log means the fallback stamps the pinned build, not b4-era text."""
+    assert _DEFAULT_MAP_INFO_VERSION == "V.3.3.0"
+    assert _DEFAULT_TTW_VERSION == "V 3.3.0 (b18)"
+
+
+def test_detect_client_versions_falls_back_to_pinned_build(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    monkeypatch.setattr("realearth.proton_paths.steam_roots", lambda: [tmp_path / "none"])
+    monkeypatch.setattr(Path, "home", lambda: tmp_path / "home")
+    assert detect_client_versions() == (_DEFAULT_MAP_INFO_VERSION, _DEFAULT_TTW_VERSION)
+
+
+def _ttw_bytes(version: str) -> bytes:
+    body = version.encode("ascii")
+    return b"ttw\x00" + b"\x00\x00\x00\x00" + bytes([len(body)]) + body + b"\x00" * 16
+
+
+def test_ttw_stamp_reads_and_rewrites_the_version(tmp_path: Path) -> None:
+    template = tmp_path / "template.ttw"
+    template.write_bytes(_ttw_bytes("V 3.3.0 (b18)"))
+    out = tmp_path / "main.ttw"
+
+    write_ttw_with_version(out, template, "V 3.3.0 (b18)")
+
+    assert read_ttw_version(out.read_bytes()) == "V 3.3.0 (b18)"
+
+
+def test_ttw_downgrade_stamp_is_refused(tmp_path: Path) -> None:
+    """A b18 world is unreadable by b10, so a downgrade stamp must never land."""
+    template = tmp_path / "template.ttw"
+    template.write_bytes(_ttw_bytes("V 3.3.0 (b18)"))
+    out = tmp_path / "main.ttw"
+
+    with pytest.raises(ValueError, match="refusing to stamp main.ttw"):
+        write_ttw_with_version(out, template, "V 3.2.0 (b10)")
+
+    assert not out.exists()

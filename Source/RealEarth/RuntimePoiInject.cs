@@ -9,8 +9,13 @@ namespace RealEarth
     /// <summary>
     /// Runtime density/POI stamps near the player from settlements catalog.
     /// Mirrors tools/realearth/density.py planning (band, surface Y, DensityBudget).
-    /// Placement is best-effort via PrefabManager reflection; only successful places
+    /// Placement is best-effort via PrefabCache reflection; only successful places
     /// consume budget (failed places may retry).
+    ///
+    /// Prefab cells are not touched here. Stock owns cell storage internally, and
+    /// V3.3.0 moved it to Prefab.CellPool (native 2048-byte blocks,
+    /// poolIndex &lt;&lt; 16 | byteOffset) without changing the prefab-level API this
+    /// path uses; see 7dtd-engine-research docs/meta/dedicated-leftovers.md §23.
     /// </summary>
     public static class RuntimePoiInject
     {
@@ -584,8 +589,9 @@ namespace RealEarth
         {
             try
             {
-                // 3.2.0: PrefabManager is gone; the prefab cache lives on the World
-                // (World.m_PrefabCache, PrefabCache.GetPrefab(name, bool, bool, bool, bool)).
+                // 3.2.0 removed PrefabManager; the prefab cache lives on the World
+                // (World.m_PrefabCache, PrefabCache.GetPrefab(name, bool, bool, bool,
+                // bool)). That signature is unchanged on V3.3.0 b18.
                 // Try PrefabManager first (3.0.x), then the World field.
                 object? world = ReflectCache.GetEngineWorld();
                 object? pm = null;
@@ -687,9 +693,10 @@ namespace RealEarth
 
         /// <summary>
         /// Stock placement: build a PrefabInstance and call CopyIntoWorld. Verified
-        /// against the V3.2.0 IL (PrefabInstance::.ctor IL=67, CopyIntoWorld IL=85)
-        /// and the game's own XUiC_PrefabList call site. The old World.*Prefab*Spawn
-        /// scan never matched on 3.x (all stamps ended up retry-later).
+        /// against the V3.2.0 IL and re-checked on V3.3.0 b18 (PrefabInstance::.ctor
+        /// IL=67, CopyIntoWorld IL=85 both unchanged) and the game's own
+        /// XUiC_PrefabList call site. The old World.*Prefab*Spawn scan never matched
+        /// on 3.x (all stamps ended up retry-later).
         /// </summary>
         static bool PlaceResolvedPrefab(string prefabName, object prefab, object? world, int x, int y, int z)
         {
@@ -752,8 +759,9 @@ namespace RealEarth
         /// <summary>
         /// Construct a PrefabInstance(id, AbstractedLocation.None, Vector3i pos,
         /// rotation 0, prefab, standaloneBlockSize 0) and call CopyIntoWorld.
-        /// Verified against the V3.2.0 IL (PrefabInstance::.ctor IL=67,
-        /// CopyIntoWorld IL=85) and the game's own XUiC_PrefabList call site.
+        /// Verified against the V3.2.0 IL and re-checked on V3.3.0 b18
+        /// (PrefabInstance::.ctor IL=67, CopyIntoWorld IL=85 unchanged) and the
+        /// game's own XUiC_PrefabList call site.
         /// </summary>
         static bool TryPlaceViaPrefabInstance(string prefabName, object prefab, object world, int x, int y, int z, out string? fail)
         {
