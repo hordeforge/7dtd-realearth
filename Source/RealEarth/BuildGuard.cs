@@ -14,10 +14,11 @@ namespace RealEarth
     ///
     /// The list means "hooks were verified against this exact assembly", not
     /// "this is the current build". Rows therefore stay after a retarget: the
-    /// b9 and b10 rows below are reviewed history, and the b18 rows are the
-    /// current pin (docs/GAME_VERSION.md). The b18 client binding was checked
-    /// against the installed client assembly (every reflection hook target
-    /// present, monodis, 2026-10-24); no b18 client boot has run yet.
+    /// b9, b10 and b18 rows below are reviewed history, and the V3.4.0 rows
+    /// are the current pin (docs/GAME_VERSION.md). The V3.4.0 client and
+    /// dedicated bindings were checked against the installed assemblies
+    /// (every reflection hook target present, monodis, 2026-11-05); no
+    /// V3.4.0 mod boot has run yet.
     /// </summary>
     public static class BuildGuard
     {
@@ -25,6 +26,8 @@ namespace RealEarth
         static readonly Dictionary<string, string> ReviewedBuilds =
             new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase)
             {
+                {"cb54022ccc862aa673e0ee55dafe67d842b364c80df6916958d171e959656c58", "V3.4.0 (b10) live client"},
+                {"00a962dbbb5ef1bb454368322221f9eb4148dc2d548ed2b77244f9bda5ecc167", "V3.4.0 (b10) live dedi"},
                 {"fceec27300ffd3a1f97b097e43b60f3b07597f441e7ecbc6e1b59eebb234c705", "V3.3.0 (b18) live client"},
                 {"e16ff9d539b8fbf64904c0bc090d502286a62464742a9396f0455936ad0beb87", "V3.3.0 (b18) live dedi"},
                 {"3737eedc9f143d428a69030317428c45d342be4f11006a46d72bcd7b1d0fc64d", "V3.2.0 (b10) live dedi"},

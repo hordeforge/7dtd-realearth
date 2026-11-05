@@ -709,14 +709,17 @@ def test_build_guard_fail_closed_unknown_build():
     modapi = _read("ModApi.cs")
     assert "BuildGuard.Init" in modapi
     assert "EnforceInjectGate" in modapi
-    # reviewed hashes present: current pin (b18) plus reviewed history (b10, b9)
+    # reviewed hashes present: current pin (V3.4.0) plus reviewed history (b18, b10, b9)
+    assert "V3.4.0 (b10) live dedi" in src
+    assert "V3.4.0 (b10) live client" in src
     assert "V3.3.0 (b18) live dedi" in src
     assert "V3.3.0 (b18) live client" in src
     assert "V3.2.0 (b10) live dedi" in src
     assert "V3.2.0 (b9) stock" in src
     assert "V3.2.0 (b9) live" in src
-    # the b18 dedicated hash from the release identity table
-    assert "e16ff9d539b8fbf64904c0bc090d502286a62464742a9396f0455936ad0beb87" in src
+    # the V3.4.0 dedicated and client hashes from the release identity table
+    assert "00a962dbbb5ef1bb454368322221f9eb4148dc2d548ed2b77244f9bda5ecc167" in src
+    assert "cb54022ccc862aa673e0ee55dafe67d842b364c80df6916958d171e959656c58" in src
     # config default: refuse unknown builds
     cfg = json.loads((ROOT / "Config" / "realearth.json").read_text(encoding="utf-8"))
     assert cfg.get("EngineHeightAllowUnknownBuild") is False

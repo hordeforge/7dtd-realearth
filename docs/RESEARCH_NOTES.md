@@ -6,9 +6,9 @@
 
 
 Living notes for the RealEarth 7DTD project. 
-**Last updated:** 2026-10-24 
+**Last updated:** 2026-11-05 
 
-**Target game:** 7 Days to Die **V3.3.0 (b18)**
+**Target game:** 7 Days to Die **V3.4.0 (b10)**
 
 Sources: official site blogs, TFP forums, wiki.gg, 7daystodiemods.com, Steam guides, Nexus, community reports. 
 Modding site index: [MODDING_REFERENCES.md](MODDING_REFERENCES.md). 
@@ -29,9 +29,10 @@ Re-verify Harmony targets and XML paths against a live install after every major
 | **2026-07** | **3.0.1** | Stable hotfix | Sign-Tech, cosmetics, airdrop night, RWG preview crash, region edge cases |
 | 2026-08 | 3.1.0 (b14) | Henpocalypse | Earlier pin, superseded by 3.2.0 |
 | 2026-08-28 | 3.2.0 (b9) | Last live soak | Streamed inject bound and soaked live; Harmony targets rediscovered against this build. Kept as history |
-| 2026-10-24 | 3.3.0 (b18) | Current pin | Save record versions bumped (one-way), inventory/equipment reworked, `AssetManagement` + analytics added; Harmony targets IL-checked, live re-soak open |
+| 2026-10-24 | 3.3.0 (b18) | Previous pin | Save record versions bumped (one-way), inventory/equipment reworked, `AssetManagement` + analytics added; kept as history |
+| 2026-11-05 | 3.4.0 (b10) | Current pin | Two wire packages, dynamic-mesh server call sites removed, carry capacity flat 96, trader drone recovery; no save record version moved, Harmony targets checked on both assemblies, live re-soak open |
 
-**Pin RealEarth to 3.3.0 (b18).** Do not claim 3.0.1, 3.1.0 or 3.2.0 as current.
+**Pin RealEarth to 3.4.0 (b10).** Do not claim 3.0.1, 3.1.0, 3.2.0 or 3.3.0 as current.
 
 Official index: https://7daystodie.com/ 
 News & announcements: https://community.thefunpimps.com/forums/news-announcements.7/

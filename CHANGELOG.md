@@ -11,7 +11,37 @@ the tools package mirrors it in `tools/realearth/__init__.py` (`__version__`),
 and the release gate requires both to match the tag (`v<version>`) and a dated
 `## [x.y.z]` heading for the tagged version.
 
-## [Unreleased]
+## [0.7.0] - 2026-11-05
+
+### Changed
+
+- **Retargeted to 7 Days to Die V3.4.0 (b10).** `BuildGuard` now accepts the
+  V3.4.0 client assembly (sha256
+  `cb54022ccc862aa673e0ee55dafe67d842b364c80df6916958d171e959656c58`,
+  11980288 bytes) and dedicated assembly (sha256
+  `00a962dbbb5ef1bb454368322221f9eb4148dc2d548ed2b77244f9bda5ecc167`,
+  11752960 bytes); the b18 rows stay as reviewed history. Release identity is
+  dedicated buildid `26310339`, depot manifest `5022117301453546978`, client
+  buildid `26309840`, version tuple `(3,40,10)`.
+- **Every reflection hook target is present on both V3.4.0 assemblies.** All
+  30 required targets were re-checked with `monodis`: height queries, terrain
+  generate, chunk index, player tick and unload, world ready and save,
+  longitude wrap, and the prefab path (`PrefabCache.GetPrefab`,
+  `PrefabInstance::.ctor`, `CopyIntoWorld`). The engine constants the YDim
+  transpiler rewrites are unchanged (`ChunkBlockYDim` 256,
+  `ChunkBlockLayers` 64, `cMaxHeight` 255), so the expand still applies. No
+  V3.4.0 client or dedicated boot has run yet; that live soak is still the
+  open item in [TODO](TODO.md).
+- **No save record version moved.** `main.ttw` 23, `.ttp` 62,
+  `EntityCreationData` 38, `TEFeatureStorage` 20, `Bag` 2 and `Equipment` 6
+  are the b18 values, so a b18 world loads on V3.4.0. The bake defaults now
+  stamp `V.3.4.0` / `V 3.4.0 (b10)` when no client log is available, and a
+  test pins that a b18 `main.ttw` template accepts the V3.4.0 stamp while an
+  older-build stamp is still refused.
+- **Research cross-check refreshed** in
+  [COMPATIBILITY](docs/COMPATIBILITY.md): the two new wire packages, the
+  dynamic-mesh removal, the flat carry capacity and the trader drone dialog
+  have no RealEarth touchpoint.
 
 ## [0.6.0] - 2026-10-25
 

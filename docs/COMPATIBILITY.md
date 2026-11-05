@@ -16,16 +16,16 @@ discipline: "Do not mark live inject/MP Done without dedicated evidence").
 |---|---|---|---|
 | **V3.1.0 (b14)** Henpocalypse | Offline only | CI + docs | Previous pin; superseded |
 | **V3.2.0 (b9)** | **Live (dedicated)** | This machine | Dedicated log: `Version: V 3.2.0 (b9)`; retargeted 2026-08-28. Last live soak; kept as history |
-| **V3.3.0 (b18)** | **IL + assembly check only** | This machine | Current pin. Dedicated log `Version: V 3.3.0 (b18)`; hook targets re-checked against both b18 assemblies; **no mod boot on b18 yet** |
+| **V3.3.0 (b18)** | **IL + assembly check only** | This machine | Previous pin; kept as history. Hook targets were re-checked against both b18 assemblies; no mod boot on b18 |
+| **V3.4.0 (b10)** | **IL + assembly check only** | This machine | Current pin. Dedicated log `Version: V 3.4.0 (b10)`; both `BuildGuard` hashes reviewed; 30 hook targets present on both assemblies (2026-11-05); **no mod boot on V3.4.0 yet** |
 
-Client (Proton) boot on 3.3.0 still needs a logged-in Steam session to launch;
+Client (Proton) boot on 3.4.0 still needs a logged-in Steam session to launch;
 the verify steps are the same as [GAME_VERSION.md](GAME_VERSION.md) (boot → New
 Game → `[RealEarth] RealEarth init OK` in `output_log_*.txt`). The dedicated
 and client share the same `Assembly-CSharp` structure (the mod is compiled
-against the client install's Managed dir); every reflection target present on
-the dedicated assembly is also present on the client assembly (2026-10-24
-`monodis` check), but no b18 client boot has run. This is stated as untested
-until that boot happens.
+against the client install's Managed dir); all 30 required reflection targets
+are present on both V3.4.0 assemblies (`monodis`, 2026-11-05), but no V3.4.0
+client boot has run. This is stated as untested until that boot happens.
 
 ## Installs
 
@@ -41,9 +41,10 @@ backup or restore step.
 
 ## Harmony targets
 
-Target names checked against the V3.3.0 b18 dedicated assembly (IL) and both
-b18 assemblies (reflection surface, `monodis`, 2026-10-24). Live counts below
-are from the last live soak, on V3.2.0 b9; the b18 re-soak is open.
+Target names checked against both V3.4.0 assemblies (reflection surface,
+`monodis`, 2026-11-05): 30 required targets present, including the three
+fallbacks the code tolerates when a build moves them. Live counts below are
+from the last live soak, on V3.2.0 b9; the V3.4.0 re-soak is open.
 
 | Group | Targets | Last live count (b9) |
 |---|---|---|
@@ -53,14 +54,14 @@ are from the last live soak, on V3.2.0 b9; the b18 re-soak is open.
 | Player tick | `EntityPlayer.Update`, `EntityPlayerLocal.Update`, `EntityPlayer.OnEntityUnload`, `EntityAlive.OnEntityUnload` | 2 + 2 unload |
 | World ready / save | `GameManager.StartGame`, `GameManager.SaveWorld`, `World.SaveWorldState` | 3 |
 
-All of these methods still exist in b18 with unchanged signatures.
-`EntityPlayerLocal.OnEntityUnload` (66 -> 69 IL) and `GameManager.StartGame`
-(21 -> 24 IL) changed body; both are postfix hooks, so binding is unaffected.
-The prefab placement path (`PrefabCache.GetPrefab` IL=47,
-`PrefabInstance::.ctor` IL=67, `CopyIntoWorld` IL=85) is unchanged.
+All of these methods exist in V3.4.0 with unchanged signatures. The two
+postfix bodies that grew on b18 (`EntityPlayerLocal.OnEntityUnload`,
+`GameManager.StartGame`) stay postfix hooks, so binding is unaffected. The
+prefab placement path (`PrefabCache.GetPrefab`, `PrefabInstance::.ctor`,
+`CopyIntoWorld`) is present and unchanged.
 
 Startup verdict logged on 3.2.0 (b9): `injectOk=True productOk=True` with
-`heightMode=ydim-expanded expanded=True`. Not yet re-logged on b18.
+`heightMode=ydim-expanded expanded=True`. Not yet re-logged on V3.4.0.
 
 ## Engine height expand (runtime YDim transpiler)
 
@@ -74,7 +75,7 @@ Startup verdict logged on 3.2.0 (b9): `injectOk=True productOk=True` with
 ## Operating modes
 
 The Live column is the last live evidence, recorded on V3.2.0 (b9). No mode
-has been re-run on V3.3.0 b18 yet.
+has been re-run on V3.4.0 yet.
 
 | Mode | Offline | Live |
 |---|---|---|
@@ -86,37 +87,30 @@ has been re-run on V3.3.0 b18 yet.
 | SharedFixed | `test_mp_runtime_structure.py` | **Live** (3.2.0 dedicated: `mpOrigin=SharedFixed` active; multi-player distance proof open) |
 | Longitude wrap | `test_host_fold.py` | Not live (needs full-planet pack) |
 
-## Research cross-check (V3.3.0 b18)
+## Research cross-check (V3.4.0 b10)
 
 Cross-referenced against the engine-research exact-diff changelog
-([`changelog-3.3.0.md`](../../7dtd-engine-research/docs/releases/changelog-3.3.0.md),
-IL-verified 2026-10-24). Save records and inventory owners:
+([`changelog-3.4.0.md`](../../7dtd-engine-research/docs/releases/changelog-3.4.0.md),
+IL-verified 2026-11-05). Save records and inventory owners:
 [`save-region.md`](../../7dtd-engine-research/docs/world/save-region.md),
 [`items.md`](../../7dtd-engine-research/docs/gameplay/items.md).
 
-- **Unchanged (verified by IL diff):** world/chunk constants (dims, layers,
-  heightmaps), which matches our expand rewriting the same 9 constants and IL
-  sites; `WorldState.CurrentSaveVersion` 23, `WorldState.SaveLoad` IL 926 and
-  the whole `main.ttw` / `.7rg` container; the chunk preamble 47; `gmUpdate`
-  631 -> 638 IL with the 20 TPS budget unchanged; the height, generate and
-  chunk-index hook targets above.
-- **Changed, save-side (affects shipped worlds, not our parser):**
-  `EntityCreationData` 37 -> 38, `TEFeatureStorage` 18 -> 20, `Bag` 1 -> 2,
-  `Equipment` 4 -> 6, `Quest.FileVersion` 8 -> 9, `.ttp` 59 -> 62. b18 reads a
-  b10 save (live check: a b10 `main.ttw` booted on b18 with only the
-  different-version warning); b10 cannot read a b18 save. RealEarth writes no
-  entity/tile-entity/`.ttp` record, so the only downgrade guard needed is the
-  `main.ttw` version stamp, which refuses an older label
-  (`tools/realearth/generated_world.py`).
-- **Changed, no RealEarth touchpoints:** inventory/equipment rework (`Hand`,
-  `ItemStackGrid`), `NetPackagePlayerInventory` blobs, six
-  `NetPackageInventory*`/`Transaction*` types removed, signs subsystem,
-  `AssetManagement` handle layer, `Services.Analytics` send sites, console
-  registry 188 -> 190 (`give`, `listitems`), prefab cell storage in
-  `Prefab.CellPool`. RealEarth's C# references none of the removed members; the
-  prefab path uses only prefab-level APIs, which are unchanged.
-- **Note:** third-party mods compiled against 3.2.0 can break on 3.3.0; that is
-  a mod rebuild issue, not a RealEarth one.
+- **Unchanged:** every save record version the b18 corpus pinned (`main.ttw`
+  23, `.ttp` 62, `EntityCreationData` 38, `TEFeatureStorage` 20, `Bag` 2,
+  `Equipment` 6), the `main.ttw` / `.7rg` container, the chunk preamble 47,
+  the engine height constants (`ChunkBlockYDim` 256, `ChunkBlockLayers` 64,
+  `cMaxHeight` 255), and every height, generate, chunk-index, player tick,
+  world ready/save and prefab hook target above. A b18 world loads here, so
+  the `main.ttw` version stamp stays the only downgrade guard RealEarth needs.
+- **Changed, no RealEarth touchpoints:** two wire packages
+  (`NetPackageDroneRecoveryRequest` 45, `...Response` 46) with every id above
+  46 shifted by 2, the dynamic-mesh subsystem losing its server-side call
+  sites, carry capacity flattened to 96, eight cosmetic DLC armor rows and a
+  trader drone-recovery dialog. RealEarth references none of them; it writes
+  no wire package and no entity/tile-entity/`.ttp` record.
+- **Note:** V3.4.0 left every hook target in place, so a RealEarth build from
+  b18 binds without source changes. Re-run `make install` after the update so
+  the mod is compiled against the new Managed assemblies.
 
 ## Known limits and third-party notes
 

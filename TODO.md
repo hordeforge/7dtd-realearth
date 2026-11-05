@@ -16,14 +16,14 @@ provenance and distinguish prototypes from verified in-game behavior.
   gen=4 chunkIdx=2 playerTick=2 worldReady=1 bound live, `injectOk=True`;
   per-chunk inject evidence needs a connected player; see
   [docs/COMPATIBILITY.md](docs/COMPATIBILITY.md)). History: the current pin is
-  3.3.0 b18.
-- [ ] Re-run the b18 live retarget: `make build` against the V3.3.0 b18 client,
+  3.4.0 b10.
+- [ ] Re-run the V3.4.0 live retarget: `make build` against the V3.4.0 client,
   reinstall, then the dedicated soak (`scripts/run_dedicated_height_test.sh`)
   expecting `injectOk=True productOk=True` and the hook counts from
-  [docs/COMPATIBILITY.md](docs/COMPATIBILITY.md). Targets already re-checked
-  against both b18 assemblies by IL and `monodis`; the bind itself is unverified
-  until this runs. Also covers the b18 XUi lon/lat HUD placement (patch path
-  fixed; a live client is what proves it renders).
+  [docs/COMPATIBILITY.md](docs/COMPATIBILITY.md). All 30 required targets were
+  re-checked against both V3.4.0 assemblies by `monodis`; the bind itself is
+  unverified until this runs. Also covers the V3.4.0 XUi lon/lat HUD placement
+  (patch path fixed; a live client is what proves it renders).
 - [x] Complete an end-to-end Streamed-mode test: tile lookup, absolute
   coordinates, local window movement, longitude wrap, save/reload, and deltas.
   (Live 3.2.0 covered: tile lookup, absolute spawn, SharedFixed, snapshot

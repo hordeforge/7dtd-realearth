@@ -252,8 +252,8 @@ def test_bake_replays_byte_for_byte_from_one_seed(tmp_path: Path) -> None:
 
 def test_ttw_defaults_pin_the_current_build() -> None:
     """No client log means the fallback stamps the pinned build, not b4-era text."""
-    assert _DEFAULT_MAP_INFO_VERSION == "V.3.3.0"
-    assert _DEFAULT_TTW_VERSION == "V 3.3.0 (b18)"
+    assert _DEFAULT_MAP_INFO_VERSION == "V.3.4.0"
+    assert _DEFAULT_TTW_VERSION == "V 3.4.0 (b10)"
 
 
 def test_detect_client_versions_falls_back_to_pinned_build(
@@ -271,12 +271,23 @@ def _ttw_bytes(version: str) -> bytes:
 
 def test_ttw_stamp_reads_and_rewrites_the_version(tmp_path: Path) -> None:
     template = tmp_path / "template.ttw"
+    template.write_bytes(_ttw_bytes("V 3.4.0 (b10)"))
+    out = tmp_path / "main.ttw"
+
+    write_ttw_with_version(out, template, "V 3.4.0 (b10)")
+
+    assert read_ttw_version(out.read_bytes()) == "V 3.4.0 (b10)"
+
+
+def test_ttw_accepts_a_b18_world_into_v340(tmp_path: Path) -> None:
+    """V3.4.0 did not move a save record version, so a b18 world upgrades."""
+    template = tmp_path / "template.ttw"
     template.write_bytes(_ttw_bytes("V 3.3.0 (b18)"))
     out = tmp_path / "main.ttw"
 
-    write_ttw_with_version(out, template, "V 3.3.0 (b18)")
+    write_ttw_with_version(out, template, "V 3.4.0 (b10)")
 
-    assert read_ttw_version(out.read_bytes()) == "V 3.3.0 (b18)"
+    assert read_ttw_version(out.read_bytes()) == "V 3.4.0 (b10)"
 
 
 def test_ttw_downgrade_stamp_is_refused(tmp_path: Path) -> None:

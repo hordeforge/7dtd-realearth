@@ -27,7 +27,7 @@ DEDI = Path.home() / ".local/share/Steam/steamapps/common/7 Days to Die Dedicate
 
 # Game build these installs are expected to hold. Bump with the retarget so the
 # labels written here match docs/GAME_VERSION.md.
-VERSION_LABEL = "V3.3.0 (b18)"
+VERSION_LABEL = "V3.4.0 (b10)"
 
 ENTRY_RE = re.compile(r'\{"([0-9a-f]{64})", "([^"]*)"\},')
 

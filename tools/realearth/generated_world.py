@@ -116,24 +116,24 @@ def write_checksums(world_dir: Path, names: list[str]) -> None:
 
 
 # Fallback when client logs are missing (must match installed Steam major).
-_DEFAULT_MAP_INFO_VERSION = "V.3.3.0"
+_DEFAULT_MAP_INFO_VERSION = "V.3.4.0"
 _HASH_BLOCK_BYTES = 1 << 20
-_DEFAULT_TTW_VERSION = "V 3.3.0 (b18)"
+_DEFAULT_TTW_VERSION = "V 3.4.0 (b10)"
 
 _CLIENT_VERSION_RE = re.compile(
     r"Version:\s*(V\s+[\d.]+(?:\s*\(b\d+\))?)\s+Compatibility Version:\s*(V\s+[\d.]+)",
     re.IGNORECASE,
 )
-# "V 3.3.0 (b18)" / "V3.3.0" / "V.3.3.0". The build number is optional.
+# "V 3.4.0 (b10)" / "V3.4.0" / "V.3.4.0". The build number is optional.
 _TTW_VERSION_RE = re.compile(r"V[.\s]*(\d+)\.(\d+)\.(\d+)(?:\s*\(b(\d+)\))?", re.IGNORECASE)
 
 
 def _ttw_version_key(raw: bytes | str) -> tuple[int, int, int, int] | None:
     """Comparable (major, minor, patch, build) for a main.ttw version string, or None.
 
-    main.ttw stores the display form (``V 3.3.0 (b18)``) as a length-prefixed
-    string; the WorldState body layout is unchanged across b10/b18, but the
-    version string is the only marker that says which build wrote the file.
+    main.ttw stores the display form (``V 3.4.0 (b10)``) as a length-prefixed
+    string; the WorldState body layout is unchanged across b18/V3.4.0, and
+    the version string is the only marker that says which build wrote it.
     """
     text = raw.decode("ascii", "replace") if isinstance(raw, bytes) else raw
     m = _TTW_VERSION_RE.search(text)
@@ -214,9 +214,10 @@ def write_ttw_with_version(path: Path, template: Path, version: str) -> None:
     Refuses a downgrade stamp: a main.ttw written by a newer build carries that
     build's version string, and labeling it with an older version would claim a
     file the older build cannot have produced. WorldState itself is version 23
-    in both b10 and b18, but entity/tile-entity/`.ttp` records are one-way
-    (b18 reads b10, b10 cannot read b18), so a downgrade is never attempted,
-    only refused.
+    in b18 and V3.4.0, and every entity/tile-entity/`.ttp` record version is
+    unchanged, so a b18 world loads on V3.4.0. A downgrade to a 3.2.0 build is
+    still one-way (that build cannot read the b18-era records), so it is never
+    attempted, only refused.
     """
     data = bytearray(template.read_bytes())
     if len(data) < 10 or data[:4] != b"ttw\0":

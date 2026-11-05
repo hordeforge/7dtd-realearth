@@ -5,10 +5,10 @@
 
 Raising YDim is necessary and not sufficient. Status tags: [INDEX](INDEX.md) (Done / Partial / Needed / Later / Ops).
 
-**Pin (2026-10-24):** game V3.3.0 (b18) ([GAME_VERSION](GAME_VERSION.md)). The live
-evidence cited in the tables below was recorded on V3.2.0 (b9) and stays as
-history; the b18 live re-soak is open (targets re-checked by IL, not yet bound
-live).
+**Pin (2026-11-05):** game V3.4.0 (b10) ([GAME_VERSION](GAME_VERSION.md)). The
+live evidence cited in the tables below was recorded on V3.2.0 (b9) and stays
+as history; the V3.4.0 live re-soak is open (targets re-checked by metadata,
+not yet bound live).
 
 ---
 
